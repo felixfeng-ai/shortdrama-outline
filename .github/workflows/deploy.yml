@@ -5,9 +5,8 @@ name: Deploy Production
 #
 # 首次使用需要在 GitHub 仓库里配两个 Secret：
 #   Settings → Secrets and variables → Actions → New repository secret
-#   CHENGJU_HOST     = 43.129.23.197
-#   CHENGJU_SSH_KEY  = 本地 ~/.ssh/deploy_key 的私钥全文
-#                     （与 interview-coach 用的是同一把 key，可直接复用）
+#   CHENGJU_HOST     = 服务器公网 IP
+#   CHENGJU_SSH_KEY  = 部署用私钥全文
 
 on:
   push:

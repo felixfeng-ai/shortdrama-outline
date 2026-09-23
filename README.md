@@ -8,6 +8,8 @@
 
 **名字的来历**：「成剧」既读作「一句话成为一部剧」，也谐音「成句」——产品的输入恰好就是一句话。短剧这行靠钩子活着，但钩子只有放进完整结构里才成立，所以名字落在「剧」上，不落在「钩」上。
 
+> 线上域名是 `chenju.work`，比品牌拼音少一个 g——`chengju.work` 已被他人注册，退而取了去掉 g 的拼写，读音不变。
+
 ```
 一句话想法  →  ① 核心人物  →  ② 三幕大纲  →  ③ 10 集分集剧情  →  复制 / 导出
 ```
@@ -254,9 +256,23 @@ interface Episode {
 
 ## AI 编程怎么参与开发
 
-- 大部分代码由 Claude Code 完成：项目搭建、界面、接口调用、状态管理
-- 我自己负责的是 **Prompt 设计和产品流程**——三步怎么切、每步给模型什么上下文、「换一个」和过期提示这些交互
-- AI 输出的问题：**Prompt 写得太泛，生成的人物不够具体**。比如第一版角色动机写出来是「想要成功」这种正确的废话。我改了 Prompt，要求动机必须说明「最想要什么、为什么」，性格必须写成能指导表演的行为倾向（「遇事先算成本，被逼到绝路才肯拼命」），而不是形容词。分集 Prompt 也加了一条：钩子要写清最后一秒发生了什么，**不许写「留下悬念」「引发观众好奇」这种描述钩子的话**
+这个项目的代码**主要由 Claude Code 完成**，我的工作是定方案、写 Prompt、验收纠偏。
+
+**我定的部分：**
+
+- **产品方案**：为什么拆成三步、每步之间靠什么传递上下文、哪些地方必须留人工判断
+- **Prompt 设计**：每一步给模型什么角色、什么约束、什么输出格式，全部集中在 `lib/prompts.ts`
+- **交互取舍**：上游改了只提示过期、不自动清空下游；生成中允许「清空重来」，用请求纪元把过期响应丢掉
+
+**实现交给 AI，我负责验收。** 需求描述清楚之后，项目搭建、界面、接口调用、状态管理由 Claude Code 一次写出，我在跑通和审查的过程中发现问题再让它改。
+
+**验收中发现并修掉的问题：**
+
+- **Prompt 太泛，人物立不住**：第一版角色动机写出来是「想要成功」这种正确的废话。改法是要求动机必须说明「最想要什么、为什么」，性格必须写成能指导表演的**行为倾向**（「遇事先算成本，被逼到绝路才肯拼命」），而不是形容词
+- **模型会用描述性的话糊弄钩子**：分集 Prompt 加了一条硬约束——钩子要写清最后一秒发生了什么，**不许写「留下悬念」「引发观众好奇」这种描述钩子的话**。不写死这条，模型会用一句套话把任务标记成完成
+- **上线才暴露的问题**：Nginx 的 `proxy_read_timeout` 默认 60s，小于应用里 120s 的模型超时，本地怎么跑都正常、一上线第三步必 504；`git reset --hard` 会覆盖正在执行的部署脚本，所以脚本先把自己复制到 `/tmp` 再 `exec`。这两条都记在下面的「三个必须知道的坑」里
+
+**我的判断**：AI 把「写代码」这一步压缩到几乎不花时间，但**需求描述不清、验收不严，出来的就是能跑但不能用的东西**。上面这些问题没有一个是写完就对的——都是我实际跑起来、看到输出不对才回头改的。
 
 ---
 
@@ -274,7 +290,7 @@ interface Episode {
 
 ## 部署
 
-生产环境与 AI面师同机：**腾讯云香港轻量服务器**（`43.129.23.197`），免备案，PM2 常驻，Nginx 反代。
+生产环境部署在**腾讯云香港轻量服务器**（免备案），PM2 常驻，Nginx 反代。
 
 ```
 GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/deploy/cicd-deploy.sh
@@ -290,10 +306,10 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
 
 ### 首次部署（一次性，共 7 步）
 
-1. **DNS**：在阿里云控制台给 `chenju.work` 和 `www.chenju.work` 各加一条 A 记录，指向 `43.129.23.197`
+1. **DNS**：在阿里云控制台给 `chenju.work` 和 `www.chenju.work` 各加一条 A 记录，指向服务器公网 IP
 2. **建目录并拉代码**（服务器上执行）
    ```bash
-   sudo mkdir -p /opt/chengju && sudo chown ubuntu:ubuntu /opt/chengju
+   sudo mkdir -p /opt/chengju && sudo chown "$USER:$USER" /opt/chengju
    git clone https://github.com/felixfeng-ai/shortdrama-outline.git /opt/chengju
    ```
 3. **写环境变量**（服务器上，`/opt/chengju/.env`，这个文件不进仓库）
@@ -307,7 +323,7 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    ```
 5. **启用 Nginx 站点**
    ```bash
-   scp deploy/nginx-chenju.work.conf ubuntu@43.129.23.197:/tmp/
+   scp deploy/nginx-chenju.work.conf <用户名>@<服务器IP>:/tmp/
    # 服务器上：
    sudo cp /tmp/nginx-chenju.work.conf /etc/nginx/sites-enabled/chenju.work
    sudo nginx -t && sudo nginx -s reload
@@ -315,8 +331,8 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    > certbot 若已自动改写配置并生效，这一步可以跳过。
 6. **首次启动**：服务器上执行 `bash /opt/chengju/deploy/cicd-deploy.sh`
 7. **配 CI 密钥**：GitHub 仓库 → Settings → Secrets and variables → Actions，新增两个 secret
-   - `CHENGJU_HOST` = `43.129.23.197`
-   - `CHENGJU_SSH_KEY` = 本地 `~/.ssh/deploy_key` 的私钥全文（与 AI面师共用同一把）
+   - `CHENGJU_HOST` = 服务器公网 IP
+   - `CHENGJU_SSH_KEY` = 部署用私钥全文（本地生成一对，公钥写进服务器的 `~/.ssh/authorized_keys`）
 
 ### 三个必须知道的坑
 
@@ -324,7 +340,7 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
 
 **🔴 Nginx 超时必须大于模型超时。** `lib/deepseek.ts` 里 `TIMEOUT_MS = 120s`，而 Nginx 的 `proxy_read_timeout` 默认只有 60s。不改的表现是：本地怎么跑都正常，一上线第三步生成 10 集就 504。`deploy/nginx-chenju.work.conf` 里已给到 300s。
 
-**端口是 3001。** 同机的 AI面师占着 3000，两个应用不能混用。
+**端口是 3001。** 同一台服务器上还跑着另一个应用、占着 3000，两个不能混用；端口写在 `ecosystem.config.cjs` 的 `args` 里。
 
 ### 手动部署 / 排查
 
