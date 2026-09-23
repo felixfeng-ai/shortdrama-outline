@@ -126,7 +126,7 @@ npm run dev
 |---|---|---|
 | 前端 | Next.js 14 App Router + Tailwind CSS 3 | 纯手写样式，没有引入任何 UI 组件库 |
 | 后端 | Next.js API Routes | 全栈一体，不用单独起服务 |
-| 模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容接口，一次性返回，不做流式 |
+| 模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容接口。人物和三幕一次性返回；分集走流式，边生成边渲染 |
 | 数据库 | 无 | MVP 阶段生成完就用了，不需要持久化 |
 
 **关于模型**：调用走的是 OpenAI 兼容协议，所以换供应商只是改两个环境变量的事，代码一行不用动。
@@ -175,11 +175,12 @@ chengju/
 │   └── AutoTextarea.tsx            # 高度自适应的输入框
 ├── lib/
 │   ├── types.ts                    # 全站共享的数据结构
-│   ├── deepseek.ts                 # 模型调用封装（超时 / 重试 / JSON 解析）
+│   ├── deepseek.ts                 # 模型调用封装（一次性 + 流式 / 超时 / 重试 / JSON 解析）
+│   ├── partial-json.ts             # 从没接收完的 JSON 里抠出已闭合的元素，供流式渲染
 │   ├── prompts.ts                  # 三个步骤的 Prompt 模板
 │   ├── normalize.ts                # 把模型返回的数据整形、兜底
 │   ├── validate.ts                 # 请求入参校验与截断
-│   ├── api.ts                      # 统一响应信封 + 前端请求封装
+│   ├── api.ts                      # 统一响应信封 + 前端请求封装（含 SSE）
 │   └── export.ts                   # Markdown 拼装 / 复制 / 下载
 ├── deploy/
 │   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
@@ -206,9 +207,23 @@ chengju/
 |------|------|--------|------|
 | POST | `/api/characters` | `{ idea, mode?, existing? }` | `{ characters: Character[] }` |
 | POST | `/api/acts` | `{ idea, characters }` | `{ acts: Act[] }` |
-| POST | `/api/episodes` | `{ idea, characters, acts }` | `{ episodes: Episode[] }` |
+| POST | `/api/episodes` | `{ idea, characters, acts }` | **SSE 事件流**（见下） |
 
 `mode` 为 `'single'` 时只生成 1 个角色（用于「换一个」和「添加角色」），此时需要传 `existing` 作为已有阵容，让模型避开功能重复。
+
+### `/api/episodes` 是唯一走 SSE 的接口
+
+前两个接口返回上面那个 JSON 信封；分集返回 `text/event-stream`，三种事件：
+
+| 事件 | 载荷 | 说明 |
+|------|------|------|
+| `episodes` | `{ episodes: Episode[] }` | 已生成的部分结果，每次都是**全量**，不是增量 |
+| `done` | `{ episodes: Episode[] }` | 最终结果，以这一份为准 |
+| `error` | `{ error: string }` | 生成中途失败，按普通错误提示处理 |
+
+**为什么每次都推全量**，而不是只推新增的那几集：`normalizeEpisodes` 按数组下标定集数，只喂新增部分的话每批都会从第 1 集重新编号。
+
+**错误分两段**：入参校验失败时流还没建立，返回的仍是普通 JSON 信封（HTTP 4xx）；流已经开始之后才失败，才走 `error` 事件。`lib/api.ts` 的 `postSse` 把这两种情况都归一成抛异常，调用方的 catch 写法和 `postJson` 一致。
 
 ```ts
 interface Character {
@@ -251,6 +266,7 @@ interface Episode {
 6. **上游改动提示**：改了人物之后再重新生成三幕，会提示「当前大纲基于旧人物生成」，而不是默默清空你已经改好的内容。这份「是否过期」由生成时记录的输入指纹推导，因此中途编辑不会被生成回写覆盖
 7. **入参硬上限**（`lib/validate.ts`）：想法 ≤ 500 字，人物 ≤ 5 个、三幕 ≤ 3 幕、每幕 ≤ 8 个情节点、单个字段 ≤ 400 字，超出直接截断。三个接口都是公开且要花钱的，不设上限等于把自己的额度交出去
 8. **请求纪元**（`app/page.tsx`）：生成过程中点「清空重来」，返回的结果会被丢弃，而不是把已清空的页面重新填满
+9. **只渲染「已经写完」的分集**（`lib/partial-json.ts`）：分集是边生成边渲染的，但缓冲区里随时可能是一个只写了一半的 JSON 对象。这里按括号配平扫描，只有已经闭合、且能通过 `JSON.parse` 的元素才交给界面，半截的一律等下一块数据补齐。流结束后还会用完整缓冲区整体解析一次兜底，保证最终结果和一次性调用时完全一致
 
 ---
 
@@ -270,7 +286,7 @@ interface Episode {
 
 - **Prompt 太泛，人物立不住**：第一版角色动机写出来是「想要成功」这种正确的废话。改法是要求动机必须说明「最想要什么、为什么」，性格必须写成能指导表演的**行为倾向**（「遇事先算成本，被逼到绝路才肯拼命」），而不是形容词
 - **模型会用描述性的话糊弄钩子**：分集 Prompt 加了一条硬约束——钩子要写清最后一秒发生了什么，**不许写「留下悬念」「引发观众好奇」这种描述钩子的话**。不写死这条，模型会用一句套话把任务标记成完成
-- **上线才暴露的问题**：Nginx 的 `proxy_read_timeout` 默认 60s，小于应用里 120s 的模型超时，本地怎么跑都正常、一上线第三步必 504；`git reset --hard` 会覆盖正在执行的部署脚本，所以脚本先把自己复制到 `/tmp` 再 `exec`。这两条都记在下面的「三个必须知道的坑」里
+- **上线才暴露的问题**：Nginx 的 `proxy_read_timeout` 默认 60s，小于应用里 120s 的模型超时，本地怎么跑都正常、一上线第三步必 504；`git reset --hard` 会覆盖正在执行的部署脚本，所以脚本先把自己复制到 `/tmp` 再 `exec`。这两条都记在下面的「四个必须知道的坑」里
 
 **我的判断**：AI 把「写代码」这一步压缩到几乎不花时间，但**需求描述不清、验收不严，出来的就是能跑但不能用的东西**。上面这些问题没有一个是写完就对的——都是我实际跑起来、看到输出不对才回头改的。
 
@@ -334,11 +350,17 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    - `CHENGJU_HOST` = 服务器公网 IP
    - `CHENGJU_SSH_KEY` = 部署用私钥全文（本地生成一对，公钥写进服务器的 `~/.ssh/authorized_keys`）
 
-### 三个必须知道的坑
+### 四个必须知道的坑
 
 **🔴 禁止边构建边服务。** `npm run build` 会覆盖 `.next` 目录，如果 PM2 进程还在跑，它会读到写了一半的构建产物，直接 500。`cicd-deploy.sh` 已固定为「先 `pm2 stop` → 构建 → `pm2 start`」，手动操作时也必须照这个顺序。
 
 **🔴 Nginx 超时必须大于模型超时。** `lib/deepseek.ts` 里 `TIMEOUT_MS = 120s`，而 Nginx 的 `proxy_read_timeout` 默认只有 60s。不改的表现是：本地怎么跑都正常，一上线第三步生成 10 集就 504。`deploy/nginx-chenju.work.conf` 里已给到 300s。
+
+> 第三步改流式之后这条的压力小了很多：`proxy_read_timeout` 计的是「两次读操作之间的**间隔**」，流式持续吐字会不断把它重置回 60s，不再是从头到尾累积。保留 300s 是为了兜住「模型迟迟不吐第一个字」的情况，留着零成本。
+
+**🔴 流式响应必须关掉 nginx 缓冲。** 默认的 `proxy_buffering` 会把 SSE 攒够一批再下发，流式效果直接消失，退化成改之前「等十几秒然后全部出现」的样子。应用侧在响应头里带了 `X-Accel-Buffering: no`，nginx 认这个头，**所以 nginx 配置一个字都不用改**——这一点在生产环境实测确认过（`Server: nginx/1.24.0` + `Content-Encoding: none`，10 集帧间距 600ms~1s）。
+
+> 同理，`gzip_types` 里**不能**加 `text/event-stream`：压缩同样要攒够数据才能开始。`deploy/nginx-chenju.work.conf` 里的 `gzip_types` 只列了 `text/plain text/css application/javascript application/json application/xml image/svg+xml`，没有 `text/event-stream`，正好安全。
 
 **端口是 3001。** 同一台服务器上还跑着另一个应用、占着 3000，两个不能混用；端口写在 `ecosystem.config.cjs` 的 `args` 里。
 
