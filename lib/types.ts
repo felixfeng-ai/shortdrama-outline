@@ -43,6 +43,15 @@ export type StepKey = 'characters' | 'acts' | 'episodes'
  */
 export type StepStatus = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
+/**
+ * 一句话想法的长度限制。
+ *
+ * 界面拿它禁用按钮、限制输入框，接口拿它做入参校验——必须是同一份，
+ * 否则会出现「按钮亮着，一点却报错」这种自相矛盾的状态。
+ */
+export const MIN_IDEA_LENGTH = 4
+export const MAX_IDEA_LENGTH = 500
+
 /** 三步的元信息，步骤条和分区标题共用一份，避免文案散落各处 */
 export const STEPS: { key: StepKey; index: number; title: string; subtitle: string }[] = [
   { key: 'characters', index: 1, title: '生成核心人物', subtitle: '3-5 个有动机、有冲突的角色' },

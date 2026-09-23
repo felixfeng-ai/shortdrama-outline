@@ -1,5 +1,7 @@
 'use client'
 
+import { MAX_IDEA_LENGTH, MIN_IDEA_LENGTH } from '@/lib/types'
+
 /** 几个示例想法，降低「不知道写什么」的启动成本 */
 const SAMPLES = [
   '一个快递员意外继承了百万遗产',
@@ -19,7 +21,8 @@ interface Props {
 }
 
 export default function IdeaPanel({ idea, onIdeaChange, onGenerate, onReset, loading, hasResult }: Props) {
-  const canGenerate = idea.trim().length >= 4 && !loading
+  // 与接口的校验口径保持一致，避免「按钮能点但请求必被拒」
+  const canGenerate = idea.trim().length >= MIN_IDEA_LENGTH && !loading
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -31,13 +34,15 @@ export default function IdeaPanel({ idea, onIdeaChange, onGenerate, onReset, loa
         value={idea}
         onChange={(e) => onIdeaChange(e.target.value)}
         rows={4}
-        maxLength={500}
+        maxLength={MAX_IDEA_LENGTH}
         placeholder="例如：一个快递员意外继承了百万遗产"
         className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm leading-relaxed
           text-slate-800 placeholder:text-slate-400
           focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
-      <div className="mt-1.5 text-right text-xs text-slate-500">{idea.length} / 500</div>
+      <div className="mt-1.5 text-right text-xs text-slate-500">
+        {idea.length} / {MAX_IDEA_LENGTH}
+      </div>
 
       {/* 示例想法 */}
       <div className="mt-3">

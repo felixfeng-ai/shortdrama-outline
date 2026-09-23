@@ -3,10 +3,8 @@
 // 截断超长字段、限制数组长度，避免有人塞一个几 MB 的 body 把 token 烧光。
 
 import { InputError } from './api'
-import type { Act, ActKey, Character } from './types'
+import { MAX_IDEA_LENGTH, MIN_IDEA_LENGTH, type Act, type ActKey, type Character } from './types'
 
-export const MAX_IDEA_LENGTH = 500
-const MIN_IDEA_LENGTH = 4
 /** 与界面上的上限保持一致：最多 5 个人物、3 幕、每幕 8 个情节点 */
 const MAX_CHARACTERS = 5
 const MAX_ACTS = 3

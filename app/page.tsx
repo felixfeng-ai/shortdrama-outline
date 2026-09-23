@@ -9,7 +9,15 @@ import StepIndicator from '@/components/StepIndicator'
 import StepSection from '@/components/StepSection'
 import { postJson, postSse } from '@/lib/api'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
-import { STEPS, type Act, type Character, type Episode, type StepKey, type StepStatus } from '@/lib/types'
+import {
+  MIN_IDEA_LENGTH,
+  STEPS,
+  type Act,
+  type Character,
+  type Episode,
+  type StepKey,
+  type StepStatus,
+} from '@/lib/types'
 
 const IDLE_STATUS: Record<StepKey, StepStatus> = {
   characters: 'idle',
@@ -271,7 +279,9 @@ export default function Home() {
               status={status.characters}
               error={errors.characters}
               hasContent={hasCharacters}
-              locked={false}
+              // 第一步没有前置步骤，它的「前置条件」是还没输入想法。
+              // 不锁的话这里的按钮会一直亮着，而左侧那个同样功能的按钮是灰的。
+              locked={idea.trim().length < MIN_IDEA_LENGTH}
               lockedHint="在左侧输入故事想法，然后点「生成人物」"
               actionLabel="生成人物"
               onGenerate={generateCharacters}

@@ -12,7 +12,7 @@ interface Props {
   error: string | null
   /** 是否已经有生成结果 */
   hasContent: boolean
-  /** 前置步骤未完成时锁住，不能点生成 */
+  /** 前置条件未满足时锁住，不能点生成（第二步起是上一步没做完，第一步是还没输入想法） */
   locked: boolean
   /** 锁住时显示的提示，例如「请先生成核心人物」 */
   lockedHint: string
