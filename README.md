@@ -1,6 +1,10 @@
-# AI 短剧大纲生成器
+# 成剧
+
+> 一句话成剧。
 
 给独立短剧编剧的 AI 大纲生成工具——输入一句话故事想法，分三步生成完整短剧大纲：**核心人物 → 三幕结构 → 分集剧情**。
+
+**名字的来历**：「成剧」既读作「一句话成为一部剧」，也谐音「成句」——产品的输入恰好就是一句话。短剧这行靠钩子活着，但钩子只有放进完整结构里才成立，所以名字落在「剧」上，不落在「钩」上。
 
 ```
 一句话想法  →  ① 核心人物  →  ② 三幕大纲  →  ③ 10 集分集剧情  →  复制 / 导出
@@ -147,7 +151,7 @@ DEEPSEEK_MODEL="<你的推理接入点 ID>"
 ## 项目结构
 
 ```
-drama-outline/
+chengju/
 ├── app/
 │   ├── layout.tsx                  # 根布局 + 页面元信息
 │   ├── globals.css                 # Tailwind 入口 + 全局底色
@@ -284,7 +288,7 @@ npm run start          # 默认 3000 端口，可用 PORT=8080 npm run start 改
 用 PM2 常驻：
 
 ```bash
-pm2 start npm --name drama-outline -- start
+pm2 start npm --name chengju -- start
 pm2 save
 ```
 
@@ -304,8 +308,8 @@ CMD ["npm", "start"]
 ```
 
 ```bash
-docker build -t drama-outline .
-docker run -p 3000:3000 -e DEEPSEEK_API_KEY=sk-xxx drama-outline
+docker build -t chengju .
+docker run -p 3000:3000 -e DEEPSEEK_API_KEY=sk-xxx chengju
 ```
 
 ---

@@ -173,7 +173,7 @@ export default function Home() {
 
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    downloadMarkdown(`短剧大纲-${stamp}.md`, markdown())
+    downloadMarkdown(`成剧-大纲-${stamp}.md`, markdown())
   }
 
   const handleReset = () => {
@@ -206,10 +206,10 @@ export default function Home() {
       {/* 顶部标题 */}
       <header className="px-4 pb-6 pt-10 text-center sm:pt-14">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          AI 短剧大纲生成器
+          成剧
         </h1>
         <p className="mt-2 text-sm text-slate-500 sm:text-base">
-          输入一个想法，生成完整短剧大纲
+          一句话成剧 · 输入一个想法，三步生成完整短剧大纲
         </p>
       </header>
 

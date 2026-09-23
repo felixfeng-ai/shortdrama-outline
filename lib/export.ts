@@ -10,7 +10,7 @@ export function buildMarkdown(input: {
   episodes: Episode[]
 }): string {
   const { idea, characters, acts, episodes } = input
-  const lines: string[] = ['# 短剧大纲', '', `> 故事想法：${idea}`, '']
+  const lines: string[] = ['# 成剧 · 短剧大纲', '', `> 故事想法：${idea}`, '']
 
   if (characters.length > 0) {
     lines.push('## 一、核心人物', '')
