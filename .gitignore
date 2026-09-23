@@ -18,3 +18,8 @@ next-env.d.ts
 
 # 崩溃转储（Windows 下 bash/node 异常退出会产生）
 *.stackdump
+
+# PM2 日志（ecosystem.config.cjs 里配的输出路径）
+logs/
+# 部署脚本产生的 .env 备份
+.env.bak.*

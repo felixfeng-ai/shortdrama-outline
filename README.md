@@ -177,6 +177,11 @@ chengju/
 │   ├── validate.ts                 # 请求入参校验与截断
 │   ├── api.ts                      # 统一响应信封 + 前端请求封装
 │   └── export.ts                   # Markdown 拼装 / 复制 / 下载
+├── deploy/
+│   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
+│   └── cicd-deploy.sh              # 服务器端部署脚本：停服 → 构建 → 启动
+├── .github/workflows/deploy.yml    # push main 自动部署
+├── ecosystem.config.cjs            # PM2 进程配置（应用跑在 3001）
 └── .env.example                    # 环境变量模板
 ```
 
@@ -267,32 +272,72 @@ interface Episode {
 
 ## 部署
 
-### Vercel（推荐，最省事）
+生产环境与 AI面师同机：**腾讯云香港轻量服务器**（`43.129.23.197`），免备案，PM2 常驻，Nginx 反代。
 
-1. 把代码推到 GitHub
-2. 在 [Vercel](https://vercel.com/new) 导入这个仓库
-3. 在 **Settings → Environment Variables** 里添加 `DEEPSEEK_API_KEY`
-4. 部署
-
-> 三个接口都声明了 `maxDuration`（120-180 秒），Vercel Pro 才支持超过 60 秒的函数。
-> 免费版可以把 `lib/deepseek.ts` 里的 `TIMEOUT_MS` 调小，或改用下一种方式。
-
-### 自己的服务器
-
-```bash
-npm install
-npm run build
-npm run start          # 默认 3000 端口，可用 PORT=8080 npm run start 改
+```
+GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/cicd-deploy.sh
+                                                    │
+                                       停服 → 拉代码 → 构建 → 启动
+                                                    │
+                                        PM2: chengju @ 127.0.0.1:3001
+                                                    │
+                                       Nginx: chenju.work ──443──▶ 公网
 ```
 
-用 PM2 常驻：
+代码推到 `main` 就自动部署，不需要手动操作服务器。
 
-```bash
-pm2 start npm --name chengju -- start
-pm2 save
-```
+### 首次部署（一次性，共 7 步）
 
-> 注意：`npm run build` 会覆盖 `.next` 目录。**如果服务正在运行，必须先把服务停掉再构建**，否则运行中的进程会读到写了一半的构建产物，直接 500。
+1. **DNS**：在阿里云控制台给 `chenju.work` 和 `www.chenju.work` 各加一条 A 记录，指向 `43.129.23.197`
+2. **建目录并拉代码**（服务器上执行）
+   ```bash
+   sudo mkdir -p /opt/chengju && sudo chown ubuntu:ubuntu /opt/chengju
+   git clone https://github.com/felixfeng-ai/shortdrama-outline.git /opt/chengju
+   ```
+3. **写环境变量**（服务器上，`/opt/chengju/.env`，这个文件不进仓库）
+   ```bash
+   cd /opt/chengju
+   printf 'DEEPSEEK_API_KEY=%s\n' 'sk-你的密钥' > .env
+   ```
+4. **签 HTTPS 证书**（等 DNS 生效后）
+   ```bash
+   sudo certbot --nginx -d chenju.work -d www.chenju.work
+   ```
+5. **启用 Nginx 站点**
+   ```bash
+   scp deploy/nginx-chenju.work.conf ubuntu@43.129.23.197:/tmp/
+   # 服务器上：
+   sudo cp /tmp/nginx-chenju.work.conf /etc/nginx/sites-enabled/chenju.work
+   sudo nginx -t && sudo nginx -s reload
+   ```
+   > certbot 若已自动改写配置并生效，这一步可以跳过。
+6. **首次启动**：服务器上执行 `bash /opt/chengju/cicd-deploy.sh`
+7. **配 CI 密钥**：GitHub 仓库 → Settings → Secrets and variables → Actions，新增两个 secret
+   - `CHENGJU_HOST` = `43.129.23.197`
+   - `CHENGJU_SSH_KEY` = 本地 `~/.ssh/deploy_key` 的私钥全文（与 AI面师共用同一把）
+
+### 三个必须知道的坑
+
+**🔴 禁止边构建边服务。** `npm run build` 会覆盖 `.next` 目录，如果 PM2 进程还在跑，它会读到写了一半的构建产物，直接 500。`cicd-deploy.sh` 已固定为「先 `pm2 stop` → 构建 → `pm2 start`」，手动操作时也必须照这个顺序。
+
+**🔴 Nginx 超时必须大于模型超时。** `lib/deepseek.ts` 里 `TIMEOUT_MS = 120s`，而 Nginx 的 `proxy_read_timeout` 默认只有 60s。不改的表现是：本地怎么跑都正常，一上线第三步生成 10 集就 504。`deploy/nginx-chenju.work.conf` 里已给到 300s。
+
+**端口是 3001。** 同机的 AI面师占着 3000，两个应用不能混用。
+
+### 手动部署 / 排查
+
+CI 是主路径。要手动触发就在 GitHub Actions 页面点 **Run workflow**；排查问题直接 ssh 上去跑 `bash /opt/chengju/cicd-deploy.sh`，或 `pm2 logs chengju` 看日志。
+
+### 备选：Vercel
+
+不想维护服务器的话 Vercel 也能跑：
+
+1. [vercel.com/new](https://vercel.com/new) 导入仓库，项目名填 `chengju`（子域名会是 `chengju.vercel.app`）
+2. Settings → Environment Variables 加 `DEEPSEEK_API_KEY`
+3. Deploy
+
+> Vercel 现在函数超时默认已提升到 300 秒，三个接口声明的 `maxDuration`（120-180 秒）都在范围内。
+> 但 `*.vercel.app` 在国内访问经常被污染或很慢，要给国内的人看还是用香港服务器。
 
 ### Docker
 
