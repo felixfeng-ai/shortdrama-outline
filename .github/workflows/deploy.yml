@@ -28,4 +28,4 @@ jobs:
           key: ${{ secrets.CHENGJU_SSH_KEY }}
           script: |
             set -e
-            bash /opt/chengju/cicd-deploy.sh
+            bash /opt/chengju/deploy/cicd-deploy.sh

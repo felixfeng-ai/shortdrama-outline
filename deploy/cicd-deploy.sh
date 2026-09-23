@@ -2,15 +2,28 @@
 # ============================================================
 # 成剧 —— 生产部署脚本（在服务器上运行，不是本地）
 #
-# 位置：/opt/chengju/cicd-deploy.sh
-# 用法：bash /opt/chengju/cicd-deploy.sh
-#
+# 用法：bash /opt/chengju/deploy/cicd-deploy.sh
 # 由 GitHub Actions 调用（见 .github/workflows/deploy.yml），
 # 也可以 ssh 上去手动跑，用于排查。
 #
 # 设计参照 interview-coach 的 cicd-deploy.sh，保留了它踩过的坑，
 # 去掉了本项目不需要的部分（没有数据库、没有 prisma、没有小程序）。
 # ============================================================
+
+# ---- 自我复制后再执行 ----------------------------------------
+# 不能省这一步。下面的 `git reset --hard` 会覆盖本文件，
+# 而 bash 是「边读边执行」的——脚本正在被覆盖时，执行指针会落到新内容的
+# 中间，行为不可预期。先把自己复制到 /tmp 再 exec，git 之后怎么改仓库里的
+# 文件都与本次执行无关。
+#
+# interview-coach 的做法是把 cicd-deploy.sh 完全放在仓库外（只存在服务器上），
+# 代价是那个脚本没有版本管理。这样写可以两者兼得。
+if [ "$0" != "/tmp/chengju-deploy.sh" ]; then
+    cp -f "$0" /tmp/chengju-deploy.sh || { echo "❌ 无法复制脚本到 /tmp"; exit 1; }
+    exec bash /tmp/chengju-deploy.sh "$@"
+fi
+# -------------------------------------------------------------
+
 set -e
 
 APP="chengju"
@@ -50,6 +63,8 @@ pm2 stop "$APP" 2>/dev/null || true
 pm2 delete "$APP" 2>/dev/null || true
 
 echo "=== 5/6 安装依赖 + 构建 ==="
+# logs/ 是 PM2 的输出目录，首次部署时还不存在
+mkdir -p logs
 # 用 npm ci 而不是 npm install：严格按 package-lock 安装，
 # 避免国内镜像偶尔解压出残缺包导致的诡异运行时错误。
 npm ci --no-audit --no-fund 2>&1 | tail -2

@@ -275,7 +275,7 @@ interface Episode {
 生产环境与 AI面师同机：**腾讯云香港轻量服务器**（`43.129.23.197`），免备案，PM2 常驻，Nginx 反代。
 
 ```
-GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/cicd-deploy.sh
+GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/deploy/cicd-deploy.sh
                                                     │
                                        停服 → 拉代码 → 构建 → 启动
                                                     │
@@ -311,7 +311,7 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/c
    sudo nginx -t && sudo nginx -s reload
    ```
    > certbot 若已自动改写配置并生效，这一步可以跳过。
-6. **首次启动**：服务器上执行 `bash /opt/chengju/cicd-deploy.sh`
+6. **首次启动**：服务器上执行 `bash /opt/chengju/deploy/cicd-deploy.sh`
 7. **配 CI 密钥**：GitHub 仓库 → Settings → Secrets and variables → Actions，新增两个 secret
    - `CHENGJU_HOST` = `43.129.23.197`
    - `CHENGJU_SSH_KEY` = 本地 `~/.ssh/deploy_key` 的私钥全文（与 AI面师共用同一把）
@@ -326,7 +326,7 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/c
 
 ### 手动部署 / 排查
 
-CI 是主路径。要手动触发就在 GitHub Actions 页面点 **Run workflow**；排查问题直接 ssh 上去跑 `bash /opt/chengju/cicd-deploy.sh`，或 `pm2 logs chengju` 看日志。
+CI 是主路径。要手动触发就在 GitHub Actions 页面点 **Run workflow**；排查问题直接 ssh 上去跑 `bash /opt/chengju/deploy/cicd-deploy.sh`，或 `pm2 logs chengju` 看日志。
 
 ### 备选：Vercel
 
