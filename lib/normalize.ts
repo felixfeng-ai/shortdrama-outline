@@ -69,12 +69,19 @@ export function normalizeActs(raw: unknown): Act[] {
   return acts.slice(0, 3)
 }
 
-export function normalizeEpisodes(raw: unknown): Episode[] {
+/**
+ * 分集整形。
+ *
+ * stamp 用于生成 id：流式生成时同一个数组会被反复整形（每收到一集就推一次），
+ * 用 Date.now() 的话每次 id 都变，React 会把已经渲染好的卡片全部重挂。
+ * 调用方在一次生成开始时取一次 Date.now() 传进来即可。
+ */
+export function normalizeEpisodes(raw: unknown, stamp: number = Date.now()): Episode[] {
   const list = pickArray(raw, 'episodes')
   const episodes = list
     .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
     .map((item, index) => ({
-      id: `ep-${index}-${Date.now()}`,
+      id: `ep-${index}-${stamp}`,
       // 集数以数组下标为准，避免模型写错 number 导致界面乱序
       number: index + 1,
       title: str(item.title, `第 ${index + 1} 集`),

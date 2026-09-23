@@ -7,7 +7,7 @@ import EpisodeList from '@/components/EpisodeList'
 import IdeaPanel from '@/components/IdeaPanel'
 import StepIndicator from '@/components/StepIndicator'
 import StepSection from '@/components/StepSection'
-import { postJson } from '@/lib/api'
+import { postJson, postSse } from '@/lib/api'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { STEPS, type Act, type Character, type Episode, type StepKey, type StepStatus } from '@/lib/types'
 
@@ -149,16 +149,43 @@ export default function Home() {
       },
     )
 
-  // ── 第三步：生成分集 ──
-  const generateEpisodes = () =>
-    runStep(
-      'episodes',
-      () => postJson<{ episodes: Episode[] }>('/api/episodes', { idea: idea.trim(), characters, acts }),
-      ({ episodes: list }) => {
-        setEpisodes(list)
-        setEpisodesBuiltFrom(`${charactersSig}|${actsSig}`)
-      },
-    )
+  // ── 第三步：生成分集（流式，一集一集出现）──
+  // 这里不复用 runStep：它的 task 只在全部完成时返回一次结果，
+  // 而流式需要在接收过程中就反复更新界面。
+  const generateEpisodes = async () => {
+    const epoch = resetEpoch.current
+    const builtFrom = `${charactersSig}|${actsSig}`
+
+    setStatus((s) => ({ ...s, episodes: 'streaming' }))
+    setErrors((e) => ({ ...e, episodes: null }))
+    // 先清空，重新生成时才看得出是一集集新出现的，而不是新旧混在一起
+    setEpisodes([])
+
+    let finished = false
+    try {
+      await postSse('/api/episodes', { idea: idea.trim(), characters, acts }, (event, data) => {
+        if (isCleared(epoch)) return
+        if (event !== 'episodes' && event !== 'done') return
+
+        setEpisodes((data as { episodes: Episode[] }).episodes)
+        // 拿到的这一份就是基于当前上游生成的，标记一下，免得触发「已过期」提示
+        setEpisodesBuiltFrom(builtFrom)
+
+        if (event === 'done') {
+          finished = true
+          setStatus((s) => ({ ...s, episodes: 'done' }))
+        }
+      })
+
+      // 连接断了却没收到 done：不能把界面永远停在「生成中…」
+      if (!finished) throw new Error('生成中断，请重试')
+    } catch (error) {
+      if (isCleared(epoch)) return
+      const message = error instanceof Error ? error.message : '生成失败，请重试'
+      setErrors((e) => ({ ...e, episodes: message }))
+      setStatus((s) => ({ ...s, episodes: 'error' }))
+    }
+  }
 
   // ── 导出 ──
   const markdown = () => buildMarkdown({ idea: idea.trim(), characters, acts, episodes })

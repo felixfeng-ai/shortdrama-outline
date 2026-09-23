@@ -34,8 +34,14 @@ export interface Episode {
 /** 三个步骤的标识 */
 export type StepKey = 'characters' | 'acts' | 'episodes'
 
-/** 每个步骤的运行状态，界面靠它切换按钮/骨架屏/错误提示 */
-export type StepStatus = 'idle' | 'loading' | 'done' | 'error'
+/**
+ * 每个步骤的运行状态，界面靠它切换按钮/骨架屏/错误提示。
+ *
+ * loading 与 streaming 的区别：loading 是「还没有任何内容可显示」，只出骨架屏；
+ * streaming 是「内容正在一批批到达」，已经拿到的部分要立刻显示出来。
+ * 目前只有第三步分集用 streaming。
+ */
+export type StepStatus = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
 /** 三步的元信息，步骤条和分区标题共用一份，避免文案散落各处 */
 export const STEPS: { key: StepKey; index: number; title: string; subtitle: string }[] = [

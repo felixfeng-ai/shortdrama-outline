@@ -46,6 +46,78 @@ export async function postJson<T>(url: string, body: unknown): Promise<T> {
   return payload.data
 }
 
+/** SSE 事件回调：event 是事件名，data 是服务端那一帧的 JSON 载荷 */
+export type SseHandler = (event: string, data: unknown) => void
+
+/**
+ * 客户端：POST 一个 SSE 请求，逐帧回调直到服务端关闭连接。
+ *
+ * 两段式错误处理，因为服务端有两种失败时机：
+ * - 建立流之前就失败（入参校验不过）→ 返回的是普通 JSON 信封，这里直接抛
+ * - 流已经开始后失败（模型超时、JSON 解析不了）→ 服务端补推一个 error 事件，
+ *   这里收到就抛，调用方按和 postJson 一样的方式 catch 即可
+ */
+export async function postSse(url: string, body: unknown, onEvent: SseHandler): Promise<void> {
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    throw new Error('网络连接失败，请检查网络后重试')
+  }
+
+  if (!res.ok || !res.body) {
+    const payload = (await res.json().catch(() => null)) as ApiResponse<unknown> | null
+    throw new Error(payload?.error || '生成失败，请重试')
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      // 一帧以空行结束，剩下的留在 buffer 里等下一块
+      let split: number
+      while ((split = buffer.indexOf('\n\n')) !== -1) {
+        const block = buffer.slice(0, split)
+        buffer = buffer.slice(split + 2)
+
+        let event = 'message'
+        const dataLines: string[] = []
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event:')) event = line.slice(6).trim()
+          else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+        }
+        if (dataLines.length === 0) continue
+
+        let data: unknown
+        try {
+          data = JSON.parse(dataLines.join('\n'))
+        } catch {
+          throw new Error('服务返回了无法识别的内容，请重试')
+        }
+
+        if (event === 'error') {
+          const message = (data as { error?: string })?.error
+          throw new Error(message || '生成失败，请重试')
+        }
+        onEvent(event, data)
+      }
+    }
+  } finally {
+    // 提前 return / 抛错时释放底层连接，别让流挂着
+    reader.cancel().catch(() => {})
+  }
+}
+
 /** 服务端：把任意异常翻译成 { body, status }，路由只需包一层 NextResponse */
 export function errorResponse(error: unknown): { body: ApiResponse<never>; status: number } {
   // 输入校验失败
