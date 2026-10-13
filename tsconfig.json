@@ -7,6 +7,9 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // 测试与新增的 lib/assets/* 采用 Node 原生的「显式 .ts 扩展名」写法，
+    // 这样 `node --test` 无需任何转译/加载器即可直接运行 TS。
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

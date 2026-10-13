@@ -23,3 +23,17 @@ next-env.d.ts
 logs/
 # 部署脚本产生的 .env 备份
 .env.bak.*
+
+
+# 资产链的 SQLite 数据目录（快照/血缘），绝不入库——含用户创作内容
+data/
+
+# 部署脚本产生的资产库备份
+*.db.bak.*
+
+
+# Next.js 开发服务器的本地日志
+dev.log
+
+# TypeScript 增量编译缓存（build 会重新生成）
+tsconfig.tsbuildinfo
