@@ -9,6 +9,7 @@
 //   4. 返修状态 —— 返修雷达的落点
 import AutoTextarea from './AutoTextarea'
 import CopyButton from './CopyButton'
+import { shotToWorkOrder } from '@/lib/assets/export'
 import { CAMERA_MOVES, type Shot, type ShotStatus } from '@/lib/assets/types'
 
 interface Props {
@@ -83,9 +84,21 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
             <span className="text-slate-400">无</span>
           )}
           {missing.length > 0 && (
-            <span className="ml-1 rounded bg-amber-200/70 px-1.5 py-0.5 font-semibold text-amber-800">
-              缺参考图：{missing.join('、')}
-            </span>
+            <button
+              type="button"
+              onClick={() => {
+                // 滚到第三步的视觉定妆，并高亮缺图的角色——光给警告不给出口等于没提示
+                const target = document.getElementById('visual-anchors')
+                target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                window.dispatchEvent(new CustomEvent('chengju:focus-vc', { detail: missing }))
+              }}
+              title={`去视觉定妆给 ${missing.join('、')} 挂参考图`}
+              className="ml-1 rounded bg-amber-200/70 px-1.5 py-0.5 font-semibold text-amber-800
+                transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2
+                focus-visible:ring-amber-500"
+            >
+              缺参考图：{missing.join('、')} · 去挂图
+            </button>
           )}
         </div>
 
@@ -157,7 +170,11 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
         <div className="rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] font-semibold text-brand-800">提示词（英文，已内嵌角色锚点）</span>
-            <CopyButton text={shot.prompt} label="复制 prompt" />
+            <span className="flex items-center gap-1.5">
+              <CopyButton text={shot.prompt} label="复制 prompt" />
+              {/* 平台没有导入接口，能做的极限是让用户照单执行：提示词 + 参考图 + 参数一次拿走 */}
+              <CopyButton text={shotToWorkOrder(shot)} label="复制执行单" />
+            </span>
           </div>
           <AutoTextarea
             value={shot.prompt}

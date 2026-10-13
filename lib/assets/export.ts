@@ -16,6 +16,61 @@ export interface ExportManifest {
   exportedAt: number
 }
 
+/**
+ * 单个镜头的「执行单」文本。
+ *
+ * 为什么需要它：即梦/可灵都没有「导入项目包」的入口，操作模型只有
+ * 「在网页上填提示词 + 传参考图 → 生成」。所以工具能做的极限不是省掉操作，
+ * 而是让用户去平台时不用回头找信息 —— 从「找信息」变成「照单执行」。
+ *
+ * 顺序刻意按平台界面的填写顺序排：先提示词（最长、最常复制），
+ * 再参考图（要按文件名去本地找），最后参数。
+ */
+export function shotToWorkOrder(shot: Shot, opts: { withHeader?: boolean } = {}): string {
+  const lines: string[] = []
+
+  if (opts.withHeader !== false) {
+    lines.push(`【第 ${shot.shot} 镜】${shot.scene}`)
+  }
+  lines.push(`提示词：${shot.prompt}`)
+
+  if (shot.characters.length > 0) {
+    lines.push(`出场：${shot.characters.join("、")}`)
+  }
+
+  if (shot.refImages.length > 0) {
+    lines.push(`参考图：${shot.refImages.join("、")}`)
+  } else if (shot.missingRefFor.length > 0) {
+    // 缺图必须显式写出来：照着执行时才发现没图，比提前知道代价大得多
+    lines.push(`参考图：⚠️ 缺 ${shot.missingRefFor.join("、")} 的参考图`)
+  }
+
+  lines.push(`运镜：${shot.camera}　比例：${shot.params.ratio}　时长：${shot.params.duration}s`)
+
+  return lines.join("\n")
+}
+
+/**
+ * 全片执行清单：一次拿到所有镜头的工作单，配合平台逐个执行。
+ *
+ * 用分隔线而不是紧凑排列，是因为用户会「执行完一个划掉一个」，
+ * 视觉边界比省行重要。
+ */
+export function shotsToWorkList(shots: Shot[], title = "分镜执行清单"): string {
+  const head = [
+    title,
+    `共 ${shots.length} 个镜头`,
+    "",
+    "用法：按顺序执行，每镜复制提示词到出图/出视频平台，按「参考图」一栏准备好对应图片。",
+    "",
+    "─".repeat(40),
+    "",
+  ].join("\n")
+
+  const body = shots.map((s) => shotToWorkOrder(s)).join("\n\n" + "─".repeat(40) + "\n\n")
+  return head + body + "\n"
+}
+
 /** 镜头 -> CSV。服务端与前端共用同一份实现，避免两份逻辑漂移 */
 export function shotsToCsv(shots: Shot[]): string {
   const esc = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`

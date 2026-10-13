@@ -7,7 +7,7 @@ import { POST as postRefs, GET as getRefs } from "../app/api/refs/route.ts"
 import { POST as postProject } from "../app/api/projects/route.ts"
 import { getDbForRequest, __resetDbForTests } from "../lib/assets/store.ts"
 import { createSnapshot } from "../lib/assets/repo.ts"
-import { listRefs, buildRefMap } from "../lib/assets/refs.ts"
+import { buildRefMap } from "../lib/assets/refs.ts"
 import type { Shot } from "../lib/assets/types.ts"
 
 function json(body: unknown): Request {

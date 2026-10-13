@@ -18,6 +18,8 @@ import {
   generateVisuals,
   generateScenes,
   registerRefs,
+  listSnapshots,
+  findImpact,
 } from '@/lib/assets/api'
 import type { Shot, VisualCharacter, Scene as AssetScene } from '@/lib/assets/types'
 import {
@@ -26,10 +28,17 @@ import {
   pickDirectory,
   listImages,
   listVaultFiles,
+  matchByFolder,
   type VaultFile,
   type VaultMode,
 } from '@/lib/assets/vault'
-import { buildStoryboardHtml, shotsToCsv, buildZip, downloadBlob } from '@/lib/assets/export'
+import {
+  buildStoryboardHtml,
+  shotsToCsv,
+  shotsToWorkList,
+  buildZip,
+  downloadBlob,
+} from '@/lib/assets/export'
 import { postJson, postSse } from '@/lib/api'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import {
@@ -81,12 +90,18 @@ const IDLE_STATUS: Record<StepKey, StepStatus> = {
   characters: 'idle',
   acts: 'idle',
   episodes: 'idle',
+  visuals: 'idle',
+  scenes: 'idle',
+  shots: 'idle',
 }
 
 const IDLE_ERRORS: Record<StepKey, string | null> = {
   characters: null,
   acts: null,
   episodes: null,
+  visuals: null,
+  scenes: null,
+  shots: null,
 }
 
 export default function Home() {
@@ -116,6 +131,8 @@ export default function Home() {
   const [imagePrompts, setImagePrompts] = useState<{ name: string; zh: string; en: string }[]>([])
   const [scenes, setScenes] = useState<AssetScene[]>([])
   const [shots, setShots] = useState<Shot[]>([])
+  // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
+  const [impact, setImpact] = useState<{ affected: number; expired: number } | null>(null)
   const [vaultMode, setVaultMode] = useState<VaultMode>('indexeddb')
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([])
   const [attached, setAttached] = useState<Record<string, string[]>>({})
@@ -134,9 +151,10 @@ export default function Home() {
   const hasCharacters = characters.length > 0
   const hasActs = acts.length > 0
   const hasEpisodes = episodes.length > 0
-  const hasResult = hasCharacters || hasActs || hasEpisodes
+  const hasResult = hasCharacters || hasActs || hasEpisodes || visuals.length > 0 || shots.length > 0
 
-  const currentStep = !hasCharacters ? 1 : !hasActs ? 2 : 3
+  // 步骤条高亮到「第一个还没产出内容的步骤」；六步全部有内容时停在最后一步
+  const currentStep = !hasCharacters ? 1 : !hasActs ? 2 : !hasEpisodes ? 3 : !visuals.length ? 4 : !scenes.length ? 5 : 6
 
   // 上游改过之后，下游结果就是基于旧版本生成的
   const actsStale = hasActs && actsBuiltFrom !== charactersSig
@@ -307,17 +325,75 @@ export default function Home() {
     }
   }
 
+  /**
+   * 查影响范围：定妆（visualCharacters）改动后，血缘上哪些下游被牵连。
+   *
+   * 这是「改一处、算得出影响了谁」在界面上的落点。做成显式触发而不是每次
+   * 输入都查，是因为它要打两个接口；等用户真正想知道影响时才问。
+   */
+  async function refreshImpact() {
+    if (!projectId) return
+    try {
+      const snaps = await listSnapshots<unknown>(projectId, "visualCharacters")
+      const latestVc = snaps[0]
+      if (!latestVc) return
+
+      const affected = await findImpact(latestVc.id)
+      const shotSnaps = affected.filter((s) => s.kind === "shots")
+      // 过期口径：受影响镜头快照里，payload 中提示词与当前锚点对不上的镜头数
+      let expired = 0
+      for (const s of shotSnaps) {
+        const list = Array.isArray(s.payload) ? (s.payload as Shot[]) : []
+        expired += list.filter((shot) => shot.status !== "done").length
+      }
+
+      setImpact({ affected: affected.length, expired })
+    } catch {
+      // 影响范围是增强信息，查不到不影响主流程
+    }
+  }
+
+  /** 摘掉一张已挂的图：挂错了要能撤回（只改本地，台账保留历史） */
+  function detachImage(characterName: string, key: string) {
+    setAttached((prev) => {
+      const rest = (prev[characterName] ?? []).filter((k) => k !== key)
+      return { ...prev, [characterName]: rest }
+    })
+  }
+
+  /**
+   * 按目录名自动预挂：目录结构本身就是信息，不该让用户再手动挂一遍。
+   * 只补空缺，不覆盖用户已经手动挂好的（matchByFolder 只返回命中项）。
+   */
+  function autoAttachByFolder(files: VaultFile[]) {
+    const matched = matchByFolder(files, visuals.map((v) => v.name))
+    if (Object.keys(matched).length === 0) return
+    setAttached((prev) => {
+      const next: Record<string, string[]> = { ...prev }
+      for (const [name, keys] of Object.entries(matched)) {
+        const bucket = [...(next[name] ?? [])]
+        for (const key of keys) if (!bucket.includes(key)) bucket.push(key)
+        next[name] = bucket
+      }
+      return next
+    })
+  }
+
   /** 选择素材目录（Chrome/Edge）并扫描 */
   async function handlePickDirectory() {
     const handle = await pickDirectory().catch(() => null)
     if (!handle) return
-    setVaultFiles(await listImages(handle).catch(() => []))
+    const files = await listImages(handle).catch(() => [])
+    setVaultFiles(files)
+    autoAttachByFolder(files)
   }
 
   async function handleReloadVault() {
     const handle = await loadDirectoryHandle()
     if (!handle) return
-    setVaultFiles(await listImages(handle).catch(() => []))
+    const files = await listImages(handle).catch(() => [])
+    setVaultFiles(files)
+    autoAttachByFolder(files)
   }
 
   // 图库能力探测：只在客户端执行
@@ -332,7 +408,7 @@ export default function Home() {
   // ── 视觉定妆 ──────────────────────────────────────────────────
   const generateVisualAnchors = () =>
     runStep(
-      "characters",
+      "visuals",
       async () => generateVisuals(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters),
       (data) => {
         setVisuals(data.visualCharacters)
@@ -344,7 +420,7 @@ export default function Home() {
   // ── 场次 ──────────────────────────────────────────────────────
   const generateSceneList = () =>
     runStep(
-      "acts",
+      "scenes",
       async () => generateScenes(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters, episodes),
       (data) => setScenes(data.scenes),
     )
@@ -352,8 +428,8 @@ export default function Home() {
   // ── 分镜（SSE 流式，复用现有 postSse）─────────────────────────
   const generateShotList = () => {
     const epoch = resetEpoch.current
-    setStatus((st) => ({ ...st, episodes: "streaming" }))
-    setErrors((e) => ({ ...e, episodes: null }))
+    setStatus((st) => ({ ...st, shots: "streaming" }))
+    setErrors((e) => ({ ...e, shots: null }))
     setShots([])
 
     const builtFrom = `${charactersSig}|${JSON.stringify(scenes)}`
@@ -374,12 +450,12 @@ export default function Home() {
         )
         if (isCleared(epoch)) return
         setShotsBuiltFrom(builtFrom)
-        setStatus((st) => ({ ...st, episodes: "done" }))
+        setStatus((st) => ({ ...st, shots: "done" }))
       } catch (error) {
         if (isCleared(epoch)) return
         const message = error instanceof Error ? error.message : "生成失败，请重试"
-        setErrors((e) => ({ ...e, episodes: message }))
-        setStatus((st) => ({ ...st, episodes: "error" }))
+        setErrors((e) => ({ ...e, shots: message }))
+        setStatus((st) => ({ ...st, shots: "error" }))
       }
     })()
   }
@@ -401,6 +477,11 @@ export default function Home() {
 
     entries.push({ name: "project.json", data: enc.encode(JSON.stringify(manifest, null, 2)) })
     entries.push({ name: "prompts.csv", data: enc.encode(shotsToCsv(shots)) })
+    // 平台没有导入接口，所以除了 CSV 再给一份人类可读的执行清单
+    entries.push({
+      name: "shotlist.txt",
+      data: enc.encode(shotsToWorkList(shots, `${title} · 分镜执行清单`)),
+    })
     entries.push({ name: "storyboard.html", data: enc.encode(buildStoryboardHtml({ title, visuals, scenes, shots })) })
     entries.push({
       name: "README.txt",
@@ -408,7 +489,8 @@ export default function Home() {
         "成剧 · 项目包",
         "",
         "project.json      全部文本资产 + 角色视觉锚点 + 分镜",
-        "prompts.csv       逐镜提示词，可直接喂给出图工具",
+        "prompts.csv       逐镜提示词（表格格式，含画面比例）",
+        "shotlist.txt      逐镜执行清单（提示词 + 该带的参考图 + 参数），照着做即可",
         "storyboard.html   离线可看的分镜表（双击用浏览器打开）",
         "characters/       角色参考图（若从本地图库成功并入）",
         "",
@@ -481,7 +563,7 @@ export default function Home() {
           成剧
         </h1>
         <p className="mt-2 text-sm text-slate-500 sm:text-base">
-          一句话成剧 · 输入一个想法，三步生成完整短剧大纲
+          一句话成剧 · 从一句想法到大纲、分镜与出图提示词，资产全程只留在你本机
         </p>
       </header>
 
@@ -504,7 +586,14 @@ export default function Home() {
             <div className="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3.5 backdrop-blur-sm">
               <StepIndicator
                 current={currentStep}
-                completed={{ characters: hasCharacters, acts: hasActs, episodes: hasEpisodes }}
+                completed={{
+                  characters: hasCharacters,
+                  acts: hasActs,
+                  episodes: hasEpisodes,
+                  visuals: visuals.length > 0,
+                  scenes: scenes.length > 0,
+                  shots: shots.length > 0,
+                }}
               />
             </div>
 
@@ -586,10 +675,10 @@ export default function Home() {
             {/* 第四步：角色视觉定妆（资产层） */}
             <StepSection
               index={4}
-              title="角色视觉定妆"
-              subtitle="把角色变成可复用的视觉锚点，逐镜复用保证不崩脸"
-              status="done"
-              error={null}
+              title={STEPS[3].title}
+              subtitle={STEPS[3].subtitle}
+              status={status.visuals}
+              error={errors.visuals}
               hasContent={visuals.length > 0}
               locked={!hasCharacters}
               lockedHint="请先生成核心人物，再为他们定妆"
@@ -597,8 +686,18 @@ export default function Home() {
               onGenerate={generateVisualAnchors}
               skeletonVariant="characters"
             >
-              {visuals.length > 0 && visualsBuiltFrom !== charactersSig &&
-                staleNotice('人物设定已改动，当前视觉定妆基于旧人物生成，建议重新定妆。')}
+              {visuals.length > 0 && (
+                <VersionBar
+                  stale={visualsBuiltFrom !== charactersSig}
+                  staleReason={
+                    visualsBuiltFrom !== charactersSig ? "人物设定已改动" : null
+                  }
+                  affectedShots={impact?.affected ?? 0}
+                  expiredShots={impact?.expired ?? 0}
+                  onRebuild={() => { generateVisualAnchors(); void refreshImpact() }}
+                  actionLabel="视觉定妆"
+                />
+              )}
               <VisualAnchorPanel
                 visuals={visuals}
                 onChange={setVisuals}
@@ -606,16 +705,17 @@ export default function Home() {
                 vaultFiles={vaultFiles}
                 attached={attached}
                 onAttach={attachImage}
+                onDetach={detachImage}
               />
             </StepSection>
 
             {/* 第五步：场次 */}
             <StepSection
               index={5}
-              title="生成场次剧本"
-              subtitle="把分集拆成场次，是分镜的输入单位"
-              status={status.acts}
-              error={errors.acts}
+              title={STEPS[4].title}
+              subtitle={STEPS[4].subtitle}
+              status={status.scenes}
+              error={errors.scenes}
               hasContent={scenes.length > 0}
               locked={!hasEpisodes}
               lockedHint="请先生成分集剧情，再拆场次"
@@ -629,10 +729,10 @@ export default function Home() {
             {/* 第六步：分镜（流式） */}
             <StepSection
               index={6}
-              title="生成分镜"
-              subtitle="每镜自动带上角色锚点与该片的参考图"
-              status={status.episodes}
-              error={errors.episodes}
+              title={STEPS[5].title}
+              subtitle={STEPS[5].subtitle}
+              status={status.shots}
+              error={errors.shots}
               hasContent={shots.length > 0}
               locked={!hasActs || scenes.length === 0}
               lockedHint="请先生成三幕大纲与场次，再拆镜头"
@@ -640,13 +740,30 @@ export default function Home() {
               onGenerate={generateShotList}
               skeletonVariant="episodes"
             >
-              {shots.length > 0 && shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}` &&
-                staleNotice('上游内容已改动，当前分镜基于旧版本生成，建议重新生成。')}
               {shots.length > 0 && (
-                <div className="mb-3">
+                <VersionBar
+                  stale={shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}`}
+                  staleReason={
+                    shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}`
+                      ? "上游内容已改动"
+                      : null
+                  }
+                  affectedShots={impact?.affected ?? 0}
+                  expiredShots={impact?.expired ?? 0}
+                  onRebuild={() => { generateShotList(); void refreshImpact() }}
+                  actionLabel="生成分镜"
+                />
+              )}
+              {shots.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
                   <CopyButton
                     text={shots.map((s) => `#${s.shot} ${s.scene}\n${s.prompt}`).join('\n\n')}
                     label="复制全部提示词"
+                  />
+                  {/* 全片执行清单：一次拿到所有镜头的工作单，配合平台逐个执行 */}
+                  <CopyButton
+                    text={shotsToWorkList(shots, `${idea.trim().slice(0, 20) || '未命名漫剧'} · 分镜执行清单`)}
+                    label="复制全部执行清单"
                   />
                 </div>
               )}

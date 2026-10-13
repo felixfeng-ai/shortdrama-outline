@@ -156,8 +156,83 @@ export async function listVaultFiles(): Promise<VaultFile[]> {
   return out
 }
 
-/** 取回可渲染的 blob URL（本地预览，零上传） */
+/**
+ * 按「目录名匹配角色名」把图分给角色。
+ *
+ * 抽成纯函数是为了可测：这条规则看起来简单，边界却不少
+ * （角色名互相包含、目录带后缀、平铺文件、嵌套目录）。
+ * 自动挂错比不挂更糟——用户会以为已经垫好图了。
+ *
+ * 规则：
+ *   - 只认第一段目录名（key 形如 "林远/定妆/正面.png" 取 "林远"）
+ *   - 目录名包含角色名即命中（兼容 "林远-定妆" 这类写法）
+ *   - 平铺在根目录、没有目录的文件不自动挂，交给用户手动挂
+ *   - 没命中的角色不会出现在结果里，调用方据此只补空缺、不覆盖
+ */
+export function matchByFolder(
+  files: VaultFile[],
+  names: string[],
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+  for (const name of names) {
+    if (!name) continue
+    const bucket: string[] = []
+    for (const file of files) {
+      const folder = file.key.includes("/") ? file.key.split("/")[0] : ""
+      if (!folder || !folder.includes(name)) continue
+      if (bucket.includes(file.key)) continue
+      bucket.push(file.key)
+    }
+    if (bucket.length > 0) out[name] = bucket
+  }
+  return out
+}
+
+/**
+ * 走 fs-access 路径时，通过相对路径在已授权目录里找文件。
+ * key 形如 "林远/正面.png"，逐级下钻文件名。
+ */
+async function findFileByKey(key: string): Promise<File | null> {
+  const root = await loadDirectoryHandle()
+  if (!root) return null
+
+  const parts = key.split("/").filter(Boolean)
+  const fileName = parts.pop()
+  if (!fileName) return null
+
+  let dir: FileSystemDirectoryHandle = root
+  try {
+    for (const seg of parts) dir = await dir.getDirectoryHandle(seg)
+    const fileHandle = await dir.getFileHandle(fileName)
+    return await fileHandle.getFile()
+  } catch {
+    // 目录被搬走 / 文件被删 / 改名，都会走到这里
+    return null
+  }
+}
+
+/**
+ * 取回可渲染的 blob URL（本地预览，零上传）。
+ *
+ * 两条路径都要覆盖：
+ *   - indexeddb：直接从库里取 Blob
+ *   - fs-access：通过相对路径在用户授权的目录里找文件
+ * 之前只实现了前者，导致目录直连模式下拿不到预览——
+ * 而目录直连才是 Chrome/Edge 下的主路径。
+ *
+ * 注意：blob URL 需要调用方在不用时 revokeObjectURL，否则会一直占内存。
+ */
 export async function getPreviewUrl(key: string): Promise<string | null> {
-  const blob = await idbGet<Blob>(STORE, key)
-  return blob ? URL.createObjectURL(blob) : null
+  const fromIdb = await idbGet<Blob>(STORE, key)
+  if (fromIdb) return URL.createObjectURL(fromIdb)
+
+  const file = await findFileByKey(key)
+  return file ? URL.createObjectURL(file) : null
+}
+
+/** 判断某个 key 现在还能不能取到图（用于「图丢了」提示） */
+export async function vaultFileExists(key: string): Promise<boolean> {
+  const fromIdb = await idbGet<Blob>(STORE, key)
+  if (fromIdb) return true
+  return (await findFileByKey(key)) !== null
 }

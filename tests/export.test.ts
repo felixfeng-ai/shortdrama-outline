@@ -2,7 +2,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { shotsToCsv, buildStoryboardHtml, buildZip } from "../lib/assets/export.ts"
-import type { Shot, VisualCharacter, Scene } from "../lib/assets/types.ts"
+import type { Shot } from "../lib/assets/types.ts"
 
 function shot(over: Partial<Shot> = {}): Shot {
   return {
