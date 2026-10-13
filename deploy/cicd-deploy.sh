@@ -32,7 +32,21 @@ PORT=3001
 
 cd "$DIR"
 
-echo "=== 1/6 备份 .env ==="
+# 资产链的 SQLite 库放在项目目录之外：git reset --hard 与 .next 构建都碰不到它
+export CHENGJU_DATA_DIR="${CHENGJU_DATA_DIR:-/opt/chengju/data}"
+
+echo "=== 1/6 备份 .env 与资产库 ==="
+mkdir -p "$CHENGJU_DATA_DIR"
+# SQLite 用 WAL 模式，备份前必须把 WAL 合并回主库，
+# 否则直接拷 .db 会丢掉最近一次写入。
+if [ -f "$CHENGJU_DATA_DIR/chengju.db" ]; then
+    command -v sqlite3 >/dev/null 2>&1 && sqlite3 "$CHENGJU_DATA_DIR/chengju.db" "PRAGMA wal_checkpoint(TRUNCATE);" >/dev/null 2>&1 || true
+    cp "$CHENGJU_DATA_DIR/chengju.db" "$CHENGJU_DATA_DIR/chengju.db.bak.$(date +%Y%m%d%H%M)"
+    ls -1t "$CHENGJU_DATA_DIR"/chengju.db.bak.* 2>/dev/null | tail -n +6 | xargs -r rm -f
+    echo "资产库已备份"
+else
+    echo "资产库还不存在（首次部署正常）"
+fi
 if [ -f .env ]; then
     cp .env ".env.bak.$(date +%Y%m%d%H%M)"
     # 只保留最近 5 份，避免堆一堆
