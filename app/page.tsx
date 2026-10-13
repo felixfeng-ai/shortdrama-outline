@@ -1,12 +1,35 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ActList from '@/components/ActList'
 import CharacterList from '@/components/CharacterList'
 import EpisodeList from '@/components/EpisodeList'
 import IdeaPanel from '@/components/IdeaPanel'
 import StepIndicator from '@/components/StepIndicator'
 import StepSection from '@/components/StepSection'
+import ShotList from '@/components/ShotList'
+import SceneList from '@/components/SceneList'
+import VisualAnchorPanel from '@/components/VisualAnchorPanel'
+import VaultPanel from '@/components/VaultPanel'
+import VersionBar from '@/components/VersionBar'
+import CopyButton from '@/components/CopyButton'
+import {
+  createProject,
+  generateVisuals,
+  generateScenes,
+  registerRefs,
+} from '@/lib/assets/api'
+import type { Shot, VisualCharacter, Scene as AssetScene } from '@/lib/assets/types'
+import {
+  detectVaultMode,
+  loadDirectoryHandle,
+  pickDirectory,
+  listImages,
+  listVaultFiles,
+  type VaultFile,
+  type VaultMode,
+} from '@/lib/assets/vault'
+import { buildStoryboardHtml, shotsToCsv, buildZip, downloadBlob } from '@/lib/assets/export'
 import { postJson, postSse } from '@/lib/api'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import {
@@ -18,6 +41,41 @@ import {
   type StepKey,
   type StepStatus,
 } from '@/lib/types'
+
+/** 本地已挂、但尚未落库的参考图也要显示在镜头卡上（B6 的界面一致性） */
+function applyLocalRefs(
+  shot: Shot,
+  visuals: VisualCharacter[],
+  attached: Record<string, string[]>,
+): Shot {
+  const labels: string[] = []
+  const missing: string[] = []
+
+  for (const name of shot.characters) {
+    const keys = attached[name] ?? []
+    const hasServer = shot.refImages.some((r) => r.startsWith(`${name}·`))
+
+    if (keys.length > 0) {
+      labels.push(...keys.map((k) => `${name}·${(k.split("/").pop() ?? k).replace(/\.[^.]+$/, "")}`))
+    } else if (!hasServer) {
+      missing.push(name)
+    }
+  }
+
+  return { ...shot, refImages: Array.from(new Set([...shot.refImages, ...labels])), missingRefFor: missing }
+}
+
+/** 从本地图库取回图片二进制（仅用于打包，不上传） */
+async function getVaultBlob(key: string): Promise<Blob | null> {
+  const { getPreviewUrl } = await import('@/lib/assets/vault')
+  const url = await getPreviewUrl(key)
+  if (!url) return null
+  try {
+    return await fetch(url).then((r) => r.blob())
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
 
 const IDLE_STATUS: Record<StepKey, StepStatus> = {
   characters: 'idle',
@@ -51,6 +109,19 @@ export default function Home() {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
   const [addingCharacter, setAddingCharacter] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // ── 资产层：项目、视觉锚点、场次、镜头、本地图库 ──
+  const [projectId, setProjectId] = useState<string | null>(null)
+  const [visuals, setVisuals] = useState<VisualCharacter[]>([])
+  const [imagePrompts, setImagePrompts] = useState<{ name: string; zh: string; en: string }[]>([])
+  const [scenes, setScenes] = useState<AssetScene[]>([])
+  const [shots, setShots] = useState<Shot[]>([])
+  const [vaultMode, setVaultMode] = useState<VaultMode>('indexeddb')
+  const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([])
+  const [attached, setAttached] = useState<Record<string, string[]>>({})
+  // 记录「这份结果基于哪一版上游」，用于过期判定（服务端血缘 + 前端快速判断）
+  const [visualsBuiltFrom, setVisualsBuiltFrom] = useState<string | null>(null)
+  const [shotsBuiltFrom, setShotsBuiltFrom] = useState<string | null>(null)
 
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 「清空重来」时 +1。请求返回时若纪元变了，说明结果已经不该要了，直接丢弃
@@ -197,6 +268,172 @@ export default function Home() {
 
   // ── 导出 ──
   const markdown = () => buildMarkdown({ idea: idea.trim(), characters, acts, episodes })
+
+  // ── 资产层：项目与本地图库 ──────────────────────────────────
+
+  /** 惰性建项目：第一次需要落库时才创建，避免空项目堆积 */
+  async function ensureProject(title: string): Promise<string | null> {
+    if (projectId) return projectId
+    try {
+      const { project } = await createProject(title || "未命名漫剧")
+      setProjectId(project.id)
+      return project.id
+    } catch {
+      // 建项目失败不阻断生成：退化为匿名使用（F3 降级不阻断）
+      return null
+    }
+  }
+
+  /** 挂一张本地图到角色上：只登记引用与指纹，图不上传（P1） */
+  async function attachImage(characterName: string, file: VaultFile) {
+    setAttached((prev) => ({
+      ...prev,
+      [characterName]: [...(prev[characterName] ?? []).filter((k) => k !== file.key), file.key],
+    }))
+
+    if (!projectId) return
+    try {
+      await registerRefs(projectId, [{
+        vaultKey: file.key,
+        label: file.name.replace(/\.[^.]+$/, "").slice(0, 20),
+        fileHash: file.hash,
+        mime: file.mime,
+        bytes: file.size,
+        ownerType: "character",
+        ownerId: characterName,
+      }])
+    } catch {
+      // 台账登记失败不影响本地已挂的图
+    }
+  }
+
+  /** 选择素材目录（Chrome/Edge）并扫描 */
+  async function handlePickDirectory() {
+    const handle = await pickDirectory().catch(() => null)
+    if (!handle) return
+    setVaultFiles(await listImages(handle).catch(() => []))
+  }
+
+  async function handleReloadVault() {
+    const handle = await loadDirectoryHandle()
+    if (!handle) return
+    setVaultFiles(await listImages(handle).catch(() => []))
+  }
+
+  // 图库能力探测：只在客户端执行
+  useEffect(() => {
+    setVaultMode(detectVaultMode())
+    listVaultFiles().then(setVaultFiles).catch(() => {})
+    loadDirectoryHandle()
+      .then(async (h) => { if (h) setVaultFiles(await listImages(h).catch(() => [])) })
+      .catch(() => {})
+  }, [])
+
+  // ── 视觉定妆 ──────────────────────────────────────────────────
+  const generateVisualAnchors = () =>
+    runStep(
+      "characters",
+      async () => generateVisuals(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters),
+      (data) => {
+        setVisuals(data.visualCharacters)
+        setImagePrompts(data.imagePrompts as { name: string; zh: string; en: string }[])
+        setVisualsBuiltFrom(charactersSig)
+      },
+    )
+
+  // ── 场次 ──────────────────────────────────────────────────────
+  const generateSceneList = () =>
+    runStep(
+      "acts",
+      async () => generateScenes(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters, episodes),
+      (data) => setScenes(data.scenes),
+    )
+
+  // ── 分镜（SSE 流式，复用现有 postSse）─────────────────────────
+  const generateShotList = () => {
+    const epoch = resetEpoch.current
+    setStatus((st) => ({ ...st, episodes: "streaming" }))
+    setErrors((e) => ({ ...e, episodes: null }))
+    setShots([])
+
+    const builtFrom = `${charactersSig}|${JSON.stringify(scenes)}`
+
+    ;(async () => {
+      try {
+        const pid = await ensureProject(idea.trim().slice(0, 20))
+        await postSse(
+          "/api/shots",
+          { projectId: pid, idea: idea.trim(), characters, scenes, visualCharacters: visuals, acts },
+          (event, data) => {
+            if (isCleared(epoch)) return
+            const payload = data as { shots?: Shot[] }
+            if ((event === "shots" || event === "done") && payload.shots) {
+              setShots(payload.shots.map((s) => applyLocalRefs(s, visuals, attached)))
+            }
+          },
+        )
+        if (isCleared(epoch)) return
+        setShotsBuiltFrom(builtFrom)
+        setStatus((st) => ({ ...st, episodes: "done" }))
+      } catch (error) {
+        if (isCleared(epoch)) return
+        const message = error instanceof Error ? error.message : "生成失败，请重试"
+        setErrors((e) => ({ ...e, episodes: message }))
+        setStatus((st) => ({ ...st, episodes: "error" }))
+      }
+    })()
+  }
+
+  // ── 打包带走（P2）─────────────────────────────────────────────
+  const handleExportPackage = async () => {
+    const enc = new TextEncoder()
+    const entries: { name: string; data: Uint8Array }[] = []
+    const title = idea.trim().slice(0, 20) || "未命名漫剧"
+
+    const manifest = {
+      project: { id: projectId, title },
+      exportedAt: Date.now(),
+      story: { idea, characters, acts, episodes },
+      assets: { visuals, scenes, shots },
+      refs: Object.entries(attached).flatMap(([name, keys]) =>
+        keys.map((k) => ({ ownerType: "character", ownerId: name, vaultKey: k }))),
+    }
+
+    entries.push({ name: "project.json", data: enc.encode(JSON.stringify(manifest, null, 2)) })
+    entries.push({ name: "prompts.csv", data: enc.encode(shotsToCsv(shots)) })
+    entries.push({ name: "storyboard.html", data: enc.encode(buildStoryboardHtml({ title, visuals, scenes, shots })) })
+    entries.push({
+      name: "README.txt",
+      data: enc.encode([
+        "成剧 · 项目包",
+        "",
+        "project.json      全部文本资产 + 角色视觉锚点 + 分镜",
+        "prompts.csv       逐镜提示词，可直接喂给出图工具",
+        "storyboard.html   离线可看的分镜表（双击用浏览器打开）",
+        "characters/       角色参考图（若从本地图库成功并入）",
+        "",
+        "说明：图片始终保存在你自己的机器上，本工具不上传、不托管任何图片。",
+      ].join("\n")),
+    })
+
+    // 把本地图库里的角色图并入包（从本地读，不经服务端）
+    for (const [name, keys] of Object.entries(attached)) {
+      for (const key of keys) {
+        try {
+          const blob = await getVaultBlob(key)
+          if (!blob) continue
+          entries.push({
+            name: `characters/${name}/${key.split("/").pop() ?? "image.png"}`,
+            data: new Uint8Array(await blob.arrayBuffer()),
+          })
+        } catch {
+          // 单张图读不到不影响整体导出
+        }
+      }
+    }
+
+    downloadBlob(`${title}-成剧项目包.zip`, buildZip(entries))
+  }
 
   const handleCopyAll = async () => {
     const done = await copyText(markdown())
@@ -345,6 +582,107 @@ export default function Home() {
               {episodesStale && staleNotice('上游内容已改动，当前分集是基于旧版本生成的，建议重新生成一次。')}
               <EpisodeList episodes={episodes} onChange={setEpisodes} />
             </StepSection>
+
+            {/* 第四步：角色视觉定妆（资产层） */}
+            <StepSection
+              index={4}
+              title="角色视觉定妆"
+              subtitle="把角色变成可复用的视觉锚点，逐镜复用保证不崩脸"
+              status="done"
+              error={null}
+              hasContent={visuals.length > 0}
+              locked={!hasCharacters}
+              lockedHint="请先生成核心人物，再为他们定妆"
+              actionLabel="视觉定妆"
+              onGenerate={generateVisualAnchors}
+              skeletonVariant="characters"
+            >
+              {visuals.length > 0 && visualsBuiltFrom !== charactersSig &&
+                staleNotice('人物设定已改动，当前视觉定妆基于旧人物生成，建议重新定妆。')}
+              <VisualAnchorPanel
+                visuals={visuals}
+                onChange={setVisuals}
+                imagePrompts={imagePrompts}
+                vaultFiles={vaultFiles}
+                attached={attached}
+                onAttach={attachImage}
+              />
+            </StepSection>
+
+            {/* 第五步：场次 */}
+            <StepSection
+              index={5}
+              title="生成场次剧本"
+              subtitle="把分集拆成场次，是分镜的输入单位"
+              status={status.acts}
+              error={errors.acts}
+              hasContent={scenes.length > 0}
+              locked={!hasEpisodes}
+              lockedHint="请先生成分集剧情，再拆场次"
+              actionLabel="场次"
+              onGenerate={generateSceneList}
+              skeletonVariant="acts"
+            >
+              <SceneList scenes={scenes} onChange={setScenes} />
+            </StepSection>
+
+            {/* 第六步：分镜（流式） */}
+            <StepSection
+              index={6}
+              title="生成分镜"
+              subtitle="每镜自动带上角色锚点与该片的参考图"
+              status={status.episodes}
+              error={errors.episodes}
+              hasContent={shots.length > 0}
+              locked={!hasActs || scenes.length === 0}
+              lockedHint="请先生成三幕大纲与场次，再拆镜头"
+              actionLabel="分镜"
+              onGenerate={generateShotList}
+              skeletonVariant="episodes"
+            >
+              {shots.length > 0 && shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}` &&
+                staleNotice('上游内容已改动，当前分镜基于旧版本生成，建议重新生成。')}
+              {shots.length > 0 && (
+                <div className="mb-3">
+                  <CopyButton
+                    text={shots.map((s) => `#${s.shot} ${s.scene}\n${s.prompt}`).join('\n\n')}
+                    label="复制全部提示词"
+                  />
+                </div>
+              )}
+              <ShotList shots={shots} onChange={setShots} />
+            </StepSection>
+
+            {/* 本地图库（永远可见：用户需要知道图在哪儿） */}
+            <VaultPanel
+              mode={vaultMode}
+              files={vaultFiles}
+              onPickDirectory={handlePickDirectory}
+              onReload={handleReloadVault}
+              onAdd={(added) => setVaultFiles((prev) => [...prev, ...added])}
+            />
+
+            {/* 打包带走 */}
+            {hasResult && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">打包带走</p>
+                    <p className="text-xs text-slate-500">
+                      导出 project.json + prompts.csv + 离线分镜表（图不动、不上传）
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportPackage}
+                    className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-medium text-white
+                      transition-colors hover:bg-brand-800"
+                  >
+                    导出项目包
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* 底部导出 */}
             {hasResult && (
