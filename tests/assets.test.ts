@@ -1,13 +1,15 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { openDb } from "../lib/assets/db.ts"
+import { openDb, getDataDir } from "../lib/assets/db.ts"
 import { createProject, createSnapshot, listSnapshots, getSnapshot } from "../lib/assets/repo.ts"
 
 /** 每组用独立的临时库，避免相互污染 */
 function tmpDbPath(tag: string): string {
-  const dir = process.env.CHENGJU_DATA_DIR!
-  return `${dir}/test-${tag}-${process.pid}-${Date.now()}.db`
+  // 走业务侧的 getDataDir()，不要自己读环境变量：
+  // 子进程里变量可能是空的，那会直接拼出一个 undefined/ 目录（见 db.ts 注释）。
+  // 再统一收进 tmp/ 子目录，跑完由测试自己删掉，绝不污染真实资产库。
+  return `${getDataDir()}/tmp/test-${tag}-${process.pid}-${Date.now()}.db`
 }
 
 // ── Capability A：资产链 ─────────────────────────────────────────

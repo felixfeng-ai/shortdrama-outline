@@ -5,12 +5,12 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { openDb } from "../lib/assets/db.ts"
+import { openDb, getDataDir } from "../lib/assets/db.ts"
 import { createProject, createSnapshot } from "../lib/assets/repo.ts"
 import { isStale, staleReason, findImpact } from "../lib/assets/graph.ts"
 
 function tmpDbPath(tag: string): string {
-  return `${process.env.CHENGJU_DATA_DIR}/t-${tag}-${process.pid}-${Date.now()}.db`
+  return `${getDataDir()}/tmp/t-${tag}-${process.pid}-${Date.now()}.db`
 }
 
 // ── Capability A2：上游变更 → 下游标记过期（不静默清空）────────────

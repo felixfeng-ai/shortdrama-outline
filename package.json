@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node --import ./tests/register.mjs --test \"tests/*.test.ts\"",
+    "test": "node --import ./tests/register.mjs --import ./tests/cleanup.mjs --test \"tests/*.test.ts\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start"

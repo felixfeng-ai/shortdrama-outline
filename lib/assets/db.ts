@@ -8,9 +8,18 @@ import { DatabaseSync } from "node:sqlite"
 import fs from "node:fs"
 import path from "node:path"
 
-/** 数据目录：默认项目外的 data/，可用 CHENGJU_DATA_DIR 覆盖（部署时指向 /opt/chengju/data） */
+/**
+ * 数据目录：默认项目外的 data/，可用 CHENGJU_DATA_DIR 覆盖（部署时指向 /opt/chengju/data）。
+ *
+ * 这里必须对「空字符串 / 字面量 undefined」做兜底：环境变量可以存在但为空，
+ * 调用方也可能把未定义的值直接拼进路径，两种都会产出 "undefined/xxx.db"
+ * ——在仓库根建一个名为 undefined 的目录。测试进程尤其容易踩到（见 tests/loader.mjs），
+ * 所以在解析路径这一步就挡掉，而不是指望每个调用点都自觉。
+ */
 export function getDataDir(): string {
-  return process.env.CHENGJU_DATA_DIR || path.join(process.cwd(), "data")
+  const configured = process.env.CHENGJU_DATA_DIR?.trim()
+  const usable = configured && configured !== "undefined" ? configured : null
+  return usable ?? path.join(process.cwd(), "data")
 }
 
 export function defaultDbPath(): string {
