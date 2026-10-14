@@ -6,9 +6,13 @@ import type { Shot } from '@/lib/assets/types'
 interface Props {
   shots: Shot[]
   onChange: (next: Shot[]) => void
+  /** 放映厅当前选中的那一镜 */
+  activeShotId?: string | null
+  /** 点某张镜卡 → 切换放映厅 */
+  onSelect?: (id: string) => void
 }
 
-export default function ShotList({ shots, onChange }: Props) {
+export default function ShotList({ shots, onChange, activeShotId = null, onSelect }: Props) {
   const update = (id: string, patch: Partial<Shot>) =>
     onChange(shots.map((s) => (s.id === id ? { ...s, ...patch } : s)))
 
@@ -19,7 +23,15 @@ export default function ShotList({ shots, onChange }: Props) {
   return (
     <div className="space-y-3">
       {shots.map((shot, i) => (
-        <ShotCard key={shot.id} shot={shot} index={i} onUpdate={update} onRemove={remove} />
+        <ShotCard
+          key={shot.id}
+          shot={shot}
+          index={i}
+          onUpdate={update}
+          onRemove={remove}
+          active={shot.id === activeShotId}
+          onSelect={onSelect}
+        />
       ))}
     </div>
   )

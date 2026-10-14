@@ -27,6 +27,11 @@ interface Props {
   anchorId?: string
   /** 创作层（朱砂）/ 资产层（青竹）——决定这一步的强调色 */
   layer?: 'story' | 'asset'
+  /**
+   * 是否显示这一步。一页只放当前步骤（点左栏切换），
+   * 传 false 时整段不渲染——它不是被藏起来，而是真的不在 DOM 里。
+   */
+  visible?: boolean
 }
 
 /**
@@ -54,7 +59,10 @@ export default function StepSection({
   extraAction,
   anchorId,
   layer = 'story',
+  visible = true,
 }: Props) {
+  if (!visible) return null
+
   const isLoading = status === 'loading'
   // 流式期间内容正在一批批到达：按钮该显示「生成中…」并禁用，
   // 但已经拿到的部分必须立刻渲染，不能再压着骨架屏

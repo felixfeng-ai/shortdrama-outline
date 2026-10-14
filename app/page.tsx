@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ActList from '@/components/ActList'
@@ -8,6 +8,9 @@ import EpisodeList from '@/components/EpisodeList'
 import IdeaPanel from '@/components/IdeaPanel'
 import StepIndicator from '@/components/StepIndicator'
 import StepSection from '@/components/StepSection'
+import SideNav from '@/components/SideNav'
+import AssistantDock from '@/components/AssistantDock'
+import QuotaBar from '@/components/QuotaBar'
 import ShotList from '@/components/ShotList'
 import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
@@ -122,10 +125,6 @@ const STEP_ANCHORS: Record<StepKey, string> = {
   shots: 'step-shots',
 }
 
-function jumpToStep(key: StepKey) {
-  document.getElementById(STEP_ANCHORS[key])?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 export default function Home() {
   // ── 数据（全部存在内存里，没有数据库）──
   const [idea, setIdea] = useState('')
@@ -155,6 +154,13 @@ export default function Home() {
   const [imagePrompts, setImagePrompts] = useState<{ name: string; zh: string; en: string }[]>([])
   const [scenes, setScenes] = useState<AssetScene[]>([])
   const [shots, setShots] = useState<Shot[]>([])
+  /** 放映厅当前选中的那一镜：默认第一镜，点某张镜卡即切换 */
+  const [activeShotId, setActiveShotId] = useState<string | null>(null)
+  /**
+   * 当前展示的是哪一步。六步不再堆在同一页——一页只画一步，
+   * 点左栏（或窄屏步骤条）切换。生成状态都在这之外，切换不会打断正在跑的任务。
+   */
+  const [view, setView] = useState<StepKey>('characters')
   // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
   const [impact, setImpact] = useState<{ affected: number; expired: number } | null>(null)
   const [vaultMode, setVaultMode] = useState<VaultMode>('indexeddb')
@@ -194,6 +200,62 @@ export default function Home() {
 
   // 步骤条高亮到「第一个还没产出内容的步骤」；六步全部有内容时停在最后一步
   const currentStep = !hasCharacters ? 1 : !hasActs ? 2 : !hasEpisodes ? 3 : !visuals.length ? 4 : !scenes.length ? 5 : 6
+
+  /** 六步的完成态：窄屏步骤条与桌面左栏共用一份，避免两处各写一遍 */
+  const stepCompleted: Record<StepKey, boolean> = {
+    characters: hasCharacters,
+    acts: hasActs,
+    episodes: hasEpisodes,
+    visuals: visuals.length > 0,
+    scenes: scenes.length > 0,
+    shots: shots.length > 0,
+  }
+
+  /**
+   * 六步之间可以自由切换：没生成的那一步会自己说明「请先做上一步」，
+   * 比把入口锁死更好——用户看得见后面有什么，才知道值不值得往下走。
+   */
+  const canJump = () => true
+
+  /** 点左栏/窄屏步骤条：切到那一步，并把页面滚回顶部 */
+  const goToStep = (key: StepKey) => {
+    setView(key)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  /** 左栏高亮的是「正在看的那一步」，不是「该做哪一步」 */
+  const viewIndex = STEPS.find((s) => s.key === view)?.index ?? currentStep
+
+  /**
+   * 一步做完之后给一句下一步提示：主线的下一站 + 顺手能去的资产步骤。
+   * 为什么要它：现在一次只显示一步，用户看不到后面还有什么，
+   * 生成完如果没人告诉他，他只能自己去猜要不要点左边那一栏。
+   */
+  const NEXT_STEP: Partial<Record<StepKey, StepKey>> = {
+    characters: 'acts',
+    acts: 'episodes',
+    episodes: 'scenes',
+    scenes: 'shots',
+  }
+  /** 角色一生成完，定妆就解锁了——它不是主线下一站，但用户此刻最该知道 */
+  const SIDE_STEP: Partial<Record<StepKey, { key: StepKey; note: string }>> = {
+    characters: { key: 'visuals', note: '角色已经就位，可以顺手去「定妆」给他们挂参考图' },
+  }
+  const stepOf = (key: StepKey) => STEPS.find((s) => s.key === key)
+  const nextStep = NEXT_STEP[view]
+  const sideStep = SIDE_STEP[view]
+
+  /** 放映厅盯着的那一镜：用户点过就用点过的，否则默认第一镜 */
+  const activeShot = useMemo(
+    () => shots.find((s) => s.id === activeShotId) ?? shots[0] ?? null,
+    [shots, activeShotId],
+  )
+
+  /** 把 AI 助手改写好的文本写回当前镜头——只改被问到的那一镜，不碰其它字段 */
+  const applyAssistantText = (target: 'prompt' | 'action', text: string) => {
+    if (!activeShot) return
+    setShots((prev) => prev.map((s) => (s.id === activeShot.id ? { ...s, [target]: text } : s)))
+  }
 
   // 上游改过之后，下游结果就是基于旧版本生成的
   const actsStale = hasActs && actsBuiltFrom !== charactersSig
@@ -709,26 +771,22 @@ export default function Home() {
         顶栏：一层楼高，品牌在左、硬指标与自建入口在右（对齐 concept-reference.png）。
         底部那道朱砂细线是全站唯一的分隔装饰，代替原来的居中 hero。
       */}
-      <header className="mx-auto w-full max-w-6xl px-4 pt-7 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-accent-600/25 pb-3.5">
-          <div className="flex min-w-0 items-baseline gap-2.5">
-            <h1 className="font-serif text-2xl font-bold leading-none text-accent-700 sm:text-3xl">
-              成剧
-            </h1>
+      {/* 顶栏：与 demo 完全一致——左边品牌 + AI 徽标，右边齿轮与头像 */}
+      {/* 顶栏吸顶：向下滚动时品牌与额度一直可见 */}
+      <header className="sticky top-0 z-30 mx-auto w-full max-w-[96rem] bg-surface/95 px-4 pt-5 backdrop-blur-sm sm:px-6">
+        <div className="topbar">
+          <div className="flex min-w-0 items-center gap-3">
+              <h1 className="brandname">成剧</h1>
             <span className="ai-badge" title="全流程 AI 生成">AI</span>
-            <p className="mt-0.5 hidden min-w-0 truncate text-xs text-ink-500 lg:block">
-              一句话成剧 · 从一句想法到大纲、分镜与出图提示词
-            </p>
+            {/* 额度是全局状态，挂在品牌旁边的空白处，不再挤在输入卡里 */}
+            <QuotaBar refreshKey={quotaRefreshKey} compact />
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
-            {/* 三条硬指标：产品最该被记住的三件事 */}
+          <div className="topacts">
+            {/* 右上是线上那版：三条硬指标 + 自建入口（与 demo 的齿轮/头像不同，这里按线上保持一致） */}
             <ul className="hidden flex-wrap items-center gap-1.5 sm:flex">
               {['零部署', '图不上传', '一键打包带走'].map((tag) => (
-                <li
-                  key={tag}
-                  className="rounded-pill bg-surface-soft px-2.5 py-1 text-[11px] font-medium text-ink-600"
-                >
+                <li key={tag} className="rounded-pill bg-surface-soft px-2.5 py-1 text-[11px] font-medium text-ink-600">
                   {tag}
                 </li>
               ))}
@@ -749,11 +807,26 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6">
-        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-          {/* 左：输入区（桌面端吸附） */}
-          <div className="min-w-0 lg:sticky lg:top-8">
-            <IdeaPanel
+      <main className="mx-auto w-full max-w-[96rem] px-4 pb-20 sm:px-6">
+        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-8
+          xl:grid-cols-[13rem_20rem_minmax(0,1fr)] 2xl:grid-cols-[15rem_22rem_minmax(0,1fr)]">
+          {/* 最左：六步导航（对齐参考图的左侧面板；窄屏折成顶上的步骤条） */}
+          <div className="hidden min-w-0 xl:block">
+            <div className="navpanel xl:sticky xl:top-24">
+              <SideNav
+                current={viewIndex}
+                completed={stepCompleted}
+                onJump={goToStep}
+                canJump={canJump}
+              />
+            </div>
+          </div>
+
+          {/* 中：输入区（桌面端吸附） */}
+          <div className="min-w-0">
+            {/* 外层撑满整行高度，内层才能真正吸顶（直接给 grid item 加 sticky 是没用的） */}
+            <div className="lg:sticky lg:top-24">
+              <IdeaPanel
               idea={idea}
               onIdeaChange={setIdea}
               genre={genre}
@@ -762,24 +835,17 @@ export default function Home() {
               onReset={handleReset}
               loading={status.characters === 'loading'}
               hasResult={hasResult}
-              quotaRefreshKey={quotaRefreshKey}
             />
+            </div>
           </div>
 
-          {/* 右：步骤条 + 三步内容 */}
+          {/* 右：窄屏步骤条 + 六步内容 */}
           <div className="min-w-0 space-y-5">
-            <div className="surface px-4 py-3.5">
+            <div className="surface px-4 py-3.5 xl:hidden">
               <StepIndicator
-                current={currentStep}
-                onJump={jumpToStep}
-                completed={{
-                  characters: hasCharacters,
-                  acts: hasActs,
-                  episodes: hasEpisodes,
-                  visuals: visuals.length > 0,
-                  scenes: scenes.length > 0,
-                  shots: shots.length > 0,
-                }}
+                current={viewIndex}
+                onJump={goToStep}
+                completed={stepCompleted}
               />
             </div>
 
@@ -787,6 +853,7 @@ export default function Home() {
             <StepSection
               index={1}
               anchorId={STEP_ANCHORS.characters}
+              visible={view === 'characters'}
               title={STEPS[0].title}
               subtitle={STEPS[0].subtitle}
               status={status.characters}
@@ -795,7 +862,7 @@ export default function Home() {
               // 第一步没有前置步骤，它的「前置条件」是还没输入想法。
               // 不锁的话这里的按钮会一直亮着，而左侧那个同样功能的按钮是灰的。
               locked={idea.trim().length < MIN_IDEA_LENGTH}
-              lockedHint="在左侧输入故事想法，然后点「生成人物」"
+              lockedHint="先在「故事灵感」里写下想法，再点「生成人物」"
               actionLabel="生成人物"
               onGenerate={generateCharacters}
               skeletonVariant="characters"
@@ -829,6 +896,7 @@ export default function Home() {
             <StepSection
               index={2}
               anchorId={STEP_ANCHORS.acts}
+              visible={view === 'acts'}
               title={STEPS[1].title}
               subtitle={STEPS[1].subtitle}
               status={status.acts}
@@ -848,6 +916,7 @@ export default function Home() {
             <StepSection
               index={3}
               anchorId={STEP_ANCHORS.episodes}
+              visible={view === 'episodes'}
               title={STEPS[2].title}
               subtitle={STEPS[2].subtitle}
               status={status.episodes}
@@ -867,6 +936,7 @@ export default function Home() {
             <StepSection
               index={4}
               anchorId={STEP_ANCHORS.visuals}
+              visible={view === 'visuals'}
               title={STEPS[3].title}
               subtitle={STEPS[3].subtitle}
               status={status.visuals}
@@ -901,18 +971,19 @@ export default function Home() {
               />
             </StepSection>
 
-            {/* 第五步：场次 */}
+            {/* 第五步：场景 */}
             <StepSection
               index={5}
               anchorId={STEP_ANCHORS.scenes}
+              visible={view === 'scenes'}
               title={STEPS[4].title}
               subtitle={STEPS[4].subtitle}
               status={status.scenes}
               error={errors.scenes}
               hasContent={scenes.length > 0}
               locked={!hasEpisodes}
-              lockedHint="请先生成分集剧情，再拆场次"
-              actionLabel="场次"
+              lockedHint="请先生成分集剧情，再拆场景"
+              actionLabel="场景"
               onGenerate={generateSceneList}
               skeletonVariant="acts"
             >
@@ -923,13 +994,14 @@ export default function Home() {
             <StepSection
               index={6}
               anchorId={STEP_ANCHORS.shots}
+              visible={view === 'shots'}
               title={STEPS[5].title}
               subtitle={STEPS[5].subtitle}
               status={status.shots}
               error={errors.shots}
               hasContent={shots.length > 0}
               locked={!hasActs || scenes.length === 0}
-              lockedHint="请先生成三幕大纲与场次，再拆镜头"
+              lockedHint="请先生成三幕大纲与场景，再拆镜头"
               actionLabel="分镜"
               onGenerate={generateShotList}
               skeletonVariant="episodes"
@@ -961,7 +1033,12 @@ export default function Home() {
                   />
                 </div>
               )}
-              <ShotList shots={shots} onChange={setShots} />
+              <ShotList
+                shots={shots}
+                onChange={setShots}
+                activeShotId={activeShot?.id ?? null}
+                onSelect={setActiveShotId}
+              />
             </StepSection>
 
             {/* 挂接结果 / AI 兜底：把「图有没有对上角色」这件事讲清楚 */}
@@ -1040,6 +1117,58 @@ export default function Home() {
                 </div>
               </div>
             )}
+
+            {/* 一页只画一步，底部留出放映厅的高度，保证内容能滚到它上面 */}
+            {/* 这一步做完之后的去处：主线下一站 + 顺手解锁的资产步骤 */}
+            {stepCompleted[view] && (nextStep || sideStep) && (
+              <div className="surface flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-ink-600">
+                    「{stepOf(view)?.nav}」已经生成完了。
+                  </p>
+                  {sideStep && (
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500">{sideStep.note}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {sideStep && (
+                    <button
+                      type="button"
+                      onClick={() => goToStep(sideStep.key)}
+                      className="rounded-pill border border-accent-300 bg-accent-50 px-3.5 py-1.5 text-[11px]
+                        font-medium text-accent-700 transition-colors hover:bg-accent-100"
+                    >
+                      去{stepOf(sideStep.key)?.nav}
+                    </button>
+                  )}
+                  {nextStep && (
+                    <button
+                      type="button"
+                      onClick={() => goToStep(nextStep)}
+                      className="rounded-pill bg-accent-600 px-4 py-2 text-xs font-medium text-white
+                        transition-colors hover:bg-accent-700"
+                    >
+                      下一步：{stepOf(nextStep)?.nav} →
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div aria-hidden="true" className="hidden xl:block xl:h-[420px]" />
+            {/*
+              放映厅：窄屏在流里（贴着内容末尾），xl 起脱离文档流固定在右下角——
+              和 demo 一样进页面就能看到，右栏底部那个 420px 的空白保证内容不被永久盖住。
+            */}
+            <div className="ml-auto w-full min-w-0 max-w-[26rem] xl:fixed xl:bottom-6 xl:right-6 xl:z-40">
+              <AssistantDock
+                shot={activeShot}
+                idea={idea}
+                genre={genre}
+                characters={characters}
+                onApply={applyAssistantText}
+              />
+            </div>
           </div>
         </div>
       </main>

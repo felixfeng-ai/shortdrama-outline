@@ -1,44 +1,53 @@
 'use client'
 
-import { STEPS, type StepKey } from '@/lib/types'
+// 左侧六步导航（对齐 concept-reference.png 的左栏）。
+//
+// 造形规则：图标 + 标题 + 一句说明；当前步是「浅玫底 + 左侧朱砂竖条」，
+// 已完成的步在图标右上角点一颗朱砂勾，未解锁的整条压暗。
+// 不再用圆形数字徽标——参考图的左栏没有数字，靠图标与状态色区分。
+import type { StepKey } from '@/lib/types'
+import { STEPS } from '@/lib/types'
 
 interface Props {
   /** 当前进行到第几步（1-6） */
   current: number
   /** 每一步是否已经产出内容 */
   completed: Record<StepKey, boolean>
-  /** 点某一步：滚到对应分区。已完成/当前步可点，未解锁的步不可点 */
+  /** 点某一步：滚到对应分区 */
   onJump: (key: StepKey) => void
   /** 是否可以跳到某一步（前置已完成） */
   canJump: (key: StepKey) => boolean
 }
 
-/**
- * 左侧导航：把六步按「创作 / 资产」两层切开。
- *
- * 两层的颜色分工是产品结构本身——朱砂=写故事，青竹=出画面，
- * 用户在左栏一眼就知道自己在哪一层，不需要读文字。
- */
+/** 六步各自的线性图标（stroke 体系，与参考图的细线图标同一种手感） */
+const ICONS: Record<StepKey, string> = {
+  // 核心人物：名片里的人
+  characters: 'M3 4.5h18v15H3z M9.6 10.4a1.9 1.9 0 1 1 3.8 0 1.9 1.9 0 0 1-3.8 0 M6.6 16.2c.8-1.6 1.8-2.3 3-2.3s2.2.7 3 2.3',
+  // 三幕大纲：一块分幕板
+  acts: 'M3 4.5h18v15H3 M7.6 9.4h8.8 M7.6 12.2h8.8 M7.6 15h5',
+  // 分集剧情：带序号的清单
+  episodes: 'M3 4.5h18v15H3 M9 9.4h7.4 M9 12.2h7.4 M9 15h4.6 M6.4 9.4h.02 M6.4 12.2h.02 M6.4 15h.02',
+  // 定妆：一张脸
+  visuals: 'M3 4.5h18v15H3 M9 10.5a1.7 1.7 0 1 1 3.4 0 1.7 1.7 0 0 1-3.4 0 M5.6 11.6c1.2 0 2 .6 2.6 1.6 M15.8 11.6c-1.2 0-2 .6-2.6 1.6',
+  // 场景：一个时空
+  scenes: 'M20.4 11.7c0 4-3.8 7.2-8.4 7.2-.9 0-1.9-.13-2.7-.38L4.4 20.4l1.2-3.2c-1.2-1.2-2-3.2-2-5.5 0-4 3.8-7.2 8.4-7.2s8.4 3.2 8.4 7.2z M9.4 11.6h.02 M14.6 11.6h.02',
+  // 分镜：出画前的确认勾
+  shots: 'M3 4.5h18v15H3 M8.2 12.1l2.5 2.5 5.2-5.4',
+}
+
 export default function SideNav({ current, completed, onJump, canJump }: Props) {
   const story = STEPS.filter((s) => s.layer === 'story')
   const asset = STEPS.filter((s) => s.layer === 'asset')
 
   const renderItem = (step: (typeof STEPS)[number]) => {
     const isDone = completed[step.key]
-    const isCurrent = !isDone && step.index === current
-    const isAsset = step.layer === 'asset'
+    /**
+     * 高亮 = 「正在看哪一步」，跟有没有生成过无关。
+     * 之前写成 !isDone && index === current，结果某一步一生成完高亮就消失，
+     * 默认进来时那一步已经不亮了——用户看不出自己在哪儿。
+     */
+    const isCurrent = step.index === current
     const reachable = isDone || isCurrent || canJump(step.key)
-
-    // 当前步用实心色块，已完成用描边，两者都不靠文字区分
-    const dot = isDone
-      ? isAsset
-        ? 'border-done-500 bg-done-500 text-white'
-        : 'border-accent-500 bg-accent-500 text-white'
-      : isCurrent
-        ? isAsset
-          ? 'border-done-600 bg-done-50 text-done-700'
-          : 'border-accent-600 bg-accent-50 text-accent-700'
-        : 'border-ink-200 bg-surface-card text-ink-400'
 
     return (
       <li key={step.key}>
@@ -47,36 +56,29 @@ export default function SideNav({ current, completed, onJump, canJump }: Props) 
           onClick={() => reachable && onJump(step.key)}
           disabled={!reachable}
           aria-current={isCurrent ? 'step' : undefined}
-          className={`group relative flex w-full items-center gap-2.5 rounded-chip px-2.5 py-2 text-left transition-colors
-            ${isCurrent ? 'bg-accent-100' : 'hover:bg-surface-deep/60'}
+          className={`group relative flex w-full items-center gap-3 rounded-chip px-4 py-4 text-left
+            transition-colors ${isCurrent ? 'on' : isDone ? 'done' : 'hover:bg-surface-deep/60'}
             ${reachable ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'}`}
         >
-          {/* 当前步：浅玫底 + 左侧朱砂竖条（参考图的选中态） */}
-          {isCurrent && (
-            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 rounded-full bg-accent-700" />
-          )}
-          <span
-            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors ${dot}`}
-          >
-            {isDone ? (
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                <path
-                  fillRule="evenodd"
-                  d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            ) : (
-              step.index
-            )}
+          <span className="shrink-0">
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              className={`h-[21px] w-[21px] fill-none [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]
+                ${isCurrent ? 'stroke-accent-700' : isDone ? 'stroke-done-600' : 'stroke-ink-500'}`}
+            >
+              <path d={ICONS[step.key]} />
+            </svg>
           </span>
+
           <span className="min-w-0 flex-1">
             <span
-              className={`block truncate text-sm ${isCurrent ? 'font-semibold text-ink-900' : 'text-ink-600'}`}
+              className={`block truncate text-[15.5px] ${
+                isCurrent ? 'font-semibold text-accent-700' : isDone ? 'text-done-700' : 'text-ink-700'
+              }`}
             >
-              {step.title}
+              {step.nav}
             </span>
-            <span className="block truncate text-[11px] text-ink-400">{step.subtitle}</span>
           </span>
         </button>
       </li>
@@ -84,22 +86,11 @@ export default function SideNav({ current, completed, onJump, canJump }: Props) 
   }
 
   return (
-    <nav aria-label="创作流程" className="space-y-5">
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-wider text-accent-700">
-          <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-accent-500" />
-          创作 · 写故事
-        </p>
-        <ul className="space-y-0.5">{story.map(renderItem)}</ul>
-      </div>
-
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-wider text-done-700">
-          <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-done-500" />
-          资产 · 出画面
-        </p>
-        <ul className="space-y-0.5">{asset.map(renderItem)}</ul>
-      </div>
+    <nav aria-label="创作流程">
+      {/* 参考图的左栏就是一串图标 + 名称，不分段、不写说明 */}
+      <ul className="space-y-1.5">
+        {[...story, ...asset].map(renderItem)}
+      </ul>
     </nav>
   )
 }

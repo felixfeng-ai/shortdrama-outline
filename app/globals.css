@@ -151,3 +151,139 @@
     word-break: break-word;
   }
 }
+
+/*
+  ─────────────────────────────────────────────────────────────
+  以下类与 .tmp-visual3/demo.html 的 style.css 一一对应（同名同值）。
+  目的：让线上应用的每个区块与确认过的 demo 逐像素一致，
+  改视觉时两边一起改，避免「demo 一套、应用又一套」。
+  ─────────────────────────────────────────────────────────────
+*/
+@layer components {
+  /* ── 顶栏 ── */
+  .topbar { @apply flex items-center justify-between gap-5 pb-3.5; position: relative; }
+  .topbar::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px;
+    background: linear-gradient(90deg, rgba(163,37,42,.12), rgba(163,37,42,.5) 10%, rgba(140,70,58,.55) 60%, rgba(163,37,42,.28));
+  }
+  .brandname { @apply font-serif font-bold leading-none text-accent-700; font-size: 30px; letter-spacing: .02em; }
+  .topacts { @apply flex items-center gap-5; }
+  .iconbtn { @apply flex items-center justify-center p-0.5 text-ink-700; }
+  .iconbtn svg { width: 27px; height: 27px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .avatar {
+    @apply flex items-center justify-center rounded-full;
+    width: 40px; height: 40px;
+    background: #ded4c6; color: #6d5c4d;
+    box-shadow: inset 0 -1px 0 rgba(120,95,70,.12);
+  }
+  .avatar svg { width: 26px; height: 26px; fill: currentColor; stroke: none; }
+
+  /* ── 左侧六步导航 ── */
+  .navpanel { @apply rounded-panel; padding: 16px 14px; background: #fbf5ec; box-shadow: theme(boxShadow.surface); }
+  .navpanel ul { @apply list-none; margin: 0; padding: 0; }
+  .navpanel button {
+    @apply relative flex w-full items-center gap-3.5 rounded-chip border-0 text-left;
+    padding: 17px 20px;
+    background: transparent; color: theme(colors.ink.700);
+    font-size: 15.5px; letter-spacing: .01em;
+  }
+  .navpanel button svg { width: 21px; height: 21px; flex: 0 0 21px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; color: #5a4a3e; }
+  .navpanel button.on { background: theme(colors.accent.100); color: theme(colors.accent.700); font-weight: 600; }
+  .navpanel button.on svg { color: theme(colors.accent.700); }
+  .navpanel button.on::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: theme(colors.accent.700); }
+  /*
+    已完成：图标与文字转暖赭、行底铺一层极淡赭色，不加任何勾选图形。
+    必须写在这里而不是用 Tailwind 工具类——.navpanel button 的选择器权重比
+    .bg-done-50 这类工具类高，工具类会被它盖掉（真实踩过）。
+  */
+  .navpanel button.done { background: rgba(247, 241, 231, .7); color: theme(colors.done.700); }
+  .navpanel button.done:hover { background: rgba(239, 228, 210, .6); }
+  .navpanel button.done svg { color: theme(colors.done.600); }
+
+  /* ── 中间：故事输入卡 ── */
+  .compose { @apply relative flex flex-col rounded-card bg-surface-card; padding: 26px 28px 30px; box-shadow: inset 0 0 0 1px theme(colors.surface.line), theme(boxShadow.surface); }
+  .compose .ta { width: 100%; height: 80px; border: 0; background: transparent; resize: none; outline: none; font-size: 17px; line-height: 1.7; color: theme(colors.ink.800); }
+  .compose .ta::placeholder { color: #9a8b7c; }
+  .chips { @apply flex flex-wrap; gap: 14px; margin-top: 6px; }
+  .chip { @apply relative cursor-pointer rounded-pill border-0; padding: 9px 22px; background: #ece6df; color: theme(colors.ink.700); font-size: 15px; letter-spacing: .01em; }
+  .chip:hover { background: #e5ddd4; }
+  .chip.lead { background: #f4dfdc; color: #5b3f3a; }
+  .fill { flex: 1; }
+  .bmain {
+    @apply relative flex items-center justify-center self-center rounded-pill border-0 cursor-pointer;
+    min-width: 252px; height: 58px; padding: 0 34px;
+    background-image: linear-gradient(180deg, #e0464f 0%, #c22b34 42%, #9d1119 100%);
+    color: #fff; font-size: 15.5px; font-weight: 600; letter-spacing: .02em;
+    box-shadow: 0 0 26px -4px rgba(198,50,60,.42), 0 10px 22px -14px rgba(140,20,28,.75), inset 0 1px 0 rgba(255,255,255,.26);
+  }
+  .bmain:disabled { cursor: not-allowed; background-image: none; background-color: theme(colors.ink.100); color: theme(colors.ink.300); box-shadow: none; }
+  .bmain .glowstar { position: absolute; top: -9px; right: -4px; width: 26px; height: 26px; fill: #fff; filter: drop-shadow(0 0 7px rgba(255,255,255,.9)) drop-shadow(0 0 14px rgba(255,180,180,.75)); }
+
+  /* ── 中间下方的两张小卡 ── */
+  /* minmax(0,1fr) 而不是 1fr：卡片里有 input 时，1fr 的最小内容宽度会把整张卡撑破列宽 */
+  .recent { @apply grid gap-4; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 88px; }
+  .mini { @apply flex min-w-0 items-center gap-3 overflow-hidden rounded-card; padding: 16px 18px; background: #f7f0e6; box-shadow: theme(boxShadow.surface); }
+  .mini .mtxt { @apply min-w-0 flex-1; }
+  .mini .mtxt p { @apply truncate; font-size: 14.5px; color: theme(colors.ink.700); }
+  .mini .mtxt input { min-width: 0; }
+  .mini .ruler { display: block; height: 2px; width: 62%; margin-top: 9px; border-radius: 2px; background: linear-gradient(90deg, rgba(190,140,120,.75), rgba(190,140,120,.35) 60%, rgba(190,140,120,0)); }
+  .mini .mico { @apply flex shrink-0 items-center justify-center rounded-chip; width: 32px; height: 32px; background: #f6dcd8; }
+  .mini .mico svg { width: 21px; height: 21px; fill: none; stroke: theme(colors.accent.500); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── 右侧：三幕卡 ── */
+  .actcard { @apply rounded-card bg-surface-card; padding: 20px 22px 18px; box-shadow: inset 0 0 0 1px theme(colors.surface.line), theme(boxShadow.surface); }
+  .actcard h3 { @apply font-serif; font-size: 21px; font-weight: 700; color: #3b2a22; letter-spacing: .02em; }
+  .steps { @apply flex items-center; gap: 9px; margin-top: 14px; }
+  .steps span { font-size: 12.5px; color: #9c4a44; letter-spacing: .01em; }
+  .steps .dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: theme(colors.accent.400); }
+  .steps .dot.glow { width: 7px; height: 7px; flex: 0 0 7px; background: theme(colors.accent.500); box-shadow: 0 0 8px 1px rgba(192,48,58,.55); }
+  .steps .rail { flex: 1; height: 1.5px; border-radius: 2px; background: linear-gradient(90deg, rgba(192,48,58,.18), rgba(192,48,58,.4)); }
+  .prose { @apply rounded-card; margin-top: 16px; padding: 15px 16px; background: #f6efe4; font-size: 14px; line-height: 1.8; color: theme(colors.ink.700); }
+  .acts2 { @apply grid gap-4; grid-template-columns: 1fr 1fr; }
+  .actmini { @apply flex items-center justify-center rounded-card; height: 80px; background: #f0eae1; font-family: Georgia, "Songti SC", SimSun, serif; font-size: 19px; font-weight: 700; color: #6d5c4c; letter-spacing: .02em; }
+
+  /* ── AI 提问条 ── */
+  .ask {
+    @apply flex items-center gap-2.5 rounded-pill;
+    height: 52px; padding: 0 8px 0 22px;
+    background-image: linear-gradient(180deg, #fffdfa, #fbf6f0);
+    border: 1.5px solid theme(colors.accent.200);
+    box-shadow: 0 6px 18px -14px rgba(150,25,30,.5), inset 0 1px 0 #fff;
+  }
+  .ask input { @apply min-w-0 flex-1 border-0 bg-transparent; font-size: 14px; color: theme(colors.ink.800); }
+  .ask input::placeholder { color: #9a8b7c; }
+  .ask input:focus { outline: none; }
+  .askbtn {
+    @apply flex shrink-0 items-center justify-center rounded-full border-0 cursor-pointer;
+    width: 36px; height: 36px;
+    background-image: linear-gradient(180deg, #cf3a44, #a3131c); color: #fff;
+    box-shadow: 0 4px 12px -6px rgba(140,20,28,.8), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .askbtn:disabled { cursor: not-allowed; filter: grayscale(.35) brightness(.95); }
+  .askbtn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── 分镜视觉（放映厅）面板 ── */
+  .cinema {
+    @apply rounded-panel; padding: 16px 18px 18px;
+    background-image: linear-gradient(180deg, theme(colors.cinema.top), theme(colors.cinema.DEFAULT) 62%);
+    box-shadow: theme(boxShadow.cinema);
+  }
+  .cin-head { padding-bottom: 12px; border-bottom: 1px solid theme(colors.cinema.line); @apply flex items-baseline gap-2.5; }
+  .cin-title { font-size: 15px; letter-spacing: .05em; color: #efe4d2; }
+  .cin-scene { @apply min-w-0 flex-1 truncate; font-size: 11.5px; color: #d9cdb9; }
+  .cin-no { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: .08em; color: #94856f; }
+  .cin-body { @apply flex; gap: 22px; padding-top: 16px; }
+  .plate { @apply relative overflow-hidden rounded-chip; flex: 0 0 30%; aspect-ratio: 9 / 16; background-image: linear-gradient(180deg, #2c3b46, #1a242c 55%, #12181d); box-shadow: inset 0 0 24px rgba(0,0,0,.55); }
+  .plate img { @apply h-full w-full object-cover; }
+  .plate .hint { position: absolute; left: 8px; bottom: 6px; font-size: 9.5px; color: #94856f; }
+  .plate .sky { position: absolute; inset: 0 0 42% 0; background-image: linear-gradient(180deg, #31424d, #26343d); }
+  .plate .rain { position: absolute; inset: -15%; background-image: repeating-linear-gradient(76deg, rgba(226,236,240,.14) 0 1px, transparent 1px 9px); }
+  .plate .house { position: absolute; left: 16%; right: 16%; bottom: 28%; height: 34%; background-image: linear-gradient(180deg, #5a6470, #3f4750); clip-path: polygon(0 28%, 50% 0, 100% 28%, 100% 100%, 0 100%); }
+  .plate .win { position: absolute; width: 9%; height: 5%; background: #f2c078; box-shadow: 0 0 10px 2px rgba(242,192,120,.55); }
+  .specs { @apply flex min-w-0 flex-1 flex-col justify-between; }
+  .spec { @apply flex items-baseline; gap: 18px; padding: 12px 2px; border-bottom: 1px solid theme(colors.cinema.line); }
+  .spec:last-child { border-bottom: 0; }
+  .spec .k { font-size: 14px; color: theme(colors.cinema.text); letter-spacing: .04em; }
+  .spec .v { font-size: 16.5px; font-weight: 600; color: #d9be8a; letter-spacing: .03em; }
+}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import AutoTextarea from './AutoTextarea'
 import { ACT_META, type Act } from '@/lib/types'
 
@@ -17,7 +18,17 @@ const ACCENT: Record<Act['key'], string> = {
   resolution: 'bg-accent-50/70',
 }
 
+/** 三幕的固定顺序与简称，用来画那块进度轨 */
+const STAGES: { key: Act['key']; label: string }[] = [
+  { key: 'setup', label: '铺垫' },
+  { key: 'conflict', label: '冲突' },
+  { key: 'resolution', label: '结局' },
+]
+
 export default function ActList({ acts, onChange }: Props) {
+  // 与 demo 一致：默认只展开第一幕，二/三幕是两张小卡，点开才编辑
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+
   const update = (id: string, patch: Partial<Act>) =>
     onChange(acts.map((a) => (a.id === id ? { ...a, ...patch } : a)))
 
@@ -42,17 +53,56 @@ export default function ActList({ acts, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      {acts.map((act) => {
+      {acts.map((act, index) => {
         const meta = ACT_META[act.key] ?? ACT_META.setup
+        const expanded = open[act.id] ?? index === 0
+
+        // 收起来的幕：与 demo 一样就是一张小卡，点开才进编辑
+        if (!expanded) {
+          return (
+            <button
+              key={act.id}
+              type="button"
+              onClick={() => setOpen((o) => ({ ...o, [act.id]: true }))}
+              title={`展开${meta.label}`}
+              className="actmini w-full"
+            >
+              {meta.label}
+            </button>
+          )
+        }
 
         return (
           <article
             key={act.id}
-            className={`rounded-card border border-surface-line p-4 sm:p-5 ${ACCENT[act.key] ?? ACCENT.setup}`}
+            className={`actcard ${ACCENT[act.key] ?? ACCENT.setup}`}
           >
-            <div className="mb-2 flex items-baseline gap-2">
-              <h3 className="text-sm font-semibold text-ink-900">{meta.label}</h3>
-              <span className="text-xs text-ink-400">{meta.hint}</span>
+            <div className="flex items-start justify-between gap-3">
+              <h3>{meta.label}</h3>
+              {index > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOpen((o) => ({ ...o, [act.id]: false }))}
+                  className="shrink-0 rounded-pill px-2.5 py-1 text-[11px] text-ink-400 transition-colors hover:text-ink-700"
+                >
+                  收起
+                </button>
+              )}
+            </div>
+
+            {/* 三幕进度轨：与 demo 同一套（圆点 + 铺垫→冲突→结局 + 细轨 + 收束点） */}
+            <div className="steps">
+              <span aria-hidden="true" className="dot" />
+              <span>
+                {STAGES.map((stage) => (
+                  <span key={stage.key} className="flex items-center gap-1.5">
+                    <span className={stage.key === act.key ? 'font-semibold' : ''}>{stage.label}</span>
+                    {stage.key !== 'resolution' && <span aria-hidden="true">→</span>}
+                  </span>
+                ))}
+              </span>
+              <span aria-hidden="true" className="rail" />
+              <span aria-hidden="true" className="dot glow" />
             </div>
 
             {/* 幕的剧情梗概 */}
@@ -61,7 +111,7 @@ export default function ActList({ acts, onChange }: Props) {
               onChange={(summary) => update(act.id, { summary })}
               ariaLabel={`${meta.label} 剧情梗概`}
               placeholder="这一幕的剧情梗概"
-              className="-ml-2 text-sm leading-relaxed text-ink-700"
+              className="prose w-full resize-none border-0 focus:outline-none"
             />
 
             {/* 情节点 */}
