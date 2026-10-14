@@ -15,6 +15,8 @@ import type { DatabaseSync } from "node:sqlite"
 export const STEP_COST: Record<string, number> = {
   // 入口处的关键词联想：输出只有 3 句短文本，成本很低，但要计一次数
   ideas: 1,
+  // AI 认图：只送文件名字符串，输出是一组短配对，比一次定妆便宜
+  assetMatch: 1,
   characters: 1,
   acts: 1,
   episodes: 3,   // 10 集，输出最大
