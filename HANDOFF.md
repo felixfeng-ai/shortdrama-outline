@@ -5,6 +5,59 @@
 
 ---
 
+## 〇、本轮做了什么（关键词联想 + 题材风格）
+
+> 2026-10-14 第二轮。已完成并推送，此节仅作记录。
+
+### 背景：用户反馈「输入一句话想法」入口不完善
+
+原状只有 4 个写死的示例想法可点，用户要么照抄示例，要么自己憋出一句话。
+真实断点是**「有模糊方向（比如想写快递员），但组织不成一句完整的话」**——多给几个示例救不了这种人。
+同时短剧风格此前完全由模型猜，用户无法控制，是真实的能力缺口。
+
+### 方案（两个改动，都只碰入口，不动下游六步）
+
+1. **关键词 → LLM 联想出 3 个候选想法**
+   输入「快递员、钥匙」→ 返回 3 个方向明显不同的候选，点一下填进文本框。
+   **关键词本身不直接生成剧本**——保证「一句话」始终是唯一真实输入，下游 6 个 prompt 无需改动。
+
+2. **题材风格做成项目级参数**（8 种：不限 / 都市 / 情感 / 职场 / 悬疑 / 家庭 / 逆袭复仇 / 奇幻设定）
+   做成项目级而非一次性开关，避免「选了情感、三幕却往悬疑跑」。
+   通过 `genreClause(genre)` 统一注入 5 处 prompt。
+   `buildImagePrompt` **刻意不注入**——出图提示词与题材无关。
+
+### 改动的文件
+
+| 文件 | 改动 |
+|---|---|
+| `lib/types.ts` | `Genre` / `GENRES`(8 种) / `readGenre`(非法值回落 `none`，不 500) / `IdeaCandidate` / `MAX_KEYWORD_LENGTH=40` / `MAX_IDEAS_PER_ROUND=3` |
+| `lib/prompts.ts` | `genreClause(genre)` + `buildIdeaPrompt(keywords, genre)`，5 处注入 |
+| `lib/assets/prompts.ts` | 定妆/场次/分镜 3 个 builder 加 `genre` 参数并注入 |
+| `app/api/ideas/route.ts` | **新增**：关键词 → 3 候选，含 `normalizeIdeas` 兜底字段名漂移，温度 1.1 |
+| 6 个路由 | characters / acts / episodes / visual / scenes / shots 全部透传 genre（episodes/shots 是流式路由，genre 需提到 try 外声明） |
+| `lib/quota.ts` | 加 `ideas: 1` 权重；**修正 `FULL_PROJECT_COST`** 从 `Object.values(STEP_COST)` 求和改为显式列举六步（否则新增辅助步骤会悄悄抬高「一个完整项目多少钱」这个对外承诺），仍为 13 |
+| `components/IdeaPanel.tsx` | 重写：关键词输入（回车联想）+ 常用词快填 + 候选卡片（点击填入）+ 风格胶囊（`aria-pressed`，默认「不限」，不强制选择） |
+| `app/page.tsx` | 加 `genre` 状态并透传到全部六步 + ideas |
+| `lib/assets/api.ts` | `generateVisuals` / `generateScenes` 加 `genre = "none"` 参数 |
+| `tests/ideas.test.ts` | 新增 11 例 |
+
+### 验证（全绿）
+
+- `npx tsc --noEmit` → 0 错误
+- `npm test` → **111/111**
+- `npm run build` → 成功，15 路由（含 `/api/ideas`）
+- Playwright 1440 / 390 两档 → overflow 均为 0
+- 端到端实测：关键词「快递员、钥匙」+ 职场 → 3 候选方向确实不同；奇幻 vs 职场 同关键词输出明显不同；非法风格回落「不限」200；空关键词 400
+
+### 提交
+
+- `049c657` fix(ui): 修复右侧溢出 + 移动端适配 + 视觉升级 → 已推送
+- `0192190` feat(idea): 关键词联想 + 题材风格 → 已推送
+
+---
+
+---
+
 ## 一、为什么做这件事（背景）
 
 ### 商业模式已定：C 模式 —— 开源自建 + 托管收费
