@@ -1,4 +1,4 @@
-import { test } from "node:test"
+﻿import { test } from "node:test"
 import assert from "node:assert/strict"
 import { normalizeShots, normalizeScenes, normalizeVisualCharacters } from "../lib/assets/normalize.ts"
 import type { VisualCharacter } from "../lib/assets/types.ts"
@@ -33,15 +33,26 @@ test("B4b 镜号以数组下标为准，不信任模型写的 number", () => {
   assert.deepEqual(shots.map((s) => s.shot), [1, 2])
 })
 
-test("B4c 非法运镜被兜底为「中景」", () => {
+test("B4c 非法运镜与非法景别都各自兜底，不能互相串台", () => {
   const raw = { shots: [{ shot: 1, scene: "s", characters: [], action: "", camera: "缓慢推进让人紧张", prompt: "" }] }
   const shots = normalizeShots({ raw, visuals: [], stamp: 1 })
-  assert.equal(shots[0].camera, "中景")
+  assert.equal(shots[0].camera, "固定", "非法运镜要回落到「固定」")
+  assert.equal(shots[0].shotSize, "中景", "缺景别时给一个能用的默认景别")
 })
 
-test("B4d 合法运镜被保留", () => {
-  const raw = { shots: [{ shot: 1, scene: "s", characters: [], action: "", camera: "推", prompt: "" }] }
-  assert.equal(normalizeShots({ raw, visuals: [], stamp: 1 })[0].camera, "推")
+test("B4d 合法运镜与合法景别都被保留", () => {
+  const raw = { shots: [{ shot: 1, scene: "s", characters: [], action: "", shotSize: "近景", camera: "推", prompt: "" }] }
+  const s = normalizeShots({ raw, visuals: [], stamp: 1 })[0]
+  assert.equal(s.camera, "推")
+  assert.equal(s.shotSize, "近景")
+})
+
+test("B4e 旧数据把景别写在 camera 里时，要挪进 shotSize 而不是丢掉", () => {
+  // 真实存在过的历史数据：早期版本只有一个 camera 字段，"中景" 这类景别也写在那里
+  const raw = { shots: [{ shot: 1, scene: "s", characters: [], action: "", camera: "中景", prompt: "" }] }
+  const s = normalizeShots({ raw, visuals: [], stamp: 1 })[0]
+  assert.equal(s.shotSize, "中景", "景别不能丢，要迁移到 shotSize")
+  assert.equal(s.camera, "固定", "运镜位置得给一个安全的默认值")
 })
 
 test("B6b 有参考图时标注「角色·图标签」", () => {

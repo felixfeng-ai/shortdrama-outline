@@ -9,7 +9,7 @@
 // （见 lib/assets/normalize.ts 的锚点强制注入）。
 import type { Act, Character, Episode, Genre } from "../types.ts"
 import { genreClause } from "../prompts.ts"
-import { CAMERA_MOVES, type Scene, type VisualCharacter } from "./types.ts"
+import { CAMERA_MOVES, SHOT_SIZES, type Scene, type VisualCharacter } from "./types.ts"
 
 const ROLE = "你是一位资深短剧美术指导兼分镜师，操盘过数十部竖屏短剧。"
 
@@ -137,12 +137,14 @@ export function buildShotPrompt(
 
 ## 分镜要求
 - 一场戏拆成 2-5 个镜头，镜头之间要有推进关系，不要重复同一画面
-- camera 字段只能取以下之一：${CAMERA_MOVES.join(" / ")}
+- shotSize（景别）只能取以下之一：${SHOT_SIZES.join(" / ")}——它决定观众离人物多远
+- camera（运镜）只能取以下之一：${CAMERA_MOVES.join(" / ")}——它决定镜头怎么动
+- 两者不能互相顶替：不要把「中景」写进 camera，也不要把「推」写进 shotSize
 - characters 写本镜真正出场的角色名，必须与给定角色名完全一致
 
 ## prompt 字段（最重要）
 - 用**英文**写，给图像模型直接使用
-- 要素顺序：主体与动作 → 环境与光线 → 构图与运镜 → 风格
+- 要素顺序：主体与动作 → 环境与光线 → 景别与运镜 → 风格
 - **必须原样嵌入出场角色的视觉锚点串**（一字不改地复制到 prompt 里），
   这是保证跨镜头角色一致的关键，绝对不要改写或省略
 - 不要写「same character as before」这类依赖上下文的说法
@@ -154,7 +156,8 @@ export function buildShotPrompt(
       "scene": "所属场次的简短标识，如 咖啡馆内·黄昏",
       "characters": ["出场角色名"],
       "action": "中文动作描述，说清这一镜在演什么",
-      "camera": "运镜（只能取上面列举的值）",
+      "shotSize": "景别（只能取上面列举的值，如 中景）",
+      "camera": "运镜（只能取上面列举的值，如 固定）",
       "prompt": "English prompt with the character anchor strings embedded verbatim"
     }
   ]

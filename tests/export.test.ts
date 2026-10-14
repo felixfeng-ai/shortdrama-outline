@@ -1,4 +1,4 @@
-import { test } from "node:test"
+﻿import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { shotsToCsv, buildStoryboardHtml, buildZip } from "../lib/assets/export.ts"
@@ -7,7 +7,7 @@ import type { Shot } from "../lib/assets/types.ts"
 function shot(over: Partial<Shot> = {}): Shot {
   return {
     id: "s1", entityId: "e1", shot: 1, scene: "咖啡馆", characters: ["张三"],
-    action: "推门", camera: "中景", prompt: "a man, wearing: 沙色短夹克",
+    action: "推门", shotSize: "中景", camera: "固定", prompt: "a man, wearing: 沙色短夹克",
     refImages: ["张三·定妆正面"], missingRefFor: [],
     params: { ratio: "9:16", duration: 5, lastFrame: false }, status: "todo", ...over,
   }

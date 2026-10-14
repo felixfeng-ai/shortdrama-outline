@@ -1,4 +1,4 @@
-import { test } from "node:test"
+﻿import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { GET as exportGet } from "../app/api/export/route.ts"
@@ -131,7 +131,7 @@ test("E2 导出缺 projectId 时返回 400", async () => {
 test("E3 prompts.csv：含表头与全部镜头，可离线使用", () => {
   const shots: Shot[] = [{
     id: "s1", entityId: "e1", shot: 1, scene: "咖啡馆", characters: ["张三"], action: "推门",
-    camera: "中景", prompt: "a man, wearing: 沙色短夹克", refImages: ["张三·定妆正面"],
+    shotSize: "中景", camera: "固定", prompt: "a man, wearing: 沙色短夹克", refImages: ["张三·定妆正面"],
     missingRefFor: [], params: { ratio: "9:16", duration: 5, lastFrame: false }, status: "todo",
   }]
   const csv = buildPromptsCsv(shots)
@@ -144,7 +144,7 @@ test("E3 prompts.csv：含表头与全部镜头，可离线使用", () => {
 test("E3b CSV 转义：提示词里的引号不会破坏列结构", () => {
   const shots: Shot[] = [{
     id: "s1", entityId: "e1", shot: 1, scene: "s", characters: [], action: "",
-    camera: "中景", prompt: 'a man saying "hello"', refImages: [], missingRefFor: [],
+    shotSize: "中景", camera: "固定", prompt: 'a man saying "hello"', refImages: [], missingRefFor: [],
     params: { ratio: "9:16", duration: 5, lastFrame: false }, status: "todo",
   }]
   const csv = buildPromptsCsv(shots)

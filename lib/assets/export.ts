@@ -45,7 +45,7 @@ export function shotToWorkOrder(shot: Shot, opts: { withHeader?: boolean } = {})
     lines.push(`参考图：⚠️ 缺 ${shot.missingRefFor.join("、")} 的参考图`)
   }
 
-  lines.push(`运镜：${shot.camera}　比例：${shot.params.ratio}　时长：${shot.params.duration}s`)
+  lines.push(`景别：${shot.shotSize || '中景'}　运镜：${shot.camera}　比例：${shot.params.ratio}　时长：${shot.params.duration}s`)
 
   return lines.join("\n")
 }
@@ -74,9 +74,9 @@ export function shotsToWorkList(shots: Shot[], title = "分镜执行清单"): st
 /** 镜头 -> CSV。服务端与前端共用同一份实现，避免两份逻辑漂移 */
 export function shotsToCsv(shots: Shot[]): string {
   const esc = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`
-  const head = ['镜号', '场景', '出场角色', '动作', '运镜', '提示词', '参考图', '画面比例', '时长', '状态']
+  const head = ['镜号', '场景', '出场角色', '动作', '景别', '运镜', '提示词', '参考图', '画面比例', '时长', '状态']
   const rows = shots.map((s) => [
-    s.shot, s.scene, s.characters.join('、'), s.action, s.camera,
+    s.shot, s.scene, s.characters.join('、'), s.action, s.shotSize || '中景', s.camera,
     s.prompt, s.refImages.join(' | '), s.params.ratio, s.params.duration, s.status,
   ].map(esc).join(','))
   return '\ufeff' + [head.map(esc).join(','), ...rows].join('\n') + '\n'
@@ -110,6 +110,7 @@ export function buildStoryboardHtml(input: {
       <td>${esc(s.scene)}</td>
       <td>${esc(s.characters.join('、'))}</td>
       <td>${esc(s.action)}</td>
+      <td>${esc(s.shotSize || '中景')}</td>
       <td>${esc(s.camera)}</td>
       <td>${esc(s.refImages.join(' | ')) || '<span class="warn">缺参考图</span>'}</td>
       <td class="mono">${esc(s.prompt)}</td>
@@ -144,9 +145,9 @@ export function buildStoryboardHtml(input: {
 
   ${visuals.length ? `<h2>角色视觉锚点</h2><table><thead><tr><th>角色</th><th>英文锚点（逐镜复用）</th></tr></thead><tbody>${visualRows}</tbody></table>` : ''}
 
-  ${scenes.length ? `<h2>场次</h2><table><thead><tr><th>#</th><th>地点</th><th>时间</th><th>出场</th><th>内容</th></tr></thead><tbody>${sceneRows}</tbody></table>` : ''}
+  ${scenes.length ? `<h2>场景</h2><table><thead><tr><th>#</th><th>地点</th><th>时间</th><th>出场</th><th>内容</th></tr></thead><tbody>${sceneRows}</tbody></table>` : ''}
 
-  ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>镜</th><th>场景</th><th>出场</th><th>动作</th><th>运镜</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
+  ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>镜</th><th>场景</th><th>出场</th><th>动作</th><th>景别</th><th>运镜</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
 
   <footer>由「成剧」导出 —— 本文件不依赖任何外部资源，可离线打开。</footer>
 </body>

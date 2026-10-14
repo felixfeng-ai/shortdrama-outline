@@ -51,7 +51,16 @@ export interface Scene {
 export type ShotStatus = "todo" | "done" | "rework"
 
 /** 运镜枚举。固定值，防止模型写成「缓慢推进让人感到紧张」这类自由文本 */
-export const CAMERA_MOVES = ["特写", "近景", "中景", "全景", "推", "拉", "摇", "移"] as const
+/**
+ * 景别与运镜是两个字段，不能混。
+ *
+ * 混在一起的代价是真实的：出图的人按「运镜」去选「中景」，
+ * 提示词里就会带一个错的运镜语义，而同框角色的构图又少了景别约束。
+ */
+export const SHOT_SIZES = ["特写", "近景", "中景", "全景", "远景"] as const
+export type ShotSize = (typeof SHOT_SIZES)[number]
+
+export const CAMERA_MOVES = ["固定", "推", "拉", "摇", "移", "跟随"] as const
 export type CameraMove = (typeof CAMERA_MOVES)[number]
 
 /** 镜头 */
@@ -63,6 +72,9 @@ export interface Shot {
   scene: string
   characters: string[]
   action: string
+  /** 景别：决定这一镜把人放多远 */
+  shotSize: string
+  /** 运镜：决定镜头怎么动 */
   camera: string
   /** 英文提示词，内部必须逐字包含出场角色的 anchor */
   prompt: string

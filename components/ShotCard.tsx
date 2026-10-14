@@ -3,20 +3,24 @@
 // 镜头卡：产品的主工作面。
 //
 // 每张卡承载四件事（对应 SDD B4/B5/B6）：
-//   1. 六个字段（场景/角色/动作/运镜/提示词），全部可编辑
+//   1. 七个字段（场景/角色/动作/景别/运镜/提示词），全部可编辑
 //   2. 本镜该带哪几张参考图 —— 双人同框串脸的主要防线
 //   3. 生成参数（竖屏 9:16 / 时长 / 尾帧）—— 接即梦的最后一公里
 //   4. 返修状态 —— 返修雷达的落点
 import AutoTextarea from './AutoTextarea'
 import CopyButton from './CopyButton'
 import { shotToWorkOrder } from '@/lib/assets/export'
-import { CAMERA_MOVES, type Shot, type ShotStatus } from '@/lib/assets/types'
+import { CAMERA_MOVES, SHOT_SIZES, type Shot, type ShotStatus } from '@/lib/assets/types'
 
 interface Props {
   shot: Shot
   index: number
   onUpdate: (id: string, patch: Partial<Shot>) => void
   onRemove: (id: string) => void
+  /** 是否为放映厅当前选中的那一镜 */
+  active?: boolean
+  /** 点到这张卡就把放映厅切到这一镜 */
+  onSelect?: (id: string) => void
 }
 
 const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
@@ -25,11 +29,16 @@ const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
   rework: { label: '需返修', cls: 'bg-accent-100 text-accent-800' },
 }
 
-export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
+export default function ShotCard({ shot, index, onUpdate, onRemove, active = false, onSelect }: Props) {
   const missing = shot.missingRefFor ?? []
 
   return (
-    <article className="lift min-w-0 rounded-card border border-surface-line bg-surface-card p-3.5 sm:p-4">
+    <article
+      // 点卡片任意位置就把放映厅切到这一镜：提示词、参数、缩略图都跟着换
+      onClick={() => onSelect?.(shot.id)}
+      className={`lift min-w-0 rounded-card border bg-surface-card p-3.5 sm:p-4
+        ${active ? 'border-accent-300 ring-1 ring-accent-200' : 'border-surface-line'}`}
+    >
       {/* 头部：镜号 + 状态 + 删除 */}
       <div className="mb-3 flex items-start gap-2.5 sm:gap-3">
         <span className="mt-0.5 w-7 shrink-0 text-center text-lg leading-7 text-ink-900">
@@ -131,6 +140,19 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
           这是整张卡里第二块暗色，和下面的提示词原文一起构成「要交给机器的东西」。
         */}
         <div className="darkroom mt-1 flex flex-wrap items-center gap-x-5 gap-y-2 px-3.5 py-2.5">
+          <label className="flex items-center gap-2 text-xs text-cinema-text">
+            景别
+            <select
+              value={shot.shotSize || '中景'}
+              onChange={(e) => onUpdate(shot.id, { shotSize: e.target.value })}
+              aria-label={`第 ${shot.shot} 镜景别`}
+              className="rounded-chip bg-white/[0.07] px-2 py-1 text-xs font-semibold text-gold
+                outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+            >
+              {SHOT_SIZES.map((s) => <option key={s} value={s} className="text-ink-800">{s}</option>)}
+            </select>
+          </label>
+
           <label className="flex items-center gap-2 text-xs text-cinema-text">
             运镜
             <select

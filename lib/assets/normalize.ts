@@ -3,7 +3,7 @@
 // 与 normalize.ts 的分工：那里的对象是「创作产物」（人物/三幕/分集），
 // 这里的是「资产链的镜头」。分开是因为镜头还多了一层「锚点注入 + 参考图标注」，
 // 且要在流式过程中被反复调用（每收到一个镜头就整形一次）。
-import { CAMERA_MOVES, type Shot, type Scene, type VisualCharacter } from "./types.ts"
+import { CAMERA_MOVES, SHOT_SIZES, type Shot, type Scene, type VisualCharacter } from "./types.ts"
 import { injectAnchor } from "./anchors.ts"
 
 interface NormalizeShotsInput {
@@ -39,9 +39,21 @@ export function normalizeShots({ raw, visuals, refMap, stamp = Date.now() }: Nor
         .map((c) => str(c))
         .filter(Boolean)
 
-      // 运镜兜底：不在枚举内的换成中景（比留空更能让界面保持一致）
+      /*
+        景别与运镜分开兜底。
+        还会兜住一种旧数据的错位：早期版本把两者合成一个 camera 字段，
+        历史项目里可能存着 camera = "中景"。这里如果发现 camera 里装的是景别，
+        就把它挪到 shotSize，运镜回落到「固定」——比整列显示成空要诚实。
+      */
+      const rawSize = str(item.shotSize)
       const rawCamera = str(item.camera)
-      const camera = (CAMERA_MOVES as readonly string[]).includes(rawCamera) ? rawCamera : "中景"
+      const cameraIsSize = (SHOT_SIZES as readonly string[]).includes(rawCamera)
+      const shotSize = (SHOT_SIZES as readonly string[]).includes(rawSize)
+        ? rawSize
+        : cameraIsSize
+          ? rawCamera
+          : "中景"
+      const camera = (CAMERA_MOVES as readonly string[]).includes(rawCamera) ? rawCamera : "固定"
 
       // ★B5：把出场角色的锚点强制拼进 prompt，防止模型改写或漏写
       let prompt = str(item.prompt)
@@ -66,6 +78,7 @@ export function normalizeShots({ raw, visuals, refMap, stamp = Date.now() }: Nor
         scene: str(item.scene, "场景待补充"),
         characters,
         action: str(item.action, "动作待补充"),
+        shotSize,
         camera,
         prompt,
         refImages,
