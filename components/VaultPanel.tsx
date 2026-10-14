@@ -33,15 +33,15 @@ export default function VaultPanel({ mode, files, onPickDirectory, onReload, onA
   }
 
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${className}`}>
+    <div className={`rounded-card border border-surface-line bg-surface-card p-4 shadow-surface ${className}`}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-900">本地图库</h3>
-        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+        <h3 className="text-sm font-semibold text-ink-900">本地图库</h3>
+        <span className="rounded-chip bg-done-100 px-1.5 py-0.5 text-[10px] font-semibold text-done-700">
           图不上传
         </span>
       </div>
 
-      <p className="mb-3 text-xs leading-relaxed text-slate-500">
+      <p className="mb-3 text-xs leading-relaxed text-ink-500">
         {mode === 'fs-access'
           ? '已用目录直连：选一个文件夹当素材库，图留在你硬盘上，服务端只记「哪张图属于谁」。'
           : '当前浏览器不支持目录直连，图片会存在浏览器本地存储里（同样不上传）。'}
@@ -53,16 +53,16 @@ export default function VaultPanel({ mode, files, onPickDirectory, onReload, onA
             <button
               type="button"
               onClick={onPickDirectory}
-              className="w-full rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white
-                transition-colors hover:bg-slate-700"
+              className="w-full rounded-chip bg-ink-900 px-3 py-2 text-sm font-medium text-surface-card
+                transition-colors hover:bg-ink-700"
             >
               选择素材文件夹
             </button>
             <button
               type="button"
               onClick={onReload}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600
-                transition-colors hover:border-slate-300"
+              className="w-full rounded-chip border border-surface-line px-3 py-2 text-xs font-medium text-ink-600
+                transition-colors hover:border-ink-300 hover:bg-surface"
             >
               重新扫描
             </button>
@@ -81,8 +81,8 @@ export default function VaultPanel({ mode, files, onPickDirectory, onReload, onA
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={busy}
-              className="w-full rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white
-                transition-colors hover:bg-slate-700 disabled:opacity-50"
+              className="w-full rounded-chip bg-ink-900 px-3 py-2 text-sm font-medium text-surface-card
+                transition-colors hover:bg-ink-700 disabled:opacity-50"
             >
               {busy ? '处理中…' : '添加图片'}
             </button>
@@ -90,16 +90,16 @@ export default function VaultPanel({ mode, files, onPickDirectory, onReload, onA
         )}
       </div>
 
-      <p className="mt-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
+      <p className="mt-3 border-t border-surface-line pt-2 text-xs text-ink-500">
         图库中共 {files.length} 张图片
       </p>
 
       {files.length > 0 && (
         <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
           {files.slice(0, 50).map((f) => (
-            <li key={f.key} className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
+            <li key={f.key} className="flex items-center justify-between gap-2 text-[11px] text-ink-500">
               <span className="truncate">{f.name}</span>
-              <span className="shrink-0 font-mono text-[10px] text-slate-400">{f.hash.slice(0, 6)}</span>
+              <span className="shrink-0 font-mono text-[10px] text-ink-300">{f.hash.slice(0, 6)}</span>
             </li>
           ))}
         </ul>

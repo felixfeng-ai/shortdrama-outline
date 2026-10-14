@@ -20,19 +20,19 @@ interface Props {
 }
 
 const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
-  todo: { label: '待出图', cls: 'bg-slate-100 text-slate-600' },
-  done: { label: '已出图', cls: 'bg-emerald-100 text-emerald-700' },
-  rework: { label: '需返修', cls: 'bg-rose-100 text-rose-700' },
+  todo: { label: '待出图', cls: 'bg-ink-100 text-ink-600' },
+  done: { label: '已出图', cls: 'bg-done-100 text-done-700' },
+  rework: { label: '需返修', cls: 'bg-accent-100 text-accent-800' },
 }
 
 export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
   const missing = shot.missingRefFor ?? []
 
   return (
-    <article className="lift min-w-0 rounded-xl border border-slate-200 bg-white p-3.5 hover:border-brand-200 hover:shadow-sm sm:p-4">
+    <article className="lift min-w-0 rounded-card border border-surface-line bg-surface-card p-3.5 sm:p-4">
       {/* 头部：镜号 + 状态 + 删除 */}
       <div className="mb-3 flex items-start gap-2.5 sm:gap-3">
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-xs font-semibold text-white">
+        <span className="mt-0.5 w-7 shrink-0 text-center text-lg leading-7 text-ink-900">
           {shot.shot}
         </span>
 
@@ -42,7 +42,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
             onChange={(scene) => onUpdate(shot.id, { scene })}
             ariaLabel={`第 ${shot.shot} 镜场景`}
             placeholder="场景"
-            className="-ml-2 text-sm font-semibold text-slate-900"
+            className="-ml-2 text-sm font-semibold text-ink-900"
           />
         </div>
 
@@ -50,7 +50,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
           value={shot.status}
           onChange={(e) => onUpdate(shot.id, { status: e.target.value as ShotStatus })}
           aria-label={`第 ${shot.shot} 镜状态`}
-          className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium ${STATUS_META[shot.status].cls}`}
+          className={`shrink-0 rounded-chip border border-transparent px-2 py-1 text-xs font-medium ${STATUS_META[shot.status].cls}`}
         >
           {(Object.keys(STATUS_META) as ShotStatus[]).map((k) => (
             <option key={k} value={k}>{STATUS_META[k].label}</option>
@@ -61,7 +61,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
           type="button"
           onClick={() => onRemove(shot.id)}
           aria-label={`删除第 ${shot.shot} 镜`}
-          className="shrink-0 rounded-md p-2 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+          className="shrink-0 rounded-chip p-2 text-ink-200 transition-colors hover:bg-accent-50 hover:text-accent-600"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
             <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
@@ -71,17 +71,17 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
 
       <div className="min-w-0 space-y-2 pl-0 sm:pl-10">
         {/* B6：本镜参考图标注 —— 双人同框不一致的主要防线 */}
-        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 break-words rounded-lg border px-3 py-2 text-xs
-          ${missing.length > 0 ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-slate-50/60'}`}>
-          <span className="font-medium text-slate-500">本镜参考图</span>
+        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 break-words rounded-chip border px-3 py-2 text-xs
+          ${missing.length > 0 ? 'border-accent-200 bg-accent-50/70' : 'border-surface-line bg-surface/70'}`}>
+          <span className="font-medium text-ink-500">本镜参考图</span>
           {shot.refImages.length > 0 ? (
             shot.refImages.map((r) => (
-              <span key={r} className="break-all rounded bg-white px-1.5 py-0.5 font-medium text-slate-700 ring-1 ring-slate-200">
+              <span key={r} className="break-all rounded-chip bg-surface-card px-1.5 py-0.5 font-medium text-ink-700 ring-1 ring-surface-line">
                 {r}
               </span>
             ))
           ) : (
-            <span className="text-slate-400">无</span>
+            <span className="text-ink-300">无</span>
           )}
           {missing.length > 0 && (
             <button
@@ -93,9 +93,9 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
                 window.dispatchEvent(new CustomEvent('chengju:focus-vc', { detail: missing }))
               }}
               title={`去视觉定妆给 ${missing.join('、')} 挂参考图`}
-              className="ml-1 rounded bg-amber-200/70 px-1.5 py-0.5 font-semibold text-amber-800
-                transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-amber-500"
+              className="ml-1 rounded-chip bg-accent-200/70 px-1.5 py-0.5 font-semibold text-accent-800
+                transition-colors hover:bg-accent-300 focus-visible:outline-none focus-visible:ring-2
+                focus-visible:ring-accent-400"
             >
               缺参考图：{missing.join('、')} · 去挂图
             </button>
@@ -104,72 +104,86 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
 
         {/* 出场角色 */}
         <div className="flex min-w-0 gap-2">
-          <span className="mt-1 w-14 shrink-0 text-xs font-medium text-slate-500">出场角色</span>
+          <span className="mt-1 w-14 shrink-0 text-xs font-medium text-ink-400">出场角色</span>
           <AutoTextarea
             value={shot.characters.join('、')}
             onChange={(v) => onUpdate(shot.id, { characters: v.split(/[、,，\s]+/).filter(Boolean) })}
             ariaLabel={`第 ${shot.shot} 镜出场角色`}
             placeholder="角色名，用、分隔"
-            className="text-sm leading-relaxed text-slate-600"
+            className="text-sm leading-relaxed text-ink-600"
           />
         </div>
 
         {/* 动作 */}
         <div className="flex min-w-0 gap-2">
-          <span className="mt-1 w-14 shrink-0 text-xs font-medium text-slate-500">动作</span>
+          <span className="mt-1 w-14 shrink-0 text-xs font-medium text-ink-400">动作</span>
           <AutoTextarea
             value={shot.action}
             onChange={(action) => onUpdate(shot.id, { action })}
             ariaLabel={`第 ${shot.shot} 镜动作`}
             placeholder="动作描述"
-            className="text-sm leading-relaxed text-slate-600"
+            className="text-sm leading-relaxed text-ink-600"
           />
         </div>
 
-        {/* 运镜 + 参数 */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <select
-            value={shot.camera}
-            onChange={(e) => onUpdate(shot.id, { camera: e.target.value })}
-            aria-label={`第 ${shot.shot} 镜运镜`}
-            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
-          >
-            {CAMERA_MOVES.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+        {/*
+          参数行：走「分镜视觉」的暗面板语言 —— 深棕黑底 + 浅金数值。
+          这是整张卡里第二块暗色，和下面的提示词原文一起构成「要交给机器的东西」。
+        */}
+        <div className="darkroom mt-1 flex flex-wrap items-center gap-x-5 gap-y-2 px-3.5 py-2.5">
+          <label className="flex items-center gap-2 text-xs text-cinema-text">
+            运镜
+            <select
+              value={shot.camera}
+              onChange={(e) => onUpdate(shot.id, { camera: e.target.value })}
+              aria-label={`第 ${shot.shot} 镜运镜`}
+              className="rounded-chip bg-white/[0.07] px-2 py-1 text-xs font-semibold text-gold
+                outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+            >
+              {CAMERA_MOVES.map((m) => <option key={m} value={m} className="text-ink-800">{m}</option>)}
+            </select>
+          </label>
 
-          <select
-            value={shot.params.ratio}
-            onChange={(e) => onUpdate(shot.id, { params: { ...shot.params, ratio: e.target.value } })}
-            aria-label={`第 ${shot.shot} 镜画面比例`}
-            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
-          >
-            <option value="9:16">竖屏 9:16</option>
-            <option value="16:9">横屏 16:9</option>
-          </select>
+          <label className="flex items-center gap-2 text-xs text-cinema-text">
+            画幅
+            <select
+              value={shot.params.ratio}
+              onChange={(e) => onUpdate(shot.id, { params: { ...shot.params, ratio: e.target.value } })}
+              aria-label={`第 ${shot.shot} 镜画面比例`}
+              className="rounded-chip bg-white/[0.07] px-2 py-1 text-xs font-semibold text-gold
+                outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+            >
+              <option value="9:16" className="text-ink-800">竖屏 9:16</option>
+              <option value="16:9" className="text-ink-800">横屏 16:9</option>
+            </select>
+          </label>
 
-          <label className="flex items-center gap-1 text-xs text-slate-600">
+          <label className="flex items-center gap-2 text-xs text-cinema-text">
             时长
             <input
               type="number" min={1} max={30} value={shot.params.duration}
               onChange={(e) => onUpdate(shot.id, { params: { ...shot.params, duration: Number(e.target.value) || 5 } })}
-              className="w-14 rounded-md border border-slate-200 px-1.5 py-1 text-xs"
+              aria-label={`第 ${shot.shot} 镜时长（秒）`}
+              className="w-12 rounded-chip bg-white/[0.07] px-1.5 py-1 text-xs font-semibold text-gold
+                outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
             />
             秒
           </label>
 
-          <label className="flex items-center gap-1 text-xs text-slate-600">
+          <label className="flex items-center gap-2 text-xs text-cinema-text">
             <input
               type="checkbox" checked={shot.params.lastFrame}
               onChange={(e) => onUpdate(shot.id, { params: { ...shot.params, lastFrame: e.target.checked } })}
+              className="accent-accent-500"
             />
             接下一镜首帧
           </label>
         </div>
 
         {/* B5：提示词 —— 唯一要被复制的字段，单独高亮 + 等宽 */}
-        <div className="min-w-0 overflow-hidden rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2">
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5">
-            <span className="text-[10px] font-semibold text-brand-800">提示词（英文，已内嵌角色锚点）</span>
+        <div className="darkroom min-w-0 overflow-hidden px-3 py-2.5">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-done-300">提示词 · 英文 · 已内嵌角色锚点</span>
             <span className="flex items-center gap-1.5">
               <CopyButton text={shot.prompt} label="复制 prompt" />
               {/* 平台没有导入接口，能做的极限是让用户照单执行：提示词 + 参考图 + 参数一次拿走 */}
@@ -181,7 +195,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
             onChange={(prompt) => onUpdate(shot.id, { prompt })}
             ariaLabel={`第 ${shot.shot} 镜提示词`}
             placeholder="English prompt"
-            className="wrap-anywhere min-w-0 font-mono text-xs leading-relaxed text-slate-700"
+            className="wrap-anywhere min-w-0 font-mono text-xs leading-relaxed text-ink-100"
           />
         </div>
       </div>

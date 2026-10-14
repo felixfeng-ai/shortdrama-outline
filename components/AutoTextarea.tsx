@@ -36,9 +36,9 @@ export default function AutoTextarea({ value, onChange, placeholder, className =
       aria-label={ariaLabel}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className={`w-full resize-none overflow-hidden rounded-lg border border-transparent bg-transparent px-2 py-1
-        transition-colors hover:border-slate-200 hover:bg-white
-        focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100
+      className={`w-full resize-none overflow-hidden rounded-chip border border-transparent bg-transparent px-2 py-1
+        transition-colors hover:border-surface-line hover:bg-surface-card
+        focus:border-accent-300 focus:bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent-100
         ${className}`}
     />
   )

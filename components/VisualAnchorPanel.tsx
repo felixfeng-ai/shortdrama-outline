@@ -60,73 +60,73 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
     .join("\n\n")
 
   return (
-    <div className="rounded-xl border border-brand-200 bg-brand-50/50 p-3">
+    <div className="rounded-card border border-accent-200 bg-accent-50/50 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-brand-900">
+          <p className="text-xs font-semibold text-accent-900">
             批量出定妆图 · ${prompts.length} 个角色一次出完
           </p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-brand-800/80">
+          <p className="mt-0.5 text-[11px] leading-relaxed text-accent-800/80">
             不用一个个复制粘贴：下面两块各自复制一次，贴进即梦就是一次批量提交。
           </p>
         </div>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="shrink-0 rounded-lg border border-brand-300 bg-white px-2.5 py-1 text-[11px]
-            font-medium text-brand-800 transition-colors hover:bg-brand-100"
+          className="shrink-0 rounded-chip border border-accent-300 bg-surface-card px-2.5 py-1 text-[11px]
+            font-medium text-accent-800 transition-colors hover:bg-accent-100"
         >
           {open ? "收起步骤" : "怎么做"}
         </button>
       </div>
 
-      <ol className="mt-2.5 space-y-1.5 text-[11px] leading-relaxed text-slate-600">
+      <ol className="mt-2.5 space-y-1.5 text-[11px] leading-relaxed text-ink-600">
         <li>
-          <span className="font-medium text-slate-700">1.</span> 即梦「创作中心 → 文生图」，
+          <span className="font-medium text-ink-700">1.</span> 即梦「创作中心 → 文生图」，
           右上角齿轮里勾选
-          <span className="mx-1 rounded bg-amber-100 px-1 font-medium text-amber-800">
+          <span className="mx-1 rounded bg-accent-100 px-1 font-medium text-accent-800">
             启用批量生成模式
           </span>
           ，保存后
-          <span className="font-medium text-slate-700">刷新页面</span>
+          <span className="font-medium text-ink-700">刷新页面</span>
           （否则「生成数量」滑块不出现）。
         </li>
         <li>
-          <span className="font-medium text-slate-700">2.</span> 粘贴下面的
-          <span className="font-medium text-slate-700">母版</span>
+          <span className="font-medium text-ink-700">2.</span> 粘贴下面的
+          <span className="font-medium text-ink-700">母版</span>
           ，点提示词框右下角「+ 添加变量」，新建变量
-          <code className="mx-1 rounded bg-slate-100 px-1 font-mono">定妆提示词</code>
+          <code className="mx-1 rounded bg-ink-100 px-1 font-mono">定妆提示词</code>
           。
         </li>
         <li>
-          <span className="font-medium text-slate-700">3.</span> 把
-          <span className="font-medium text-slate-700">变量值</span>
+          <span className="font-medium text-ink-700">3.</span> 把
+          <span className="font-medium text-ink-700">变量值</span>
           整段粘进变量框（${prompts.length} 行，一行一个角色）。
         </li>
         <li>
-          <span className="font-medium text-slate-700">4.</span> 确认组合总数 =
-          <span className="font-semibold text-brand-800"> ${prompts.length}</span>
+          <span className="font-medium text-ink-700">4.</span> 确认组合总数 =
+          <span className="font-semibold text-accent-800"> ${prompts.length}</span>
           ，提交。即梦会按顺序逐一出图。
         </li>
       </ol>
 
       <div className="mt-2.5 grid min-w-0 gap-2 sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+        <div className="rounded-chip border border-ink-200 bg-surface-card px-2.5 py-2">
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-brand-800">① 复制母版 → 粘进提示词框</span>
+            <span className="text-[10px] font-semibold text-accent-800">① 复制母版 → 粘进提示词框</span>
             <CopyButton text={template} label="复制母版" />
           </div>
-          <code className="break-all font-mono text-[11px] text-slate-700">{template}</code>
+          <code className="break-all font-mono text-[11px] text-ink-700">{template}</code>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+        <div className="rounded-chip border border-ink-200 bg-surface-card px-2.5 py-2">
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-brand-800">
+            <span className="text-[10px] font-semibold text-accent-800">
               ② 复制变量值 → 粘进变量框（${prompts.length} 行）
             </span>
             <CopyButton text={values} label="复制变量值" />
           </div>
-          <p className="max-h-20 overflow-y-auto font-mono text-[10px] leading-relaxed text-slate-500">
+          <p className="max-h-20 overflow-y-auto font-mono text-[10px] leading-relaxed text-ink-500">
             {prompts.map((p) => (
               <span key={p.name} className="block truncate">{p.name}: {p.en.slice(0, 60)}…</span>
             ))}
@@ -142,12 +142,12 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
       </div>
 
       {open && (
-        <div className="mt-2 rounded-lg bg-white/80 px-2.5 py-2 text-[11px] leading-relaxed text-slate-600">
-          <p className="font-medium text-slate-700">出图之后</p>
+        <div className="mt-2 rounded-chip bg-surface-card/80 px-2.5 py-2 text-[11px] leading-relaxed text-ink-600">
+          <p className="font-medium text-ink-700">出图之后</p>
           <p className="mt-1">
             按顺序对应到角色（即梦出的顺序 = 变量值顺序）：第 1 张是
-            <span className="font-medium text-slate-800">{prompts[0]?.name}</span>
-            {prompts[1] && <>、第 2 张是 <span className="font-medium text-slate-800">{prompts[1].name}</span></>}
+            <span className="font-medium text-ink-800">{prompts[0]?.name}</span>
+            {prompts[1] && <>、第 2 张是 <span className="font-medium text-ink-800">{prompts[1].name}</span></>}
             。存文件名建议用角色名，放到以角色名命名的文件夹里，本工具扫描时会自动挂到对应角色上。
           </p>
         </div>
@@ -191,11 +191,11 @@ function AttachedPreviews({
     <ul className="mt-2 flex flex-wrap gap-2">
       {keys_.map((key) => (
         <li key={key} className="relative">
-          <div className="h-16 w-16 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+          <div className="h-16 w-16 overflow-hidden rounded-chip border border-ink-200 bg-ink-100">
             {urls[key] ? (
               <img src={urls[key]} alt={key} title={key} className="h-full w-full object-cover" />
             ) : (
-              <span className="flex h-full items-center justify-center px-1 text-center text-[9px] leading-tight text-slate-400">
+              <span className="flex h-full items-center justify-center px-1 text-center text-[9px] leading-tight text-ink-400">
                 读不到
               </span>
             )}
@@ -206,8 +206,8 @@ function AttachedPreviews({
               onClick={() => onRemove(characterName, key)}
               aria-label={`摘掉 ${key}`}
               className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full
-                border border-slate-200 bg-white text-xs text-slate-400 shadow-sm
-                transition-colors hover:border-rose-300 hover:text-rose-500"
+                border border-ink-200 bg-surface-card text-xs text-ink-400 shadow-sm
+                transition-colors hover:border-accent-300 hover:text-accent-500"
             >
               ×
             </button>
@@ -254,15 +254,15 @@ export default function VisualAnchorPanel({
         所以这里先立一块说明：第一步写的是「他是谁」（性格/动机），
         这一步写的是「他长什么样」（脸/发/服装），是同一批角色的第二层，不是新角色。
       */}
-      <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3.5 py-3">
-        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500 text-[11px] font-bold text-white">
+      <div className="flex items-start gap-2.5 rounded-card border border-done-200 bg-done-50/60 px-3.5 py-3">
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-chip bg-done-500 text-[11px] font-bold text-white">
           4
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-emerald-900">
+          <p className="text-xs font-semibold text-done-900">
             这一步不是重新生成人物，是给上面那批角色「上妆」
           </p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800/80">
+          <p className="mt-0.5 text-[11px] leading-relaxed text-done-800/80">
             下面每一张卡都对应第一步里的同一个人（姓名一致）。第一步写他<span className="font-medium">是谁</span>，
             这里写他<span className="font-medium">长什么样</span>：脸、发型、服装、道具。
             这些字段会被逐镜复用，出图时才不会每张脸都换人。
@@ -280,19 +280,19 @@ export default function VisualAnchorPanel({
           <article
             key={vc.id}
             id={`vc-${vc.name}`}
-            className={`min-w-0 rounded-xl border bg-white p-3.5 transition-colors sm:p-4 ${
-              highlight === vc.name ? "border-amber-400 ring-2 ring-amber-200" : "border-slate-200"
+            className={`min-w-0 rounded-card border bg-surface-card p-3.5 transition-colors sm:p-4 ${
+              highlight === vc.name ? "border-accent-400 ring-2 ring-accent-200" : "border-ink-200"
             }`}
           >
             <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
-              <span className="shrink-0 text-xs font-medium text-slate-400">角色 {i + 1}</span>
+              <span className="shrink-0 text-xs font-medium text-ink-400">角色 {i + 1}</span>
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <AutoTextarea
                   value={vc.name}
                   onChange={(name) => update(vc.id, { name })}
                   ariaLabel={`角色 ${i + 1} 姓名`}
                   placeholder="角色姓名"
-                  className="min-w-0 text-base font-semibold text-slate-900"
+                  className="min-w-0 text-base font-semibold text-ink-900"
                 />
               </div>
             </div>
@@ -300,14 +300,14 @@ export default function VisualAnchorPanel({
             <dl className="space-y-2">
               {FIELDS.map(({ key, label, hint }) => (
                 <div key={key} className="flex gap-2">
-                  <dt className="mt-1 w-20 shrink-0 text-xs font-medium text-slate-500">{label}</dt>
+                  <dt className="mt-1 w-20 shrink-0 text-xs font-medium text-ink-500">{label}</dt>
                   <dd className="min-w-0 flex-1">
                     <AutoTextarea
                       value={String(vc[key] ?? '')}
                       onChange={(value) => update(vc.id, { [key]: value } as Partial<VisualCharacter>)}
                       ariaLabel={`${vc.name} 的${label}`}
                       placeholder={hint}
-                      className="text-sm leading-relaxed text-slate-600"
+                      className="text-sm leading-relaxed text-ink-600"
                     />
                   </dd>
                 </div>
@@ -315,9 +315,9 @@ export default function VisualAnchorPanel({
             </dl>
 
             {/* 英文锚点：会被逐镜复用，所以单独展示且可手改 */}
-            <div className="mt-3 min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+            <div className="mt-3 min-w-0 overflow-hidden rounded-chip border border-ink-200 bg-ink-50/70 px-3 py-2">
               <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5">
-                <span className="text-[10px] font-semibold text-slate-500">
+                <span className="text-[10px] font-semibold text-ink-500">
                   英文锚点（逐镜复用，改动会触发下游过期）
                 </span>
                 <CopyButton text={vc.anchor} label="复制锚点" />
@@ -327,33 +327,33 @@ export default function VisualAnchorPanel({
                 onChange={(anchor) => update(vc.id, { anchor })}
                 ariaLabel={`${vc.name} 的英文锚点`}
                 placeholder="age: ..., wearing: ..."
-                className="wrap-anywhere min-w-0 font-mono text-xs leading-relaxed text-slate-700"
+                className="wrap-anywhere min-w-0 font-mono text-xs leading-relaxed text-ink-700"
               />
             </div>
 
             {/* 定妆图提示词（中英双语，供即梦出图） */}
             {prompt && (
-              <div className="mt-2 min-w-0 overflow-hidden rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2">
+              <div className="mt-2 min-w-0 overflow-hidden rounded-chip border border-accent-200 bg-accent-50/60 px-3 py-2">
                 <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5">
-                  <span className="text-[10px] font-semibold text-brand-800">定妆图提示词（去即梦出角色图）</span>
+                  <span className="text-[10px] font-semibold text-accent-800">定妆图提示词（去即梦出角色图）</span>
                   <CopyButton text={prompt.en} label="复制英文" />
                 </div>
-                <p className="wrap-anywhere font-mono text-xs leading-relaxed text-slate-700">{prompt.en}</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">{prompt.zh}</p>
+                <p className="wrap-anywhere font-mono text-xs leading-relaxed text-ink-700">{prompt.en}</p>
+                <p className="mt-1 text-xs leading-relaxed text-ink-500">{prompt.zh}</p>
 
                 {/*
                   出图之后要「存成什么文件名」是这条链路最容易崩的地方：
                   从即梦下载下来是「即梦_19700101.png」，攒到几十张就认不出谁是谁。
                   这里直接把建议路径写出来，并在复制提示词时一并带上。
                 */}
-                <div className="mt-2 rounded-md bg-white/80 px-2 py-1.5">
-                  <p className="text-[10px] text-slate-500">
+                <div className="mt-2 rounded-chip bg-surface-card/80 px-2 py-1.5">
+                  <p className="text-[10px] text-ink-500">
                     出图后建议存为：
-                    <code className="ml-1 break-all rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] text-slate-700">
+                    <code className="ml-1 break-all rounded bg-ink-100 px-1 py-0.5 font-mono text-[10px] text-ink-700">
                       {vc.name}/正面.png
                     </code>
                   </p>
-                  <p className="mt-0.5 text-[10px] text-slate-400">
+                  <p className="mt-0.5 text-[10px] text-ink-400">
                     放成「角色名/文件名」的目录结构，挂图时会自动排在前面
                   </p>
                 </div>
@@ -368,17 +368,17 @@ export default function VisualAnchorPanel({
             )}
 
             {/* 本地角色图：只登记引用，图不上传（原则 P1） */}
-            <div className="mt-2 min-w-0 rounded-lg border border-slate-200 px-3 py-2">
+            <div className="mt-2 min-w-0 rounded-chip border border-ink-200 px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-1.5">
-                <span className="text-[10px] font-semibold text-slate-500">
+                <span className="text-[10px] font-semibold text-ink-500">
                   角色参考图（存在你本地，不上传）
                 </span>
                 <button
                   type="button"
                   onClick={() => setOpenPicker(openPicker === vc.name ? null : vc.name)}
                   disabled={vaultFiles.length === 0}
-                  className="rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600
-                    transition-colors hover:border-brand-300 hover:bg-brand-50 disabled:opacity-40"
+                  className="rounded-chip border border-ink-200 px-2 py-1 text-[10px] font-medium text-ink-600
+                    transition-colors hover:border-accent-300 hover:bg-accent-50 disabled:opacity-40"
                 >
                   {vaultFiles.length === 0 ? '请先在图库添加图片' : '+ 挂一张图'}
                 </button>
@@ -387,7 +387,7 @@ export default function VisualAnchorPanel({
               {keys.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {keys.map((k) => (
-                    <span key={k} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                    <span key={k} className="rounded bg-ink-100 px-1.5 py-0.5 font-mono text-[10px] text-ink-600">
                       {k.split('/').pop()?.slice(0, 24)}
                     </span>
                   ))}

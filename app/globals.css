@@ -2,37 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  纸墨底座（对齐 concept-reference.png）。
+
+  四条不能动的规则：
+  1. 底色是暖米纸 + 极淡纸纹，禁止纯白页面；
+  2. 卡片用「一张纸」表达：浅米白底 + 极轻阴影，边框只做 1px 内描边；
+  3. 强调只有幕布红一个（accent-*），完成态走暖赭（done-*），不要出现绿色；
+  4. 标题/品牌一律衬线，正文无衬线；圆角只走 rounded-card / panel / chip / pill。
+*/
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-[#fbfaf9] text-slate-800 antialiased;
-    /*
-      页面底噪：顶部暖光晕负责「品牌感」，右下角一点冷色平衡橙色的燥热，
-      两处的透明度都压得很低——背景是陪衬，抢戏就变成视觉噪音了。
-    */
+    @apply bg-surface text-ink-800 antialiased;
+    /* 纸纹：细颗粒 + 亚麻织理 + 四角轻微压暗，全部用渐变叠出来，不引任何图片 */
     background-image:
-      radial-gradient(52rem 26rem at 50% -12rem, rgba(249, 115, 22, 0.10) 0%, transparent 68%),
-      radial-gradient(40rem 30rem at 100% 8%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
-    background-repeat: no-repeat;
+      radial-gradient(rgba(120, 96, 60, 0.05) 0.5px, transparent 0.6px),
+      repeating-linear-gradient(0deg, rgba(96, 76, 50, 0.022) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(90deg, rgba(96, 76, 50, 0.017) 0 1px, transparent 1px 4px),
+      radial-gradient(120% 90% at 50% 40%, rgba(255, 252, 246, 0.5), transparent 60%),
+      radial-gradient(70% 60% at 0% 0%, rgba(120, 92, 60, 0.09), transparent 65%),
+      radial-gradient(70% 60% at 100% 100%, rgba(120, 92, 60, 0.09), transparent 65%);
+    background-size: 3px 3px, auto, auto, auto, auto, auto;
     background-attachment: fixed;
   }
 
-  /* 标题字重收紧一点，中文标题在高字重下会显得糊 */
   h1, h2, h3 {
-    letter-spacing: -0.01em;
+    @apply font-serif;
+    letter-spacing: 0;
   }
 
-  /* 统一的键盘焦点：默认 outline 在浅色底上几乎看不见 */
   :focus-visible {
-    outline: 2px solid theme(colors.brand.400);
+    outline: 2px solid theme(colors.accent.500);
     outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme(colors.ink.200) transparent;
   }
 }
 
-/* 尊重系统的「减弱动态效果」设置 */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -44,31 +57,95 @@
 }
 
 @layer components {
-  /* 工作区卡片的统一外观：白底 + 极轻边框 + 一层很浅的投影。
-     投影用两层叠加而不是一个大的，是为了让卡片「贴」在页面上而不是浮起来。 */
+  /** 卡片：浅米白纸 + 1px 暖内描边 + 极轻柔光 */
   .surface {
-    @apply rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm;
+    @apply rounded-card bg-surface-card;
     box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.04),
-      0 8px 24px -12px rgba(15, 23, 42, 0.08);
+      inset 0 0 0 1px theme(colors.surface.line),
+      theme(boxShadow.surface);
   }
 
-  /* 可交互的小控件：悬停时轻微抬起的触感 */
+  /** 可交互卡片悬停时轻微抬起 */
   .lift {
     @apply transition-all duration-150;
   }
   .lift:hover {
     transform: translateY(-1px);
+    box-shadow:
+      inset 0 0 0 1px theme(colors.surface.line),
+      theme(boxShadow.lift);
+  }
+
+  /**
+   * 分镜视觉（放映厅）面板：深棕黑 + 浅金文字。
+   * 提示词原文、参数行都用它，和纸面形成唯一的暗色对比。
+   */
+  .darkroom {
+    @apply rounded-card text-[#d9cdb9];
+    background-image: linear-gradient(
+      180deg,
+      theme(colors.cinema.top),
+      theme(colors.cinema.DEFAULT) 62%
+    );
+    box-shadow: theme(boxShadow.cinema);
+  }
+
+  /** 章节序号：衬线 + 朱砂，像稿纸边上的编号 */
+  .folio {
+    @apply font-serif text-lg leading-none text-accent-600;
+  }
+
+  /** 主按钮：红 → 深红渐变 + 极淡光晕（参考图的「生成·剧本大纲」） */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-pill px-5 py-2.5
+      text-sm font-semibold text-white transition-[filter,box-shadow];
+    background-image: linear-gradient(180deg, #e0464f 0%, #c22b34 42%, #9d1119 100%);
+    box-shadow: theme(boxShadow.glow), inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+  .btn-primary:disabled {
+    @apply cursor-not-allowed text-ink-300;
+    background-image: none;
+    background-color: theme(colors.ink.100);
+    box-shadow: none;
+  }
+
+  /** 品牌旁的 AI 徽标：极简深红方块 */
+  .ai-badge {
+    @apply inline-flex items-center justify-center rounded-[7px] px-1.5 py-0.5
+      text-[11px] font-bold leading-none text-white;
+    background-image: linear-gradient(180deg, #c9373f, #a82028);
+    box-shadow: 0 2px 6px -2px rgba(150, 25, 30, 0.5);
+  }
+
+  /** AI 推荐角标：挂在标签的左上角 */
+  .tag-ai {
+    @apply absolute -top-3 left-3.5 whitespace-nowrap rounded-pill px-2 py-0.5
+      text-[10px] font-semibold leading-relaxed text-white;
+    background-color: theme(colors.accent.500);
+    box-shadow: 0 2px 6px -2px rgba(150, 25, 30, 0.45);
+  }
+
+  /** AI 生成中：半透明浅红流光状态条 */
+  .ai-status {
+    @apply flex items-center gap-2 rounded-pill px-4 py-2 text-xs font-medium text-accent-700;
+    background-image:
+      linear-gradient(100deg, rgba(198, 74, 84, 0.34), rgba(240, 168, 174, 0.5) 46%, rgba(252, 214, 216, 0.42) 62%, rgba(198, 74, 84, 0.3)),
+      linear-gradient(180deg, #fbe9e9, #f7d9da);
+    background-size: 200% 100%, auto;
+    box-shadow: 0 8px 22px -14px rgba(190, 60, 70, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    animation: sweep 3s linear infinite;
   }
 }
 
 @layer utilities {
-  /* 骨架屏的灰条 */
   .skeleton-bar {
-    @apply animate-pulse rounded bg-slate-200;
+    @apply animate-pulse rounded-chip bg-ink-100;
   }
 
-  /* 长英文提示词的兜底换行：即梦的提示词里没有空格可断，只能强制断词 */
+  /* 长英文提示词的兜底换行 */
   .wrap-anywhere {
     overflow-wrap: anywhere;
     word-break: break-word;

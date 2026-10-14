@@ -84,27 +84,27 @@ export default function RefImagePicker({ files, characterName, onPick, onClose }
   }, [visible, characterName])
 
   return (
-    <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/60 p-2">
+    <div className="mt-2 rounded-card border border-surface-line bg-surface/70 p-2">
       <div className="mb-2 flex items-center gap-2">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="按文件名或文件夹名筛选…"
           aria-label="筛选参考图"
-          className="min-w-0 flex-1 rounded-md border border-slate-200 px-2 py-1 text-xs
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+          className="min-w-0 flex-1 rounded-chip border border-surface-line bg-surface-card px-2 py-1 text-xs text-ink-700
+            placeholder:text-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
         />
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-200"
+          className="rounded-chip px-2 py-1 text-xs text-ink-500 transition-colors hover:bg-surface-deep"
         >
           取消
         </button>
       </div>
 
       {sorted.length === 0 ? (
-        <p className="px-1 py-3 text-center text-xs text-slate-400">
+        <p className="px-1 py-3 text-center text-xs text-ink-400">
           {files.length === 0 ? '图库里还没有图片' : '没有匹配的图片'}
         </p>
       ) : (
@@ -115,22 +115,22 @@ export default function RefImagePicker({ files, characterName, onPick, onClose }
                 type="button"
                 onClick={() => onPick(f)}
                 title={f.key}
-                className="group w-full rounded-lg border border-slate-200 bg-white p-1 text-left
-                  transition-colors hover:border-brand-400 hover:bg-brand-50
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                className="group w-full rounded-chip border border-surface-line bg-surface-card p-1 text-left
+                  transition-colors hover:border-accent-400 hover:bg-accent-50
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
               >
-                <div className="mb-1 flex h-20 items-center justify-center overflow-hidden rounded bg-slate-100">
+                <div className="mb-1 flex h-20 items-center justify-center overflow-hidden rounded-chip bg-surface-deep">
                   {urls[f.key] ? (
                     <img src={urls[f.key]} alt={f.name} className="h-full w-full object-cover" />
                   ) : (
-                    <span className="px-1 text-center text-[10px] leading-tight text-slate-400">
+                    <span className="px-1 text-center text-[10px] leading-tight text-ink-400">
                       {failed.has(f.key) ? '读不到图' : '加载中…'}
                     </span>
                   )}
                 </div>
-                <p className="truncate text-[10px] font-medium text-slate-700">{displayName(f.key)}</p>
+                <p className="truncate text-[10px] font-medium text-ink-700">{displayName(f.key)}</p>
                 {dirHint(f.key) && (
-                  <p className="truncate text-[9px] text-slate-400">{dirHint(f.key)}</p>
+                  <p className="truncate text-[9px] text-ink-400">{dirHint(f.key)}</p>
                 )}
               </button>
             </li>
@@ -138,7 +138,7 @@ export default function RefImagePicker({ files, characterName, onPick, onClose }
         </ul>
       )}
 
-      <p className="mt-2 text-[10px] text-slate-400">
+      <p className="mt-2 text-[10px] text-ink-400">
         共 {sorted.length} 张 · 预览在本地读取，图不上传
       </p>
     </div>

@@ -33,7 +33,7 @@ export default function QuotaBar({ refreshKey = 0 }: Props) {
   if (failed) return null
   if (!quota) {
     return (
-      <div className="mt-3 h-9 animate-pulse rounded-lg bg-slate-100" aria-hidden="true" />
+      <div className="mt-3 h-9 animate-pulse rounded-chip bg-surface-deep" aria-hidden="true" />
     )
   }
 
@@ -41,14 +41,15 @@ export default function QuotaBar({ refreshKey = 0 }: Props) {
   const exhausted = quota.remaining <= 0
   const low = !exhausted && ratio <= 0.5
 
+  // 三档都用「纸」表达，只靠朱砂的深浅区分严重程度，不再引第二个色相
   const tone = exhausted
-    ? { box: 'border-rose-200 bg-rose-50', text: 'text-rose-800', bar: 'bg-rose-400' }
+    ? { box: 'border-accent-300 bg-accent-100', text: 'text-accent-800', bar: 'bg-accent-500' }
     : low
-      ? { box: 'border-amber-200 bg-amber-50', text: 'text-amber-800', bar: 'bg-amber-400' }
-      : { box: 'border-slate-200 bg-slate-50', text: 'text-slate-600', bar: 'bg-slate-400' }
+      ? { box: 'border-accent-200 bg-accent-50', text: 'text-accent-700', bar: 'bg-accent-400' }
+      : { box: 'border-surface-line bg-surface-soft', text: 'text-ink-600', bar: 'bg-ink-300' }
 
   return (
-    <div className={`mt-3 rounded-lg border px-3 py-2 ${tone.box}`}>
+    <div className={`mt-3 rounded-chip border px-3 py-2 ${tone.box}`}>
       <div className="flex items-center justify-between gap-2">
         <span className={`text-xs font-medium ${tone.text}`}>
           {exhausted ? '今日额度已用完' : '今日剩余额度'}
@@ -61,7 +62,7 @@ export default function QuotaBar({ refreshKey = 0 }: Props) {
       </div>
 
       {/* 进度条：剩余越多条越长 */}
-      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/70">
+      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-surface-card/70">
         <div
           className={`h-full rounded-full transition-all ${tone.bar}`}
           style={{ width: `${Math.round(ratio * 100)}%` }}

@@ -14,7 +14,7 @@ export default function Skeleton({ variant }: Props) {
     return (
       <div className="grid gap-4 sm:grid-cols-2">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+          <div key={i} className="space-y-3 rounded-card border border-surface-line bg-surface-card p-4">
             <Bar width="45%" />
             <Bar width="90%" />
             <Bar width="75%" />
@@ -29,7 +29,7 @@ export default function Skeleton({ variant }: Props) {
     return (
       <div className="space-y-4">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
+          <div key={i} className="space-y-3 rounded-card border border-surface-line bg-surface-card p-5">
             <Bar width="30%" />
             <Bar width="95%" />
             <Bar width="85%" />
@@ -43,7 +43,7 @@ export default function Skeleton({ variant }: Props) {
   return (
     <div className="space-y-3">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+        <div key={i} className="space-y-3 rounded-card border border-surface-line bg-surface-card p-4">
           <Bar width="35%" />
           <Bar width="92%" />
           <Bar width="55%" />

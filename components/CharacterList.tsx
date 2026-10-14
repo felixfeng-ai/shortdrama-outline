@@ -1,6 +1,7 @@
 'use client'
 
 import AutoTextarea from './AutoTextarea'
+import CharacterThumb from './CharacterThumb'
 import type { Character } from '@/lib/types'
 
 interface Props {
@@ -10,6 +11,16 @@ interface Props {
   onRegenerate: (id: string) => void
   /** 正在重新生成的角色 id，用于显示局部 loading */
   regeneratingId: string | null
+  /**
+   * 角色名 -> 本地已挂的图 key 列表。
+   *
+   * 为什么角色卡要显示图：定妆这一步的产出就是「这个角色长什么样」。
+   * 只给一段文字锚点、不给图，用户没法判断挂的对不对，
+   * 也没法在第一步就意识到「图库里的图已经对上这个角色了」。
+   */
+  attached?: Record<string, string[]>
+  /** 角色名 -> 命中方式说明（中文名/拼音/首字母），显示成角标 */
+  matchNotes?: Record<string, string>
 }
 
 const FIELDS: { key: keyof Omit<Character, 'id' | 'name'>; label: string }[] = [
@@ -19,7 +30,7 @@ const FIELDS: { key: keyof Omit<Character, 'id' | 'name'>; label: string }[] = [
   { key: 'arc', label: '人物弧光' },
 ]
 
-export default function CharacterList({ characters, onChange, onRegenerate, regeneratingId }: Props) {
+export default function CharacterList({ characters, onChange, onRegenerate, regeneratingId, attached = {}, matchNotes = {} }: Props) {
   // 所有编辑都返回新数组，不改原对象
   const update = (id: string, patch: Partial<Character>) =>
     onChange(characters.map((c) => (c.id === id ? { ...c, ...patch } : c)))
@@ -34,21 +45,25 @@ export default function CharacterList({ characters, onChange, onRegenerate, rege
         return (
           <article
             key={character.id}
-            className={`relative rounded-xl border border-slate-200 bg-white p-4 transition-opacity
+            className={`relative rounded-card border border-surface-line bg-surface-card p-4 transition-opacity
               ${isRegenerating ? 'opacity-50' : ''}`}
           >
             {/* 姓名 + 操作 */}
             <div className="mb-3 flex items-start justify-between gap-2">
+              <CharacterThumb
+                keys={attached[character.name] ?? []}
+                name={character.name}
+                matchNote={matchNotes[character.name]}
+                className="h-11 w-11"
+              />
               <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                <span className="shrink-0 text-xs font-medium text-slate-400">
-                  角色 {index + 1}
-                </span>
+                <span className="folio shrink-0 text-base">{index + 1}</span>
                 <AutoTextarea
                   value={character.name}
                   onChange={(name) => update(character.id, { name })}
                   ariaLabel={`角色 ${index + 1} 姓名`}
                   placeholder="角色姓名"
-                  className="-ml-2 text-base font-semibold text-slate-900"
+                  className="-ml-2 text-base font-semibold text-ink-900"
                 />
               </div>
 
@@ -58,9 +73,9 @@ export default function CharacterList({ characters, onChange, onRegenerate, rege
                   onClick={() => onRegenerate(character.id)}
                   disabled={isRegenerating}
                   title="单独重新生成这个角色"
-                  className="rounded-md px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100
-                    hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2
-                    focus-visible:ring-brand-300 disabled:opacity-50"
+                  className="rounded-chip px-2 py-1 text-xs text-ink-400 transition-colors hover:bg-surface-deep
+                    hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2
+                    focus-visible:ring-accent-300 disabled:opacity-50"
                 >
                   换一个
                 </button>
@@ -69,8 +84,8 @@ export default function CharacterList({ characters, onChange, onRegenerate, rege
                   onClick={() => remove(character.id)}
                   title="删除这个角色"
                   aria-label={`删除角色 ${character.name}`}
-                  className="rounded-md p-2 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500
-                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                  className="rounded-chip p-2 text-ink-200 transition-colors hover:bg-accent-50 hover:text-accent-600
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                     <path
@@ -87,14 +102,14 @@ export default function CharacterList({ characters, onChange, onRegenerate, rege
             <dl className="space-y-2">
               {FIELDS.map(({ key, label }) => (
                 <div key={key} className="flex gap-2">
-                  <dt className="mt-1 w-14 shrink-0 text-xs font-medium text-slate-500">{label}</dt>
+                  <dt className="mt-1 w-14 shrink-0 text-xs font-medium text-ink-400">{label}</dt>
                   <dd className="min-w-0 flex-1">
                     <AutoTextarea
                       value={character[key]}
                       onChange={(value) => update(character.id, { [key]: value })}
                       ariaLabel={`${character.name} 的${label}`}
                       placeholder={`${label}待补充`}
-                      className="text-sm leading-relaxed text-slate-600"
+                      className="text-sm leading-relaxed text-ink-600"
                     />
                   </dd>
                 </div>

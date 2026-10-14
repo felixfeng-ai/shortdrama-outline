@@ -29,22 +29,22 @@ export default function VersionBar({
   if (!stale && affectedShots === 0) return null
 
   return (
-    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-3">
+    <div className="mb-4 rounded-card border border-accent-200 bg-accent-50/70 px-3.5 py-3">
       <div className="flex items-start gap-2">
-        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-500">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-accent-500">
           <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
         </svg>
 
         <div className="min-w-0 flex-1">
           {stale && (
-            <p className="text-sm leading-relaxed text-amber-900">
+            <p className="text-sm leading-relaxed text-accent-900">
               {staleReason ?? '上游内容已改动'}，当前结果基于旧版本生成。
-              <span className="ml-1 text-amber-700">已生成的内容不会被自动清空。</span>
+              <span className="ml-1 text-accent-700">已生成的内容不会被自动清空。</span>
             </p>
           )}
 
           {affectedShots > 0 && (
-            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+            <p className="mt-1 text-xs leading-relaxed text-accent-800">
               本次改动影响 <strong>{affectedShots}</strong> 个下游结果
               {expiredShots > 0 && <>，其中 <strong>{expiredShots}</strong> 个镜头的提示词已过期</>}。
             </p>
@@ -54,8 +54,8 @@ export default function VersionBar({
             <button
               type="button"
               onClick={onRebuild}
-              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white
-                transition-colors hover:bg-amber-700"
+              className="rounded-chip bg-accent-600 px-3 py-1.5 text-xs font-medium text-white
+                transition-colors hover:bg-accent-700"
             >
               重新{actionLabel}
             </button>
@@ -64,8 +64,8 @@ export default function VersionBar({
               <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800
-                  transition-colors hover:bg-amber-50"
+                className="rounded-chip border border-accent-300 bg-surface-card px-3 py-1.5 text-xs font-medium text-accent-800
+                  transition-colors hover:bg-accent-50"
               >
                 {open ? '收起影响明细' : '查看影响明细'}
               </button>
@@ -73,7 +73,7 @@ export default function VersionBar({
           </div>
 
           {open && (
-            <p className="mt-2 rounded-lg bg-white/70 px-2.5 py-2 text-xs text-amber-900">
+            <p className="mt-2 rounded-chip bg-surface-card/70 px-2.5 py-2 text-xs text-accent-900">
               批量更新是显式操作：点击后才会重算受影响的提示词，
               并产生一个新的版本（旧版本仍可回溯）。
             </p>

@@ -28,9 +28,13 @@ export default function CopyButton({ text, label = '复制', className = '' }: P
     <button
       type="button"
       onClick={handle}
-      className={`shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium
-        transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${className}`}
+      className={`shrink-0 rounded-chip border px-2.5 py-1.5 text-xs font-medium transition-colors
+        focus-visible:outline-none focus-visible:ring-2
+        ${
+          done
+            ? 'border-done-300 bg-done-50 text-done-700 focus-visible:ring-done-300'
+            : 'border-surface-line bg-surface-card text-ink-600 hover:border-accent-300 hover:bg-accent-50 hover:text-accent-700 focus-visible:ring-accent-300'
+        } ${className}`}
     >
       {done ? '已复制 ✓' : label}
     </button>
