@@ -61,7 +61,7 @@ export default function StepSection({
 
   return (
     <section
-      className="rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur-sm sm:p-6"
+      className="surface p-4 sm:p-6"
       // 生成过程不换页，读屏用户需要被主动告知状态变化
       aria-busy={isBusy}
     >

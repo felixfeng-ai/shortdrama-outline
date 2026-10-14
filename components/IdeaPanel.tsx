@@ -1,5 +1,6 @@
 'use client'
 
+import QuotaBar from './QuotaBar'
 import { MAX_IDEA_LENGTH, MIN_IDEA_LENGTH } from '@/lib/types'
 
 /** 几个示例想法，降低「不知道写什么」的启动成本 */
@@ -18,9 +19,11 @@ interface Props {
   loading: boolean
   /** 是否已经有任意结果，决定「重新开始」按钮是否可用 */
   hasResult: boolean
+  /** 生成成功后 +1，让额度条重新查询 */
+  quotaRefreshKey?: number
 }
 
-export default function IdeaPanel({ idea, onIdeaChange, onGenerate, onReset, loading, hasResult }: Props) {
+export default function IdeaPanel({ idea, onIdeaChange, onGenerate, onReset, loading, hasResult, quotaRefreshKey = 0 }: Props) {
   // 与接口的校验口径保持一致，避免「按钮能点但请求必被拒」
   const canGenerate = idea.trim().length >= MIN_IDEA_LENGTH && !loading
 
@@ -87,8 +90,10 @@ export default function IdeaPanel({ idea, onIdeaChange, onGenerate, onReset, loa
         </button>
       )}
 
+      <QuotaBar refreshKey={quotaRefreshKey} />
+
       <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500">
-        三步工作流：先定人物，再搭三幕结构，最后拆成 10 集。每一步都可以手动修改，改完再进入下一步。
+        六步工作流：先定人物、搭三幕、拆分集，再定妆、分场次、出分镜。每一步都能手动修改。
       </p>
     </div>
   )

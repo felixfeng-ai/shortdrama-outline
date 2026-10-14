@@ -8,6 +8,7 @@ import { normalizeVisualCharacters } from "@/lib/assets/normalize"
 import { buildImagePrompt, buildVisualPrompt } from "@/lib/assets/prompts"
 import { readCharacters, readIdea } from "@/lib/validate"
 import { persistIfProject } from "@/lib/assets/persist"
+import { chargeQuota, identityFromRequest } from "@/lib/quota"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -21,6 +22,10 @@ export async function POST(req: Request) {
     const projectId = typeof body?.projectId === "string" ? body.projectId : null
 
     // 定妆需要想象力，温度调高
+    // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
+    // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
+    chargeQuota(getDbForRequest(), identityFromRequest(req), "visual")
+
     const { system, user } = buildVisualPrompt(idea, characters)
     const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
     const visualCharacters = normalizeVisualCharacters(raw, characters.map((c) => c.name))

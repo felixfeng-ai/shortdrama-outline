@@ -11,6 +11,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tests](https://img.shields.io/badge/tests-85_passing-2ea44f?style=for-the-badge)](#测试)
 [![图片不上传](https://img.shields.io/badge/图片-永不上传-important?style=for-the-badge)](#三条硬指标)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
 
 </div>
 
@@ -82,6 +83,7 @@
 - [稳健性设计](#稳健性设计)
 - [AI 编程怎么参与开发](#ai-编程怎么参与开发)
 - [路线图](#路线图)
+- [许可证与自建](#许可证与自建)
 - [部署](#部署)
 - [常见问题](#常见问题)
 
@@ -538,6 +540,102 @@ npm test        # 85 条用例，全部通过
 | **用 LangGraph 重写执行层** | 待做 | 每个步骤定义为一个 Graph Node，状态用 LangGraph 的 State 管理，支持条件边和中断恢复。现在三步是页面里的三段异步调用，改成图之后可以支持「只重跑第三步」「回滚到第二步」这类操作 |
 | **版本记录** | 待做 | 每一步生成的结果都可以回溯，方便对比「换一个」前后的差异 |
 | **导出 PDF** | 待做 | 目前只有 Markdown |
+
+---
+
+## 许可证与自建
+
+### 为什么是 AGPL-3.0
+
+不是随手挑的，和两条硬指标直接相关：
+
+**「图片不上传」这个承诺，只有代码可审计才有意义。** 服务端不碰像素这件事，
+闭源时用户只能选择相信我们；开源后可以直接读 `lib/assets/vault.ts` 和
+`app/api/refs/route.ts`，自己确认没有接收图片的通道。
+
+**AGPL 的网络条款挡住「闭源套壳」。** AGPL 第 13 条：通过网络提供服务也构成分发。
+谁拿这份代码架站对外服务，就必须公开他的修改。MIT / Apache-2.0 都允许闭源套壳。
+
+> 商标不随许可证授予。「成剧」「chengju」是项目名，改完请换名字。
+
+### 自建（三种方式，按省事程度排）
+
+自建意味着你用自己的 API Key，**不受托管版额度限制**。
+
+#### 方式 A：Node 直接跑（推荐）
+
+> 前置：**Node.js ≥ 22.5**（本地库用的是内置的 `node:sqlite`，所以没有任何
+> 需要编译的原生依赖，不需要装数据库）
+
+```bash
+git clone https://github.com/felixfeng-ai/shortdrama-outline.git chengju
+cd chengju
+
+npm install
+
+# 配置密钥（只填这一项就能跑）
+cp .env.example .env.local
+# 编辑 .env.local，填入 DEEPSEEK_API_KEY=sk-xxx
+
+npm run dev
+# 打开 http://localhost:3000
+```
+
+生产模式：
+
+```bash
+npm run build
+npm start          # 默认 3000 端口
+```
+
+#### 方式 B：Docker
+
+```bash
+docker build -t chengju .
+docker run -d --name chengju \
+  -p 3000:3000 \
+  -e DEEPSEEK_API_KEY=sk-xxx \
+  -v chengju-data:/app/data \
+  chengju
+```
+
+> `-v` 那个挂载别省：SQLite 库（项目 / 快照 / 血缘 / 额度）就放在 `/app/data`，
+> 不挂载的话容器一删数据就没了。
+
+#### 方式 C：PM2 + Nginx（生产）
+
+仓库里带了现成的配置：
+
+```bash
+npm run build
+pm2 start ecosystem.config.cjs      # 应用跑在 3001（与同机其他服务错开）
+```
+
+Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
+**自建到这一步最容易踩的两个坑**（我们都踩过，写在这里免得你再踩一遍）：
+
+1. **`proxy_read_timeout` 必须大于应用的模型超时**。应用里是 120s，
+   Nginx 默认只有 60s —— 表现是「本地正常，一上线生成 10 集就 504」。
+   配置里已给到 300s。
+2. **SSE 不能被缓冲**。应用侧在响应头带了 `X-Accel-Buffering: no`，
+   Nginx 认这个头，所以配置里不用改。但 **`gzip_types` 里不能加
+   `text/event-stream`**，否则流式会被攒成一坨再发，边生成边渲染的效果直接消失。
+
+更详细的部署说明（含 HTTPS 证书、CI 自动部署）在下面的[部署](#部署)一节。
+
+### 环境变量
+
+| 变量 | 必填 | 默认 | 说明 |
+|---|---|---|---|
+| `DEEPSEEK_API_KEY` | ✅ | — | 模型密钥，自建时用你自己的 |
+| `DEEPSEEK_BASE_URL` | | `https://api.deepseek.com/v1` | 兼容 OpenAI 协议的服务地址 |
+| `DEEPSEEK_MODEL` | | `deepseek-chat` | 模型名 |
+| `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
+| `CHENGJU_DAILY_UNITS` | | `26` | 单个身份每天的额度（1 个完整项目 = 13） |
+| `CHENGJU_DAILY_UNITS_GLOBAL` | | `3900` | 全站每天熔断阈值 |
+
+> 最后两项只对**托管版**有意义——自建时是你自己的 key，额度限制形同虚设，
+> 想关掉就把两个值调到很大。
 
 ---
 

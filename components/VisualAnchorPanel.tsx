@@ -46,7 +46,9 @@ const FIELDS: { key: keyof VisualCharacter; label: string; hint: string }[] = [
  * 所以只要把「每个角色的完整提示词」整体当作变量值，就能一次出完所有定妆图。
  */
 function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
-  const [open, setOpen] = useState(false)
+  // 默认展开：这条链路本来就是用来省掉「一个个复制去即梦」的，
+  // 折叠起来等于把答案藏了，用户只会继续手动逐个出图
+  const [open, setOpen] = useState(true)
 
   // 母版：整段提示词就是一个变量占位符
   const template = "〖定妆提示词〗"
@@ -62,10 +64,10 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-brand-900">
-            批量出定妆图（${prompts.length} 个角色，一次提交）
+            批量出定妆图 · ${prompts.length} 个角色一次出完
           </p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-brand-800/80">
-            即梦支持模板变量：粘贴母版 + 填入变量值，扩开「生成数量」后一次出完所有角色。
+            不用一个个复制粘贴：下面两块各自复制一次，贴进即梦就是一次批量提交。
           </p>
         </div>
         <button
@@ -108,19 +110,19 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
         </li>
       </ol>
 
-      <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+      <div className="mt-2.5 grid min-w-0 gap-2 sm:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-slate-500">① 母版</span>
+            <span className="text-[10px] font-semibold text-brand-800">① 复制母版 → 粘进提示词框</span>
             <CopyButton text={template} label="复制母版" />
           </div>
-          <code className="font-mono text-[11px] text-slate-700">{template}</code>
+          <code className="break-all font-mono text-[11px] text-slate-700">{template}</code>
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-slate-500">
-              ② 变量值（${prompts.length} 行，按顺序）
+            <span className="text-[10px] font-semibold text-brand-800">
+              ② 复制变量值 → 粘进变量框（${prompts.length} 行）
             </span>
             <CopyButton text={values} label="复制变量值" />
           </div>
@@ -246,7 +248,28 @@ export default function VisualAnchorPanel({
   if (visuals.length === 0) return null
 
   return (
-    <div id="visual-anchors" className="space-y-4">
+    <div id="visual-anchors" className="min-w-0 space-y-4">
+      {/*
+        这一步最容易被误解成「又生成了一遍人物」——角色名一样、卡片长得像。
+        所以这里先立一块说明：第一步写的是「他是谁」（性格/动机），
+        这一步写的是「他长什么样」（脸/发/服装），是同一批角色的第二层，不是新角色。
+      */}
+      <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3.5 py-3">
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500 text-[11px] font-bold text-white">
+          4
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-emerald-900">
+            这一步不是重新生成人物，是给上面那批角色「上妆」
+          </p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800/80">
+            下面每一张卡都对应第一步里的同一个人（姓名一致）。第一步写他<span className="font-medium">是谁</span>，
+            这里写他<span className="font-medium">长什么样</span>：脸、发型、服装、道具。
+            这些字段会被逐镜复用，出图时才不会每张脸都换人。
+          </p>
+        </div>
+      </div>
+
       {imagePrompts.length > 0 && <BatchImageKit prompts={imagePrompts} />}
 
       {visuals.map((vc, i) => {
@@ -257,19 +280,19 @@ export default function VisualAnchorPanel({
           <article
             key={vc.id}
             id={`vc-${vc.name}`}
-            className={`rounded-xl border bg-white p-4 transition-colors ${
+            className={`min-w-0 rounded-xl border bg-white p-3.5 transition-colors sm:p-4 ${
               highlight === vc.name ? "border-amber-400 ring-2 ring-amber-200" : "border-slate-200"
             }`}
           >
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-slate-400">角色 {i + 1}</span>
-              <div className="flex items-center gap-2">
+            <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
+              <span className="shrink-0 text-xs font-medium text-slate-400">角色 {i + 1}</span>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <AutoTextarea
                   value={vc.name}
                   onChange={(name) => update(vc.id, { name })}
                   ariaLabel={`角色 ${i + 1} 姓名`}
                   placeholder="角色姓名"
-                  className="text-base font-semibold text-slate-900"
+                  className="min-w-0 text-base font-semibold text-slate-900"
                 />
               </div>
             </div>
@@ -292,8 +315,8 @@ export default function VisualAnchorPanel({
             </dl>
 
             {/* 英文锚点：会被逐镜复用，所以单独展示且可手改 */}
-            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
-              <div className="mb-1 flex items-center justify-between">
+            <div className="mt-3 min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5">
                 <span className="text-[10px] font-semibold text-slate-500">
                   英文锚点（逐镜复用，改动会触发下游过期）
                 </span>
@@ -304,18 +327,18 @@ export default function VisualAnchorPanel({
                 onChange={(anchor) => update(vc.id, { anchor })}
                 ariaLabel={`${vc.name} 的英文锚点`}
                 placeholder="age: ..., wearing: ..."
-                className="font-mono text-xs leading-relaxed text-slate-700"
+                className="wrap-anywhere min-w-0 font-mono text-xs leading-relaxed text-slate-700"
               />
             </div>
 
             {/* 定妆图提示词（中英双语，供即梦出图） */}
             {prompt && (
-              <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2">
-                <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="mt-2 min-w-0 overflow-hidden rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5">
                   <span className="text-[10px] font-semibold text-brand-800">定妆图提示词（去即梦出角色图）</span>
                   <CopyButton text={prompt.en} label="复制英文" />
                 </div>
-                <p className="font-mono text-xs leading-relaxed text-slate-700">{prompt.en}</p>
+                <p className="wrap-anywhere font-mono text-xs leading-relaxed text-slate-700">{prompt.en}</p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500">{prompt.zh}</p>
 
                 {/*
@@ -326,7 +349,7 @@ export default function VisualAnchorPanel({
                 <div className="mt-2 rounded-md bg-white/80 px-2 py-1.5">
                   <p className="text-[10px] text-slate-500">
                     出图后建议存为：
-                    <code className="ml-1 rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] text-slate-700">
+                    <code className="ml-1 break-all rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] text-slate-700">
                       {vc.name}/正面.png
                     </code>
                   </p>
@@ -345,8 +368,8 @@ export default function VisualAnchorPanel({
             )}
 
             {/* 本地角色图：只登记引用，图不上传（原则 P1） */}
-            <div className="mt-2 rounded-lg border border-slate-200 px-3 py-2">
-              <div className="flex items-center justify-between">
+            <div className="mt-2 min-w-0 rounded-lg border border-slate-200 px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <span className="text-[10px] font-semibold text-slate-500">
                   角色参考图（存在你本地，不上传）
                 </span>

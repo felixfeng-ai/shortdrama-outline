@@ -140,6 +140,10 @@ export default function Home() {
   const [visualsBuiltFrom, setVisualsBuiltFrom] = useState<string | null>(null)
   const [shotsBuiltFrom, setShotsBuiltFrom] = useState<string | null>(null)
 
+  // 额度刷新信号：任何一步生成成功后 +1，让 IdeaPanel 里的额度条重新查询。
+  // 用递增数字而不是布尔，是因为「连续生成两次」也要各自触发一次查询。
+  const [quotaRefreshKey, setQuotaRefreshKey] = useState(0)
+
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 「清空重来」时 +1。请求返回时若纪元变了，说明结果已经不该要了，直接丢弃
   const resetEpoch = useRef(0)
@@ -171,6 +175,9 @@ export default function Home() {
       const data = await task()
       if (isCleared(epoch)) return // 生成期间点了「清空重来」，不要把结果塞回去
       onSuccess(data)
+      // 额度已消耗，通知界面上那一条刷新。放在这里而不是每个步骤里各写一次，
+      // 是因为 runStep 是六步中四步的统一出口，少写一处就少一处漏刷
+      setQuotaRefreshKey((n) => n + 1)
       setStatus((s) => ({ ...s, [step]: 'done' }))
     } catch (error) {
       if (isCleared(epoch)) return
@@ -270,6 +277,7 @@ export default function Home() {
 
         if (event === 'done') {
           finished = true
+          setQuotaRefreshKey((n) => n + 1)
           setStatus((s) => ({ ...s, episodes: 'done' }))
         }
       })
@@ -449,6 +457,7 @@ export default function Home() {
           },
         )
         if (isCleared(epoch)) return
+        setQuotaRefreshKey((n) => n + 1)
         setShotsBuiltFrom(builtFrom)
         setStatus((st) => ({ ...st, shots: "done" }))
       } catch (error) {
@@ -557,20 +566,45 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* 顶部标题 */}
-      <header className="px-4 pb-6 pt-10 text-center sm:pt-14">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          成剧
-        </h1>
-        <p className="mt-2 text-sm text-slate-500 sm:text-base">
-          一句话成剧 · 从一句想法到大纲、分镜与出图提示词，资产全程只留在你本机
-        </p>
+      {/* 顶部主视觉 */}
+      <header className="px-4 pb-8 pt-12 text-center sm:pt-16">
+        <div className="mx-auto flex max-w-2xl flex-col items-center">
+          {/* 品牌标记：圆角方块 + 渐变，比纯文字标题更有识别度 */}
+          <span
+            aria-hidden="true"
+            className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl
+              bg-gradient-to-br from-brand-400 to-brand-600 text-lg font-bold text-white
+              shadow-lg shadow-brand-500/25"
+          >
+            剧
+          </span>
+
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-[2.75rem] sm:leading-tight">
+            成剧
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-500 sm:text-base">
+            一句话成剧 · 从一句想法到大纲、分镜与出图提示词
+          </p>
+
+          {/* 三条硬指标：这是产品最该被记住的三件事，值得占用首屏 */}
+          <ul className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            {['零部署', '图不上传', '一键打包带走'].map((tag) => (
+              <li
+                key={tag}
+                className="rounded-full border border-slate-200 bg-white/70 px-3 py-1
+                  text-[11px] font-medium text-slate-600 sm:text-xs"
+              >
+                {tag}
+              </li>
+            ))}
+          </ul>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6">
-        <div className="grid gap-6 lg:grid-cols-[22rem_1fr] lg:items-start lg:gap-8">
+        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-8">
           {/* 左：输入区（桌面端吸附） */}
-          <div className="lg:sticky lg:top-8">
+          <div className="min-w-0 lg:sticky lg:top-8">
             <IdeaPanel
               idea={idea}
               onIdeaChange={setIdea}
@@ -578,12 +612,13 @@ export default function Home() {
               onReset={handleReset}
               loading={status.characters === 'loading'}
               hasResult={hasResult}
+              quotaRefreshKey={quotaRefreshKey}
             />
           </div>
 
           {/* 右：步骤条 + 三步内容 */}
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3.5 backdrop-blur-sm">
+          <div className="min-w-0 space-y-5">
+            <div className="surface px-4 py-3.5">
               <StepIndicator
                 current={currentStep}
                 completed={{

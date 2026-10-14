@@ -5,6 +5,8 @@ import { chatJson } from '@/lib/deepseek'
 import { normalizeActs } from '@/lib/normalize'
 import { buildActPrompt } from '@/lib/prompts'
 import { readCharacters, readIdea } from '@/lib/validate'
+import { getDbForRequest } from "@/lib/assets/store"
+import { chargeQuota, identityFromRequest } from "@/lib/quota"
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -14,6 +16,10 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     const idea = readIdea(body?.idea)
     const characters = readCharacters(body?.characters, '请先生成核心人物，再生成三幕大纲')
+    // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
+    // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
+    chargeQuota(getDbForRequest(), identityFromRequest(req), "acts")
+
 
     const { system, user } = buildActPrompt(idea, characters)
     const raw = await chatJson<unknown>(system, user, { temperature: 0.8 })

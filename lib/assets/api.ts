@@ -48,3 +48,19 @@ export const fetchExportManifest = (projectId: string) =>
   fetch(`/api/export?projectId=${projectId}`).then((r) => r.json()).then((p) => p.data.manifest)
 
 export type { Shot, VisualCharacter, Scene }
+
+export interface QuotaDto {
+  used: number
+  limit: number
+  globalUsed: number
+  globalLimit: number
+  remaining: number
+  fullProjectCost: number
+  stepCost: Record<string, number>
+  /** 还能跑几个完整项目 */
+  projectsLeft: number
+}
+
+/** 查当前身份的剩余额度（只读，不扣分） */
+export const fetchQuota = () =>
+  fetch("/api/quota").then((r) => r.json()).then((p) => p.data as QuotaDto)

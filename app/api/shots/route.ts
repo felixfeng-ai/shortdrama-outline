@@ -18,6 +18,7 @@ import { buildRefMap } from "@/lib/assets/refs"
 import type { VisualCharacter } from "@/lib/assets/types"
 import { extractCompleteItems } from "@/lib/partial-json"
 import { readActs, readCharacters, readIdea } from "@/lib/validate"
+import { chargeQuota, identityFromRequest } from "@/lib/quota"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -45,6 +46,14 @@ export async function POST(req: Request) {
     visuals = (Array.isArray(body?.visualCharacters) ? body.visualCharacters : []) as VisualCharacter[]
     acts = Array.isArray(body?.acts) ? readActs(body.acts) : []
     projectId = typeof body?.projectId === "string" ? body.projectId : null
+  } catch (error) {
+    const { body, status } = errorResponse(error)
+    return NextResponse.json(body, { status })
+  }
+
+  // 额度闸门：同 episodes，必须在 new ReadableStream 之前
+  try {
+    chargeQuota(getDbForRequest(), identityFromRequest(req), "shots")
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

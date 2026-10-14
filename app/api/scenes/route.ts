@@ -8,6 +8,7 @@ import { normalizeScenes } from "@/lib/assets/normalize"
 import { buildScenePrompt } from "@/lib/assets/prompts"
 import { persistIfProject } from "@/lib/assets/persist"
 import { readCharacters, readEpisodes, readIdea } from "@/lib/validate"
+import { chargeQuota, identityFromRequest } from "@/lib/quota"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -20,6 +21,10 @@ export async function POST(req: Request) {
     const characters = readCharacters(body?.characters, "请先生成核心人物，再拆场次")
     const episodes = readEpisodes(body?.episodes, "请先生成分集剧情，再拆场次")
     const projectId = typeof body?.projectId === "string" ? body.projectId : null
+    // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
+    // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
+    chargeQuota(getDbForRequest(), identityFromRequest(req), "scenes")
+
 
     const { system, user } = buildScenePrompt(idea, characters, episodes)
     const raw = await chatJson<unknown>(system, user, { temperature: 0.8 })

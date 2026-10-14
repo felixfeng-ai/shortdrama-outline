@@ -15,6 +15,8 @@ import { extractCompleteItems } from '@/lib/partial-json'
 import { buildEpisodePrompt } from '@/lib/prompts'
 import type { Act, Character, Episode } from '@/lib/types'
 import { readActs, readCharacters, readIdea } from '@/lib/validate'
+import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { getDbForRequest } from "@/lib/assets/store"
 
 export const runtime = 'nodejs'
 // 10 集输出量大，给足时间
@@ -30,6 +32,16 @@ export async function POST(req: Request) {
     idea = readIdea(body?.idea)
     characters = readCharacters(body?.characters, '请先生成核心人物，再生成分集剧情')
     acts = readActs(body?.acts, '请先生成三幕大纲，再生成分集剧情')
+  } catch (error) {
+    const { body, status } = errorResponse(error)
+    return NextResponse.json(body, { status })
+  }
+
+  // 额度闸门：必须在建立 SSE 流之前扣。流一旦建立，再抛错前端读到的是
+  // 断裂的事件流而不是可解析的 JSON 信封，错误文案就丢了。
+  // 这里单独包一层 try/catch，与上面入参校验的处理方式保持一致。
+  try {
+    chargeQuota(getDbForRequest(), identityFromRequest(req), "episodes")
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

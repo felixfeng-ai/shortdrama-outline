@@ -29,9 +29,9 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
   const missing = shot.missingRefFor ?? []
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300">
+    <article className="lift min-w-0 rounded-xl border border-slate-200 bg-white p-3.5 hover:border-brand-200 hover:shadow-sm sm:p-4">
       {/* 头部：镜号 + 状态 + 删除 */}
-      <div className="mb-3 flex items-start gap-3">
+      <div className="mb-3 flex items-start gap-2.5 sm:gap-3">
         <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-xs font-semibold text-white">
           {shot.shot}
         </span>
@@ -69,14 +69,14 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
         </button>
       </div>
 
-      <div className="space-y-2 pl-10">
+      <div className="min-w-0 space-y-2 pl-0 sm:pl-10">
         {/* B6：本镜参考图标注 —— 双人同框不一致的主要防线 */}
-        <div className={`flex flex-wrap items-center gap-1.5 rounded-lg border px-3 py-2 text-xs
+        <div className={`flex min-w-0 flex-wrap items-center gap-1.5 break-words rounded-lg border px-3 py-2 text-xs
           ${missing.length > 0 ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-slate-50/60'}`}>
           <span className="font-medium text-slate-500">本镜参考图</span>
           {shot.refImages.length > 0 ? (
             shot.refImages.map((r) => (
-              <span key={r} className="rounded bg-white px-1.5 py-0.5 font-medium text-slate-700 ring-1 ring-slate-200">
+              <span key={r} className="break-all rounded bg-white px-1.5 py-0.5 font-medium text-slate-700 ring-1 ring-slate-200">
                 {r}
               </span>
             ))
@@ -103,7 +103,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
         </div>
 
         {/* 出场角色 */}
-        <div className="flex gap-2">
+        <div className="flex min-w-0 gap-2">
           <span className="mt-1 w-14 shrink-0 text-xs font-medium text-slate-500">出场角色</span>
           <AutoTextarea
             value={shot.characters.join('、')}
@@ -115,7 +115,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
         </div>
 
         {/* 动作 */}
-        <div className="flex gap-2">
+        <div className="flex min-w-0 gap-2">
           <span className="mt-1 w-14 shrink-0 text-xs font-medium text-slate-500">动作</span>
           <AutoTextarea
             value={shot.action}
@@ -167,8 +167,8 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
         </div>
 
         {/* B5：提示词 —— 唯一要被复制的字段，单独高亮 + 等宽 */}
-        <div className="rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2">
-          <div className="mb-1 flex items-center justify-between">
+        <div className="min-w-0 overflow-hidden rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5">
             <span className="text-[10px] font-semibold text-brand-800">提示词（英文，已内嵌角色锚点）</span>
             <span className="flex items-center gap-1.5">
               <CopyButton text={shot.prompt} label="复制 prompt" />
@@ -181,7 +181,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove }: Props) {
             onChange={(prompt) => onUpdate(shot.id, { prompt })}
             ariaLabel={`第 ${shot.shot} 镜提示词`}
             placeholder="English prompt"
-            className="font-mono text-xs leading-relaxed text-slate-700"
+            className="wrap-anywhere min-w-0 font-mono text-xs leading-relaxed text-slate-700"
           />
         </div>
       </div>

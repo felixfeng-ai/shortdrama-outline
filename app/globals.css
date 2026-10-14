@@ -8,10 +8,27 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
-    /* 顶部一层极淡的暖色光晕，让浅色页面不至于太平 */
-    background-image: radial-gradient(60rem 30rem at 50% -10rem, #fdf6ef 0%, transparent 70%);
+    @apply bg-[#fbfaf9] text-slate-800 antialiased;
+    /*
+      页面底噪：顶部暖光晕负责「品牌感」，右下角一点冷色平衡橙色的燥热，
+      两处的透明度都压得很低——背景是陪衬，抢戏就变成视觉噪音了。
+    */
+    background-image:
+      radial-gradient(52rem 26rem at 50% -12rem, rgba(249, 115, 22, 0.10) 0%, transparent 68%),
+      radial-gradient(40rem 30rem at 100% 8%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
     background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  /* 标题字重收紧一点，中文标题在高字重下会显得糊 */
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
+  }
+
+  /* 统一的键盘焦点：默认 outline 在浅色底上几乎看不见 */
+  :focus-visible {
+    outline: 2px solid theme(colors.brand.400);
+    outline-offset: 2px;
   }
 }
 
@@ -26,9 +43,34 @@
   }
 }
 
+@layer components {
+  /* 工作区卡片的统一外观：白底 + 极轻边框 + 一层很浅的投影。
+     投影用两层叠加而不是一个大的，是为了让卡片「贴」在页面上而不是浮起来。 */
+  .surface {
+    @apply rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px -12px rgba(15, 23, 42, 0.08);
+  }
+
+  /* 可交互的小控件：悬停时轻微抬起的触感 */
+  .lift {
+    @apply transition-all duration-150;
+  }
+  .lift:hover {
+    transform: translateY(-1px);
+  }
+}
+
 @layer utilities {
   /* 骨架屏的灰条 */
   .skeleton-bar {
     @apply animate-pulse rounded bg-slate-200;
+  }
+
+  /* 长英文提示词的兜底换行：即梦的提示词里没有空格可断，只能强制断词 */
+  .wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }

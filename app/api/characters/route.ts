@@ -8,6 +8,8 @@ import { chatJson } from '@/lib/deepseek'
 import { normalizeCharacters } from '@/lib/normalize'
 import { buildCharacterPrompt, buildSingleCharacterPrompt } from '@/lib/prompts'
 import { readCharacters, readIdea } from '@/lib/validate'
+import { getDbForRequest } from "@/lib/assets/store"
+import { chargeQuota, identityFromRequest } from "@/lib/quota"
 
 export const runtime = 'nodejs'
 // 生成较慢，放宽函数超时（Vercel 上生效）
@@ -21,6 +23,10 @@ export async function POST(req: Request) {
     // 只重新生成一个角色时，把现有阵容传给模型，避免功能重复
     const mode = body?.mode === 'single' ? 'single' : 'batch'
     const existing = mode === 'single' ? readCharacters(body?.existing, '缺少现有角色，无法单独生成') : []
+    // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
+    // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
+    chargeQuota(getDbForRequest(), identityFromRequest(req), "characters")
+
 
     const { system, user } =
       mode === 'single' ? buildSingleCharacterPrompt(idea, existing) : buildCharacterPrompt(idea)

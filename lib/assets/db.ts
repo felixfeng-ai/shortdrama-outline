@@ -7,6 +7,8 @@
 import { DatabaseSync } from "node:sqlite"
 import fs from "node:fs"
 import path from "node:path"
+// 额度控制的表结构独立在 lib/quota.ts（那一层不属于「资产链」，是运营侧的限流）
+import { ensureQuotaSchema } from "../quota.ts"
 
 /**
  * 数据目录：默认项目外的 data/，可用 CHENGJU_DATA_DIR 覆盖（部署时指向 /opt/chengju/data）。
@@ -85,5 +87,8 @@ export function openDb(dbPath: string = defaultDbPath()): DatabaseSync {
   }
   const db = new DatabaseSync(dbPath)
   db.exec(SCHEMA)
+  // 额度表也在这里建：它和资产链共用同一个库文件，分开建会导致测试用
+  // `:memory:` 时只建了一半的表结构
+  ensureQuotaSchema(db)
   return db
 }
