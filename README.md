@@ -631,8 +631,9 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `DEEPSEEK_BASE_URL` | | `https://api.deepseek.com/v1` | 兼容 OpenAI 协议的服务地址 |
 | `DEEPSEEK_MODEL` | | `deepseek-chat` | 模型名 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
-| `CHENGJU_DAILY_UNITS` | | `26` | 单个身份每天的额度（1 个完整项目 = 13） |
-| `CHENGJU_DAILY_UNITS_GLOBAL` | | `3900` | 全站每天熔断阈值 |
+| `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的额度（1 个完整项目 = 13，默认够跑 5 个项目） |
+| `CHENGJU_DAILY_UNITS_GLOBAL` | | `3900` | 全站每天熔断阈值（约 300 个项目/天） |
+| `CHENGJU_TZ` | | `Asia/Shanghai` | 额度按哪个时区切日（服务器在 UTC 时尤其要留意） |
 
 > 最后两项只对**托管版**有意义——自建时是你自己的 key，额度限制形同虚设，
 > 想关掉就把两个值调到很大。

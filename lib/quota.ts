@@ -17,6 +17,8 @@ export const STEP_COST: Record<string, number> = {
   ideas: 1,
   // AI 认图：只送文件名字符串，输出是一组短配对，比一次定妆便宜
   assetMatch: 1,
+  // 放映厅的 AI 助手：一次只改一镜的短问答，成本与联想同级
+  assistant: 1,
   characters: 1,
   acts: 1,
   episodes: 3,   // 10 集，输出最大
@@ -42,8 +44,14 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback
 }
 
-/** 单个匿名身份每天可用额度（默认够跑 2 个完整项目，留一点余量） */
-export const DAILY_UNITS_PER_IDENTITY = envInt("CHENGJU_DAILY_UNITS", FULL_PROJECT_COST * 2)
+/**
+ * 单个匿名身份每天可用额度：默认 5 个完整项目（65 单位）。
+ *
+ * 为什么是 5 而不是 2：一条完整流程 13 单位，2 个项目意味着重跑两次分镜就见底，
+ * 用户还没走完一轮试错就被告知「明天再来」——那不是成本控制，是把人劝走。
+ * 5 个留出「试两遍 + 改一版」的空间，同时仍是敞口的硬上限。
+ */
+export const DAILY_UNITS_PER_IDENTITY = envInt("CHENGJU_DAILY_UNITS", FULL_PROJECT_COST * 5)
 
 /** 全站每天总熔断阈值（默认 300 个完整项目 ≈ 成本上限的硬顶） */
 export const DAILY_UNITS_GLOBAL = envInt("CHENGJU_DAILY_UNITS_GLOBAL", FULL_PROJECT_COST * 300)
@@ -65,8 +73,23 @@ export function ensureQuotaSchema(db: DatabaseSync): void {
 }
 
 /** 当天日期键（UTC，够用且不受服务器时区影响） */
+/**
+ * 额度按「北京时间」的日历日结算，而不是 UTC。
+ *
+ * 为什么必须写死时区：服务器在香港/UTC 上跑，用 toISOString() 切出来的「今天」
+ * 会在北京时间早上 8 点才翻页——用户凌晨看到的还是昨天的账，
+ * 文案却写着「明天恢复」，对不上。时区可用 CHENGJU_TZ 覆盖，默认 Asia/Shanghai。
+ */
+export const QUOTA_TIME_ZONE = process.env.CHENGJU_TZ || "Asia/Shanghai"
+
 export function todayKey(now = Date.now()): string {
-  return new Date(now).toISOString().slice(0, 10)
+  // en-CA 的日期格式就是 YYYY-MM-DD，正好当主键用
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: QUOTA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(now))
 }
 
 export interface QuotaSnapshot {

@@ -15,9 +15,11 @@ import { fetchQuota, type QuotaDto } from '@/lib/assets/api'
 interface Props {
   /** 生成成功后 +1，用来触发重新查询（额度已经变了） */
   refreshKey?: number
+  /** 顶部品牌旁的紧凑版：一行数字 + 一条细进度，不再是自己一张卡 */
+  compact?: boolean
 }
 
-export default function QuotaBar({ refreshKey = 0 }: Props) {
+export default function QuotaBar({ refreshKey = 0, compact = false }: Props) {
   const [quota, setQuota] = useState<QuotaDto | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -32,6 +34,9 @@ export default function QuotaBar({ refreshKey = 0 }: Props) {
 
   if (failed) return null
   if (!quota) {
+    if (compact) {
+      return <div className="hidden h-6 w-52 animate-pulse rounded-chip bg-surface-soft sm:block" aria-hidden="true" />
+    }
     return (
       <div className="mt-3 h-9 animate-pulse rounded-chip bg-surface-deep" aria-hidden="true" />
     )
@@ -48,17 +53,46 @@ export default function QuotaBar({ refreshKey = 0 }: Props) {
       ? { box: 'border-accent-200 bg-accent-50', text: 'text-accent-700', bar: 'bg-accent-400' }
       : { box: 'border-surface-line bg-surface-soft', text: 'text-ink-600', bar: 'bg-ink-300' }
 
+  const label = exhausted ? '今日额度已用完' : '今日剩余额度'
+  /*
+    一行只留一个数字体系。
+    原文案是「可跑 1 个完整项目（13/26）」——括号里是额度单位、前面是项目数，
+    13 单位 = 1 个项目，两套数字并排用户算不清。单位明细收进 title，需要时悬浮可查。
+  */
+  /*
+    「可跑 0 个完整项目」字面没错，但它读起来像「一点额度都没有了」——
+    实际可能还剩几个单位，够做联想或几步生成。分开说，别把有余量说成没余量。
+  */
+  const value = exhausted
+    ? '明天恢复'
+    : quota.projectsLeft >= 1
+      ? `可跑 ${quota.projectsLeft} 个完整项目`
+      : '还能跑几步（不够一个完整项目）'
+  const detail = `本日额度 ${quota.remaining}/${quota.limit} 单位（1 个完整项目 = 13 单位）`
+
+  // 紧凑版：挂在顶部品牌旁边，只留一行数字 + 一条细进度
+  if (compact) {
+    return (
+      <div className="hidden min-w-[13rem] shrink-0 sm:block" title={`${label}：${value}。${detail}`}>
+        <div className={`flex items-baseline justify-between gap-3 text-[10.5px] ${tone.text}`}>
+          <span>{label}</span>
+          <span className="tabular-nums">{value}</span>
+        </div>
+        <div className="mt-1.5 h-[1.5px] w-full overflow-hidden rounded-full bg-surface-card/80">
+          <div
+            className={`h-full rounded-full transition-all ${tone.bar}`}
+            style={{ width: `${Math.round(ratio * 100)}%` }}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={`mt-3 rounded-chip border px-3 py-2 ${tone.box}`}>
+    <div className={`mt-3 rounded-chip border px-3 py-2 ${tone.box}`} title={detail}>
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-xs font-medium ${tone.text}`}>
-          {exhausted ? '今日额度已用完' : '今日剩余额度'}
-        </span>
-        <span className={`text-xs tabular-nums ${tone.text}`}>
-          {exhausted
-            ? '明天恢复'
-            : `可跑 ${quota.projectsLeft} 个完整项目（${quota.remaining}/${quota.limit}）`}
-        </span>
+        <span className={`text-xs font-medium ${tone.text}`}>{label}</span>
+        <span className={`text-xs tabular-nums ${tone.text}`}>{value}</span>
       </div>
 
       {/* 进度条：剩余越多条越长 */}
