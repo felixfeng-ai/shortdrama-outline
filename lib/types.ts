@@ -32,6 +32,51 @@ export interface Episode {
 }
 
 /**
+ * 短剧风格。风格是「项目级」参数而不是一次性开关——
+ * 它会被注入到人物/三幕/分集/场次/分镜的 prompt 里，
+ * 否则会出现「选了情感类，三幕却往悬疑跑」这种割裂。
+ *
+ * id 用英文短词（进 prompt 更稳），label 是给用户看的中文。
+ * 第一个选项表示不限——不强制选择，老用户不必多一次点击。
+ */
+export interface Genre {
+  id: string
+  label: string
+  /** 一句话说明这个风格的叙事抓手，直接拼进 prompt */
+  hint: string
+}
+
+export const GENRES: Genre[] = [
+  { id: 'none', label: '不限', hint: '' },
+  { id: 'urban', label: '都市', hint: '现代都市背景，冲突来自阶层落差、金钱压力与命运反转' },
+  { id: 'romance', label: '情感', hint: '以情感关系为主线，冲突来自误会、错位与牺牲，情绪浓度要高' },
+  { id: 'workplace', label: '职场', hint: '职场博弈背景，冲突来自权力、规则与人情，靠智斗推进' },
+  { id: 'suspense', label: '悬疑', hint: '信息差驱动，冲突来自隐藏的真相，每集都要翻一层' },
+  { id: 'family', label: '家庭', hint: '家庭伦理背景，冲突来自亲情绑架、代际矛盾与责任分配' },
+  { id: 'revenge', label: '逆袭复仇', hint: '主角被打压到底后反击，冲突来自身份反转与打脸节奏' },
+  { id: 'fantasy', label: '奇幻设定', hint: '带超现实设定（重生/系统/穿越），冲突来自规则约束与代价' },
+]
+
+/** 风格校验：非法值一律回落成 none，绝不因为前端传错就报错 */
+export function readGenre(value: unknown): Genre {
+  const id = typeof value === 'string' ? value : ''
+  return GENRES.find((g) => g.id === id) ?? GENRES[0]
+}
+
+/** 关键词的长度上限。联想输入比一句话想法更短，上限收得更紧 */
+export const MAX_KEYWORD_LENGTH = 40
+/** 一次联想最多给几个候选，太多反而选不出来 */
+export const MAX_IDEAS_PER_ROUND = 3
+
+/** 联想出来的候选想法 */
+export interface IdeaCandidate {
+  /** 一句话想法，用户点了会直接填进输入框 */
+  title: string
+  /** 为什么这么想，给用户判断依据，不进下游 prompt */
+  reason: string
+}
+
+/**
  * 六个步骤的标识。
  *
  * 为什么必须有六个值：之前只有三个，后三步（定妆/场次/分镜）只能借用

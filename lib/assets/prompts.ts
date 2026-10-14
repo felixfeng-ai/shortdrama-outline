@@ -7,7 +7,8 @@
 // 实测返回 400 "This response_format type is unavailable now"。
 // 因此这里用 json_object + prompt 内嵌字段约束，并在 normalize 阶段做后校验
 // （见 lib/assets/normalize.ts 的锚点强制注入）。
-import type { Act, Character, Episode } from "../types.ts"
+import type { Act, Character, Episode, Genre } from "../types.ts"
+import { genreClause } from "../prompts.ts"
 import { CAMERA_MOVES, type Scene, type VisualCharacter } from "./types.ts"
 
 const ROLE = "你是一位资深短剧美术指导兼分镜师，操盘过数十部竖屏短剧。"
@@ -20,7 +21,7 @@ const JSON_RULE = `
 
 // ── 视觉锚点 ───────────────────────────────────────────────────
 
-export function buildVisualPrompt(idea: string, characters: Character[]) {
+export function buildVisualPrompt(idea: string, characters: Character[], genre?: Genre) {
   const roster = characters
     .map((c) => `- ${c.name}（${c.identity}）：性格「${c.personality}」`)
     .join("\n")
@@ -53,7 +54,7 @@ export function buildVisualPrompt(idea: string, characters: Character[]) {
     }
   ]
 }
-注意：visualCharacters 必须覆盖所有给定角色。${JSON_RULE}`
+注意：visualCharacters 必须覆盖所有给定角色。${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 
@@ -66,7 +67,7 @@ ${roster}
 
 // ── 场次剧本 ───────────────────────────────────────────────────
 
-export function buildScenePrompt(idea: string, characters: Character[], episodes: Episode[]) {
+export function buildScenePrompt(idea: string, characters: Character[], episodes: Episode[], genre?: Genre) {
   const roster = characters.map((c) => `- ${c.name}（${c.identity}）`).join("\n")
   const epList = episodes
     .map((e) => `第 ${e.number} 集《${e.title}》：${e.synopsis}`)
@@ -95,7 +96,7 @@ export function buildScenePrompt(idea: string, characters: Character[], episodes
     }
   ]
 }
-注意：scenes 按剧情顺序排列，number 由系统按顺序生成，你不需要输出。${JSON_RULE}`
+注意：scenes 按剧情顺序排列，number 由系统按顺序生成，你不需要输出。${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 
@@ -116,6 +117,7 @@ export function buildShotPrompt(
   scenes: Scene[],
   visuals: VisualCharacter[],
   acts: Act[] = [],
+  genre?: Genre,
 ) {
   const roster = visuals
     .map((v) => `- ${v.name}：${v.anchor || "（未设定视觉锚点）"}`)
@@ -157,7 +159,7 @@ export function buildShotPrompt(
     }
   ]
 }
-注意：shots 按剧情顺序排列，shot 编号由系统生成，你不需要输出。${JSON_RULE}`
+注意：shots 按剧情顺序排列，shot 编号由系统生成，你不需要输出。${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 

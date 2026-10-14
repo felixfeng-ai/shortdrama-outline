@@ -43,6 +43,9 @@ import { postJson, postSse } from '@/lib/api'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import {
   MIN_IDEA_LENGTH,
+  GENRES,
+  readGenre,
+  type Genre,
   STEPS,
   type Act,
   type Character,
@@ -107,6 +110,8 @@ const IDLE_ERRORS: Record<StepKey, string | null> = {
 export default function Home() {
   // ── 数据（全部存在内存里，没有数据库）──
   const [idea, setIdea] = useState('')
+  // 题材风格：项目级参数，会被透传到全部六步的 prompt 里
+  const [genre, setGenre] = useState<Genre>(GENRES[0])
   const [characters, setCharacters] = useState<Character[]>([])
   const [acts, setActs] = useState<Act[]>([])
   const [episodes, setEpisodes] = useState<Episode[]>([])
@@ -191,7 +196,7 @@ export default function Home() {
   const generateCharacters = () =>
     runStep(
       'characters',
-      () => postJson<{ characters: Character[] }>('/api/characters', { idea: idea.trim() }),
+      () => postJson<{ characters: Character[] }>('/api/characters', { idea: idea.trim(), genre: genre.id }),
       ({ characters: list }) => setCharacters(list),
     )
 
@@ -203,6 +208,7 @@ export default function Home() {
     try {
       const data = await postJson<{ characters: Character[] }>('/api/characters', {
         idea: idea.trim(),
+        genre: genre.id,
         mode: 'single',
         existing: characters.filter((c) => c.id !== id),
       })
@@ -227,6 +233,7 @@ export default function Home() {
     try {
       const data = await postJson<{ characters: Character[] }>('/api/characters', {
         idea: idea.trim(),
+        genre: genre.id,
         mode: 'single',
         existing: characters,
       })
@@ -246,7 +253,7 @@ export default function Home() {
   const generateActs = () =>
     runStep(
       'acts',
-      () => postJson<{ acts: Act[] }>('/api/acts', { idea: idea.trim(), characters }),
+      () => postJson<{ acts: Act[] }>('/api/acts', { idea: idea.trim(), genre: genre.id, characters }),
       ({ acts: list }) => {
         setActs(list)
         setActsBuiltFrom(charactersSig) // 记下这批大纲是基于哪一版人物生成的
@@ -267,7 +274,7 @@ export default function Home() {
 
     let finished = false
     try {
-      await postSse('/api/episodes', { idea: idea.trim(), characters, acts }, (event, data) => {
+      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts }, (event, data) => {
         if (isCleared(epoch)) return
         if (event !== 'episodes' && event !== 'done') return
 
@@ -417,7 +424,7 @@ export default function Home() {
   const generateVisualAnchors = () =>
     runStep(
       "visuals",
-      async () => generateVisuals(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters),
+      async () => generateVisuals(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters, genre.id),
       (data) => {
         setVisuals(data.visualCharacters)
         setImagePrompts(data.imagePrompts as { name: string; zh: string; en: string }[])
@@ -429,7 +436,7 @@ export default function Home() {
   const generateSceneList = () =>
     runStep(
       "scenes",
-      async () => generateScenes(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters, episodes),
+      async () => generateScenes(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters, episodes, genre.id),
       (data) => setScenes(data.scenes),
     )
 
@@ -447,7 +454,7 @@ export default function Home() {
         const pid = await ensureProject(idea.trim().slice(0, 20))
         await postSse(
           "/api/shots",
-          { projectId: pid, idea: idea.trim(), characters, scenes, visualCharacters: visuals, acts },
+          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, visualCharacters: visuals, acts },
           (event, data) => {
             if (isCleared(epoch)) return
             const payload = data as { shots?: Shot[] }
@@ -608,6 +615,8 @@ export default function Home() {
             <IdeaPanel
               idea={idea}
               onIdeaChange={setIdea}
+              genre={genre}
+              onGenreChange={setGenre}
               onGenerate={generateCharacters}
               onReset={handleReset}
               loading={status.characters === 'loading'}

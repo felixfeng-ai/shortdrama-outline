@@ -25,13 +25,13 @@ export const findImpact = (snapshotId: string) =>
     .then((r) => r.json())
     .then((p) => p.data.affected as SnapshotDto[])
 
-export const generateVisuals = (projectId: string | null, idea: string, characters: unknown) =>
+export const generateVisuals = (projectId: string | null, idea: string, characters: unknown, genre = "none") =>
   postJson<{ visualCharacters: VisualCharacter[]; imagePrompts: unknown[] }>("/api/visual", {
-    projectId, idea, characters,
+    projectId, idea, characters, genre,
   })
 
-export const generateScenes = (projectId: string | null, idea: string, characters: unknown, episodes: unknown) =>
-  postJson<{ scenes: Scene[] }>("/api/scenes", { projectId, idea, characters, episodes })
+export const generateScenes = (projectId: string | null, idea: string, characters: unknown, episodes: unknown, genre = "none") =>
+  postJson<{ scenes: Scene[] }>("/api/scenes", { projectId, idea, characters, episodes, genre })
 
 export interface RefInput {
   vaultKey: string; label: string; fileHash: string

@@ -2,6 +2,7 @@
 // 一次请求产出两样东西，因为它们的输入完全相同（都是锚点），分成两次调用是浪费。
 import { NextResponse } from "next/server"
 import { errorResponse, ok } from "@/lib/api"
+import { readGenre } from "@/lib/types"
 import { chatJson } from "@/lib/deepseek"
 import { getDbForRequest } from "@/lib/assets/store"
 import { normalizeVisualCharacters } from "@/lib/assets/normalize"
@@ -24,9 +25,10 @@ export async function POST(req: Request) {
     // 定妆需要想象力，温度调高
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
+    const genre = readGenre(body?.genre)
     chargeQuota(getDbForRequest(), identityFromRequest(req), "visual")
 
-    const { system, user } = buildVisualPrompt(idea, characters)
+    const { system, user } = buildVisualPrompt(idea, characters, genre)
     const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
     const visualCharacters = normalizeVisualCharacters(raw, characters.map((c) => c.name))
 

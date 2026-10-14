@@ -9,6 +9,7 @@
 //   - 事件形状与 /api/episodes 完全一致
 import { NextResponse } from "next/server"
 import { errorResponse } from "@/lib/api"
+import { readGenre } from '@/lib/types'
 import { parseJson, streamChat } from "@/lib/deepseek"
 import { getDbForRequest } from "@/lib/assets/store"
 import { normalizeShots } from "@/lib/assets/normalize"
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   let scenes: unknown[]
   let visuals: VisualCharacter[]
   let acts: ReturnType<typeof readActs>
+  let genre: ReturnType<typeof readGenre>
   let projectId: string | null
   try {
     const body = await req.json().catch(() => null)
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
     visuals = (Array.isArray(body?.visualCharacters) ? body.visualCharacters : []) as VisualCharacter[]
     acts = Array.isArray(body?.acts) ? readActs(body.acts) : []
     projectId = typeof body?.projectId === "string" ? body.projectId : null
+    genre = readGenre(body?.genre)
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -59,7 +62,7 @@ export async function POST(req: Request) {
     return NextResponse.json(body, { status })
   }
 
-  const { system, user } = buildShotPrompt(idea, scenes as never, visuals, acts)
+  const { system, user } = buildShotPrompt(idea, scenes as never, visuals, acts, genre)
   const encoder = new TextEncoder()
   // 一次生成固定一个 stamp：同一镜在多次推送里 id 保持不变，React 才不会重挂卡片
   const stamp = Date.now()

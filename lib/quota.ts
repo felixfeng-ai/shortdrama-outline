@@ -13,6 +13,8 @@ import type { DatabaseSync } from "node:sqlite"
 
 /** 每个生成步骤的「权重」——一次调用大概烧多少 token 的比例 */
 export const STEP_COST: Record<string, number> = {
+  // 入口处的关键词联想：输出只有 3 句短文本，成本很低，但要计一次数
+  ideas: 1,
   characters: 1,
   acts: 1,
   episodes: 3,   // 10 集，输出最大
@@ -21,8 +23,16 @@ export const STEP_COST: Record<string, number> = {
   shots: 4,      // 每镜带锚点，输出最大
 }
 
-/** 一个完整项目（六步全走一遍）的额度消耗 */
-export const FULL_PROJECT_COST = Object.values(STEP_COST).reduce((a, b) => a + b, 0) // 13
+/**
+ * 一个完整项目（六步工作流全走一遍）的额度消耗。
+ *
+ * 注意：这里必须排除 ideas —— 它是入口的辅助联想，不属于六步流程。
+ * 若直接用 Object.values 求和，新增任何辅助步骤都会悄悄抬高
+ * 「一个完整项目多少钱」这个对外承诺。
+ */
+export const FULL_PROJECT_COST = [
+  "characters", "acts", "episodes", "visual", "scenes", "shots",
+].reduce((sum, step) => sum + (STEP_COST[step] ?? 0), 0) // 13
 
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name]

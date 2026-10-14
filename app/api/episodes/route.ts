@@ -13,7 +13,7 @@ import { parseJson, streamChat } from '@/lib/deepseek'
 import { normalizeEpisodes } from '@/lib/normalize'
 import { extractCompleteItems } from '@/lib/partial-json'
 import { buildEpisodePrompt } from '@/lib/prompts'
-import type { Act, Character, Episode } from '@/lib/types'
+import { readGenre, type Act, type Character, type Episode } from '@/lib/types'
 import { readActs, readCharacters, readIdea } from '@/lib/validate'
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
 import { getDbForRequest } from "@/lib/assets/store"
@@ -27,11 +27,13 @@ export async function POST(req: Request) {
   let idea: string
   let characters: Character[]
   let acts: Act[]
+  let genre: ReturnType<typeof readGenre>
   try {
     const body = await req.json().catch(() => null)
     idea = readIdea(body?.idea)
     characters = readCharacters(body?.characters, '请先生成核心人物，再生成分集剧情')
     acts = readActs(body?.acts, '请先生成三幕大纲，再生成分集剧情')
+    genre = readGenre(body?.genre)
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json(body, { status })
   }
 
-  const { system, user } = buildEpisodePrompt(idea, characters, acts)
+  const { system, user } = buildEpisodePrompt(idea, characters, acts, genre)
   const encoder = new TextEncoder()
   // 一次生成固定一个时间戳：同一集在多次推送里 id 保持不变，React 才不会重挂卡片
   const stamp = Date.now()

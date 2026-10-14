@@ -1,6 +1,7 @@
 // 第二步：基于人物生成三幕大纲
 import { NextResponse } from 'next/server'
 import { errorResponse, ok } from '@/lib/api'
+import { readGenre } from '@/lib/types'
 import { chatJson } from '@/lib/deepseek'
 import { normalizeActs } from '@/lib/normalize'
 import { buildActPrompt } from '@/lib/prompts'
@@ -18,10 +19,11 @@ export async function POST(req: Request) {
     const characters = readCharacters(body?.characters, '请先生成核心人物，再生成三幕大纲')
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
+    const genre = readGenre(body?.genre)
     chargeQuota(getDbForRequest(), identityFromRequest(req), "acts")
 
 
-    const { system, user } = buildActPrompt(idea, characters)
+    const { system, user } = buildActPrompt(idea, characters, genre)
     const raw = await chatJson<unknown>(system, user, { temperature: 0.8 })
 
     return NextResponse.json(ok({ acts: normalizeActs(raw) }))

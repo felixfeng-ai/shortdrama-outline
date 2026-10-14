@@ -2,9 +2,11 @@
 // 全部集中在这里：改提示词不用碰路由和界面代码。
 // 每个 builder 返回 { system, user }，分别对应 DeepSeek 的 system / user 消息。
 
-import type { Act, Character } from './types'
+import type { Act, Character, Genre } from './types'
 
 /** 三步共用的角色设定，保证输出口径一致 */
+const MAX_IDEAS = 3
+
 const ROLE = '你是一位资深短剧编剧，操盘过数十部竖屏短剧，深谙 1-3 分钟/集的强节奏叙事。'
 
 /** 统一的输出纪律，附在每个 system 末尾 */
@@ -15,9 +17,58 @@ const JSON_RULE = `
 3. 字段名必须与下方模板完全一致，不要增删字段
 4. 不要输出 null，没有内容就写合理的简短描述`
 
+/**
+ * 把风格拼成一段可复用的 prompt 片段。
+ *
+ * 为什么单独抽出来：风格要注入五个 builder，散着写迟早漏一个。
+ * 风格为「不限」时返回空串，提示词里不会多出一句废话。
+ */
+export function genreClause(genre?: Genre): string {
+  if (!genre || !genre.hint) return ''
+  return `\n\n## 题材风格（必须贯穿全文）\n本剧属于「${genre.label}」类：${genre.hint}。\n所有设定、冲突与台词都要贴合这个风格，不要跑偏。`
+}
+
+// ─────────────────── 第零步：关键词联想候选想法 ───────────────────
+
+/**
+ * 用户只给几个关键词时，先联想出几个完整的「一句话想法」供挑选。
+ *
+ * 为什么不直接把关键词丢给人物生成：一句话想法是整个六步链条的唯一输入，
+ * 后面所有 prompt 都基于它。让它保持「一句人话」的形态，下游才不用改。
+ */
+export function buildIdeaPrompt(keywords: string, genre?: Genre) {
+  const system = `${ROLE}
+
+你的任务：用户只给了几个关键词，还没想好完整的故事。请联想出 ${MAX_IDEAS} 个**不同方向**的一句话故事想法，供他挑选。
+
+## 生成要求
+- 每个想法必须是**一句完整的话**，能独立讲清主角 + 处境 + 钩子，50 字以内
+- 三个想法要**走不同的路子**：不同的主角身份、不同的冲突类型、不同的情绪走向，不要三个都是同一种模板
+- 主角身份要**落到具体职业或具体关系**上（快递员、夜班护士、被顶替的考生……），不要用「一个年轻人」这种模糊说法
+- 钩子要具体可演，避免「陷入困境」「面临抉择」这类空话
+- reason 用一句话说清这个想法的**看点在哪**（15 字以内），帮用户快速判断
+- 严格基于用户给的关键词联想，不要把关键词丢了
+
+## JSON 模板
+{
+  "ideas": [
+    {
+      "title": "一句话故事想法，50 字以内，主角 + 处境 + 钩子",
+      "reason": "看点，15 字以内"
+    }
+  ]
+}
+注意：ideas 数组必须正好 ${MAX_IDEAS} 个元素。${JSON_RULE}${genreClause(genre)}`
+
+  const user = `关键词：${keywords}
+
+请基于这些关键词联想 ${MAX_IDEAS} 个不同方向的一句话故事想法。`
+  return { system, user }
+}
+
 // ─────────────────────── 第一步：核心人物 ───────────────────────
 
-export function buildCharacterPrompt(idea: string) {
+export function buildCharacterPrompt(idea: string, genre?: Genre) {
   const system = `${ROLE}
 
 你的任务：根据用户的一句话故事想法，设计 3-5 个核心角色。
@@ -40,7 +91,7 @@ export function buildCharacterPrompt(idea: string) {
       "arc": "人物弧光，80 字以内，写清从什么状态到什么是状态、被什么事件促成"
     }
   ]
-}${JSON_RULE}`
+}${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 
@@ -52,7 +103,7 @@ export function buildCharacterPrompt(idea: string) {
  * 第一步的变体：只重新生成一个角色。
  * 用在「某个角色不满意，单独换一个」的场景，会要求新角色与现有阵容互补。
  */
-export function buildSingleCharacterPrompt(idea: string, existing: Character[]) {
+export function buildSingleCharacterPrompt(idea: string, existing: Character[], genre?: Genre) {
   const roster =
     existing.length > 0
       ? existing.map((c) => `- ${c.name}（${c.identity}）：动机是「${c.motivation}」`).join('\n')
@@ -81,7 +132,7 @@ export function buildSingleCharacterPrompt(idea: string, existing: Character[]) 
     }
   ]
 }
-注意：characters 数组只放 1 个角色。${JSON_RULE}`
+注意：characters 数组只放 1 个角色。${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 
@@ -94,7 +145,7 @@ ${roster}
 
 // ─────────────────────── 第二步：三幕大纲 ───────────────────────
 
-export function buildActPrompt(idea: string, characters: Character[]) {
+export function buildActPrompt(idea: string, characters: Character[], genre?: Genre) {
   const roster = characters
     .map((c) => `- ${c.name}（${c.identity}）：动机是「${c.motivation}」；弧光是「${c.arc}」`)
     .join('\n')
@@ -127,7 +178,7 @@ export function buildActPrompt(idea: string, characters: Character[]) {
     { "key": "resolution", "title": "第三幕 · 结局", "summary": "...", "beats": ["..."] }
   ]
 }
-注意：acts 数组必须正好 3 个元素，key 依次为 setup / conflict / resolution。${JSON_RULE}`
+注意：acts 数组必须正好 3 个元素，key 依次为 setup / conflict / resolution。${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 
@@ -140,7 +191,7 @@ ${roster}
 
 // ─────────────────────── 第三步：分集剧情 ───────────────────────
 
-export function buildEpisodePrompt(idea: string, characters: Character[], acts: Act[]) {
+export function buildEpisodePrompt(idea: string, characters: Character[], acts: Act[], genre?: Genre) {
   const roster = characters
     .map((c) => `- ${c.name}（${c.identity}）：动机是「${c.motivation}」`)
     .join('\n')
@@ -172,7 +223,7 @@ export function buildEpisodePrompt(idea: string, characters: Character[], acts: 
     }
   ]
 }
-注意：episodes 数组必须正好 10 个元素，number 从 1 连续到 10。${JSON_RULE}`
+注意：episodes 数组必须正好 10 个元素，number 从 1 连续到 10。${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 

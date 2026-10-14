@@ -4,6 +4,7 @@
 //   mode = 'single'        → 只补一个新角色，用于「单独重新生成某个人物」
 import { NextResponse } from 'next/server'
 import { errorResponse, ok } from '@/lib/api'
+import { readGenre } from '@/lib/types'
 import { chatJson } from '@/lib/deepseek'
 import { normalizeCharacters } from '@/lib/normalize'
 import { buildCharacterPrompt, buildSingleCharacterPrompt } from '@/lib/prompts'
@@ -25,11 +26,12 @@ export async function POST(req: Request) {
     const existing = mode === 'single' ? readCharacters(body?.existing, '缺少现有角色，无法单独生成') : []
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
+    const genre = readGenre(body?.genre)
     chargeQuota(getDbForRequest(), identityFromRequest(req), "characters")
 
 
     const { system, user } =
-      mode === 'single' ? buildSingleCharacterPrompt(idea, existing) : buildCharacterPrompt(idea)
+      mode === 'single' ? buildSingleCharacterPrompt(idea, existing, genre) : buildCharacterPrompt(idea, genre)
 
     // 人物设定需要想象力，温度调高一些
     const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
