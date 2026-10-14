@@ -6,7 +6,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { GENRES, readGenre, MAX_IDEAS_PER_ROUND } from "../lib/types.ts"
-import { buildIdeaPrompt, genreClause, buildCharacterPrompt } from "../lib/prompts.ts"
+import { buildIdeaPrompt, genreClause, buildCharacterPrompt, readRecommendedGenres } from "../lib/prompts.ts"
 
 // ── 风格校验 ────────────────────────────────────────────────────
 
@@ -90,4 +90,40 @@ test("I5 ideas 是辅助步骤：计入额度，但不计入「一个完整项�
   const sum = sixSteps.reduce((a, s) => a + STEP_COST[s], 0)
   assert.equal(FULL_PROJECT_COST, sum, "FULL_PROJECT_COST 必须只由六步构成")
   assert.equal(FULL_PROJECT_COST, 13)
+})
+
+// ── I6 题材推荐（界面上的「AI推荐」角标唯一的数据来源）──
+//
+// 角标必须能对上真实题材，否则它就是在撒谎。这里把口径钉住：
+// 只认清单里的 id、去重、最多三个，中文名和自造 id 一律丢掉。
+
+test("I6 readRecommendedGenres 只认清单里的合法 id", () => {
+  assert.deepEqual(readRecommendedGenres({ genres: ["suspense", "costume"] }), ["suspense", "costume"])
+  assert.deepEqual(readRecommendedGenres({ genres: ["悬疑"] }), [], "中文名不是 id，不能点亮标签")
+  assert.deepEqual(readRecommendedGenres({ genres: ["none"] }), [], "「不限」不是推荐项")
+  assert.deepEqual(readRecommendedGenres({ genres: ["made-up-id", "sweet"] }), ["sweet"])
+})
+
+test("I6b readRecommendedGenres 去重并截断到三个", () => {
+  assert.deepEqual(readRecommendedGenres({ genres: ["urban", "urban", "sweet"] }), ["urban", "sweet"])
+  assert.deepEqual(
+    readRecommendedGenres({ genres: ["urban", "sweet", "costume", "suspense", "rebirth"] }),
+    ["urban", "sweet", "costume"],
+  )
+})
+
+test("I6c 缺字段、类型不对都不能崩", () => {
+  assert.deepEqual(readRecommendedGenres(null), [])
+  assert.deepEqual(readRecommendedGenres({}), [])
+  assert.deepEqual(readRecommendedGenres({ genres: "suspense" }), [])
+  assert.deepEqual(readRecommendedGenres({ genres: [1, 2, null] }), [])
+})
+
+test("I6d 提示词里要带上可挑的题材清单，模型才知道 id 从哪来", () => {
+  const { system } = buildIdeaPrompt("快递员", undefined, [
+    { id: "none", label: "不限", hint: "" },
+    { id: "suspense", label: "悬疑", hint: "信息差驱动" },
+  ])
+  assert.ok(system.includes("suspense=悬疑"), "清单要给 id=中文名 的对应关系")
+  assert.ok(system.includes("genres"), "JSON 模板里要有 genres 字段")
 })

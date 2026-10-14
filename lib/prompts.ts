@@ -2,7 +2,9 @@
 // 全部集中在这里：改提示词不用碰路由和界面代码。
 // 每个 builder 返回 { system, user }，分别对应 DeepSeek 的 system / user 消息。
 
-import type { Act, Character, Genre } from './types'
+// 注意带 .ts 后缀：这个文件现在要 import 值（GENRES），
+// 测试跑的是 node 原生 ESM，解析器不猜扩展名（写 './types' 会 ERR_MODULE_NOT_FOUND）
+import { GENRES, type Act, type Character, type Genre } from './types.ts'
 
 /** 三步共用的角色设定，保证输出口径一致 */
 const MAX_IDEAS = 3
@@ -31,12 +33,45 @@ export function genreClause(genre?: Genre): string {
 // ─────────────────── 第零步：关键词联想候选想法 ───────────────────
 
 /**
+ * 题材候选清单（id=中文名），给模型挑推荐题材用。
+ * 传 id 而不是中文名，是因为回传的 id 要能直接点亮界面上的题材标签。
+ */
+export function genrePickerList(genres: Genre[]): string {
+  return genres
+    .filter((g) => g.id !== 'none')
+    .map((g) => `${g.id}=${g.label}`)
+    .join('、')
+}
+
+/** 一次最多认几个推荐题材：多于 3 个就不像「推荐」了 */
+export const MAX_RECOMMENDED_GENRES = 3
+
+/**
+ * 解析模型给的题材推荐：只认清单里真实存在的 id，最多 3 个、去重。
+ *
+ * 模型偶尔会回中文名或自造 id——那种一律丢掉。宁可界面上没有角标，
+ * 也不能点亮一个点不了的标签：角标必须能对上题材，才配叫「AI 推荐」。
+ */
+export function readRecommendedGenres(raw: unknown): string[] {
+  const src = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const list = Array.isArray(src.genres) ? src.genres : []
+  const valid = new Set(GENRES.map((g) => g.id).filter((id) => id !== 'none'))
+  const picked: string[] = []
+  for (const item of list) {
+    const id = typeof item === 'string' ? item.trim() : ''
+    if (valid.has(id) && !picked.includes(id)) picked.push(id)
+    if (picked.length >= MAX_RECOMMENDED_GENRES) break
+  }
+  return picked
+}
+
+/**
  * 用户只给几个关键词时，先联想出几个完整的「一句话想法」供挑选。
  *
  * 为什么不直接把关键词丢给人物生成：一句话想法是整个六步链条的唯一输入，
  * 后面所有 prompt 都基于它。让它保持「一句人话」的形态，下游才不用改。
  */
-export function buildIdeaPrompt(keywords: string, genre?: Genre) {
+export function buildIdeaPrompt(keywords: string, genre?: Genre, pickable: Genre[] = []) {
   const system = `${ROLE}
 
 你的任务：用户只给了几个关键词，还没想好完整的故事。请联想出 ${MAX_IDEAS} 个**不同方向**的一句话故事想法，供他挑选。
@@ -56,13 +91,20 @@ export function buildIdeaPrompt(keywords: string, genre?: Genre) {
       "title": "一句话故事想法，50 字以内，主角 + 处境 + 钩子",
       "reason": "看点，15 字以内"
     }
-  ]
+  ],
+  "genres": ["你在上面这些想法里最贴合的题材 id"]
 }
-注意：ideas 数组必须正好 ${MAX_IDEAS} 个元素。${JSON_RULE}${genreClause(genre)}`
+${pickable.length > 0 ? `
+## genres 字段（题材推荐）
+- 从下面这份清单里挑 1-3 个和最贴合上面想法的题材，只填 id，不要中文名、不要自造
+- 清单：${genrePickerList(pickable)}
+- 这是给用户界面点亮的推荐标签，宁缺毋滥：只有一个明显贴合就只给一个
+` : ''}
+ 注意：ideas 数组必须正好 ${MAX_IDEAS} 个元素。${JSON_RULE}${genreClause(genre)}`
 
   const user = `关键词：${keywords}
 
-请基于这些关键词联想 ${MAX_IDEAS} 个不同方向的一句话故事想法。`
+请基于这些关键词联想 ${MAX_IDEAS} 个不同方向的一句话故事想法，并给出最贴合的题材。`
   return { system, user }
 }
 

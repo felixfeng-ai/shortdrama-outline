@@ -6,7 +6,8 @@ import { NextResponse } from 'next/server'
 import { errorResponse, ok, InputError } from '@/lib/api'
 import { chatJson } from '@/lib/deepseek'
 import { buildIdeaPrompt } from '@/lib/prompts'
-import { readGenre, MAX_IDEAS_PER_ROUND, MAX_KEYWORD_LENGTH } from '@/lib/types'
+import { GENRES, readGenre, MAX_IDEAS_PER_ROUND, MAX_KEYWORD_LENGTH } from '@/lib/types'
+import { readRecommendedGenres } from '@/lib/prompts'
 import { getDbForRequest } from '@/lib/assets/store'
 import { chargeQuota, identityFromRequest } from '@/lib/quota'
 
@@ -48,12 +49,13 @@ export async function POST(req: Request) {
     // 额度闸门：入参已校验、尚未调用模型
     chargeQuota(getDbForRequest(), identityFromRequest(req), 'ideas')
 
-    const { system, user } = buildIdeaPrompt(keywords, genre)
+    const { system, user } = buildIdeaPrompt(keywords, genre, GENRES)
     // 联想需要发散，温度比人物生成再高一点
     const raw = await chatJson<unknown>(system, user, { temperature: 1.1 })
     const ideas = normalizeIdeas(raw)
+    const genres = readRecommendedGenres(raw)
 
-    return NextResponse.json(ok({ ideas }))
+    return NextResponse.json(ok({ ideas, genres }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

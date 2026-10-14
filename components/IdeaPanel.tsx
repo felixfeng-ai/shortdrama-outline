@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import QuotaBar from './QuotaBar'
 import { postJson } from '@/lib/api'
 import {
   GENRES,
@@ -23,6 +22,12 @@ const SAMPLES = [
 /** 几个常用关键词，点一下就填进关键词框 */
 const KEYWORD_HINTS = ['快递员', '深夜', '血缘', '职场', '重生']
 
+/**
+ * 首屏只放 demo 里那六个标签（短剧 + 漫剧最常用的），
+ * 其余题材收在「更多题材」后面——首屏和 demo 保持一致，功能一个不少。
+ */
+const FEATURED_GENRES = ['urban', 'costume', 'suspense', 'sweet', 'revenge', 'cultivation']
+
 interface Props {
   idea: string
   onIdeaChange: (value: string) => void
@@ -33,10 +38,13 @@ interface Props {
   loading: boolean
   /** 是否已经有任意结果，决定「重新开始」按钮是否可用 */
   hasResult: boolean
-  /** 生成成功后 +1，让额度条重新查询 */
-  quotaRefreshKey?: number
 }
 
+/**
+ * 故事输入区。排布与 .tmp-visual3/demo.html 的中间列一一对应：
+ * 一张大卡（灵感输入 + 题材标签 + 居中的生成按钮）+ 两张小卡
+ * （示例想法、关键词联想），额度与说明收在下面。
+ */
 export default function IdeaPanel({
   idea,
   onIdeaChange,
@@ -46,16 +54,16 @@ export default function IdeaPanel({
   onReset,
   loading,
   hasResult,
-  quotaRefreshKey = 0,
 }: Props) {
-  // 与接口的校验口径保持一致，避免「按钮能点但请求必被拒」
+  // 与接口的校验口径一致，避免「按钮能点但请求必被拒」
   const canGenerate = idea.trim().length >= MIN_IDEA_LENGTH && !loading
 
-  // ── 关键词联想 ──
   const [keywords, setKeywords] = useState('')
   const [brainstorming, setBrainstorming] = useState(false)
   const [candidates, setCandidates] = useState<IdeaCandidate[]>([])
   const [brainstormError, setBrainstormError] = useState<string | null>(null)
+  /** AI 推荐的题材 id：由「联想想法」那一次调用顺带产出，角标只认它 */
+  const [recommendedGenres, setRecommendedGenres] = useState<string[]>([])
 
   const runBrainstorm = async () => {
     const input = keywords.trim()
@@ -64,12 +72,13 @@ export default function IdeaPanel({
     setBrainstormError(null)
     setCandidates([])
     try {
-      const data = await postJson<{ ideas: IdeaCandidate[] }>('/api/ideas', {
+      const data = await postJson<{ ideas: IdeaCandidate[]; genres?: string[] }>('/api/ideas', {
         keywords: input,
         genre: genre.id,
       })
       const list = Array.isArray(data.ideas) ? data.ideas : []
       setCandidates(list)
+      setRecommendedGenres(Array.isArray(data.genres) ? data.genres : [])
       if (list.length === 0) setBrainstormError('没想出合适的想法，换个关键词再试试')
     } catch (error) {
       setBrainstormError(error instanceof Error ? error.message : '联想失败，请重试')
@@ -78,195 +87,192 @@ export default function IdeaPanel({
     }
   }
 
+  // 题材标签不再单列「不限」：点已选中的那个即取消（回到不限）
+  const [showAllGenres, setShowAllGenres] = useState(false)
+  const featured = FEATURED_GENRES
+    .map((id) => GENRES.find((g) => g.id === id))
+    .filter((g): g is Genre => !!g)
+  const restGenres = GENRES.filter((g) => g.id !== 'none' && !FEATURED_GENRES.includes(g.id))
+  /*
+    自动展开的两种情况：选中的题材在「更多」里、或 AI 推荐的题材在「更多」里。
+    后者很关键——推荐了却不展开，用户根本看不到那颗角标，等于没推荐。
+  */
+  const genresExpanded =
+    showAllGenres ||
+    restGenres.some((g) => g.id === genre.id) ||
+    restGenres.some((g) => recommendedGenres.includes(g.id))
+  const genreChips = genresExpanded ? [...featured, ...restGenres] : featured
+  const pickGenre = (item: Genre) => onGenreChange(item.id === genre.id ? GENRES[0] : item)
+
   return (
-    <div className="surface p-5">
-      <label htmlFor="idea" className="mb-2 block text-sm font-semibold text-ink-900">
-        一句话故事想法
-      </label>
-      <textarea
-        id="idea"
-        value={idea}
-        onChange={(e) => onIdeaChange(e.target.value)}
-        rows={4}
-        maxLength={MAX_IDEA_LENGTH}
-        placeholder="例如：一个快递员意外继承了百万遗产"
-        className="w-full resize-none rounded-chip border border-surface-line bg-surface/70 px-3.5 py-3 text-sm leading-relaxed
-          text-ink-800 placeholder:text-ink-300
-          focus:border-accent-300 focus:bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent-100"
-      />
-      <div className="mt-1.5 text-right text-xs text-ink-400">
-        {idea.length} / {MAX_IDEA_LENGTH}
-      </div>
-
-      {/* 示例想法 */}
-      <div className="mt-3">
-        <p className="mb-2 text-xs font-medium text-ink-400">没灵感？试试这些</p>
-        <div className="flex flex-wrap gap-1.5">
-          {SAMPLES.map((sample) => (
-            <button
-              key={sample}
-              type="button"
-              onClick={() => onIdeaChange(sample)}
-              className="rounded-pill bg-surface-soft px-3 py-1.5 text-xs text-ink-600
-                transition-colors hover:bg-accent-50 hover:text-accent-700
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
-            >
-              {sample}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── 只想到关键词？让 AI 帮你补成一句话 ── */}
-      <div className="mt-4 rounded-card border border-surface-line bg-surface/60 p-3">
-        <p className="mb-2 text-xs font-medium text-ink-600">
-          只有关键词也有办法 —— 输入你想到的词，AI 帮你补成几个完整想法
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            onKeyDown={(e) => {
-              // 回车直接联想，省一次点击
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                void runBrainstorm()
-              }
-            }}
-            maxLength={MAX_KEYWORD_LENGTH * 3}
-            placeholder="比如：快递员、钥匙"
-            className="min-w-0 flex-1 rounded-chip border border-surface-line bg-surface-card px-3 py-2 text-sm
-              text-ink-800 placeholder:text-ink-300
-              focus:border-accent-300 focus:outline-none focus:ring-2 focus:ring-accent-100"
+    <div className="flex min-w-0 flex-col gap-3.5">
+      {/* ── 大卡：灵感输入 + 题材标签 + 生成 ── */}
+      <div className="compose">
+        <label htmlFor="idea" className="sr-only">一句话故事想法</label>
+        <div className="relative">
+          <textarea
+            id="idea"
+            value={idea}
+            onChange={(e) => onIdeaChange(e.target.value)}
+            rows={3}
+            maxLength={MAX_IDEA_LENGTH}
+            placeholder="输入你的故事灵感…"
+            className="ta"
           />
-          <button
-            type="button"
-            onClick={() => void runBrainstorm()}
-            disabled={!keywords.trim() || brainstorming}
-            className="shrink-0 rounded-chip bg-ink-900 px-3.5 py-2 text-sm font-medium text-surface-card
-              transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2
-              focus-visible:ring-ink-400 disabled:cursor-not-allowed disabled:bg-ink-100
-              disabled:text-ink-300"
-          >
-            {brainstorming ? '联想中…' : '联想想法'}
-          </button>
+          {/* 字数贴着输入框右上角：它属于输入框，不属于生成按钮 */}
+          <span className="pointer-events-none absolute right-0.5 top-1 text-xs tabular-nums text-ink-400">
+            {idea.length} / {MAX_IDEA_LENGTH}
+          </span>
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {KEYWORD_HINTS.map((word) => (
-            <button
-              key={word}
-              type="button"
-              onClick={() => setKeywords((k) => (k.trim() ? `${k.trim()}、${word}` : word))}
-              className="rounded-full border border-dashed border-surface-line bg-surface-card px-2 py-0.5
-                text-[11px] text-ink-500 transition-colors hover:border-accent-300
-                hover:text-accent-600 focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-accent-300"
-            >
-              + {word}
-            </button>
-          ))}
-        </div>
-
-        {brainstormError && (
-          <p className="mt-2 text-xs text-accent-700">{brainstormError}</p>
-        )}
-
-        {candidates.length > 0 && (
-          <ul className="mt-3 space-y-1.5">
-            {candidates.map((item, index) => (
-              <li key={`${item.title}-${index}`} className="relative">
-                {/* 角标只给前两条：这两条是模型最看好的方向 */}
-                {index < 2 && <span className="tag-ai">AI推荐</span>}
-                <button
-                  type="button"
-                  onClick={() => onIdeaChange(item.title)}
-                  className={`group w-full rounded-chip px-3 py-2 text-left transition-colors
-                    hover:bg-accent-50/70 focus-visible:outline-none focus-visible:ring-2
-                    focus-visible:ring-accent-300 ${index < 2 ? 'bg-accent-50/60' : 'bg-surface-soft'}`}
-                >
-                  <span className="block text-xs leading-relaxed text-ink-700 group-hover:text-accent-800">
-                    {item.title}
-                  </span>
-                  {item.reason && (
-                    <span className="mt-0.5 block text-[11px] text-ink-400">
-                      {item.reason}
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* ── 题材风格：影响后续全部六步，不只是这一次生成 ── */}
-      <div className="mt-4">
-        <div className="mb-2 flex items-baseline justify-between">
-          <p className="text-xs font-medium text-ink-500">题材风格</p>
-          <p className="text-[11px] text-ink-400">影响后续全部步骤</p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {GENRES.map((item) => {
+        <div className="chips mt-1.5">
+          {genreChips.map((item) => {
             const active = item.id === genre.id
+            const recommended = recommendedGenres.includes(item.id)
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => onGenreChange(item)}
+                onClick={() => pickGenre(item)}
                 title={item.hint || '不限定题材，让 AI 自由发挥'}
                 aria-pressed={active}
-                className={`rounded-pill px-3 py-1.5 text-xs transition-colors
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 ${
-                    active
-                      ? 'bg-accent-100 font-semibold text-accent-700 ring-1 ring-accent-300'
-                      : 'bg-surface-soft text-ink-600 hover:bg-accent-50 hover:text-accent-700'
-                  }`}
+                className={`chip ${active ? 'lead' : ''}`}
               >
+                {/* 角标只认 AI 真给过的推荐，不再无条件挂在头两个标签上 */}
+                {recommended && <span className="tag-ai">AI推荐</span>}
                 {item.label}
               </button>
             )
           })}
+          <button
+            type="button"
+            onClick={() => setShowAllGenres((v) => !v)}
+            className="chip"
+            title={genresExpanded ? '收起来，只留常用的六个' : '展开其余题材'}
+          >
+            {genresExpanded ? '收起' : '更多题材'}
+          </button>
+        </div>
+
+        {/* 撑开空白，把生成按钮压到卡片底部中间（和 demo 一致） */}
+        <div className="fill min-h-[7rem]" />
+
+        <button type="button" onClick={onGenerate} disabled={!canGenerate} className="bmain">
+          {/* 按钮说的必须是它真做的事：这里调的是生成核心人物，不是大纲 */}
+          {loading ? '正在生成人物…' : '生成 · 核心人物'}
+          <svg className="glowstar" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 1.6c.8 5.4 4 8.6 9.4 9.4-5.4.8-8.6 4-9.4 9.4-.8-5.4-4-8.6-9.4-9.4 5.4-.8 8.6-4 9.4-9.4z" />
+          </svg>
+        </button>
+
+        {hasResult && (
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={loading}
+            className="mx-auto mt-2 flex w-auto rounded-pill border border-surface-line px-7 py-2 text-sm text-ink-600
+              transition-colors hover:border-accent-300 hover:text-accent-700 disabled:opacity-50"
+          >
+            清空重来
+          </button>
+        )}
+      </div>
+
+      {/* ── 两张小卡：示例想法 / 关键词联想 ── */}
+      <div className="recent">
+        <button
+          type="button"
+          onClick={() => onIdeaChange(SAMPLES[Math.floor(Math.random() * SAMPLES.length)])}
+          title="没灵感？换一条示例想法"
+          className="mini text-left"
+        >
+          <span className="mtxt">
+            <p>{SAMPLES[0]}</p>
+            <span className="ruler" />
+          </span>
+          <i className="mico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4.4" />
+              <path d="M12 8.2a2.7 2.7 0 0 1 1.7 4.8c-.6.5-1 .9-1 1.6v.3" />
+              <path d="M12 17.4h.01" />
+            </svg>
+          </i>
+        </button>
+
+        <div className="mini">
+          <span className="mtxt">
+            <input
+              type="text"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); void runBrainstorm() }
+              }}
+              maxLength={MAX_KEYWORD_LENGTH * 3}
+              placeholder="只有关键词？比如：快递员、钥匙"
+              aria-label="联想想法的关键词"
+              className="w-full border-0 bg-transparent text-[14.5px] text-ink-800 placeholder:text-ink-400 focus:outline-none"
+            />
+            <span className="ruler" />
+          </span>
+          <button
+            type="button"
+            onClick={() => void runBrainstorm()}
+            disabled={!keywords.trim() || brainstorming}
+            title="让 AI 把关键词补成完整想法"
+            className="mico text-[11px] font-medium text-accent-700 disabled:opacity-50"
+          >
+            {brainstorming ? '…' : '联想'}
+          </button>
         </div>
       </div>
 
-      {/* 主按钮：红→深红渐变 + 极淡光晕 + 右上角星芒（参考图的「生成·剧本大纲」） */}
-      <button
-        type="button"
-        onClick={onGenerate}
-        disabled={!canGenerate}
-        className="btn-primary relative mt-5 w-full px-4 py-3 focus:outline-none
-          focus-visible:ring-2 focus-visible:ring-accent-300"
-      >
-        {loading ? '正在生成人物…' : '生成人物'}
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-1 -top-2 h-5 w-5 fill-white
-            drop-shadow-[0_0_7px_rgba(255,255,255,0.9)]"
-        >
-          <path d="M12 1.6c.8 5.4 4 8.6 9.4 9.4-5.4.8-8.6 4-9.4 9.4-.8-5.4-4-8.6-9.4-9.4 5.4-.8 8.6-4 9.4-9.4z" />
-        </svg>
-      </button>
-
-      {hasResult && (
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={loading}
-          className="mt-2 w-full rounded-chip border border-surface-line px-4 py-2.5 text-sm text-ink-600
-            transition-colors hover:border-ink-300 hover:text-ink-800 focus-visible:outline-none
-            focus-visible:ring-2 focus-visible:ring-ink-300 disabled:opacity-50"
-        >
-          清空重来
-        </button>
+      {/* ── 联想结果：AI 产出的候选，前两条标「AI推荐」 ── */}
+      {candidates.length > 0 && (
+        <ul className="space-y-1.5">
+          {candidates.map((item, index) => (
+            <li key={`${item.title}-${index}`} className="relative">
+              {index < 2 && <span className="tag-ai">AI推荐</span>}
+              <button
+                type="button"
+                onClick={() => onIdeaChange(item.title)}
+                className={`w-full rounded-card px-3.5 py-2.5 text-left transition-colors hover:bg-accent-50/70
+                  ${index < 2 ? 'bg-accent-50/60' : 'bg-surface-soft'}`}
+              >
+                <span className="block text-xs leading-relaxed text-ink-800">{item.title}</span>
+                {item.reason && <span className="mt-0.5 block text-[11px] text-ink-400">{item.reason}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
+      {brainstormError && <p className="text-xs text-accent-700">{brainstormError}</p>}
 
-      <QuotaBar refreshKey={quotaRefreshKey} />
+      {/* 关键词提示：点一下追加进关键词框 */}
+      <div className="flex flex-wrap gap-1.5">
+        {KEYWORD_HINTS.map((word) => (
+          <button
+            key={word}
+            type="button"
+            onClick={() => setKeywords((k) => (k.trim() ? `${k.trim()}、${word}` : word))}
+            className="rounded-pill border border-dashed border-surface-line-2 px-2.5 py-1 text-[11px] text-ink-500
+              transition-colors hover:border-accent-300 hover:text-accent-600"
+          >
+            + {word}
+          </button>
+        ))}
+      </div>
 
-      <p className="mt-4 border-t border-surface-line pt-3 text-xs leading-relaxed text-ink-500">
-        六步工作流：先定人物、搭三幕、拆分集，再定妆、分场次、出分镜。每一步都能手动修改。
+      <p className="border-t border-surface-line pt-3 text-xs leading-relaxed text-ink-500">
+        六步工作流：先定人物、搭三幕、拆分集，再定妆、拆场景、出分镜。每一步都能手动修改。
+        <a
+          href="https://github.com/felixfeng-ai/shortdrama-outline"
+          target="_blank"
+          rel="noreferrer"
+          className="ml-1 text-accent-700 underline decoration-accent-300 underline-offset-2 hover:text-accent-800"
+        >
+          代码可自建
+        </a>
       </p>
     </div>
   )
