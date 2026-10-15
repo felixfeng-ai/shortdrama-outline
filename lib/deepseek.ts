@@ -1,4 +1,4 @@
-// DeepSeek 调用封装。统一走 OpenAI 兼容协议，与项目内其他服务保持一致的配置口径：
+﻿// DeepSeek 调用封装。统一走 OpenAI 兼容协议，与项目内其他服务保持一致的配置口径：
 // BASE_URL = https://api.deepseek.com/v1，MODEL = deepseek-chat，KEY = DEEPSEEK_API_KEY
 //
 // 设计要点：
@@ -139,6 +139,100 @@ async function chat(system: string, user: string, options: ChatOptions = {}): Pr
     const content: string | undefined = data?.choices?.[0]?.message?.content
     if (!content) throw new AiError('AI 没有返回内容，请重新生成', 502)
     return content
+  } catch (error) {
+    throw toAiError(error)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// ── 工具调用（function calling）─────────────────────────────────
+//
+// 给场记用（见 AGENT.md）。协议与 OpenAI 兼容：请求带 tools，响应里
+// message.tool_calls 是模型想调的函数；我们把参数从 JSON 字符串解析成对象交给循环。
+// 这里不做任何业务判断——工具该不该执行、结果怎么回填，都在 lib/agent/loop.ts。
+
+export interface ToolChatMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  content: string
+  tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[]
+  tool_call_id?: string
+}
+
+export interface ToolChatTool {
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+}
+
+export interface ToolChatResult {
+  /** 模型决定直接回答时的文本 */
+  reply?: string
+  /** 模型要求调用的工具（可能多个） */
+  toolCalls?: { id: string; name: string; args: Record<string, unknown> }[]
+}
+
+export async function chatWithTools(
+  messages: ToolChatMessage[],
+  tools: ToolChatTool[],
+  options: ChatOptions = {},
+): Promise<ToolChatResult> {
+  const { apiKey, baseUrl, model } = getConfig()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+  try {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        tools: tools.map((t) => ({
+          type: 'function',
+          function: { name: t.name, description: t.description, parameters: t.parameters },
+        })),
+        tool_choice: 'auto',
+        temperature: options.temperature ?? 0.5,
+        max_tokens: options.maxTokens ?? 1200,
+      }),
+      signal: controller.signal,
+    })
+
+    await assertOk(res)
+
+    const data = await res.json()
+    const message = data?.choices?.[0]?.message
+    const rawCalls = Array.isArray(message?.tool_calls) ? message.tool_calls : []
+    const toolCalls = rawCalls
+      .map((call: { id?: unknown; function?: { name?: unknown; arguments?: unknown } }) => {
+        const name = typeof call?.function?.name === 'string' ? call.function.name : ''
+        if (!name) return null
+        let args: Record<string, unknown> = {}
+        const rawArgs = call?.function?.arguments
+        if (typeof rawArgs === 'string' && rawArgs.trim()) {
+          try {
+            const parsed = JSON.parse(rawArgs)
+            if (parsed && typeof parsed === 'object') args = parsed as Record<string, unknown>
+          } catch {
+            // 参数不是合法 JSON：当成空参数继续，让工具自己去校验（工具会回中文说明）
+          }
+        }
+        return { id: typeof call?.id === 'string' ? call.id : name, name, args }
+      })
+      .filter((c: unknown): c is { id: string; name: string; args: Record<string, unknown> } => !!c)
+
+    const reply = typeof message?.content === 'string' ? message.content.trim() : ''
+    if (toolCalls.length === 0 && !reply) {
+      throw new AiError('AI 没有返回内容，请重新提问', 502)
+    }
+    return {
+      reply: reply || undefined,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    }
   } catch (error) {
     throw toAiError(error)
   } finally {

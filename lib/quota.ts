@@ -1,4 +1,4 @@
-// 额度控制与消费熔断。
+﻿// 额度控制与消费熔断。
 //
 // 为什么必须有这个文件：六个生成接口全部是公开的、且每次调用都在花真金白银。
 // lib/validate.ts 只卡了「单次入参大小」，挡不住「同一个人反复刷」——
@@ -19,6 +19,8 @@ export const STEP_COST: Record<string, number> = {
   assetMatch: 1,
   // 放映厅的 AI 助手：一次只改一镜的短问答，成本与联想同级
   assistant: 1,
+  // 场记（ReAct）：按「一次模型往返」计 1 单位，循环上限由 AGENT.md 定死为 6
+  agent: 1,
   characters: 1,
   acts: 1,
   episodes: 3,   // 10 集，输出最大

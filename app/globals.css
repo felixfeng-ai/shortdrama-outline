@@ -138,6 +138,41 @@
     box-shadow: 0 8px 22px -14px rgba(190, 60, 70, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6);
     animation: sweep 3s linear infinite;
   }
+
+  /*
+    项目助手（场记）面板的出入场。
+    浮层的出现要是「长出来」而不是「闪出来」——左下角作为原点轻微放大，
+    比直接 display 切换少一层硬切感。prefers-reduced-motion 已在 base 里全局关掉动画。
+  */
+  .panel-in {
+    transform-origin: bottom left;
+    animation: panel-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  /** 放映厅让位时的淡出：保留在 DOM 里（查询不重复发），只用透明度和位移表达"收起" */
+  .dock-yield {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+    pointer-events: none;
+    transition: opacity 0.24s ease, transform 0.24s ease;
+  }
+
+  .dock-show {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.24s ease, transform 0.24s ease;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @layer utilities {

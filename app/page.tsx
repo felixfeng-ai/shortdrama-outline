@@ -14,6 +14,8 @@ import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
 import TodoPanel from '@/components/TodoPanel'
 import { buildTodoList } from '@/lib/todo'
+import AgentDock from '@/components/AgentDock'
+import type { AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
 import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
@@ -26,6 +28,7 @@ import {
   listProjects,
   renameProject,
   deleteProject,
+  fetchQuota,
   generateVisuals,
   generateScenes,
   registerRefs,
@@ -206,6 +209,10 @@ export default function Home() {
   const [notice, setNotice] = useState<string | null>(null)
   /** 项目列表：用于「切换 / 重命名 / 删除」 */
   const [projects, setProjects] = useState<ProjectDto[]>([])
+  /** 场记是否展开（与右下角放映厅互斥，避免两个浮层把内容挤没） */
+  const [agentOpen, setAgentOpen] = useState(false)
+  /** 给助手的额度快照：它要能回答「还能用几次」 */
+  const [agentQuota, setAgentQuota] = useState<{ remaining: number; limit: number; projectsLeft: number } | null>(null)
   /** 上一次扫描的挂接明细：角色名 -> 命中记录（带置信度），界面据此标注「靠什么认出来的」 */
   const [matchDetail, setMatchDetail] = useState<Record<string, MatchHit[]>>({})
   /** 扫描汇总：挂了几张、谁没命中。静默失败是之前最大的问题 */
@@ -768,6 +775,13 @@ export default function Home() {
       .catch(() => {})
   }, [])
 
+  // 额度快照：场记要用它回答「还能用几次」，每次生成后跟着刷新
+  useEffect(() => {
+    fetchQuota()
+      .then((q) => setAgentQuota({ remaining: q.remaining, limit: q.limit, projectsLeft: q.projectsLeft }))
+      .catch(() => {})
+  }, [quotaRefreshKey])
+
   /**
    * 恢复上次的项目。
    *
@@ -1123,6 +1137,53 @@ export default function Home() {
     clearWorkspace()
     setProjectId(null)
     setNotice('已经开了一个空白工作台，写下想法点生成就会存成新项目。')
+  }
+
+  /**
+   * 场记看到的状态快照。
+   *
+   * 只读快照是刻意的：工具拿到的是一份拷贝，它改不到真东西——
+   * 「agent 不会擅自改稿」这条不只是提示词里的约定，是数据结构上的事实。
+   */
+  const agentState: AgentState = {
+    projectTitle: projects.find((p) => p.id === projectId)?.title ?? idea.trim().slice(0, 20),
+    hasIdea: idea.trim().length > 0,
+    completed: stepCompleted,
+    shots: shots.map((s) => ({
+      shot: s.shot,
+      scene: s.scene,
+      characters: s.characters,
+      missingRefFor: s.missingRefFor ?? [],
+      status: s.status,
+      shotSize: s.shotSize,
+      camera: s.camera,
+      prompt: s.prompt,
+      speaker: s.speaker ?? '',
+      dialogue: s.dialogue ?? '',
+    })),
+    expiredShots: impact?.expired ?? 0,
+    quota: agentQuota,
+  }
+
+  /** 助手提议改写某一镜 → 用户确认后才真正写回（同放映厅那条「应用到本镜」） */
+  function applyAgentCard(card: { shot: number; target: 'prompt' | 'action'; text: string; summary: string }) {
+    setShots((prev) => prev.map((s) => (s.shot === card.shot ? { ...s, [card.target]: card.text } : s)))
+    setNotice(`已按助手的建议改写第 ${card.shot} 镜（${card.summary}）。`)
+  }
+
+  /** 助手提议重跑某一步 → 切到那一步并触发生成 */
+  function regenerateByAgent(step: StepKey) {
+    const runners: Record<StepKey, () => void> = {
+      characters: generateCharacters,
+      acts: generateActs,
+      episodes: () => { void generateEpisodes() },
+      visuals: generateVisualAnchors,
+      scenes: generateSceneList,
+      shots: generateShotList,
+    }
+    goToStep(step)
+    setNotice(`按助手的建议重新生成「${STEPS.find((s) => s.key === step)?.nav}」。`)
+    runners[step]()
   }
 
   // 过期提示条
@@ -1603,7 +1664,15 @@ export default function Home() {
               放映厅：窄屏在流里（贴着内容末尾），xl 起脱离文档流固定在右下角——
               和 demo 一样进页面就能看到，右栏底部那个 420px 的空白保证内容不被永久盖住。
             */}
-            <div className="ml-auto w-full min-w-0 max-w-[26rem] xl:fixed xl:bottom-6 xl:right-6 xl:z-40">
+            <div
+              /*
+                与左下角的场记互斥：**不卸载**而是淡出下移——卸载是硬切，
+                而且会让放映厅的额度/快照查询在每次开关时重发一遍。
+              */
+              className={`ml-auto w-full min-w-0 max-w-[26rem] xl:fixed xl:bottom-6 xl:right-6 xl:z-30
+                ${agentOpen ? 'dock-yield' : 'dock-show'}`}
+              aria-hidden={agentOpen}
+            >
               <AssistantDock
                 shot={activeShot}
                 idea={idea}
@@ -1615,6 +1684,15 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* 左下角场记：与右下角放映厅互斥（AGENT.md §2） */}
+      <AgentDock
+        state={agentState}
+        open={agentOpen}
+        onOpenChange={setAgentOpen}
+        onApplyCard={applyAgentCard}
+        onRegenerate={regenerateByAgent}
+      />
     </div>
   )
 }
