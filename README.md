@@ -2,14 +2,14 @@
 
 # 成剧
 
-**一句话想法 → 分镜 → 可直接出图的提示词**
+**短剧与漫剧的 AI 分镜台：一句想法，到大纲、分集与能直接出图的提示词**
 
 独立短剧编剧的 AI 创作与资产工具。**打开网页就用，不装任何东西。**
 
 [![线上体验](https://img.shields.io/badge/🌐_线上体验-chenju.work-2ea44f?style=for-the-badge)](https://chenju.work)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-85_passing-2ea44f?style=for-the-badge)](#测试)
+[![Tests](https://img.shields.io/badge/tests-152_passing-2ea44f?style=for-the-badge)](#测试)
 [![图片不上传](https://img.shields.io/badge/图片-永不上传-important?style=for-the-badge)](#三条硬指标)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
 

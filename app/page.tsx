@@ -819,6 +819,9 @@ export default function Home() {
           <div className="flex min-w-0 items-center gap-3">
               <h1 className="brandname">成剧</h1>
             <span className="ai-badge" title="全流程 AI 生成">AI</span>
+            {/* 一句话说清平台是干什么的：输入是想法，产出是能直接出图的分镜提示词 */}
+            <p className="hidden min-w-0 truncate text-xs text-ink-500 lg:block">一句想法 → 分镜提示词</p>
+            <span aria-hidden="true" className="hidden h-4 w-px shrink-0 bg-surface-line lg:block" />
             {/* 额度是全局状态，挂在品牌旁边的空白处，不再挤在输入卡里 */}
             <QuotaBar refreshKey={quotaRefreshKey} compact />
           </div>
