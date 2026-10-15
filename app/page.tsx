@@ -11,6 +11,7 @@ import StepSection from '@/components/StepSection'
 import SideNav from '@/components/SideNav'
 import AssistantDock from '@/components/AssistantDock'
 import QuotaBar from '@/components/QuotaBar'
+import ProjectBar from '@/components/ProjectBar'
 import ShotList from '@/components/ShotList'
 import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
@@ -19,6 +20,9 @@ import VersionBar from '@/components/VersionBar'
 import CopyButton from '@/components/CopyButton'
 import {
   createProject,
+  listProjects,
+  renameProject,
+  deleteProject,
   generateVisuals,
   generateScenes,
   registerRefs,
@@ -26,6 +30,8 @@ import {
   findImpact,
 } from '@/lib/assets/api'
 import type { Shot, VisualCharacter, Scene as AssetScene } from '@/lib/assets/types'
+import type { ProjectDto } from '@/lib/assets/api'
+import { auditShots } from '@/lib/assets/impact'
 import {
   detectVaultMode,
   loadDirectoryHandle,
@@ -54,7 +60,7 @@ import {
   buildZip,
   downloadBlob,
 } from '@/lib/assets/export'
-import { postJson, postSse } from '@/lib/api'
+import { postJson, postSse, isAbortError } from '@/lib/api'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import {
   MIN_IDEA_LENGTH,
@@ -175,6 +181,12 @@ export default function Home() {
   /** 被用户从工作台移除的 key：目录直连模式下只影响列表，不动硬盘文件 */
   const [ignoredKeys, setIgnoredKeys] = useState<string[]>([])
   const vaultFiles = useMemo(() => visibleVaultFiles(allVaultFiles, ignoredKeys), [allVaultFiles, ignoredKeys])
+  /** 正在跑的那一步的取消句柄：点「停止」时用它中断 */
+  const abortRef = useRef<AbortController | null>(null)
+  /** 顶部的轻提示（已停止 / 已恢复上次项目这类「说明性」的话，不是错误） */
+  const [notice, setNotice] = useState<string | null>(null)
+  /** 项目列表：用于「切换 / 重命名 / 删除」 */
+  const [projects, setProjects] = useState<ProjectDto[]>([])
   /** 上一次扫描的挂接明细：角色名 -> 命中记录（带置信度），界面据此标注「靠什么认出来的」 */
   const [matchDetail, setMatchDetail] = useState<Record<string, MatchHit[]>>({})
   /** 扫描汇总：挂了几张、谁没命中。静默失败是之前最大的问题 */
@@ -276,6 +288,9 @@ export default function Home() {
   // ── 通用：跑一个步骤，统一处理 loading / error / 被清空 ──
   async function runStep<T>(step: StepKey, task: () => Promise<T>, onSuccess: (data: T) => void) {
     const epoch = resetEpoch.current
+    // 每个长任务一个 controller：用户点「停止」时中断这一跑，不动别的
+    const controller = new AbortController()
+    abortRef.current = controller
     setStatus((s) => ({ ...s, [step]: 'loading' }))
     setErrors((e) => ({ ...e, [step]: null }))
     try {
@@ -288,17 +303,38 @@ export default function Home() {
       setStatus((s) => ({ ...s, [step]: 'done' }))
     } catch (error) {
       if (isCleared(epoch)) return
+      // 用户主动停止不是故障：安静收场，不要弹一条红色错误
+      if (isAbortError(error)) {
+        setStatus((s) => ({ ...s, [step]: 'idle' }))
+        setNotice('已停止这一步。已生成的内容不受影响。')
+        return
+      }
       const message = error instanceof Error ? error.message : '生成失败，请重试'
       setErrors((e) => ({ ...e, [step]: message }))
       setStatus((s) => ({ ...s, [step]: 'error' }))
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null
     }
+  }
+
+  /** 停止当前正在跑的这一步 */
+  function cancelRun() {
+    abortRef.current?.abort()
   }
 
   // ── 第一步：生成人物 ──
   const generateCharacters = () =>
     runStep(
       'characters',
-      () => postJson<{ characters: Character[] }>('/api/characters', { idea: idea.trim(), genre: genre.id }),
+      async () => {
+        // 现在第一步也要建项目：想法与人物都会被落成快照，刷新后才能恢复
+        const pid = await ensureProject(idea.trim().slice(0, 20))
+        return postJson<{ characters: Character[] }>(
+          '/api/characters',
+          { idea: idea.trim(), genre: genre.id, projectId: pid },
+          abortRef.current?.signal,
+        )
+      },
       ({ characters: list }) => setCharacters(list),
     )
 
@@ -355,7 +391,14 @@ export default function Home() {
   const generateActs = () =>
     runStep(
       'acts',
-      () => postJson<{ acts: Act[] }>('/api/acts', { idea: idea.trim(), genre: genre.id, characters }),
+      async () => {
+        const pid = await ensureProject(idea.trim().slice(0, 20))
+        return postJson<{ acts: Act[] }>(
+          '/api/acts',
+          { idea: idea.trim(), genre: genre.id, characters, projectId: pid },
+          abortRef.current?.signal,
+        )
+      },
       ({ acts: list }) => {
         setActs(list)
         setActsBuiltFrom(charactersSig) // 记下这批大纲是基于哪一版人物生成的
@@ -375,8 +418,11 @@ export default function Home() {
     setEpisodes([])
 
     let finished = false
+    const controller = new AbortController()
+    abortRef.current = controller
     try {
-      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts }, (event, data) => {
+      const pid = await ensureProject(idea.trim().slice(0, 20))
+      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid }, (event, data) => {
         if (isCleared(epoch)) return
         if (event !== 'episodes' && event !== 'done') return
 
@@ -389,15 +435,23 @@ export default function Home() {
           setQuotaRefreshKey((n) => n + 1)
           setStatus((s) => ({ ...s, episodes: 'done' }))
         }
-      })
+      }, controller.signal)
 
       // 连接断了却没收到 done：不能把界面永远停在「生成中…」
       if (!finished) throw new Error('生成中断，请重试')
     } catch (error) {
       if (isCleared(epoch)) return
+      if (isAbortError(error)) {
+        // 停止流式生成的收场：保留已经到达的那几集，不要清空
+        setStatus((s) => ({ ...s, episodes: 'idle' }))
+        setNotice('已停止生成分集。已经出来的几集保留在工作台上。')
+        return
+      }
       const message = error instanceof Error ? error.message : '生成失败，请重试'
       setErrors((e) => ({ ...e, episodes: message }))
       setStatus((s) => ({ ...s, episodes: 'error' }))
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null
     }
   }
 
@@ -439,6 +493,8 @@ export default function Home() {
     try {
       const { project } = await createProject(title || "未命名漫剧")
       setProjectId(project.id)
+      // 新项目要立刻出现在项目条里，否则用户看不到「刚才那次生成存到哪了」
+      void refreshProjects()
       return project.id
     } catch {
       // 建项目失败不阻断生成：退化为匿名使用（F3 降级不阻断）
@@ -472,26 +528,32 @@ export default function Home() {
   /**
    * 查影响范围：定妆（visualCharacters）改动后，血缘上哪些下游被牵连。
    *
-   * 这是「改一处、算得出影响了谁」在界面上的落点。做成显式触发而不是每次
-   * 输入都查，是因为它要打两个接口；等用户真正想知道影响时才问。
+   * 这是「改一处、算得出影响了谁」在界面上的落点。它在生成成功后各触发一次，
+   * 不在每次输入时查——每次输入都查要打三个接口，而且结论要等快照落库之后才成立。
+   *
+   * 为什么允许显式传 projectId：刚生成完的那一刻，`projectId` 这个 state 还是
+   * 上一次渲染的值（null）——ensureProject 刚 setProjectId，紧接着的 onSuccess
+   * 闭包读到的仍是旧值，于是这里会一声不响地 return，面板永远不出现。
+   * 调用方手里本来就有刚建好的 id，直接传进来最可靠。
    */
-  async function refreshImpact() {
-    if (!projectId) return
+  async function refreshImpact(pidOverride?: string) {
+    const pid = pidOverride ?? projectId
+    if (!pid) return
     try {
-      const snaps = await listSnapshots<unknown>(projectId, "visualCharacters")
-      const latestVc = snaps[0]
-      if (!latestVc) return
+      const [vcSnaps, shotsSnaps] = await Promise.all([
+        listSnapshots<unknown>(pid, "visualCharacters"),
+        listSnapshots<unknown>(pid, "shots"),
+      ])
+      const latestVc = vcSnaps[0]
 
-      const affected = await findImpact(latestVc.id)
-      const shotSnaps = affected.filter((s) => s.kind === "shots")
-      // 过期口径：受影响镜头快照里，payload 中提示词与当前锚点对不上的镜头数
-      let expired = 0
-      for (const s of shotSnaps) {
-        const list = Array.isArray(s.payload) ? (s.payload as Shot[]) : []
-        expired += list.filter((shot) => shot.status !== "done").length
-      }
+      // 两件事分开算，因为它们回答的不是同一个问题：
+      //   affected —— 「谁依赖当前这版定妆」（血缘正查）
+      //   expired  —— 「当前这版分镜里有多少镜的提示词跟不上定妆了」（分镜侧对账）
+      // 后者不能从新定妆查下游：旧分镜依赖的是旧定妆，那条路查不到它们。
+      const affected = latestVc ? (await findImpact(latestVc.id)).length : 0
+      const audit = auditShots(vcSnaps, shotsSnaps)
 
-      setImpact({ affected: affected.length, expired })
+      setImpact({ affected, expired: audit.expired })
     } catch {
       // 影响范围是增强信息，查不到不影响主流程
     }
@@ -655,15 +717,105 @@ export default function Home() {
       .catch(() => {})
   }, [])
 
+  /**
+   * 恢复上次的项目。
+   *
+   * 起因：所有内容原本只活在内存里，刷新一下六步全丢——这是最像 Demo 的地方。
+   * 服务端 SQLite 里其实一直存着每一步的快照（定妆/场景/分镜早就在写，
+   * 这一轮把想法/人物/三幕/分集也补上了），这里按「最近更新的项目」把整条链路填回来。
+   *
+   * 只恢复内容不为空的项目：用户可能只是点过「生成」但失败了，
+   * 那种空壳项目不该在每次打开时弹一句「已恢复」。
+   */
+  /**
+   * 把一个项目的快照全部读回工作台。挂载恢复与手动切换共用这一段，
+   * 免得「切项目」和「刷新恢复」两套逻辑各写一遍、迟早分叉。
+   * @returns 是否真的有内容被恢复（空项目返回 false）
+   */
+  async function loadProject(pid: string): Promise<boolean> {
+    const [ideaSnaps, charSnaps, actSnaps, epSnaps, vcSnaps, sceneSnaps, shotSnaps] = await Promise.all([
+      listSnapshots<{ idea?: string; genre?: string }>(pid, 'idea'),
+      listSnapshots<Character[]>(pid, 'characters'),
+      listSnapshots<Act[]>(pid, 'acts'),
+      listSnapshots<Episode[]>(pid, 'episodes'),
+      listSnapshots<VisualCharacter[]>(pid, 'visualCharacters'),
+      listSnapshots<AssetScene[]>(pid, 'scenes'),
+      listSnapshots<Shot[]>(pid, 'shots'),
+    ])
+
+    const payload = ideaSnaps[0]?.payload
+    const nextCharacters = charSnaps[0]?.payload ?? []
+    const nextActs = actSnaps[0]?.payload ?? []
+    const nextEpisodes = epSnaps[0]?.payload ?? []
+    const nextVisuals = vcSnaps[0]?.payload ?? []
+    const nextScenes = sceneSnaps[0]?.payload ?? []
+    const nextShots = shotSnaps[0]?.payload ?? []
+
+    const hasAnything =
+      !!payload?.idea || nextCharacters.length > 0 || nextActs.length > 0 ||
+      nextEpisodes.length > 0 || nextVisuals.length > 0 || nextScenes.length > 0 || nextShots.length > 0
+    if (!hasAnything) return false
+
+    setProjectId(pid)
+    if (payload?.idea) setIdea(payload.idea)
+    if (payload?.genre) setGenre(readGenre(payload.genre))
+    setCharacters(nextCharacters)
+    setActs(nextActs)
+    setEpisodes(nextEpisodes)
+    setVisuals(nextVisuals)
+    setScenes(nextScenes)
+    setShots(nextShots)
+
+    // 恢复出来的就是各步最新版本，把「基于哪一版生成」对齐，
+    // 否则一进来满屏都是「已过期」，用户会以为项目坏了
+    const sig = JSON.stringify(nextCharacters)
+    setActsBuiltFrom(sig)
+    setEpisodesBuiltFrom(`${sig}|${JSON.stringify(nextActs)}`)
+    setVisualsBuiltFrom(sig)
+    setShotsBuiltFrom(`${sig}|${JSON.stringify(nextScenes)}`)
+    return true
+  }
+
+  /** 重新拉项目列表；切项目 / 改名 / 删除 / 新建之后都要刷 */
+  async function refreshProjects() {
+    const list = await listProjects().catch(() => [])
+    setProjects(list)
+    return list
+  }
+
+  // 挂载时恢复「最近更新的那个项目」
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const list = await listProjects().catch(() => [])
+      if (cancelled) return
+      setProjects(list)
+      if (list.length === 0) return
+      const restored = await loadProject(list[0].id).catch(() => false)
+      if (cancelled) return
+      if (restored) setNotice(`已恢复上次的项目「${list[0].title}」，可以接着往下做。`)
+    })()
+    return () => { cancelled = true }
+    // 只在挂载时跑一次；依赖的 setter 都是稳定的
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ── 视觉定妆 ──────────────────────────────────────────────────
   const generateVisualAnchors = () =>
     runStep(
       "visuals",
-      async () => generateVisuals(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters, genre.id),
+      async () => {
+        const pid = await ensureProject(idea.trim().slice(0, 20))
+        const data = await generateVisuals(pid, idea.trim(), characters, genre.id, abortRef.current?.signal)
+        return { ...data, pid }
+      },
       (data) => {
         setVisuals(data.visualCharacters)
         setImagePrompts(data.imagePrompts as { name: string; zh: string; en: string }[])
         setVisualsBuiltFrom(charactersSig)
+        // 定妆是新锚点的来源：生成完立刻问一次「下游有多少镜头还缺这个锚点」，
+        // 用户不用先去点「重新定妆」才知道影响面（快照已在服务端落库，此时查得到）
+        void refreshImpact(data.pid ?? undefined)
       },
     )
 
@@ -671,13 +823,22 @@ export default function Home() {
   const generateSceneList = () =>
     runStep(
       "scenes",
-      async () => generateScenes(await ensureProject(idea.trim().slice(0, 20)), idea.trim(), characters, episodes, genre.id),
+      async () => generateScenes(
+        await ensureProject(idea.trim().slice(0, 20)),
+        idea.trim(),
+        characters,
+        episodes,
+        genre.id,
+        abortRef.current?.signal,
+      ),
       (data) => setScenes(data.scenes),
     )
 
   // ── 分镜（SSE 流式，复用现有 postSse）─────────────────────────
   const generateShotList = () => {
     const epoch = resetEpoch.current
+    const controller = new AbortController()
+    abortRef.current = controller
     setStatus((st) => ({ ...st, shots: "streaming" }))
     setErrors((e) => ({ ...e, shots: null }))
     setShots([])
@@ -697,16 +858,27 @@ export default function Home() {
               setShots(payload.shots.map((s) => applyLocalRefs(s, visuals, attached)))
             }
           },
+          controller.signal,
         )
         if (isCleared(epoch)) return
         setQuotaRefreshKey((n) => n + 1)
         setShotsBuiltFrom(builtFrom)
         setStatus((st) => ({ ...st, shots: "done" }))
+        // 新一版分镜刚按当前锚点生成，这里查出来应当接近 0——查一次顺便验证锚点确实注入了
+        void refreshImpact(pid ?? undefined)
       } catch (error) {
         if (isCleared(epoch)) return
+        if (isAbortError(error)) {
+          // 停止流式分镜：已经推过来的镜头保留
+          setStatus((st) => ({ ...st, shots: "idle" }))
+          setNotice("已停止生成分镜。已经出来的镜头保留在工作台上。")
+          return
+        }
         const message = error instanceof Error ? error.message : "生成失败，请重试"
         setErrors((e) => ({ ...e, shots: message }))
         setStatus((st) => ({ ...st, shots: "error" }))
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null
       }
     })()
   }
@@ -792,6 +964,75 @@ export default function Home() {
     setEpisodesBuiltFrom(null)
   }
 
+  /**
+   * 清空整个工作台（六步全清）。
+   *
+   * 和上面的「清空重来」不是一回事：那个只清前三个「写故事」的步骤，
+   * 因为资产层有自己的「重新生成」。换项目必须全清，否则上一部戏的定妆、
+   * 场景、分镜会挂在下一部戏下面——那是数据串台，不只是显示问题。
+   */
+  function clearWorkspace() {
+    resetEpoch.current += 1
+    setIdea('')
+    setCharacters([])
+    setActs([])
+    setEpisodes([])
+    setVisuals([])
+    setImagePrompts([])
+    setScenes([])
+    setShots([])
+    setActiveShotId(null)
+    setStatus(IDLE_STATUS)
+    setErrors(IDLE_ERRORS)
+    setActsBuiltFrom(null)
+    setEpisodesBuiltFrom(null)
+    setVisualsBuiltFrom(null)
+    setShotsBuiltFrom(null)
+    setImpact(null)
+    setNotice(null)
+  }
+
+  /** 切到另一个项目：换工作台 = 全清 + 装载目标项目的快照 */
+  async function handleSwitchProject(id: string) {
+    if (id === projectId) return
+    clearWorkspace()
+    setProjectId(id)
+    const restored = await loadProject(id).catch(() => false)
+    if (!restored) setNotice('这个项目还没有内容，可以从故事灵感开始写。')
+  }
+
+  async function handleRenameProject(id: string, title: string) {
+    try {
+      await renameProject(id, title)
+      await refreshProjects()
+      setNotice(`项目已改名为「${title}」。`)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '重命名失败，请重试')
+    }
+  }
+
+  async function handleDeleteProject(id: string) {
+    try {
+      await deleteProject(id)
+      // 删的正好是当前项目：工作台也一起清掉，免得用户在一个已经不存在的项目上继续写
+      if (id === projectId) {
+        clearWorkspace()
+        setProjectId(null)
+      }
+      await refreshProjects()
+      setNotice('项目已删除，连带它的快照与图台账一起清掉了。')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '删除失败，请重试')
+    }
+  }
+
+  /** 新建：先给一张白纸，下一次生成时才真正落成项目 */
+  function handleNewProject() {
+    clearWorkspace()
+    setProjectId(null)
+    setNotice('已经开了一个空白工作台，写下想法点生成就会存成新项目。')
+  }
+
   // 过期提示条
   const staleNotice = (text: string) => (
     <div className="mb-4 flex items-start gap-2 rounded-card border border-accent-200 bg-accent-50 px-3.5 py-2.5">
@@ -870,6 +1111,17 @@ export default function Home() {
           <div className="min-w-0">
             {/* 外层撑满整行高度，内层才能真正吸顶（直接给 grid item 加 sticky 是没用的） */}
             <div className="lg:sticky lg:top-24">
+              <div className="mb-3.5">
+                <ProjectBar
+                  projects={projects}
+                  currentId={projectId}
+                  hasContent={hasResult}
+                  onSwitch={(id) => { void handleSwitchProject(id) }}
+                  onRename={(id, title) => { void handleRenameProject(id, title) }}
+                  onDelete={(id) => { void handleDeleteProject(id) }}
+                  onNew={handleNewProject}
+                />
+              </div>
               <IdeaPanel
               idea={idea}
               onIdeaChange={setIdea}
@@ -885,6 +1137,20 @@ export default function Home() {
 
           {/* 右：窄屏步骤条 + 六步内容 */}
           <div className="min-w-0 space-y-5">
+            {/* 轻提示：已恢复上次项目、已停止这一步——都是说明，不是错误 */}
+            {notice && (
+              <div className="flex items-start gap-2 rounded-card border border-surface-line bg-surface-soft px-3.5 py-2.5">
+                <p className="min-w-0 flex-1 text-xs leading-relaxed text-ink-600">{notice}</p>
+                <button
+                  type="button"
+                  onClick={() => setNotice(null)}
+                  aria-label="知道了"
+                  className="shrink-0 rounded-pill px-2 py-0.5 text-[11px] text-ink-400 transition-colors hover:text-ink-700"
+                >
+                  知道了
+                </button>
+              </div>
+            )}
             <div className="surface px-4 py-3.5 xl:hidden">
               <StepIndicator
                 current={viewIndex}
@@ -898,6 +1164,7 @@ export default function Home() {
               index={1}
               anchorId={STEP_ANCHORS.characters}
               visible={view === 'characters'}
+              onCancel={cancelRun}
               title={STEPS[0].title}
               subtitle={STEPS[0].subtitle}
               status={status.characters}
@@ -941,6 +1208,7 @@ export default function Home() {
               index={2}
               anchorId={STEP_ANCHORS.acts}
               visible={view === 'acts'}
+              onCancel={cancelRun}
               title={STEPS[1].title}
               subtitle={STEPS[1].subtitle}
               status={status.acts}
@@ -961,6 +1229,7 @@ export default function Home() {
               index={3}
               anchorId={STEP_ANCHORS.episodes}
               visible={view === 'episodes'}
+              onCancel={cancelRun}
               title={STEPS[2].title}
               subtitle={STEPS[2].subtitle}
               status={status.episodes}
@@ -981,6 +1250,7 @@ export default function Home() {
               index={4}
               anchorId={STEP_ANCHORS.visuals}
               visible={view === 'visuals'}
+              onCancel={cancelRun}
               title={STEPS[3].title}
               subtitle={STEPS[3].subtitle}
               status={status.visuals}
@@ -1000,7 +1270,7 @@ export default function Home() {
                   }
                   affectedShots={impact?.affected ?? 0}
                   expiredShots={impact?.expired ?? 0}
-                  onRebuild={() => { generateVisualAnchors(); void refreshImpact() }}
+                  onRebuild={generateVisualAnchors}
                   actionLabel="视觉定妆"
                 />
               )}
@@ -1020,6 +1290,7 @@ export default function Home() {
               index={5}
               anchorId={STEP_ANCHORS.scenes}
               visible={view === 'scenes'}
+              onCancel={cancelRun}
               title={STEPS[4].title}
               subtitle={STEPS[4].subtitle}
               status={status.scenes}
@@ -1039,6 +1310,7 @@ export default function Home() {
               index={6}
               anchorId={STEP_ANCHORS.shots}
               visible={view === 'shots'}
+              onCancel={cancelRun}
               title={STEPS[5].title}
               subtitle={STEPS[5].subtitle}
               status={status.shots}
@@ -1060,7 +1332,7 @@ export default function Home() {
                   }
                   affectedShots={impact?.affected ?? 0}
                   expiredShots={impact?.expired ?? 0}
-                  onRebuild={() => { generateShotList(); void refreshImpact() }}
+                  onRebuild={generateShotList}
                   actionLabel="生成分镜"
                 />
               )}

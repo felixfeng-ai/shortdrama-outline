@@ -6,7 +6,7 @@
 //      （否则同一角色在不同镜头里的 prompt 会不一致，锚点就失去意义）
 //   2. 确定性顺序 —— 字段顺序固定，不依赖对象键遍历顺序
 //   3. 空字段跳过 —— 用户没填的项不能编译出 "undefined" 或空括号
-import type { VisualCharacter } from "./types.ts"
+import type { Shot, VisualCharacter } from "./types.ts"
 
 /** 参与编译的字段集合（id/name/anchor 不参与） */
 type AnchorField = "age" | "face" | "hair" | "marks" | "wardrobe" | "props"
@@ -63,4 +63,24 @@ export function hasAllAnchors(
     if (!prompt.includes(vc.anchor.trim())) return false
   }
   return true
+}
+
+/**
+ * 统计一批镜头里，有多少个镜头的提示词缺了当前锚点。
+ *
+ * 为什么需要它：界面上要能说出「改了定妆之后，有 3 个镜头得重做」。这句话的
+ * 判断口径只有一条——出场角色的锚点是否逐字出现在提示词里（即 hasAllAnchors）。
+ *
+ * 曾经这里算的是「还没做完的镜头数」，那是用户的拍摄进度，不是改动的影响面，
+ * 两个数摆在一起会互相误导：一镜没做的项目看起来像改坏了，全部做完的项目看起来像没影响。
+ */
+export function countShotsMissingAnchors(
+  shots: Pick<Shot, "prompt" | "characters">[],
+  visuals: VisualCharacter[],
+): number {
+  let count = 0
+  for (const shot of shots) {
+    if (!hasAllAnchors(shot.prompt, shot.characters, visuals)) count += 1
+  }
+  return count
 }

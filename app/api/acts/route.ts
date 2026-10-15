@@ -8,6 +8,7 @@ import { buildActPrompt } from '@/lib/prompts'
 import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { persistIfProject } from "@/lib/assets/persist"
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -25,8 +26,13 @@ export async function POST(req: Request) {
 
     const { system, user } = buildActPrompt(idea, characters, genre)
     const raw = await chatJson<unknown>(system, user, { temperature: 0.8 })
+    const acts = normalizeActs(raw)
 
-    return NextResponse.json(ok({ acts: normalizeActs(raw) }))
+    // 落快照，血缘指向人物那一版；刷新后要靠它把大纲恢复出来
+    const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
+    persistIfProject(getDbForRequest(), projectId, 'acts', acts, { kinds: ['characters'] })
+
+    return NextResponse.json(ok({ acts }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

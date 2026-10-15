@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # 成剧
 
@@ -9,7 +9,7 @@
 [![线上体验](https://img.shields.io/badge/🌐_线上体验-chenju.work-2ea44f?style=for-the-badge)](https://chenju.work)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-152_passing-2ea44f?style=for-the-badge)](#测试)
+[![Tests](https://img.shields.io/badge/tests-165_passing-2ea44f?style=for-the-badge)](#测试)
 [![图片不上传](https://img.shields.io/badge/图片-永不上传-important?style=for-the-badge)](#三条硬指标)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
 
@@ -140,6 +140,9 @@
 
 写这一节是为了避免自我安慰。**分镜、角色一致性、角色资产这套能力，开源社区已经做了，而且做得比我们强。**
 
+> 更细的版本在 [COMPETITION.md](COMPETITION.md)：竞品 issue 里的真实抱怨、用户痛点分层、
+> 以及六个值得深耕的方向（结论是「别加面积，加深度」）。
+
 | 项目 | Stars | 形态 | 和我们重叠的部分 |
 |---|---|---|---|
 | [huobao-drama](https://github.com/chatfire-AI/huobao-drama) | ~16k | 一句话到**成片**全自动 | 不同赛道：它做到视频，我们只到提示词，在它上游 |
@@ -244,7 +247,7 @@ npm run dev                  # → http://localhost:3000
 ```
 
 ```bash
-npm test    # 85 条用例，零测试框架依赖
+npm test    # 165 条用例，零测试框架依赖
 npm run build
 ```
 
@@ -373,7 +376,7 @@ chengju/
 │       ├── persist.ts              # 快照落库共用逻辑（失败不阻断生成）
 │       ├── vault.ts                # 本地图库（目录直连 / IndexedDB 双路径）
 │       └── export.ts               # 打包带走：执行单 / CSV / 离线 HTML / 手写 ZIP
-├── tests/                          # 12 个用例文件，85 条用例（node:test，零框架依赖）
+├── tests/                          # 18 个用例文件，165 条用例（node:test，零框架依赖）
 ├── deploy/
 │   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
 │   └── cicd-deploy.sh              # 服务器端部署脚本：停服 → 构建 → 启动
@@ -459,7 +462,7 @@ interface Episode {
 ## 测试
 
 ```bash
-npm test        # 85 条用例，全部通过
+npm test        # 165 条用例，全部通过
 ```
 
 **零测试框架依赖**——用的是 Node 内置的 `node:test`。测试进程里有一个解析钩子
@@ -528,18 +531,12 @@ npm test        # 85 条用例，全部通过
 | 可灵首尾帧衔接清单 | 📋 计划中 | 需要先摸清可灵界面支持的字段，再决定生成格式，不凭猜测做 |
 | 导出包 schema 版本化 | 📋 计划中 | `project.json` 要带 schema 版本，否则字段一改旧包就打不开 |
 | 多项目切换界面 | 📋 计划中 | 接口已就绪（`/api/projects`），界面目前同时只能开一个 |
+| 导出 PDF | 📋 待定 | 目前是 Markdown + 离线 HTML + CSV，PDF 要不要做还没定 |
 | LangGraph 重写执行层 | ❌ 不做 | 六步已是可独立重跑的调用，改成图收益不抵复杂度 |
 | 服务端图片存储 | ❌ **永不做** | 违反零上传 |
 
 > 「不做」和「永不做」是认真的。这个项目的生存空间在于**窄**，
 > 每加一块都是拿「轻」去换「全」，而「全」已经有人做得更好了（见[竞争格局](#竞争格局为什么这件事还值得做)）。
-
----|---|---|
-| **角色一致性管理** | 已完成 | 生成人物后，后续所有生成都基于这份人物设定。三幕和分集 Prompt 都会带上完整的角色动机与弧光 |
-| **导出 Markdown** | 已完成 | 「复制全部大纲」和「导出 .md」 |
-| **用 LangGraph 重写执行层** | 待做 | 每个步骤定义为一个 Graph Node，状态用 LangGraph 的 State 管理，支持条件边和中断恢复。现在三步是页面里的三段异步调用，改成图之后可以支持「只重跑第三步」「回滚到第二步」这类操作 |
-| **版本记录** | 待做 | 每一步生成的结果都可以回溯，方便对比「换一个」前后的差异 |
-| **导出 PDF** | 待做 | 目前只有 Markdown |
 
 ---
 

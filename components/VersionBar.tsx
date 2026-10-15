@@ -26,7 +26,7 @@ export default function VersionBar({
 }: Props) {
   const [open, setOpen] = useState(false)
 
-  if (!stale && affectedShots === 0) return null
+  if (!stale && affectedShots === 0 && expiredShots === 0) return null
 
   return (
     <div className="mb-4 rounded-card border border-accent-200 bg-accent-50/70 px-3.5 py-3">
@@ -43,10 +43,14 @@ export default function VersionBar({
             </p>
           )}
 
-          {affectedShots > 0 && (
+          {expiredShots > 0 ? (
             <p className="mt-1 text-xs leading-relaxed text-accent-800">
-              本次改动影响 <strong>{affectedShots}</strong> 个下游结果
-              {expiredShots > 0 && <>，其中 <strong>{expiredShots}</strong> 个镜头的提示词已过期</>}。
+              有 <strong>{expiredShots}</strong> 个镜头的提示词缺了当前角色锚点，需要重新生成分镜。
+              {affectedShots > 0 && <>本次改动涉及 <strong>{affectedShots}</strong> 个下游结果。</>}
+            </p>
+          ) : affectedShots > 0 && (
+            <p className="mt-1 text-xs leading-relaxed text-accent-800">
+              本次改动影响 <strong>{affectedShots}</strong> 个下游结果，当前提示词没有缺锚点。
             </p>
           )}
 
@@ -60,7 +64,7 @@ export default function VersionBar({
               重新{actionLabel}
             </button>
 
-            {affectedShots > 0 && (
+            {(affectedShots > 0 || expiredShots > 0) && (
               <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}

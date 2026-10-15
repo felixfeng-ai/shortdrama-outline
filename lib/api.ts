@@ -18,18 +18,42 @@ export function fail(error: string): ApiResponse<never> {
 }
 
 /**
+ * 用户主动取消（点「停止」）会让 fetch 抛 AbortError。
+ * 这不是故障：调用方要能把它和「网络断了」区分开——一个该安静收场，一个该报错。
+ */
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Error && (error.name === 'AbortError' || /abort/i.test(error.message))
+}
+
+/**
  * 客户端：POST 一个 JSON 请求。
  * 失败时抛出带中文 message 的 Error，界面直接展示即可。
  */
-export async function postJson<T>(url: string, body: unknown): Promise<T> {
+export async function postJson<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return sendJson<T>('POST', url, body, signal)
+}
+
+/** 客户端：PATCH 一个 JSON 请求（改名字这类局部更新） */
+export async function patchJson<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return sendJson<T>('PATCH', url, body, signal)
+}
+
+async function sendJson<T>(
+  method: 'POST' | 'PATCH',
+  url: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   let res: Response
   try {
     res = await fetch(url, {
-      method: 'POST',
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     })
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error
     throw new Error('网络连接失败，请检查网络后重试')
   }
 
@@ -57,15 +81,22 @@ export type SseHandler = (event: string, data: unknown) => void
  * - 流已经开始后失败（模型超时、JSON 解析不了）→ 服务端补推一个 error 事件，
  *   这里收到就抛，调用方按和 postJson 一样的方式 catch 即可
  */
-export async function postSse(url: string, body: unknown, onEvent: SseHandler): Promise<void> {
+export async function postSse(
+  url: string,
+  body: unknown,
+  onEvent: SseHandler,
+  signal?: AbortSignal,
+): Promise<void> {
   let res: Response
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     })
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error
     throw new Error('网络连接失败，请检查网络后重试')
   }
 

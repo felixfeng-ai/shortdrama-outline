@@ -27,6 +27,8 @@ interface Props {
   anchorId?: string
   /** 创作层（朱砂）/ 资产层（青竹）——决定这一步的强调色 */
   layer?: 'story' | 'asset'
+  /** 正在生成时给一个「停止」出口；不传就不显示 */
+  onCancel?: () => void
   /**
    * 是否显示这一步。一页只放当前步骤（点左栏切换），
    * 传 false 时整段不渲染——它不是被藏起来，而是真的不在 DOM 里。
@@ -60,6 +62,7 @@ export default function StepSection({
   anchorId,
   layer = 'story',
   visible = true,
+  onCancel,
 }: Props) {
   if (!visible) return null
 
@@ -128,6 +131,17 @@ export default function StepSection({
           <div className="ai-status mb-3.5">
             <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent-500" />
             AI 生成中 · {isStreaming ? '正在逐条返回' : '正在思考'}…
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                title="停止这一步，已经生成的内容会保留"
+                className="ml-auto rounded-pill border border-accent-300 bg-surface-card/70 px-2.5 py-0.5
+                  text-[11px] font-medium text-accent-700 transition-colors hover:bg-surface-card"
+              >
+                停止
+              </button>
+            )}
           </div>
         )}
         {locked && !hasContent ? (

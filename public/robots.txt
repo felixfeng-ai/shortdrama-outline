@@ -1,0 +1,5 @@
+# 成剧 · 短剧与漫剧的 AI 分镜台
+User-agent: *
+Allow: /
+
+Sitemap: https://chenju.work/sitemap.xml

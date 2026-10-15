@@ -11,6 +11,7 @@ import { buildCharacterPrompt, buildSingleCharacterPrompt } from '@/lib/prompts'
 import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { persistIfProject } from "@/lib/assets/persist"
 
 export const runtime = 'nodejs'
 // 生成较慢，放宽函数超时（Vercel 上生效）
@@ -36,6 +37,17 @@ export async function POST(req: Request) {
     // 人物设定需要想象力，温度调高一些
     const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
     const characters = normalizeCharacters(raw)
+
+    /*
+      落快照：这一步以前不落库，于是「刷新页面 = 前六步全丢」。
+      现在把「想法」本身也存成一版（kind=idea，整条链路的根），
+      恢复项目时输入框里的那句话就能填回去，不用让用户重打。
+      落库失败不影响生成结果（persistIfProject 内部兜住）。
+    */
+    const db = getDbForRequest()
+    const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
+    persistIfProject(db, projectId, 'idea', { idea, genre: genre.id }, { kinds: [] })
+    persistIfProject(db, projectId, 'characters', characters, { kinds: ['idea'] })
 
     return NextResponse.json(
       ok(mode === 'single' ? { characters: [characters[0]] } : { characters }),

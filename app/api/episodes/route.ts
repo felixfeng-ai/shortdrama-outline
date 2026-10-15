@@ -17,6 +17,7 @@ import { readGenre, type Act, type Character, type Episode } from '@/lib/types'
 import { readActs, readCharacters, readIdea } from '@/lib/validate'
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
 import { getDbForRequest } from "@/lib/assets/store"
+import { persistIfProject } from "@/lib/assets/persist"
 
 export const runtime = 'nodejs'
 // 10 集输出量大，给足时间
@@ -28,12 +29,14 @@ export async function POST(req: Request) {
   let characters: Character[]
   let acts: Act[]
   let genre: ReturnType<typeof readGenre>
+  let projectId: string | null = null
   try {
     const body = await req.json().catch(() => null)
     idea = readIdea(body?.idea)
     characters = readCharacters(body?.characters, '请先生成核心人物，再生成分集剧情')
     acts = readActs(body?.acts, '请先生成三幕大纲，再生成分集剧情')
     genre = readGenre(body?.genre)
+    projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -91,6 +94,8 @@ export async function POST(req: Request) {
         // 增量扫描只认「已经闭合的对象」，模型若换了外层结构可能一集都抠不出来，
         // 这一步是兜底，保证拿到的结果和一次性调用时完全一致
         const finalEpisodes: Episode[] = normalizeEpisodes(parseJson<unknown>(buffer), stamp)
+        // 落快照放在流末尾：中途失败不写半份分集，恢复出来的必须是一份完整的分集
+        persistIfProject(getDbForRequest(), projectId, 'episodes', finalEpisodes, { kinds: ['acts'] })
         send('done', { episodes: finalEpisodes })
         finish()
       } catch (error) {

@@ -1,6 +1,6 @@
 // 资产链的前端请求封装。
 // 复用 lib/api.ts 的 postJson（统一信封 + 中文错误），不重复造。
-import { postJson } from "@/lib/api"
+import { patchJson, postJson } from "@/lib/api"
 import type { Shot, VisualCharacter, Scene } from "@/lib/assets/types"
 
 export interface ProjectDto { id: string; title: string; createdAt: number; updatedAt: number }
@@ -14,6 +14,18 @@ export const createProject = (title: string) =>
 export const listProjects = () =>
   fetch("/api/projects").then((r) => r.json()).then((p) => p.data.projects as ProjectDto[])
 
+/** 重命名项目（PATCH，只改显示名） */
+export const renameProject = (id: string, title: string) =>
+  patchJson<{ project: ProjectDto }>("/api/projects", { id, title })
+
+export const deleteProject = (id: string) =>
+  fetch(`/api/projects?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+    .then((r) => r.json())
+    .then((p) => {
+      if (!p.success) throw new Error(p.error || "删除失败，请重试")
+      return true
+    })
+
 export const listSnapshots = <T>(projectId: string, kind: string) =>
   fetch(`/api/snapshots?projectId=${projectId}&kind=${kind}`)
     .then((r) => r.json())
@@ -25,13 +37,26 @@ export const findImpact = (snapshotId: string) =>
     .then((r) => r.json())
     .then((p) => p.data.affected as SnapshotDto[])
 
-export const generateVisuals = (projectId: string | null, idea: string, characters: unknown, genre = "none") =>
+export const generateVisuals = (
+  projectId: string | null,
+  idea: string,
+  characters: unknown,
+  genre = "none",
+  signal?: AbortSignal,
+) =>
   postJson<{ visualCharacters: VisualCharacter[]; imagePrompts: unknown[] }>("/api/visual", {
     projectId, idea, characters, genre,
-  })
+  }, signal)
 
-export const generateScenes = (projectId: string | null, idea: string, characters: unknown, episodes: unknown, genre = "none") =>
-  postJson<{ scenes: Scene[] }>("/api/scenes", { projectId, idea, characters, episodes, genre })
+export const generateScenes = (
+  projectId: string | null,
+  idea: string,
+  characters: unknown,
+  episodes: unknown,
+  genre = "none",
+  signal?: AbortSignal,
+) =>
+  postJson<{ scenes: Scene[] }>("/api/scenes", { projectId, idea, characters, episodes, genre }, signal)
 
 export interface RefInput {
   vaultKey: string; label: string; fileHash: string

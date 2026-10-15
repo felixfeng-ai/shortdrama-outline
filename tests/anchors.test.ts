@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { compileAnchor, injectAnchor, hasAllAnchors } from "../lib/assets/anchors.ts"
+import { compileAnchor, injectAnchor, hasAllAnchors, countShotsMissingAnchors } from "../lib/assets/anchors.ts"
 import type { VisualCharacter } from "../lib/assets/types.ts"
 
 function vc(over: Partial<VisualCharacter> = {}): VisualCharacter {
@@ -73,4 +73,33 @@ test("B5g hasAllAnchors：多个角色都要满足", () => {
   const visuals = [vc({ anchor: "wearing: 沙色短夹克" }), vc({ name: "李四", anchor: "hair: 银灰长发" })]
   assert.equal(hasAllAnchors("wearing: 沙色短夹克", ["张三", "李四"], visuals), false)
   assert.equal(hasAllAnchors("wearing: 沙色短夹克, hair: 银灰长发", ["张三", "李四"], visuals), true)
+})
+
+// ── B5h：改一处之后「有几个镜头要做」要算得出来 ─────────────────
+
+const shot = (over: { prompt?: string; characters?: string[] } = {}) => ({
+  prompt: "wearing: 沙色短夹克", characters: ["张三"], ...over,
+})
+
+test("B5h 缺锚点的镜头被数出来，而不是数「没做完的镜头」", () => {
+  const visuals = [vc({ anchor: "wearing: 沙色短夹克" })]
+  assert.equal(countShotsMissingAnchors([shot()], visuals), 0)
+  // 提示词被模型改写过（沙色短夹克 → 米色外套），即使这一镜已经做完也算过期
+  assert.equal(countShotsMissingAnchors([shot({ prompt: "man in beige jacket" })], visuals), 1)
+})
+
+test("B5i 混排：只数缺锚点的那几镜", () => {
+  const visuals = [vc({ anchor: "wearing: 沙色短夹克" })]
+  const shots = [
+    shot(),                                                        // 命中
+    shot({ prompt: "wide shot of the street", characters: [] }),    // 没有出场角色，不参与
+    shot({ prompt: "close up, no anchor here" }),                   // 缺
+    shot({ characters: ["李四"], prompt: "portrait" }),             // 李四没锚点，不参与
+  ]
+  assert.equal(countShotsMissingAnchors(shots, visuals), 1)
+})
+
+test("B5j 没有任何锚点时一律不算过期，不误报", () => {
+  const visuals = [vc({ anchor: "" })]
+  assert.equal(countShotsMissingAnchors([shot({ prompt: "anything" })], visuals), 0)
 })

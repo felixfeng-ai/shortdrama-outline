@@ -70,6 +70,30 @@ export function listProjects(db: DatabaseSync): Project[] {
   return rows.map(toProject)
 }
 
+/** 重命名项目。返回改名后的项目；id 不存在时返回 null（不抛） */
+export function renameProject(db: DatabaseSync, id: string, title: string): Project | null {
+  const name = title.trim()
+  if (!name) return null
+  const result = db
+    .prepare("UPDATE projects SET title = ?, updated_at = ? WHERE id = ?")
+    .run(name, Date.now(), id)
+  if (result.changes === 0) return null
+  return getProject(db, id)
+}
+
+/**
+ * 删除项目。
+ *
+ * 快照、血缘、图台账三张表都是 `REFERENCES projects(id) ON DELETE CASCADE`，
+ * 且连接时开了 `PRAGMA foreign_keys = ON`，所以删一行项目就能连带清干净——
+ * 不需要在这里手写三条 DELETE，那反而容易漏（漏掉的孤儿快照会永远留在库里）。
+ * 返回是否真的删掉了（id 不存在时 false）。
+ */
+export function deleteProject(db: DatabaseSync, id: string): boolean {
+  const result = db.prepare("DELETE FROM projects WHERE id = ?").run(id)
+  return result.changes > 0
+}
+
 function readParents(db: DatabaseSync, snapshotId: string): string[] {
   const rows = db.prepare("SELECT to_snapshot_id FROM lineage WHERE from_snapshot_id = ? ORDER BY to_snapshot_id")
     .all(snapshotId) as ParentRow[]
