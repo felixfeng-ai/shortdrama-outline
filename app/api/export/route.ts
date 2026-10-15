@@ -6,13 +6,15 @@ import { NextResponse } from "next/server"
 import { InputError, errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { listRefs } from "@/lib/assets/refs"
-import { listSnapshots, getProject, type ArtifactKind } from "@/lib/assets/repo"
+import { listSnapshots, getProject } from "@/lib/assets/repo"
+import { ARTIFACT_KINDS } from "@/lib/assets/types"
 import type { Shot, VisualCharacter, Scene } from "@/lib/assets/types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const KINDS: ArtifactKind[] = ["characters", "acts", "episodes", "visualCharacters", "scenes", "visualPlaces", "shots"]
+/** 导出清单里不含 idea（它是输入，不是产物）；清单本身仍来自唯一来源 */
+const KINDS = ARTIFACT_KINDS.filter((k) => k !== "idea")
 
 export async function GET(req: Request) {
   try {

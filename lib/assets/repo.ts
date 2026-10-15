@@ -6,10 +6,11 @@
 //   - lineage 表保留边，供「影响范围」反查（阶段 2 用）
 import type { DatabaseSync } from "node:sqlite"
 import { randomUUID } from "node:crypto"
+// 类型与清单都从 types.ts 出，别再在这里手写一份（写两份必然漂移）
+import { ARTIFACT_KINDS, type ArtifactKind } from "./types.ts"
 
-export type ArtifactKind =
-  | "idea" | "characters" | "acts" | "episodes"
-  | "visualCharacters" | "scenes" | "visualPlaces" | "shots"
+export { ARTIFACT_KINDS }
+export type { ArtifactKind }
 
 export interface Project {
   id: string

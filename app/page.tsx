@@ -32,6 +32,8 @@ import {
 } from '@/lib/assets/api'
 import type { Shot, VisualCharacter, VisualPlace, Scene as AssetScene } from '@/lib/assets/types'
 import type { ProjectDto } from '@/lib/assets/api'
+import { ARTIFACT_KINDS, type ArtifactKind } from '@/lib/assets/types'
+import type { SnapshotDto } from '@/lib/assets/api'
 import { auditShots } from '@/lib/assets/impact'
 import {
   detectVaultMode,
@@ -780,28 +782,26 @@ export default function Home() {
    * @returns 是否真的有内容被恢复（空项目返回 false）
    */
   async function loadProject(pid: string): Promise<boolean> {
-    const [ideaSnaps, charSnaps, actSnaps, epSnaps, vcSnaps, sceneSnaps, placeSnaps, shotSnaps] = await Promise.all([
-      listSnapshots<{ idea?: string; genre?: string }>(pid, 'idea'),
-      listSnapshots<Character[]>(pid, 'characters'),
-      listSnapshots<Act[]>(pid, 'acts'),
-      listSnapshots<Episode[]>(pid, 'episodes'),
-      listSnapshots<VisualCharacter[]>(pid, 'visualCharacters'),
-      listSnapshots<AssetScene[]>(pid, 'scenes'),
-      // 地点锚点是独立快照（按地点去重，生命周期和场次不是一回事）。
-      // 漏了这一行不会报错，只是刷新之后地点面板变空、每个地点都被报成「缺锚点」——
-      // 所以新增 ArtifactKind 时，这里和 /api/export 的 KINDS 都要同步加。
-      listSnapshots<VisualPlace[]>(pid, 'visualPlaces'),
-      listSnapshots<Shot[]>(pid, 'shots'),
-    ])
+    /*
+      按 ARTIFACT_KINDS 逐类取：这样新增一个快照类型时，这里**自动**跟着取，
+      不会出现「接口白名单加了、恢复逻辑漏了」或反过来的漂移——
+      真发生过一次：visualPlaces 漏在白名单外，Promise.all 整体 400，
+      恢复静默失效，用户每次打开都是空工作台。
+    */
+    const pairs = await Promise.all(
+      ARTIFACT_KINDS.map(async (kind) => [kind, await listSnapshots<unknown>(pid, kind)] as const),
+    )
+    const byKind = Object.fromEntries(pairs) as Record<ArtifactKind, SnapshotDto<unknown>[]>
+    const latestOf = <T,>(kind: ArtifactKind): T | null => (byKind[kind]?.[0]?.payload as T | undefined) ?? null
 
-    const payload = ideaSnaps[0]?.payload
-    const nextCharacters = charSnaps[0]?.payload ?? []
-    const nextActs = actSnaps[0]?.payload ?? []
-    const nextEpisodes = epSnaps[0]?.payload ?? []
-    const nextVisuals = vcSnaps[0]?.payload ?? []
-    const nextScenes = sceneSnaps[0]?.payload ?? []
-    const nextPlaces = placeSnaps[0]?.payload ?? []
-    const nextShots = shotSnaps[0]?.payload ?? []
+    const payload = latestOf<{ idea?: string; genre?: string }>('idea')
+    const nextCharacters = latestOf<Character[]>('characters') ?? []
+    const nextActs = latestOf<Act[]>('acts') ?? []
+    const nextEpisodes = latestOf<Episode[]>('episodes') ?? []
+    const nextVisuals = latestOf<VisualCharacter[]>('visualCharacters') ?? []
+    const nextScenes = latestOf<AssetScene[]>('scenes') ?? []
+    const nextPlaces = latestOf<VisualPlace[]>('visualPlaces') ?? []
+    const nextShots = latestOf<Shot[]>('shots') ?? []
 
     const hasAnything =
       !!payload?.idea || nextCharacters.length > 0 || nextActs.length > 0 ||

@@ -10,9 +10,21 @@
 export type EntityId = string
 
 /** 与 lib/assets/repo.ts 的 ArtifactKind 保持一致 */
-export type ArtifactKind =
-  | "idea" | "characters" | "acts" | "episodes"
-  | "visualCharacters" | "scenes" | "shots"
+/**
+ * 快照类型清单：**唯一来源**。
+ *
+ * 为什么必须是运行时数组而不是一个 union：它要同时喂给三个地方——
+ * 快照接口的白名单、导出清单、刷新时的恢复逻辑。以前这三处各写一遍，
+ * 结果是新增 `visualPlaces` 时接口白名单漏了，恢复逻辑的 Promise.all 整体 400，
+ * 「刷新可续」对所有项目静默失效（用户看不到任何报错，只是每次打开都空）。
+ * 类型和值都从这里出，新增一个 kind 只需要动这一行。
+ */
+export const ARTIFACT_KINDS = [
+  "idea", "characters", "acts", "episodes",
+  "visualCharacters", "scenes", "visualPlaces", "shots",
+] as const
+
+export type ArtifactKind = (typeof ARTIFACT_KINDS)[number]
 
 /**
  * 角色视觉锚点。
