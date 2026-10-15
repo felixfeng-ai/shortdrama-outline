@@ -6,7 +6,7 @@
 //      （否则同一角色在不同镜头里的 prompt 会不一致，锚点就失去意义）
 //   2. 确定性顺序 —— 字段顺序固定，不依赖对象键遍历顺序
 //   3. 空字段跳过 —— 用户没填的项不能编译出 "undefined" 或空括号
-import type { Shot, VisualCharacter } from "./types.ts"
+import type { Shot, VisualCharacter, VisualPlace } from "./types.ts"
 
 /** 参与编译的字段集合（id/name/anchor 不参与） */
 type AnchorField = "age" | "face" | "hair" | "marks" | "wardrobe" | "props"
@@ -32,6 +32,46 @@ export function compileAnchor(vc: Pick<VisualCharacter, "age" | "face" | "hair" 
     if (value) parts.push(`${label}: ${value}`)
   }
   return parts.join(", ")
+}
+
+// ── 地点锚点 ───────────────────────────────────────────────────
+
+/** 参与地点锚点编译的字段（id/name/anchor 不参与） */
+type PlaceAnchorField = "space" | "props" | "lighting" | "grade"
+
+/** 顺序即编译顺序，必须稳定——和角色锚点同一个理由：幂等才能逐字复用 */
+const PLACE_FIELD_LABELS: { key: PlaceAnchorField; label: string }[] = [
+  { key: "space", label: "space" },
+  { key: "props", label: "set dressing" },
+  { key: "lighting", label: "lighting" },
+  { key: "grade", label: "color grade" },
+]
+
+/** 编译地点锚点串。只保留有内容的字段；全空返回空串（调用方需处理） */
+export function compilePlaceAnchor(p: Pick<VisualPlace, PlaceAnchorField>): string {
+  const parts: string[] = []
+  for (const { key, label } of PLACE_FIELD_LABELS) {
+    const value = (p[key] ?? "").toString().trim()
+    if (value) parts.push(`${label}: ${value}`)
+  }
+  return parts.join(", ")
+}
+
+/**
+ * 由地点锚点派生出「场景图」的出图提示词。
+ *
+ * 为什么不让模型单独写一份（像定妆图那样）：锚点本身就是完整的视觉规格，
+ * 再让模型写一遍等于把同一件事说两遍——我们已经因为「同一件事说两遍」
+ * 栽过一次（锚点被改写成英文后又追加中文原文）。这里用纯函数派生，
+ * 零 token 成本、零漂移。
+ *
+ * 为什么要强调空场景：场景图是给图像模型当参考用的，站了人反而会污染
+ * 后续镜头的人物条件；房间里该有的陈设由锚点自己带。
+ */
+export function buildPlaceImagePrompt(place: Pick<VisualPlace, "anchor">): string {
+  const anchor = (place.anchor ?? "").trim()
+  if (!anchor) return ""
+  return `${anchor}. Empty location reference shot, no people, no characters, wide establishing view, even lighting, cinematic realistic style`
 }
 
 /**

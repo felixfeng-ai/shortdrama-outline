@@ -15,6 +15,7 @@ import ProjectBar from '@/components/ProjectBar'
 import ShotList from '@/components/ShotList'
 import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
+import PlacePanel from '@/components/PlacePanel'
 import VaultPanel from '@/components/VaultPanel'
 import VersionBar from '@/components/VersionBar'
 import CopyButton from '@/components/CopyButton'
@@ -29,7 +30,7 @@ import {
   listSnapshots,
   findImpact,
 } from '@/lib/assets/api'
-import type { Shot, VisualCharacter, Scene as AssetScene } from '@/lib/assets/types'
+import type { Shot, VisualCharacter, VisualPlace, Scene as AssetScene } from '@/lib/assets/types'
 import type { ProjectDto } from '@/lib/assets/api'
 import { auditShots } from '@/lib/assets/impact'
 import {
@@ -56,6 +57,7 @@ import {
 import {
   buildStoryboardHtml,
   shotsToCsv,
+  shotsToChainingList,
   shotsToWorkList,
   buildZip,
   downloadBlob,
@@ -80,6 +82,7 @@ function applyLocalRefs(
   shot: Shot,
   visuals: VisualCharacter[],
   attached: Record<string, string[]>,
+  placeAttached: Record<string, string[]>,
 ): Shot {
   const labels: string[] = []
   const missing: string[] = []
@@ -92,6 +95,13 @@ function applyLocalRefs(
       labels.push(...keys.map((k) => `${name}·${(k.split("/").pop() ?? k).replace(/\.[^.]+$/, "")}`))
     } else if (!hasServer) {
       missing.push(name)
+    }
+  }
+
+  // 场景图：按地点名挂，和角色图同一套本地优先的做法
+  if (shot.place) {
+    for (const k of placeAttached[shot.place] ?? []) {
+      labels.push(`${shot.place}·${(k.split("/").pop() ?? k).replace(/\.[^.]+$/, "")}`)
     }
   }
 
@@ -165,6 +175,11 @@ export default function Home() {
   const [visuals, setVisuals] = useState<VisualCharacter[]>([])
   const [imagePrompts, setImagePrompts] = useState<{ name: string; zh: string; en: string }[]>([])
   const [scenes, setScenes] = useState<AssetScene[]>([])
+  /**
+   * 地点视觉锚点。和场次同一次调用产出，但按「地点」去重——
+   * 40 场戏可能只有 8-12 个地点，锚点挂在地点上，同一个房间才不会拿到几份描述。
+   */
+  const [places, setPlaces] = useState<VisualPlace[]>([])
   const [shots, setShots] = useState<Shot[]>([])
   /** 放映厅当前选中的那一镜：默认第一镜，点某张镜卡即切换 */
   const [activeShotId, setActiveShotId] = useState<string | null>(null)
@@ -199,6 +214,8 @@ export default function Home() {
   >([])
   const [aiNote, setAiNote] = useState<string | null>(null)
   const [attached, setAttached] = useState<Record<string, string[]>>({})
+  /** 地点名 -> 该地点的场景图 key。和角色图分开存：它们的归属类型不同，混在一起迟早串 */
+  const [placeAttached, setPlaceAttached] = useState<Record<string, string[]>>({})
   // 记录「这份结果基于哪一版上游」，用于过期判定（服务端血缘 + 前端快速判断）
   const [visualsBuiltFrom, setVisualsBuiltFrom] = useState<string | null>(null)
   const [shotsBuiltFrom, setShotsBuiltFrom] = useState<string | null>(null)
@@ -567,6 +584,36 @@ export default function Home() {
     })
   }
 
+  /** 给地点挂一张场景图。和角色图走同一条路：只登记引用与指纹，图不上传（P1） */
+  async function attachPlaceImage(placeName: string, file: VaultFile) {
+    setPlaceAttached((prev) => ({
+      ...prev,
+      [placeName]: [...(prev[placeName] ?? []).filter((k) => k !== file.key), file.key],
+    }))
+
+    if (!projectId) return
+    try {
+      await registerRefs(projectId, [{
+        vaultKey: file.key,
+        label: file.name.replace(/\.[^.]+$/, "").slice(0, 20),
+        fileHash: file.hash,
+        mime: file.mime,
+        bytes: file.size,
+        ownerType: "place",
+        ownerId: placeName,
+      }])
+    } catch {
+      // 台账登记失败不影响本地已挂的图
+    }
+  }
+
+  function detachPlaceImage(placeName: string, key: string) {
+    setPlaceAttached((prev) => {
+      const rest = (prev[placeName] ?? []).filter((k) => k !== key)
+      return { ...prev, [placeName]: rest }
+    })
+  }
+
   /**
    * 自动预挂：目录结构、文件名、拼音三路线索一起用。
    *
@@ -733,13 +780,17 @@ export default function Home() {
    * @returns 是否真的有内容被恢复（空项目返回 false）
    */
   async function loadProject(pid: string): Promise<boolean> {
-    const [ideaSnaps, charSnaps, actSnaps, epSnaps, vcSnaps, sceneSnaps, shotSnaps] = await Promise.all([
+    const [ideaSnaps, charSnaps, actSnaps, epSnaps, vcSnaps, sceneSnaps, placeSnaps, shotSnaps] = await Promise.all([
       listSnapshots<{ idea?: string; genre?: string }>(pid, 'idea'),
       listSnapshots<Character[]>(pid, 'characters'),
       listSnapshots<Act[]>(pid, 'acts'),
       listSnapshots<Episode[]>(pid, 'episodes'),
       listSnapshots<VisualCharacter[]>(pid, 'visualCharacters'),
       listSnapshots<AssetScene[]>(pid, 'scenes'),
+      // 地点锚点是独立快照（按地点去重，生命周期和场次不是一回事）。
+      // 漏了这一行不会报错，只是刷新之后地点面板变空、每个地点都被报成「缺锚点」——
+      // 所以新增 ArtifactKind 时，这里和 /api/export 的 KINDS 都要同步加。
+      listSnapshots<VisualPlace[]>(pid, 'visualPlaces'),
       listSnapshots<Shot[]>(pid, 'shots'),
     ])
 
@@ -749,6 +800,7 @@ export default function Home() {
     const nextEpisodes = epSnaps[0]?.payload ?? []
     const nextVisuals = vcSnaps[0]?.payload ?? []
     const nextScenes = sceneSnaps[0]?.payload ?? []
+    const nextPlaces = placeSnaps[0]?.payload ?? []
     const nextShots = shotSnaps[0]?.payload ?? []
 
     const hasAnything =
@@ -764,6 +816,7 @@ export default function Home() {
     setEpisodes(nextEpisodes)
     setVisuals(nextVisuals)
     setScenes(nextScenes)
+    setPlaces(nextPlaces)
     setShots(nextShots)
 
     // 恢复出来的就是各步最新版本，把「基于哪一版生成」对齐，
@@ -831,7 +884,10 @@ export default function Home() {
         genre.id,
         abortRef.current?.signal,
       ),
-      (data) => setScenes(data.scenes),
+      (data) => {
+        setScenes(data.scenes)
+        setPlaces(data.places ?? [])
+      },
     )
 
   // ── 分镜（SSE 流式，复用现有 postSse）─────────────────────────
@@ -850,12 +906,12 @@ export default function Home() {
         const pid = await ensureProject(idea.trim().slice(0, 20))
         await postSse(
           "/api/shots",
-          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, visualCharacters: visuals, acts },
+          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts },
           (event, data) => {
             if (isCleared(epoch)) return
             const payload = data as { shots?: Shot[] }
             if ((event === "shots" || event === "done") && payload.shots) {
-              setShots(payload.shots.map((s) => applyLocalRefs(s, visuals, attached)))
+              setShots(payload.shots.map((s) => applyLocalRefs(s, visuals, attached, placeAttached)))
             }
           },
           controller.signal,
@@ -893,9 +949,13 @@ export default function Home() {
       project: { id: projectId, title },
       exportedAt: Date.now(),
       story: { idea, characters, acts, episodes },
-      assets: { visuals, scenes, shots },
-      refs: Object.entries(attached).flatMap(([name, keys]) =>
-        keys.map((k) => ({ ownerType: "character", ownerId: name, vaultKey: k }))),
+      assets: { visuals, scenes, places, shots },
+      refs: [
+        ...Object.entries(attached).flatMap(([name, keys]) =>
+          keys.map((k) => ({ ownerType: "character", ownerId: name, vaultKey: k }))),
+        ...Object.entries(placeAttached).flatMap(([name, keys]) =>
+          keys.map((k) => ({ ownerType: "place", ownerId: name, vaultKey: k }))),
+      ],
     }
 
     entries.push({ name: "project.json", data: enc.encode(JSON.stringify(manifest, null, 2)) })
@@ -905,17 +965,29 @@ export default function Home() {
       name: "shotlist.txt",
       data: enc.encode(shotsToWorkList(shots, `${title} · 分镜执行清单`)),
     })
+    // 首尾帧清单：只勾了「接下一镜首帧」的镜头才有内容；一处都没勾时不占地方
+    if (shots.some((s) => s.params.lastFrame)) {
+      entries.push({
+        name: "chaining.txt",
+        data: enc.encode(shotsToChainingList(shots, `${title} · 首尾帧衔接清单`)),
+      })
+    }
     entries.push({ name: "storyboard.html", data: enc.encode(buildStoryboardHtml({ title, visuals, scenes, shots })) })
     entries.push({
       name: "README.txt",
       data: enc.encode([
         "成剧 · 项目包",
         "",
-        "project.json      全部文本资产 + 角色视觉锚点 + 分镜",
+        "project.json      全部文本资产 + 角色视觉锚点 + 地点视觉锚点 + 分镜",
         "prompts.csv       逐镜提示词（表格格式，含画面比例）",
         "shotlist.txt      逐镜执行清单（提示词 + 该带的参考图 + 参数），照着做即可",
+        "chaining.txt      首尾帧衔接清单（哪一镜的尾帧接哪一镜的首帧）",
         "storyboard.html   离线可看的分镜表（双击用浏览器打开）",
         "characters/       角色参考图（若从本地图库成功并入）",
+        "places/           场景参考图（按地点名分目录）",
+        "",
+        "台词在 prompts.csv 与 shotlist.txt 里，是给配音和字幕用的文本；",
+        "本工具不生成音频，配音在剪映或即梦那边做。",
         "",
         "说明：图片始终保存在你自己的机器上，本工具不上传、不托管任何图片。",
       ].join("\n")),
@@ -929,6 +1001,22 @@ export default function Home() {
           if (!blob) continue
           entries.push({
             name: `characters/${name}/${key.split("/").pop() ?? "image.png"}`,
+            data: new Uint8Array(await blob.arrayBuffer()),
+          })
+        } catch {
+          // 单张图读不到不影响整体导出
+        }
+      }
+    }
+
+    // 场景图同样并入，放在 places/ 下——按地点名分目录，和 characters/ 对称
+    for (const [name, keys] of Object.entries(placeAttached)) {
+      for (const key of keys) {
+        try {
+          const blob = await getVaultBlob(key)
+          if (!blob) continue
+          entries.push({
+            name: `places/${name}/${key.split("/").pop() ?? "image.png"}`,
             data: new Uint8Array(await blob.arrayBuffer()),
           })
         } catch {
@@ -980,6 +1068,8 @@ export default function Home() {
     setVisuals([])
     setImagePrompts([])
     setScenes([])
+    setPlaces([])
+    setPlaceAttached({})
     setShots([])
     setActiveShotId(null)
     setStatus(IDLE_STATUS)
@@ -1302,6 +1392,17 @@ export default function Home() {
               onGenerate={generateSceneList}
               skeletonVariant="acts"
             >
+              {/* 地点锚点排在场次前面：它由场次这次调用一起产出，但作用范围是全剧 */}
+              <PlacePanel
+                places={places}
+                onChange={setPlaces}
+                missing={[...new Set(scenes.map((s) => s.location))]
+                  .filter((loc) => loc && !places.some((p) => p.name === loc))}
+                vaultFiles={vaultFiles}
+                attached={placeAttached}
+                onAttach={attachPlaceImage}
+                onDetach={detachPlaceImage}
+              />
               <SceneList scenes={scenes} onChange={setScenes} />
             </StepSection>
 
@@ -1347,6 +1448,13 @@ export default function Home() {
                     text={shotsToWorkList(shots, `${idea.trim().slice(0, 20) || '未命名漫剧'} · 分镜执行清单`)}
                     label="复制全部执行清单"
                   />
+                  {/* 首尾帧衔接：勾了「接下一镜首帧」才出现——勾完就多一个按钮，是直接的反馈 */}
+                  {shots.some((s) => s.params.lastFrame) && (
+                    <CopyButton
+                      text={shotsToChainingList(shots, `${idea.trim().slice(0, 20) || '未命名漫剧'} · 首尾帧衔接清单`)}
+                      label="复制衔接清单"
+                    />
+                  )}
                 </div>
               )}
               <ShotList

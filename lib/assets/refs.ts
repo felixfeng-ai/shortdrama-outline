@@ -56,3 +56,30 @@ export function buildRefMap(db: DatabaseSync, projectId: string | null): Map<str
   }
   return map
 }
+
+/**
+ * 「地点名 -> 该地点场景图标签」的映射。
+ *
+ * 和角色图分开取，是因为它们的挂法不同：角色图按 `characters` 数组逐个匹配，
+ * 地点图按 `Shot.place` 匹配一次。混在一张表里会让调用方分不清哪个是哪个。
+ */
+export function buildPlaceRefMap(db: DatabaseSync, projectId: string | null): Map<string, string[]> {
+  const map = new Map<string, string[]>()
+  if (!projectId) return map
+
+  try {
+    const rows = db.prepare(
+      "SELECT owner_id, label FROM ref_images WHERE project_id = ? AND owner_type = 'place' ORDER BY created_at",
+    ).all(projectId) as { owner_id: string; label: string }[]
+
+    for (const { owner_id, label } of rows) {
+      const list = map.get(owner_id) ?? []
+      list.push(label)
+      map.set(owner_id, list)
+    }
+  } catch (error) {
+    // 台账读不到不应该阻断生成，只是少了场景图标注
+    console.error("[assets] 读取场景图台账失败（不影响生成）", error)
+  }
+  return map
+}

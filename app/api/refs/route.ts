@@ -57,7 +57,11 @@ export async function POST(req: Request) {
 
       const vaultKey = typeof item.vaultKey === "string" ? item.vaultKey.trim() : ""
       const fileHash = typeof item.fileHash === "string" ? item.fileHash.trim() : ""
-      const ownerType = item.ownerType === "shot" ? "shot" : "character"
+      // 只认这三种；前端传错就回落到 character，不因为一个字段报错
+      const ownerType =
+        item.ownerType === "shot" ? "shot"
+          : item.ownerType === "place" ? "place"
+            : "character"
       const ownerId = typeof item.ownerId === "string" ? item.ownerId.trim() : ""
       if (!vaultKey) throw new InputError("缺少 vaultKey")
       if (!fileHash) throw new InputError("缺少 fileHash（图片指纹）")

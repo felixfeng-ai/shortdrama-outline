@@ -38,15 +38,18 @@ const FIELDS: { key: keyof VisualCharacter; label: string; hint: string }[] = [
 /**
  * 批量出图工具箱。
  *
- * 为什么需要它：逐个角色复制提示词去即梦出图，5 个角色就是 5 轮
+ * 为什么需要它：逐个角色复制提示词去出图平台，5 个角色就是 5 轮
  * 「复制→切窗口→粘贴→等→下载→改名」，实际耗时可能比生成还长。
  *
- * 即梦支持「模板变量」：提示词里写 〖变量名〗，给变量填一组值，
+ * 出图平台支持「模板变量」：提示词里写 〖变量名〗，给变量填一组值，
  * 提交后按顺序逐一出图，每张只替换那个字段、其余复用。
  * 所以只要把「每个角色的完整提示词」整体当作变量值，就能一次出完所有定妆图。
+ *
+ * 平台中立：下面的步骤以即梦为例（模板变量目前只有它有），文案不把产品绑到任何一家。
+ * 平台没有等价能力时，「复制全部提示词」逐个出图这条退路一直留着。
  */
 function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
-  // 默认展开：这条链路本来就是用来省掉「一个个复制去即梦」的，
+  // 默认展开：这条链路本来就是用来省掉「一个个复制去平台」的，
   // 折叠起来等于把答案藏了，用户只会继续手动逐个出图
   const [open, setOpen] = useState(true)
 
@@ -67,7 +70,8 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
             批量出定妆图 · ${prompts.length} 个角色一次出完
           </p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-accent-800/80">
-            不用一个个复制粘贴：下面两块各自复制一次，贴进即梦就是一次批量提交。
+            不用一个个复制粘贴：下面两块各自复制一次，贴进出图平台就是一次批量提交。
+            <span className="text-accent-800/60">（步骤以即梦为例；平台不支持模板变量时，用下面的「复制全部提示词」逐个出图。）</span>
           </p>
         </div>
         <button
@@ -82,7 +86,7 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
 
       <ol className="mt-2.5 space-y-1.5 text-[11px] leading-relaxed text-ink-600">
         <li>
-          <span className="font-medium text-ink-700">1.</span> 即梦「创作中心 → 文生图」，
+          <span className="font-medium text-ink-700">1.</span> 以即梦为例：「创作中心 → 文生图」，
           右上角齿轮里勾选
           <span className="mx-1 rounded bg-accent-100 px-1 font-medium text-accent-800">
             启用批量生成模式
@@ -106,7 +110,7 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
         <li>
           <span className="font-medium text-ink-700">4.</span> 确认组合总数 =
           <span className="font-semibold text-accent-800"> ${prompts.length}</span>
-          ，提交。即梦会按顺序逐一出图。
+          ，提交。平台会按顺序逐一出图。
         </li>
       </ol>
 
@@ -145,7 +149,7 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
         <div className="mt-2 rounded-chip bg-surface-card/80 px-2.5 py-2 text-[11px] leading-relaxed text-ink-600">
           <p className="font-medium text-ink-700">出图之后</p>
           <p className="mt-1">
-            按顺序对应到角色（即梦出的顺序 = 变量值顺序）：第 1 张是
+            按顺序对应到角色（出图顺序 = 变量值顺序）：第 1 张是
             <span className="font-medium text-ink-800">{prompts[0]?.name}</span>
             {prompts[1] && <>、第 2 张是 <span className="font-medium text-ink-800">{prompts[1].name}</span></>}
             。存文件名建议用角色名，放到以角色名命名的文件夹里，本工具扫描时会自动挂到对应角色上。
@@ -331,11 +335,11 @@ export default function VisualAnchorPanel({
               />
             </div>
 
-            {/* 定妆图提示词（中英双语，供即梦出图） */}
+            {/* 定妆图提示词（中英双语，供出图平台出图） */}
             {prompt && (
               <div className="mt-2 min-w-0 overflow-hidden rounded-chip border border-accent-200 bg-accent-50/60 px-3 py-2">
                 <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5">
-                  <span className="text-[10px] font-semibold text-accent-800">定妆图提示词（去即梦出角色图）</span>
+                  <span className="text-[10px] font-semibold text-accent-800">定妆图提示词（拿去出图平台出角色图）</span>
                   <CopyButton text={prompt.en} label="复制英文" />
                 </div>
                 <p className="wrap-anywhere font-mono text-xs leading-relaxed text-ink-700">{prompt.en}</p>
@@ -343,7 +347,7 @@ export default function VisualAnchorPanel({
 
                 {/*
                   出图之后要「存成什么文件名」是这条链路最容易崩的地方：
-                  从即梦下载下来是「即梦_19700101.png」，攒到几十张就认不出谁是谁。
+                  平台下载下来往往是无信息命名（如「即梦_19700101.png」），攒到几十张就认不出谁是谁。
                   这里直接把建议路径写出来，并在复制提示词时一并带上。
                 */}
                 <div className="mt-2 rounded-chip bg-surface-card/80 px-2 py-1.5">

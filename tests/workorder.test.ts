@@ -12,8 +12,9 @@ import type { Shot } from "../lib/assets/types.ts"
 
 function shot(over: Partial<Shot> = {}): Shot {
   return {
-    id: "s1", entityId: "e1", shot: 7, scene: "咖啡馆内·黄昏",
-    characters: ["林远", "苏婉"], action: "推门", shotSize: "中景", camera: "固定",
+    id: "s1", entityId: "e1", shot: 7, episode: 1, scene: "咖啡馆内·黄昏",
+    characters: ["林远", "苏婉"], action: "推门", speaker: "", dialogue: "", place: "",
+    shotSize: "中景", camera: "固定",
     prompt: "a man in a sand jacket, cinematic",
     refImages: ["林远·正面", "苏婉·正面"], missingRefFor: [],
     params: { ratio: "9:16", duration: 5, lastFrame: false }, status: "todo", ...over,

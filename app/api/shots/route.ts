@@ -15,7 +15,7 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { normalizeShots } from "@/lib/assets/normalize"
 import { persistIfProject } from "@/lib/assets/persist"
 import { buildShotPrompt } from "@/lib/assets/prompts"
-import { buildRefMap } from "@/lib/assets/refs"
+import { buildPlaceRefMap, buildRefMap } from "@/lib/assets/refs"
 import type { VisualCharacter } from "@/lib/assets/types"
 import { extractCompleteItems } from "@/lib/partial-json"
 import { readActs, readCharacters, readIdea } from "@/lib/validate"
@@ -23,7 +23,9 @@ import { chargeQuota, identityFromRequest } from "@/lib/quota"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
-export const maxDuration = 180
+// 分镜是六步里输出最大的一步：全片镜头数 ≈ 场次数 × 2~5，
+// 40 场就是 80-200 镜。实测 61 镜约 12k token / 57s，留一倍余量。
+export const maxDuration = 300
 
 function readScenes(value: unknown): unknown[] {
   if (!Array.isArray(value) || value.length === 0) {
@@ -40,6 +42,8 @@ export async function POST(req: Request) {
   let acts: ReturnType<typeof readActs>
   let genre: ReturnType<typeof readGenre>
   let projectId: string | null
+  /** 地点名 -> 地点锚点串，整形时按 place 精确匹配 */
+  const placeMap = new Map<string, string>()
   try {
     const body = await req.json().catch(() => null)
     idea = readIdea(body?.idea)
@@ -49,6 +53,15 @@ export async function POST(req: Request) {
     acts = Array.isArray(body?.acts) ? readActs(body.acts) : []
     projectId = typeof body?.projectId === "string" ? body.projectId : null
     genre = readGenre(body?.genre)
+    // 地点锚点表：只认 name + anchor 都在的记录，缺一个就跳过——
+    // 挂不上锚点比挂错锚点安全
+    for (const p of (Array.isArray(body?.places) ? body.places : [])) {
+      if (!p || typeof p !== "object") continue
+      const row = p as Record<string, unknown>
+      if (typeof row.name === "string" && row.name && typeof row.anchor === "string" && row.anchor) {
+        placeMap.set(row.name, row.anchor)
+      }
+    }
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -69,6 +82,8 @@ export async function POST(req: Request) {
 
   // 图台账 -> 角色名到图标签的映射（B6：标注本镜该带哪几张参考图）
   const refMap = buildRefMap(getDbForRequest(), projectId)
+  // 场景图：按地点名挂，并进本镜参考图
+  const placeRefMap = buildPlaceRefMap(getDbForRequest(), projectId)
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -89,7 +104,9 @@ export async function POST(req: Request) {
 
         for await (const delta of streamChat(system, user, {
           temperature: 0.85,
-          maxTokens: 8000,
+          // 原来 8000 会在场次正常（40 场）时把 JSON 拦腰截断（finish_reason: length），
+          // 表现为「AI 返回的内容不是合法 JSON」——不是模型的问题，是我们的输出预算太小
+          maxTokens: 24000,
           signal: req.signal,
         })) {
           buffer += delta
@@ -99,11 +116,11 @@ export async function POST(req: Request) {
           emitted = items.length
 
           // 每次推全量：normalizeShots 按下标定镜号，只推增量会导致每批从第 1 镜重新编号
-          send("shots", { shots: normalizeShots({ raw: { shots: items }, visuals, refMap, stamp }) })
+          send("shots", { shots: normalizeShots({ raw: { shots: items }, visuals, refMap, placeMap, placeRefMap, stamp }) })
         }
 
         // 流结束，用完整缓冲区整体解析一次兜底，保证与一次性调用结果一致
-        const finalShots = normalizeShots({ raw: parseJson<unknown>(buffer), visuals, refMap, stamp })
+        const finalShots = normalizeShots({ raw: parseJson<unknown>(buffer), visuals, refMap, placeMap, placeRefMap, stamp })
         persistIfProject(getDbForRequest(), projectId, "shots", finalShots, {
           kinds: ["scenes", "visualCharacters"],
         })

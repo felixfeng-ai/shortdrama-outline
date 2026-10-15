@@ -77,10 +77,10 @@ test("B4e 流式下同一 stamp 保证 id 稳定", () => {
   assert.equal(a[0].id, b[0].id)
 })
 
-test("B4f 默认参数：竖屏 9:16、时长 5 秒、状态 todo", () => {
+test("B4f 默认参数：竖屏 9:16、时长 10 秒、状态 todo", () => {
   const raw = { shots: [{ shot: 1, scene: "s", characters: [], action: "", camera: "中景", prompt: "" }] }
   const s = normalizeShots({ raw, visuals: [], stamp: 1 })[0]
-  assert.deepEqual(s.params, { ratio: "9:16", duration: 5, lastFrame: false })
+  assert.deepEqual(s.params, { ratio: "9:16", duration: 10, lastFrame: false })
   assert.equal(s.status, "todo")
 })
 

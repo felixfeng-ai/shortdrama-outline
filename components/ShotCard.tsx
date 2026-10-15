@@ -5,12 +5,12 @@
 // 每张卡承载四件事（对应 SDD B4/B5/B6）：
 //   1. 七个字段（场景/角色/动作/景别/运镜/提示词），全部可编辑
 //   2. 本镜该带哪几张参考图 —— 双人同框串脸的主要防线
-//   3. 生成参数（竖屏 9:16 / 时长 / 尾帧）—— 接即梦的最后一公里
+//   3. 生成参数（竖屏 9:16 / 时长 / 尾帧）—— 接出图平台的最后一公里
 //   4. 返修状态 —— 返修雷达的落点
 import AutoTextarea from './AutoTextarea'
 import CopyButton from './CopyButton'
 import { shotToWorkOrder } from '@/lib/assets/export'
-import { CAMERA_MOVES, SHOT_SIZES, type Shot, type ShotStatus } from '@/lib/assets/types'
+import { CAMERA_MOVES, SHOT_DURATIONS, SHOT_SIZES, isSupportedDuration, type Shot, type ShotStatus } from '@/lib/assets/types'
 
 interface Props {
   shot: Shot
@@ -46,6 +46,12 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
         </span>
 
         <div className="min-w-0 flex-1">
+          {/* 集号：分镜是全剧的，没有它分不清这一镜属于哪一集 */}
+          {shot.episode > 0 && (
+            <span className="mb-0.5 inline-block rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-500">
+              第 {shot.episode} 集
+            </span>
+          )}
           <AutoTextarea
             value={shot.scene}
             onChange={(scene) => onUpdate(shot.id, { scene })}
@@ -136,6 +142,30 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
         </div>
 
         {/*
+          台词：这是唯一一条下游补不上的输入——即梦不知道你的剧情，剪映不认识你的角色。
+          两个字段都留空就是纯画面镜头，这是合法的，不强制每镜都说话。
+        */}
+        <div className="flex min-w-0 gap-2">
+          <span className="mt-1 w-14 shrink-0 text-xs font-medium text-ink-400">台词</span>
+          <div className="flex min-w-0 flex-1 gap-1.5">
+            <AutoTextarea
+              value={shot.speaker}
+              onChange={(speaker) => onUpdate(shot.id, { speaker })}
+              ariaLabel={`第 ${shot.shot} 镜说话人`}
+              placeholder="谁说的"
+              className="w-16 shrink-0 text-sm text-ink-600"
+            />
+            <AutoTextarea
+              value={shot.dialogue}
+              onChange={(dialogue) => onUpdate(shot.id, { dialogue })}
+              ariaLabel={`第 ${shot.shot} 镜台词`}
+              placeholder="纯画面镜头留空"
+              className="min-w-0 flex-1 text-sm leading-relaxed text-ink-600"
+            />
+          </div>
+        </div>
+
+        {/*
           参数行：走「分镜视觉」的暗面板语言 —— 深棕黑底 + 浅金数值。
           这是整张卡里第二块暗色，和下面的提示词原文一起构成「要交给机器的东西」。
         */}
@@ -182,20 +212,34 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
 
           <label className="flex items-center gap-2 text-xs text-cinema-text">
             时长
-            <input
-              type="number" min={1} max={30} value={shot.params.duration}
-              onChange={(e) => onUpdate(shot.id, { params: { ...shot.params, duration: Number(e.target.value) || 5 } })}
+            {/*
+              枚举而不是自由数字框：出视频平台只认固定档位，填 7 秒会到平台才被拒。
+              旧数据里的非标档位显示成「N 秒（平台不认）」而不是静默改成 5 秒。
+            */}
+            <select
+              value={String(shot.params.duration)}
+              onChange={(e) => onUpdate(shot.id, { params: { ...shot.params, duration: Number(e.target.value) } })}
               aria-label={`第 ${shot.shot} 镜时长（秒）`}
-              className="w-12 rounded-chip bg-white/[0.07] px-1.5 py-1 text-xs font-semibold text-gold
+              className="rounded-chip bg-white/[0.07] px-2 py-1 text-xs font-semibold text-gold
                 outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
-            />
-            秒
+            >
+              {SHOT_DURATIONS.map((d) => (
+                <option key={d} value={d} className="text-ink-800">{d} 秒</option>
+              ))}
+              {!isSupportedDuration(shot.params.duration) && (
+                <option value={shot.params.duration} className="text-ink-800">
+                  {shot.params.duration} 秒（平台不认）
+                </option>
+              )}
+            </select>
           </label>
 
           <label className="flex items-center gap-2 text-xs text-cinema-text">
             <input
               type="checkbox" checked={shot.params.lastFrame}
               onChange={(e) => onUpdate(shot.id, { params: { ...shot.params, lastFrame: e.target.checked } })}
+              aria-label={`第 ${shot.shot} 镜接下一镜首帧`}
+              title="勾选后，这一镜的尾帧会接到下一镜的首帧；分镜工具条上会出现「复制衔接清单」，列出该导出的尾帧与衔接顺序"
               className="accent-accent-500"
             />
             接下一镜首帧

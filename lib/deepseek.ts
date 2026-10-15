@@ -10,8 +10,13 @@
 const DEFAULT_BASE_URL = 'https://api.deepseek.com/v1'
 const DEFAULT_MODEL = 'deepseek-chat'
 
-/** 单次请求超时时间。分集那一步输出较长，给足 120 秒 */
-const TIMEOUT_MS = 120_000
+/**
+ * 单次请求超时时间。
+ *
+ * 分集与分镜输出都长：实测分镜 61 镜约 12k token / 57s，更大规模会到 100s 以上，
+ * 所以给到 240 秒。nginx 的 proxy_read_timeout 必须大于这个值（见 deploy 里的说明）。
+ */
+const TIMEOUT_MS = 240_000
 /** 解析失败时的重试次数（模型偶发输出不合法 JSON） */
 const MAX_ATTEMPTS = 2
 

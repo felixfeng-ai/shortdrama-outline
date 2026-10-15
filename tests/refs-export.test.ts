@@ -130,7 +130,7 @@ test("E2 导出缺 projectId 时返回 400", async () => {
 
 test("E3 prompts.csv：含表头与全部镜头，可离线使用", () => {
   const shots: Shot[] = [{
-    id: "s1", entityId: "e1", shot: 1, scene: "咖啡馆", characters: ["张三"], action: "推门",
+    id: "s1", entityId: "e1", shot: 1, episode: 1, scene: "咖啡馆", characters: ["张三"], action: "推门", speaker: "", dialogue: "", place: "",
     shotSize: "中景", camera: "固定", prompt: "a man, wearing: 沙色短夹克", refImages: ["张三·定妆正面"],
     missingRefFor: [], params: { ratio: "9:16", duration: 5, lastFrame: false }, status: "todo",
   }]
@@ -143,7 +143,7 @@ test("E3 prompts.csv：含表头与全部镜头，可离线使用", () => {
 
 test("E3b CSV 转义：提示词里的引号不会破坏列结构", () => {
   const shots: Shot[] = [{
-    id: "s1", entityId: "e1", shot: 1, scene: "s", characters: [], action: "",
+    id: "s1", entityId: "e1", shot: 1, episode: 1, scene: "s", characters: [], action: "", speaker: "", dialogue: "", place: "",
     shotSize: "中景", camera: "固定", prompt: 'a man saying "hello"', refImages: [], missingRefFor: [],
     params: { ratio: "9:16", duration: 5, lastFrame: false }, status: "todo",
   }]

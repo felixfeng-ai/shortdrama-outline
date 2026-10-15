@@ -118,7 +118,7 @@ export default function AttachReview({
         <div className="mt-3 rounded-card border border-done-200 bg-done-50/60 px-3 py-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-medium text-done-800">
-              名字里没有线索？（比如「即梦_19700101.png」这种时间戳命名）
+              名字里没有线索？（比如平台的默认时间戳命名：「即梦_19700101.png」这种）
             </p>
             <button
               type="button"

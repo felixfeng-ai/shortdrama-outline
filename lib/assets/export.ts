@@ -19,7 +19,7 @@ export interface ExportManifest {
 /**
  * 单个镜头的「执行单」文本。
  *
- * 为什么需要它：即梦/可灵都没有「导入项目包」的入口，操作模型只有
+ * 为什么需要它：出图平台都没有「导入项目包」的入口，操作模型只有
  * 「在网页上填提示词 + 传参考图 → 生成」。所以工具能做的极限不是省掉操作，
  * 而是让用户去平台时不用回头找信息 —— 从「找信息」变成「照单执行」。
  *
@@ -30,12 +30,19 @@ export function shotToWorkOrder(shot: Shot, opts: { withHeader?: boolean } = {})
   const lines: string[] = []
 
   if (opts.withHeader !== false) {
-    lines.push(`【第 ${shot.shot} 镜】${shot.scene}`)
+    // 集号必须出现在抬头里：一部剧几十上百镜，没有集号就分不清这一镜属于哪一集
+    const ep = shot.episode > 0 ? `第 ${shot.episode} 集 · ` : "集号未标注 · "
+    lines.push(`【${ep}第 ${shot.shot} 镜】${shot.scene}`)
   }
   lines.push(`提示词：${shot.prompt}`)
 
   if (shot.characters.length > 0) {
     lines.push(`出场：${shot.characters.join("、")}`)
+  }
+
+  // 台词不进即梦的表单，但配音和字幕要照着它做——纯画面镜头不写这行
+  if (shot.dialogue) {
+    lines.push(`台词：${shot.speaker ? `${shot.speaker}：` : ""}${shot.dialogue}`)
   }
 
   if (shot.refImages.length > 0) {
@@ -71,12 +78,89 @@ export function shotsToWorkList(shots: Shot[], title = "分镜执行清单"): st
   return head + body + "\n"
 }
 
+/**
+ * 首尾帧衔接清单（SDD E7-E9）。
+ *
+ * 解决什么：出图平台的首尾帧模式要「首帧 + 尾帧」两张图，中间过渡由模型补。
+ * 同一场戏里相邻的两镜，把上一镜的尾帧交给下一镜当首帧，衔接就是模型算出来的，
+ * 而不是剪辑台上硬切出来的——这是把「一堆片段」变成「一部剧」的那道接缝。
+ *
+ * 为什么以「勾选」为准而不是自动推导：该不该接是创作判断，不是数据推断。
+ * 一镜一镜自动接满，出来的是一镜到底的怪东西。工具只做两件事：
+ * 把勾过的关系变成一份能照着执行的清单；把可能接不上的地方提前说出来。
+ *
+ * 配对按数组顺序（i 与 i+1），不是按 shot 数字：镜号是给人看的，
+ * 删掉一镜之后它可能不再连续，而文档顺序永远是对的。
+ */
+export function shotsToChainingList(shots: Shot[], title = "首尾帧衔接清单"): string {
+  const RULE = "─".repeat(40)
+  const chains: string[] = []
+  const warnings: string[] = []
+  const involved = new Set<number>()
+
+  shots.forEach((s, i) => {
+    if (!s.params?.lastFrame) return
+
+    const next = shots[i + 1]
+    if (!next) {
+      warnings.push(`⚠️ 第 ${s.shot} 镜勾了「接下一镜首帧」，但它已经是最后一镜，没有下一镜可接。`)
+      return
+    }
+
+    involved.add(s.shot)
+    involved.add(next.shot)
+
+    // 尾帧复用上一镜的成片末帧，所以文件名也要能一眼对上镜号
+    const endName = `chaining/第${String(s.shot).padStart(2, "0")}镜-末帧.png`
+    const lines = [
+      `【衔接 ${chains.length + 1}】第 ${s.shot} 镜 → 第 ${next.shot} 镜`,
+      `  场景：${next.scene}`,
+      `  尾帧：从第 ${s.shot} 镜成片的最后一帧导出 → 存为 ${endName}`,
+      `  第 ${next.shot} 镜首帧：用上面这张图`,
+    ]
+
+    // scene 是模型生成的短标识，可能不稳定，所以这里只提示、不阻断
+    if (s.scene !== next.scene) {
+      lines.push(`  ⚠️ 两镜场景标签不同（${s.scene} / ${next.scene}）——跨场通常应当硬切，确认是否真要衔接`)
+    }
+    if (next.missingRefFor?.length) {
+      lines.push(`  ⚠️ 第 ${next.shot} 镜缺 ${next.missingRefFor.join("、")} 的参考图，首帧可能接不上`)
+    }
+
+    lines.push(`  第 ${next.shot} 镜提示词：${next.prompt}`)
+    chains.push(lines.join("\n"))
+  })
+
+  if (chains.length === 0) {
+    const out = [title, "", "共 0 处衔接", ""]
+    out.push(
+      warnings.length === 0
+        ? "还没有标记任何衔接。在分镜卡上勾「接下一镜首帧」，这里就会列出该导出的尾帧与衔接顺序。"
+        : warnings.join("\n"),
+    )
+    return out.join("\n").trimEnd() + "\n"
+  }
+
+  const head = [
+    title,
+    `共 ${chains.length} 处衔接 · 涉及 ${involved.size} 个镜头`,
+    "",
+    "用法：在出图平台选「首尾帧」模式（即梦、可灵等都支持），上传首帧与尾帧两张图，中间过渡由模型补。",
+    "    每处衔接的尾帧，从上一镜成片的最后一帧导出即可。",
+  ].join("\n")
+
+  const body = chains.join("\n\n" + RULE + "\n\n")
+  const tail = warnings.length > 0 ? "\n\n" + RULE + "\n\n" + warnings.join("\n") : ""
+  return head + "\n\n" + RULE + "\n\n" + body + tail + "\n"
+}
+
 /** 镜头 -> CSV。服务端与前端共用同一份实现，避免两份逻辑漂移 */
 export function shotsToCsv(shots: Shot[]): string {
   const esc = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`
-  const head = ['镜号', '场景', '出场角色', '动作', '景别', '运镜', '提示词', '参考图', '画面比例', '时长', '状态']
+  const head = ['镜号', '集号', '场景', '出场角色', '动作', '说话人', '台词', '景别', '运镜', '提示词', '参考图', '画面比例', '时长', '状态']
   const rows = shots.map((s) => [
-    s.shot, s.scene, s.characters.join('、'), s.action, s.shotSize || '中景', s.camera,
+    s.shot, s.episode > 0 ? s.episode : '', s.scene, s.characters.join('、'), s.action, s.speaker, s.dialogue,
+    s.shotSize || '中景', s.camera,
     s.prompt, s.refImages.join(' | '), s.params.ratio, s.params.duration, s.status,
   ].map(esc).join(','))
   return '\ufeff' + [head.map(esc).join(','), ...rows].join('\n') + '\n'
@@ -101,15 +185,17 @@ export function buildStoryboardHtml(input: {
     <tr><td>${esc(v.name)}</td><td class="mono">${esc(v.anchor)}</td></tr>`).join('')
 
   const sceneRows = scenes.map((s) => `
-    <tr><td>${s.number}</td><td>${esc(s.location)}</td><td>${esc(s.timeOfDay)}</td>
+    <tr><td>${s.number}</td><td>${s.episode}</td><td>${esc(s.location)}</td><td>${esc(s.timeOfDay)}</td>
     <td>${esc(s.characters.join('、'))}</td><td>${esc(s.summary)}</td></tr>`).join('')
 
   const shotRows = shots.map((s) => `
     <tr>
       <td>${s.shot}</td>
+      <td>${s.episode > 0 ? s.episode : '—'}</td>
       <td>${esc(s.scene)}</td>
       <td>${esc(s.characters.join('、'))}</td>
       <td>${esc(s.action)}</td>
+      <td>${esc(s.dialogue) ? `${esc(s.speaker)}${s.speaker ? '：' : ''}${esc(s.dialogue)}` : '<span class="dim">—</span>'}</td>
       <td>${esc(s.shotSize || '中景')}</td>
       <td>${esc(s.camera)}</td>
       <td>${esc(s.refImages.join(' | ')) || '<span class="warn">缺参考图</span>'}</td>
@@ -145,9 +231,9 @@ export function buildStoryboardHtml(input: {
 
   ${visuals.length ? `<h2>角色视觉锚点</h2><table><thead><tr><th>角色</th><th>英文锚点（逐镜复用）</th></tr></thead><tbody>${visualRows}</tbody></table>` : ''}
 
-  ${scenes.length ? `<h2>场景</h2><table><thead><tr><th>#</th><th>地点</th><th>时间</th><th>出场</th><th>内容</th></tr></thead><tbody>${sceneRows}</tbody></table>` : ''}
+  ${scenes.length ? `<h2>场景</h2><table><thead><tr><th>#</th><th>集号</th><th>地点</th><th>时间</th><th>出场</th><th>内容</th></tr></thead><tbody>${sceneRows}</tbody></table>` : ''}
 
-  ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>镜</th><th>场景</th><th>出场</th><th>动作</th><th>景别</th><th>运镜</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
+  ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>镜</th><th>集号</th><th>场景</th><th>出场</th><th>动作</th><th>台词</th><th>景别</th><th>运镜</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
 
   <footer>由「成剧」导出 —— 本文件不依赖任何外部资源，可离线打开。</footer>
 </body>

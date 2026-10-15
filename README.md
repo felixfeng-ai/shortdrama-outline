@@ -348,7 +348,7 @@ chengju/
 │   ├── SceneList.tsx               # 场次列表
 │   ├── ShotList.tsx                # 镜头列表
 │   ├── ShotCard.tsx                # 镜头卡：主工作面（含「缺参考图」跳转、执行单复制）
-│   ├── VisualAnchorPanel.tsx       # 定妆表 + 批量出图工具箱（即梦模板变量）
+│   ├── VisualAnchorPanel.tsx       # 定妆表 + 批量出图工具箱（母版 + 变量值）
 │   ├── RefImagePicker.tsx          # 带缩略图的九宫格选图器
 │   ├── VaultPanel.tsx              # 本地图库面板（显示当前模式与文件数）
 │   ├── CopyButton.tsx              # 复制按钮
@@ -375,7 +375,7 @@ chengju/
 │       ├── refs.ts                 # 图台账读取 → 角色名到参考图的映射
 │       ├── persist.ts              # 快照落库共用逻辑（失败不阻断生成）
 │       ├── vault.ts                # 本地图库（目录直连 / IndexedDB 双路径）
-│       └── export.ts               # 打包带走：执行单 / CSV / 离线 HTML / 手写 ZIP
+│       └── export.ts               # 打包带走：执行单 / 首尾帧衔接清单 / CSV / 离线 HTML / 手写 ZIP
 ├── tests/                          # 18 个用例文件，165 条用例（node:test，零框架依赖）
 ├── deploy/
 │   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
@@ -528,7 +528,7 @@ npm test        # 165 条用例，全部通过
 | 方向 | 状态 | 说明 |
 |---|---|---|
 | 本地图库真机回归 | 🔬 验证中 | `fs-access` 目录直连需要真实 Chrome/Edge 授权目录后走一遍，确认缩略图与自动挂图 |
-| 可灵首尾帧衔接清单 | 📋 计划中 | 需要先摸清可灵界面支持的字段，再决定生成格式，不凭猜测做 |
+| 可灵首尾帧衔接清单 | 📋 计划中 | **通用版已上线**（导出包的 `chaining.txt` + 「复制衔接清单」按钮，即梦/可灵都适用）；可灵界面特有的字段还没摸清，不凭猜测做 |
 | 导出包 schema 版本化 | 📋 计划中 | `project.json` 要带 schema 版本，否则字段一改旧包就打不开 |
 | 多项目切换界面 | 📋 计划中 | 接口已就绪（`/api/projects`），界面目前同时只能开一个 |
 | 导出 PDF | 📋 待定 | 目前是 Markdown + 离线 HTML + CSV，PDF 要不要做还没定 |

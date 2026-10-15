@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto"
 
 export type ArtifactKind =
   | "idea" | "characters" | "acts" | "episodes"
-  | "visualCharacters" | "scenes" | "shots"
+  | "visualCharacters" | "scenes" | "visualPlaces" | "shots"
 
 export interface Project {
   id: string

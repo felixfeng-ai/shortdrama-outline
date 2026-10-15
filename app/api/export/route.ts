@@ -12,7 +12,7 @@ import type { Shot, VisualCharacter, Scene } from "@/lib/assets/types"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const KINDS: ArtifactKind[] = ["characters", "acts", "episodes", "visualCharacters", "scenes", "shots"]
+const KINDS: ArtifactKind[] = ["characters", "acts", "episodes", "visualCharacters", "scenes", "visualPlaces", "shots"]
 
 export async function GET(req: Request) {
   try {

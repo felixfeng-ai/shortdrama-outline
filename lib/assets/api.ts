@@ -1,7 +1,7 @@
 // 资产链的前端请求封装。
 // 复用 lib/api.ts 的 postJson（统一信封 + 中文错误），不重复造。
 import { patchJson, postJson } from "@/lib/api"
-import type { Shot, VisualCharacter, Scene } from "@/lib/assets/types"
+import type { Shot, VisualCharacter, Scene, VisualPlace } from "@/lib/assets/types"
 
 export interface ProjectDto { id: string; title: string; createdAt: number; updatedAt: number }
 export interface SnapshotDto<T = unknown> {
@@ -56,11 +56,13 @@ export const generateScenes = (
   genre = "none",
   signal?: AbortSignal,
 ) =>
-  postJson<{ scenes: Scene[] }>("/api/scenes", { projectId, idea, characters, episodes, genre }, signal)
+  postJson<{ scenes: Scene[]; places: VisualPlace[] }>(
+    "/api/scenes", { projectId, idea, characters, episodes, genre }, signal,
+  )
 
 export interface RefInput {
   vaultKey: string; label: string; fileHash: string
-  mime?: string; bytes?: number; ownerType: "character" | "shot"; ownerId: string
+  mime?: string; bytes?: number; ownerType: "character" | "place" | "shot"; ownerId: string
 }
 
 export const registerRefs = (projectId: string, refs: RefInput[]) =>
@@ -72,7 +74,7 @@ export const listRefs = (projectId: string) =>
 export const fetchExportManifest = (projectId: string) =>
   fetch(`/api/export?projectId=${projectId}`).then((r) => r.json()).then((p) => p.data.manifest)
 
-export type { Shot, VisualCharacter, Scene }
+export type { Shot, VisualCharacter, Scene, VisualPlace }
 
 export interface QuotaDto {
   used: number
