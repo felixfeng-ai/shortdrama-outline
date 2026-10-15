@@ -12,6 +12,8 @@ import SideNav from '@/components/SideNav'
 import AssistantDock from '@/components/AssistantDock'
 import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
+import TodoPanel from '@/components/TodoPanel'
+import { buildTodoList } from '@/lib/todo'
 import ShotList from '@/components/ShotList'
 import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
@@ -1227,6 +1229,19 @@ export default function Home() {
 
           {/* 右：窄屏步骤条 + 六步内容 */}
           <div className="min-w-0 space-y-5">
+            {/*
+              项目待办：把散在六个分区里的状态收成一张清单（只读，不写任何东西）。
+              某一步一生成完，下一屏不用再翻——该做什么、哪里要修，都在这里。
+            */}
+            <TodoPanel
+              items={buildTodoList({
+                completed: stepCompleted,
+                shots,
+                expiredShots: impact?.expired ?? 0,
+                hasIdea: idea.trim().length > 0,
+              })}
+              onGo={goToStep}
+            />
             {/* 轻提示：已恢复上次项目、已停止这一步——都是说明，不是错误 */}
             {notice && (
               <div className="flex items-start gap-2 rounded-card border border-surface-line bg-surface-soft px-3.5 py-2.5">
