@@ -32,6 +32,12 @@ import {
   pickDirectory,
   listImages,
   listVaultFiles,
+  listIgnoredKeys,
+  ignoreVaultKey,
+  clearIgnoredKeys,
+  clearDirectoryHandle,
+  clearIndexedVault,
+  visibleVaultFiles,
   matchByFolderDetailed,
   summarizeAttach,
   describeMatchKind,
@@ -164,7 +170,11 @@ export default function Home() {
   // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
   const [impact, setImpact] = useState<{ affected: number; expired: number } | null>(null)
   const [vaultMode, setVaultMode] = useState<VaultMode>('indexeddb')
-  const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([])
+  /** 扫到的全部图片；vaultFiles 是「按已移除名单过滤后」的可见列表 */
+  const [allVaultFiles, setAllVaultFiles] = useState<VaultFile[]>([])
+  /** 被用户从工作台移除的 key：目录直连模式下只影响列表，不动硬盘文件 */
+  const [ignoredKeys, setIgnoredKeys] = useState<string[]>([])
+  const vaultFiles = useMemo(() => visibleVaultFiles(allVaultFiles, ignoredKeys), [allVaultFiles, ignoredKeys])
   /** 上一次扫描的挂接明细：角色名 -> 命中记录（带置信度），界面据此标注「靠什么认出来的」 */
   const [matchDetail, setMatchDetail] = useState<Record<string, MatchHit[]>>({})
   /** 扫描汇总：挂了几张、谁没命中。静默失败是之前最大的问题 */
@@ -578,7 +588,7 @@ export default function Home() {
     const handle = await pickDirectory().catch(() => null)
     if (!handle) return
     const files = await listImages(handle).catch(() => [])
-    setVaultFiles(files)
+    setAllVaultFiles(files)
     autoAttachByFolder(files)
   }
 
@@ -586,8 +596,38 @@ export default function Home() {
     const handle = await loadDirectoryHandle()
     if (!handle) return
     const files = await listImages(handle).catch(() => [])
-    setVaultFiles(files)
+    setAllVaultFiles(files)
     autoAttachByFolder(files)
+  }
+
+  /**
+   * 从工作台移除一张图。
+   *
+   * 目录直连模式下**不碰用户硬盘**：只把它加进「不再显示」名单，
+   * 「图留在你自己机器上」是产品承诺，一个按钮删掉别人的素材是事故。
+   * IndexedDB 模式下这张图本来就是应用存的，同样是移除名单（数据还在浏览器里，
+   * 想彻底清掉用面板底部的「清空本地图库」）。
+   */
+  async function handleIgnoreVaultFile(key: string) {
+    await ignoreVaultKey(key).catch(() => {})
+    setIgnoredKeys((prev) => (prev.includes(key) ? prev : [...prev, key]))
+  }
+
+  /** 误删的退路：一次性恢复所有被移除的图 */
+  async function handleRestoreVaultFiles() {
+    await clearIgnoredKeys().catch(() => {})
+    setIgnoredKeys([])
+  }
+
+  /** 面板底部的出口：目录直连=断开文件夹（不动文件）；IndexedDB=真删 */
+  async function handleClearVault() {
+    if (vaultMode === 'fs-access') {
+      await clearDirectoryHandle().catch(() => {})
+    } else {
+      await clearIndexedVault().catch(() => {})
+    }
+    setAllVaultFiles([])
+    setIgnoredKeys([])
   }
 
   /**
@@ -608,9 +648,10 @@ export default function Home() {
   // 图库能力探测：只在客户端执行
   useEffect(() => {
     setVaultMode(detectVaultMode())
-    listVaultFiles().then(setVaultFiles).catch(() => {})
+    listVaultFiles().then(setAllVaultFiles).catch(() => {})
+    listIgnoredKeys().then(setIgnoredKeys).catch(() => {})
     loadDirectoryHandle()
-      .then(async (h) => { if (h) setVaultFiles(await listImages(h).catch(() => [])) })
+      .then(async (h) => { if (h) setAllVaultFiles(await listImages(h).catch(() => [])) })
       .catch(() => {})
   }, [])
 
@@ -1064,7 +1105,11 @@ export default function Home() {
               files={vaultFiles}
               onPickDirectory={handlePickDirectory}
               onReload={handleReloadVault}
-              onAdd={(added) => setVaultFiles((prev) => [...prev, ...added])}
+              onAdd={(added) => setAllVaultFiles((prev) => [...prev, ...added])}
+              onIgnore={handleIgnoreVaultFile}
+              ignoredCount={ignoredKeys.length}
+              onRestore={handleRestoreVaultFiles}
+              onClear={handleClearVault}
             />
 
             {/* 打包带走 */}

@@ -20,6 +20,16 @@ export interface VaultFile {
 const DB_NAME = "chengju-vault"
 const STORE = "blobs"
 const HANDLE_STORE = "handles"
+/**
+ * 「已从图库移除」的 key 名单。
+ *
+ * 为什么需要它：目录直连模式下图在用户硬盘上，应用没有资格删它们（那是承诺的一部分）。
+ * 但素材文件夹里难免混进无关图片（误扫进来的截图、临时文件），
+ * 用户需要一个办法让它们别出现在工作台里。所以这里是「不再显示」而不是「删除文件」。
+ */
+const IGNORE_STORE = "ignored"
+/** 建表版本：加 store 必须升版本号，否则老用户升级时不会跑 onupgradeneeded */
+const DB_VERSION = 2
 
 /** 能力探测：决定用哪条路径 */
 export function detectVaultMode(): VaultMode {
@@ -37,11 +47,12 @@ export async function hashBlob(blob: Blob): Promise<string> {
 
 function openVaultDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
+    const req = indexedDB.open(DB_NAME, DB_VERSION)
     req.onupgradeneeded = () => {
       const db = req.result
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE)
       if (!db.objectStoreNames.contains(HANDLE_STORE)) db.createObjectStore(HANDLE_STORE)
+      if (!db.objectStoreNames.contains(IGNORE_STORE)) db.createObjectStore(IGNORE_STORE)
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -83,7 +94,39 @@ async function idbKeys(store: string): Promise<string[]> {
   return keys
 }
 
+async function idbDelete(store: string, key: string): Promise<void> {
+  const db = await openVaultDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite")
+    tx.objectStore(store).delete(key)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+  db.close()
+}
+
+async function idbClear(store: string): Promise<void> {
+  const db = await openVaultDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite")
+    tx.objectStore(store).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+  db.close()
+}
+
 // ── 目录句柄的持久化（fs-access 路径）─────────────────────────
+
+/**
+ * 断开素材文件夹：只删掉保存的目录句柄，工作台回到「没连目录」的状态。
+ *
+ * 这里刻意不去碰用户硬盘上的任何文件——「图留在你自己机器上」是产品的核心承诺，
+ * 一个「清除」按钮要是删了用户的素材，那是事故不是功能。
+ */
+export async function clearDirectoryHandle(): Promise<void> {
+  await idbDelete(HANDLE_STORE, "current")
+}
 
 export async function saveDirectoryHandle(handle: FileSystemDirectoryHandle): Promise<void> {
   await idbPut(HANDLE_STORE, "current", handle)
@@ -154,6 +197,44 @@ export async function listVaultFiles(): Promise<VaultFile[]> {
     })
   }
   return out
+}
+
+// ── 从图库里「移除」（不改用户硬盘上的文件）─────────────────────
+
+/** 把某个 key 标记为「不再显示」。目录直连模式下用户硬盘上的文件原封不动 */
+export async function ignoreVaultKey(key: string): Promise<void> {
+  await idbPut(IGNORE_STORE, key, Date.now())
+}
+
+/** 恢复一张被移除的图 */
+export async function restoreVaultKey(key: string): Promise<void> {
+  await idbDelete(IGNORE_STORE, key)
+}
+
+/** 当前被移除的 key 名单 */
+export async function listIgnoredKeys(): Promise<string[]> {
+  return idbKeys(IGNORE_STORE).catch(() => [])
+}
+
+/** 一次性恢复所有被移除的图 */
+export async function clearIgnoredKeys(): Promise<void> {
+  await idbClear(IGNORE_STORE)
+}
+
+/**
+ * 真正删掉 IndexedDB 里的图（只有这个模式下图是应用自己存的，删得掉也该删）。
+ * 目录直连模式不要调它——那儿的图在用户硬盘上，见 clearDirectoryHandle。
+ */
+export async function clearIndexedVault(): Promise<void> {
+  await idbClear(STORE)
+  await idbClear(IGNORE_STORE)
+}
+
+/** 按「已移除」名单过滤后的图库列表；纯函数，方便单测 */
+export function visibleVaultFiles(files: VaultFile[], ignoredKeys: string[]): VaultFile[] {
+  if (ignoredKeys.length === 0) return files
+  const ignored = new Set(ignoredKeys)
+  return files.filter((f) => !ignored.has(f.key))
 }
 
 // ── 名字归一化与拼音折叠 ──────────────────────────────────────
