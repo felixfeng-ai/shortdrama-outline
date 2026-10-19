@@ -18,10 +18,11 @@ import JudgmentLogPanel from '@/components/JudgmentLogPanel'
 import LookBookCard from '@/components/LookBookCard'
 import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
+import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
 import TodoPanel from '@/components/TodoPanel'
 import { buildTodoList } from '@/lib/todo'
 import { DEFAULT_EPISODE_COUNT, MIN_EPISODE_COUNT, clampEpisodeCount } from '@/lib/episodes'
-import { EMPTY_BRIEF, briefSignature, readBrief, type CreativeBrief } from '@/lib/brief'
+import { EMPTY_BRIEF, briefSignature, isBriefEmpty, readBrief, type CreativeBrief } from '@/lib/brief'
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
 import { EMPTY_LOOK, lookSignature, readLook, type LookBook } from '@/lib/look'
 import AgentDock from '@/components/AgentDock'
@@ -296,6 +297,7 @@ export default function Home() {
   const [brief, setBrief] = useState<CreativeBrief>(EMPTY_BRIEF)
   const [judgments, setJudgments] = useState<JudgmentEntry[]>([])
   const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
+  const [metaPanel, setMetaPanel] = useState<MetaPanel | null>(null)
   const [variantSession, setVariantSession] = useState<VariantSession | null>(null)
   const [variantLoading, setVariantLoading] = useState(false)
   /** 用户选定的第一集：后续生成从第 2 集接着写 */
@@ -502,6 +504,13 @@ export default function Home() {
     scenes: scenes.length > 0,
     shots: shots.length > 0,
   }
+  const completedCount = Object.values(stepCompleted).filter(Boolean).length
+  const todoItems = buildTodoList({
+    completed: stepCompleted,
+    shots,
+    expiredShots: impact?.expired ?? 0,
+    hasIdea: idea.trim().length > 0,
+  })
 
   /**
    * 六步之间可以自由切换：没生成的那一步会自己说明「请先做上一步」，
@@ -536,6 +545,11 @@ export default function Home() {
   const stepOf = (key: StepKey) => STEPS.find((s) => s.key === key)
   const nextStep = NEXT_STEP[view]
   const sideStep = SIDE_STEP[view]
+  const nextNav = nextStep ? stepOf(nextStep)?.nav : undefined
+  const nextProps =
+    nextStep && nextNav
+      ? { nextLabel: `下一步：${nextNav}`, onNext: () => goToStep(nextStep) }
+      : {}
 
   /** 放映厅盯着的那一镜：用户点过就用点过的，否则默认第一镜 */
   const activeShot = useMemo(
@@ -1517,7 +1531,7 @@ export default function Home() {
 
         <span className={`h-run ${anyRunning ? 'busy' : ''}`} aria-live="polite">
           <i aria-hidden="true" />
-          {anyRunning ? `生成中 · ${elapsed.toFixed(1)}s` : '就绪'}
+          {anyRunning ? `生成中 · ${elapsed.toFixed(1)}s` : `${completedCount}/6 已完成`}
         </span>
 
         <ul className="hidden flex-wrap items-center gap-1.5 2xl:flex">
@@ -1545,7 +1559,6 @@ export default function Home() {
       <div className="h-main">
         <main className="h-work">
           <ReleaseNotice />
-          <BriefCard value={brief} onChange={setBrief} />
           {variantSession && (
             <VariantPicker
               stepLabel={
@@ -1638,19 +1651,42 @@ export default function Home() {
               项目待办：把散在六个分区里的状态收成一张清单（只读，不写任何东西）。
               某一步一生成完，下一屏不用再翻——该做什么、哪里要修，都在这里。
             */}
-            <TodoPanel
-              items={buildTodoList({
-                completed: stepCompleted,
-                shots,
-                expiredShots: impact?.expired ?? 0,
-                hasIdea: idea.trim().length > 0,
-              })}
-              onGo={goToStep}
+            <div>
+            <WorkMeta
+              briefFilled={!isBriefEmpty(brief)}
+              todoCount={todoItems.length}
+              logCount={judgments.length}
+              active={metaPanel}
+              onToggle={(panel) => setMetaPanel(metaPanel === panel ? null : panel)}
             />
-            <JudgmentLogPanel
-              entries={judgments}
-              onAdd={(reason) => recordJudgment('manual', '手记', reason)}
-            />
+            {metaPanel === 'brief' && (
+              <BriefCard
+                headless
+                open
+                value={brief}
+                onChange={setBrief}
+                onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
+              />
+            )}
+            {metaPanel === 'todo' && (
+              <TodoPanel
+                headless
+                open
+                items={todoItems}
+                onGo={goToStep}
+                onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
+              />
+            )}
+            {metaPanel === 'log' && (
+              <JudgmentLogPanel
+                headless
+                open
+                entries={judgments}
+                onAdd={(reason) => recordJudgment('manual', '手记', reason)}
+                onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
+              />
+            )}
+            </div>
             {/* 轻提示：已恢复上次项目、已停止这一步——都是说明，不是错误 */}
             {notice && (
               <div className="flex items-start gap-2 rounded-card border border-surface-line bg-surface-soft px-3.5 py-2.5">
@@ -1667,6 +1703,7 @@ export default function Home() {
             )}
             {/* 第一步：人物 */}
             <StepSection
+              {...nextProps}
               index={1}
               anchorId={STEP_ANCHORS.characters}
               visible={view === 'characters'}
@@ -1723,6 +1760,7 @@ export default function Home() {
 
             {/* 第二步：三幕大纲 */}
             <StepSection
+              {...nextProps}
               index={2}
               anchorId={STEP_ANCHORS.acts}
               visible={view === 'acts'}
@@ -1756,6 +1794,7 @@ export default function Home() {
 
             {/* 第三步：分集剧情 */}
             <StepSection
+              {...nextProps}
               index={3}
               anchorId={STEP_ANCHORS.episodes}
               visible={view === 'episodes'}
@@ -1801,6 +1840,7 @@ export default function Home() {
 
             {/* 第四步：角色视觉定妆（资产层） */}
             <StepSection
+              {...nextProps}
               index={4}
               anchorId={STEP_ANCHORS.visuals}
               visible={view === 'visuals'}
@@ -1842,6 +1882,7 @@ export default function Home() {
 
             {/* 第五步：场景 */}
             <StepSection
+              {...nextProps}
               index={5}
               anchorId={STEP_ANCHORS.scenes}
               visible={view === 'scenes'}
@@ -1873,6 +1914,7 @@ export default function Home() {
 
             {/* 第六步：分镜（流式） */}
             <StepSection
+              {...nextProps}
               index={6}
               anchorId={STEP_ANCHORS.shots}
               visible={view === 'shots'}

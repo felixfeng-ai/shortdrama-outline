@@ -7,34 +7,27 @@ import { isBriefEmpty, type CreativeBrief } from '@/lib/brief'
 interface Props {
   value: CreativeBrief
   onChange: (next: CreativeBrief) => void
+  /** 由外部 meta 条控制开合 */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** 只渲染展开后的表单，不画自己的头部 */
+  headless?: boolean
 }
 
 const EMOTIONS = ['克制', '温柔', '荒诞', '热烈', '冷峻']
 const AUDIENCES = ['18-24 女性', '25-35 女性', '25-40 男性', '全年龄']
 
-export default function BriefCard({ value, onChange }: Props) {
-  const [open, setOpen] = useState(false)
+export default function BriefCard({ value, onChange, open: controlled, onOpenChange, headless = false }: Props) {
+  const [inner, setInner] = useState(false)
+  const open = controlled ?? inner
+  const setOpen = onOpenChange ?? setInner
   const filled = !isBriefEmpty(value)
   const summary = [value.emotion, value.audience, value.references].filter(Boolean).join(' · ')
 
   const set = (patch: Partial<CreativeBrief>) => onChange({ ...value, ...patch })
 
-  return (
-    <div className="brief">
-      <button
-        type="button"
-        className="brief-head"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="brief-dot" aria-hidden="true" />
-        <span className="brief-title">创作意图</span>
-        <span className="brief-summary">{filled ? summary : '未填写 · 生成会按平均值走'}</span>
-        <span className="brief-toggle">{open ? '收起' : filled ? '编辑' : '填写'}</span>
-      </button>
-
-      {open && (
-        <div className="brief-body">
+  const body = open ? (
+    <div className={headless ? 'workmeta-panel' : 'brief-body'}>
           <div className="brief-row">
             <span className="brief-label">核心情绪</span>
             <div className="brief-chips">
@@ -95,8 +88,25 @@ export default function BriefCard({ value, onChange }: Props) {
             <span className="brief-hint">可跳过；空着时与原来的生成完全一致</span>
             <button type="button" onClick={() => setOpen(false)}>完成</button>
           </div>
-        </div>
-      )}
+    </div>
+  ) : null
+
+  if (headless) return body
+
+  return (
+    <div className="brief">
+      <button
+        type="button"
+        className="brief-head"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <span className="brief-dot" aria-hidden="true" />
+        <span className="brief-title">创作意图</span>
+        <span className="brief-summary">{filled ? summary : '未填写 · 生成会按平均值走'}</span>
+        <span className="brief-toggle">{open ? '收起' : filled ? '编辑' : '填写'}</span>
+      </button>
+      {body}
     </div>
   )
 }

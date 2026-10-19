@@ -29,6 +29,9 @@ interface Props {
   layer?: 'story' | 'asset'
   /** 正在生成时给一个「停止」出口；不传就不显示 */
   onCancel?: () => void
+  /** 生成完成后把"下一步"提前到步骤头，免得用户滚到底 */
+  nextLabel?: string
+  onNext?: () => void
   /**
    * 是否显示这一步。一页只放当前步骤（点左栏切换），
    * 传 false 时整段不渲染——它不是被藏起来，而是真的不在 DOM 里。
@@ -63,6 +66,8 @@ export default function StepSection({
   layer = 'story',
   visible = true,
   onCancel,
+  nextLabel,
+  onNext,
 }: Props) {
   if (!visible) return null
 
@@ -105,6 +110,16 @@ export default function StepSection({
 
         <div className="flex shrink-0 items-center gap-2">
           {hasContent && extraAction}
+          {hasContent && nextLabel && onNext && (
+            <button
+              type="button"
+              onClick={onNext}
+              className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-2 text-xs font-medium text-accent-700
+                transition-colors hover:bg-accent-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
+            >
+              {nextLabel} →
+            </button>
+          )}
           <button
             type="button"
             onClick={onGenerate}

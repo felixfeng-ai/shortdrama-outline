@@ -31,6 +31,7 @@ export default function StepPills({ current, completed, onJump, canJump }: Props
           >
             <em>{String(step.index).padStart(2, '0')}</em>
             {step.nav}
+            {isDone && !isCurrent && <span className="h-pill-dot" aria-hidden="true" />}
           </button>
         )
       })}
