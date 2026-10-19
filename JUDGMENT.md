@@ -132,3 +132,64 @@
 - **A/B 成本**：必须可选、必须显示额度，不能默认翻倍。
 - **偏好数据敏感**：判断日志首先是本地资产，默认不上传；要同步必须先说清楚。
 - **别把"判断"做成打分**：分数只是线索，导演要的是"哪一版更对"，不是 87 分。
+
+## 8. 竞品与可行性验证（2026-10-19）
+
+> 方法：GitHub REST 搜索 + README / skill 原文核对；未访问私有后台，不做功能推测。
+> 结论先行：**五个机制里，有四个已经在开源世界里被验证过做法，但都停留在 markdown / skill 层，
+> 没有一个把它们做成"项目状态 + 自动注入 + 可回看"的产品资产。这正是成剧的位置。**
+
+### 8.1 可对比对象
+
+| 项目 | ★ | 语言 / 协议 | 最近推送 | 定位 | 与判断层的关系 |
+|---|---|---|---|---|---|
+| [Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) | 18.3k | TS / MIT | 10-16 | 无限画布 + 资产 + 生成 | 强在画布与资产，未见结构化的意图/判断资产 |
+| [Jellyfish](https://github.com/Forget-C/Jellyfish) | 6.8k | Python / Apache-2.0 | 07-30 | 端到端短剧工作台 | 流程完整，但 7 月底后停更 |
+| [shuohao-skills](https://github.com/eternityspring/shuohao-skills) | 4.8k | JS / Apache-2.0 | 10-15 | Agent skills：角色 / 大纲 / 场景 / 剧本 / 分镜 | 有 "Art bibles"；纯 markdown 工作流 |
+| [drama-skills](https://github.com/zenstory-ai/drama-skills) | 3.1k | Python / MIT | 10-15 | 11 个短剧 skill，含独立审查 | **最接近判断层**：creative brief、方向候选、Lookdev、review rubric |
+| [LocalMiniDrama](https://github.com/xuanyustudio/LocalMiniDrama) | 2.1k | JS | 10-16 | 本地短剧生成 | 强在本地与隐私 |
+| [StoryMind](https://github.com/LinHao-city/StoryMind) | 15 | Python / AGPL | 07-03 | "Storyboard Director"：先规划再生成 | 方向意图 → 镜头规划，验证概念，体量很小 |
+
+### 8.2 关键证据（逐条可复核）
+
+`drama-skills` 已经把三件事写成了独立资产：
+
+1. **创作简报** [`creative-brief.md`](https://github.com/zenstory-ai/drama-skills/blob/main/skills/short-drama-develop/assets/creative-brief.md)：
+   项目意图、创作者契约（希望观众反复获得的体验 / 不希望变成什么 / 主题张力 / 禁区）、
+   **节奏档案 JSON**（`first_hook_seconds`、`beat_interval_seconds_max`、`opposed_reversals_per_episode_min`…）、
+   **方向候选与选择**（候选人机制、选择理由、**明确拒绝的方向**）。
+2. **Lookdev 风格帧**：`short-drama-image-prompts` 明确把"风格帧 / 角色场景道具参考板"当成独立产物。
+3. **独立审查**：`short-drama-review` 覆盖故事、剧本、资产、连续性、图片/视频提示词与已有媒体，
+   给出 `REVISE` 结论与分派。
+
+`shuohao-skills` 的 `novel-art` 把"Art bibles for AI production"作为卖点；
+`StoryMind` 的卖点是"Tell StoryMind what film you want to make"——先定方向，再规划镜头。
+
+### 8.3 可行性判断
+
+| 机制 | 外部证据 | 我们的落点 | 增量 | 主要风险 | 结论 |
+|---|---|---|---|---|---|
+| 意图卡 | creative brief / StoryMind | 5 字段 + 4 处 prompt 注入 | 小 | 表单过重 | **可行，P0** |
+| 双版本 + 理由 | creative brief 的"候选 / 理由 / 明确拒绝" | 同一步跑两次 + 对比选择 | 中 | 成本翻倍 | 可行，P1（可选） |
+| Look Book | Lookdev / Art bibles | 项目级 look 块逐镜注入 | 中 | 与角色锚点混淆 | 可行，P1 |
+| 判断日志 | creative brief 的"明确拒绝的方向" | 本地快照追加 + 场记可读 | 小 | 强制填写 | **可行，P0** |
+| 审片人 | review rubric（结构 / 内容 / 资产 / 连续性） | 只读工具 + 结构化诊断卡 | 中高 | 模型输出稳定性 | 可行，P2 |
+| 情绪 / 节奏曲线 | 节奏档案 JSON（可量化） | 项目级 pacing profile + 每集打分 | 中 | 主观、易变成打分 | 可行，P2 |
+
+### 8.4 轮子决策
+
+| 选择 | 决定 | 理由 |
+|---|---|---|
+| 直接复用 | 无 | 现有实现是 skill / markdown，不是可嵌入的库 |
+| 借鉴模式 | creative brief 的字段分层、review rubric 的检查维度、pacing profile 的数值目标 | 已被 3k–4.8k 星项目验证，省掉试错 |
+| 自研 | 结构化数据 + 自动注入 + 版本 / 血缘 + UI | 这是差异：把"文档里的方法"变成"项目里的状态" |
+| 不 fork | Toonflow / Jellyfish | 无限画布 / 端到端成片会把产品拖向"重"，与成剧的轻与本地优先冲突 |
+
+### 8.5 MVP 建议
+
+- **P0（先做）**：意图卡（5 字段，可跳过）+ 判断日志（一次点击）。存项目快照，不建表；
+  四个生成入口注入同一段约束；改意图后复用现有 stale 提示。
+- **P1**：关键节点 A/B（可选、显示额外额度）；Look Book 作为视觉定妆里的子面板。
+- **P2**：`review_episode` 只读审片 + 每集 3 维节奏打分（先模型给初值，人来改）。
+
+**明确不做**：把 creative brief 的 9 节全搬进来——那是文档，不是产品；会直接劝退用户。

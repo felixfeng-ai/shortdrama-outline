@@ -19,7 +19,9 @@
 - **分集**：10 / 30 / 60 + 自定义 6–120，每 10 集一批生成，额度按批扣（每 10 集 3 单位）。
 - **文档**：`DESIGN.md`（设计系统）、`AGENT.md`（场记规格）、`specs/episode-count/spec.md`（集数能力规格）。
 - **下一个方向（未实现）**：[JUDGMENT.md](JUDGMENT.md) 的判断层。
-  P0 = 导演意图卡 + 判断日志；意图卡的行为规格见 [specs/intent-card/spec.md](specs/intent-card/spec.md)。
+  P0 = 导演意图卡 + 判断日志；规格见 [specs/intent-card/spec.md](specs/intent-card/spec.md)
+  与 [specs/judgment-log/spec.md](specs/judgment-log/spec.md)。
+  竞品与可行性验证已补进 JUDGMENT.md §8（2026-10-19）。
 
 ---
 
