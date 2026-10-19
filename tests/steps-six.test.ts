@@ -12,6 +12,7 @@ import { STEPS } from "../lib/types.ts"
 const pageSrc = fs.readFileSync("app/page.tsx", "utf8")
 const indicatorSrc = fs.readFileSync("components/StepIndicator.tsx", "utf8")
 const sideNavSrc = fs.readFileSync("components/SideNav.tsx", "utf8")
+const stepPillsSrc = fs.readFileSync("components/StepPills.tsx", "utf8")
 
 test("G2 STEPS 覆盖六个步骤，index 连续", () => {
   assert.equal(STEPS.length, 6)
@@ -82,15 +83,15 @@ test("G3 STEPS 必须有 nav 短标签，四个字以内", () => {
   }
 })
 
-test("G3b 左栏导航必须用 nav 短标签，不能用 title 长标题", () => {
-  assert.ok(sideNavSrc.includes("{step.nav}"), "左栏应该渲染 step.nav")
-  assert.ok(!sideNavSrc.includes("{step.title}"), "左栏不该再渲染 step.title")
-  assert.ok(!sideNavSrc.includes("{step.subtitle}"), "参考图左栏没有说明行")
+test("G3b 六步导航必须用 nav 短标签，不能用 title 长标题", () => {
+  assert.ok(stepPillsSrc.includes("{step.nav}"), "步骤条应该渲染 step.nav")
+  assert.ok(!stepPillsSrc.includes(">{step.title}<"), "步骤条不该再渲染 step.title")
+  assert.ok(!stepPillsSrc.includes(">{step.subtitle}<"), "步骤条没有说明行")
 })
 
-test("G3c 桌面端左栏导航必须真的挂在页面上", () => {
-  assert.ok(pageSrc.includes("<SideNav"), "page.tsx 没有渲染 SideNav，左栏等于没接")
-  assert.ok(pageSrc.includes("from '@/components/SideNav'"), "SideNav 没有引入")
+test("G3c 桌面端六步导航必须真的挂在页面上", () => {
+  assert.ok(pageSrc.includes("<StepPills"), "page.tsx 没有渲染 StepPills，六步导航等于没接")
+  assert.ok(pageSrc.includes("from '@/components/StepPills'"), "StepPills 没有引入")
 })
 
 // ── G4 左栏高亮与「下一步」提示 ──

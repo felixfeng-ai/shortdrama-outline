@@ -38,14 +38,14 @@ export default function CharacterList({ characters, onChange, onRegenerate, rege
   const remove = (id: string) => onChange(characters.filter((c) => c.id !== id))
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="ledger-list">
       {characters.map((character, index) => {
         const isRegenerating = regeneratingId === character.id
 
         return (
           <article
             key={character.id}
-            className={`relative rounded-card border border-surface-line bg-surface-card p-4 transition-opacity
+            className={`relative ledger-row transition-opacity
               ${isRegenerating ? 'opacity-50' : ''}`}
           >
             {/* 姓名 + 操作 */}
@@ -99,7 +99,8 @@ export default function CharacterList({ characters, onChange, onRegenerate, rege
             </div>
 
             {/* 字段 */}
-            <dl className="space-y-2">
+            {/* 行化后字段走两列：四个字段排成 2×2，行高从 245px 降到约 150px */}
+            <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
               {FIELDS.map(({ key, label }) => (
                 <div key={key} className="flex gap-2">
                   <dt className="mt-1 w-14 shrink-0 text-xs font-medium text-ink-400">{label}</dt>

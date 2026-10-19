@@ -17,6 +17,8 @@ interface Props {
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
   onNew: () => void
+  /** 载入示例项目：第一次来的人先看见"做出来是什么样" */
+  onLoadSample: () => void
 }
 
 function when(ts: number): string {
@@ -35,6 +37,7 @@ export default function ProjectBar({
   onRename,
   onDelete,
   onNew,
+  onLoadSample,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -162,6 +165,16 @@ export default function ProjectBar({
               transition-colors hover:border-accent-300 hover:text-accent-700"
           >
             新建项目（清空工作台，下次生成时保存成一个新项目）
+          </button>
+
+          {/* 示例常驻在项目列表里：不管当前有没有项目都能点，第一次来的人也找得到 */}
+          <button
+            type="button"
+            onClick={() => { onLoadSample(); setOpen(false) }}
+            className="mt-1.5 w-full rounded-chip border border-dashed border-surface-line-2 px-3 py-1.5 text-[11px]
+              text-ink-500 transition-colors hover:border-accent-300 hover:text-accent-700"
+          >
+            载入示例项目（六步都有内容，不花额度）
           </button>
         </div>
       )}

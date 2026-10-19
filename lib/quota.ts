@@ -23,7 +23,7 @@ export const STEP_COST: Record<string, number> = {
   agent: 1,
   characters: 1,
   acts: 1,
-  episodes: 3,   // 10 集，输出最大
+  episodes: 3,   // 每 10 集一批；长集数按 batch 数累加（见 episodeQuotaUnits）
   visual: 2,     // 定妆 + 定妆图提示词，两次调用
   scenes: 2,
   shots: 4,      // 每镜带锚点，输出最大
@@ -149,8 +149,10 @@ export function chargeQuota(
   identity: string,
   step: string,
   now = Date.now(),
+  unitsOverride?: number,
 ): QuotaSnapshot {
-  const units = STEP_COST[step] ?? 1
+  // 分集按批次计价：集数越多，一次请求的 units 越大
+  const units = Math.max(1, Math.floor(unitsOverride ?? STEP_COST[step] ?? 1))
   const snap = getQuota(db, identity, now)
 
   if (snap.globalUsed + units > snap.globalLimit) {

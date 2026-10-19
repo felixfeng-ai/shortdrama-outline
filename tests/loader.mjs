@@ -9,7 +9,7 @@
 // 这三条都只在 Next 运行时成立。为了让 `node --test` 能直接跑路由的导出函数，
 // 这里在测试进程里补上解析规则，而不是去改业务代码——业务代码必须保持
 // 对 Next 的标准写法。
-import { pathToFileURL } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import fs from "node:fs"
 import path from "node:path"
 
@@ -57,6 +57,12 @@ export async function resolve(specifier, context, nextResolve) {
   }
   if (specifier.startsWith("@/")) {
     const target = resolveFile(path.join(ROOT, specifier.slice(2)))
+    if (target) return nextResolve(pathToFileURL(target).href, context)
+  }
+  // 相对路径 + 省略扩展名（业务代码里的 `./deepseek`）：Node 原生不认，补上
+  if ((specifier.startsWith("./") || specifier.startsWith("../")) && !path.extname(specifier)) {
+    const parent = context.parentURL ? path.dirname(fileURLToPath(context.parentURL)) : ROOT
+    const target = resolveFile(path.resolve(parent, specifier))
     if (target) return nextResolve(pathToFileURL(target).href, context)
   }
   return nextResolve(specifier, context)

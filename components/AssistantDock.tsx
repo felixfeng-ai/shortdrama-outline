@@ -104,7 +104,12 @@ export default function AssistantDock({ shot, idea, genre, characters, onApply }
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-2.5">
+    /*
+      ai-surface / ai-dock 是墨层的语义标记：第四套主题下，提问条与分镜视觉
+      合成一块连续的深色工具（内部用墨线分区），而不是两块分开的黑。
+      其他三套主题下这两个类没有任何样式，外观不变。
+    */
+    <div className="ai-surface ai-dock flex min-w-0 flex-col gap-2.5">
       {/* AI 提问条 */}
       <form
         className="ask"

@@ -16,56 +16,63 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        /** 页面/卡片的米纸底：暖、带一点黄，不是冷白 */
+        /**
+         * 颜色全部走 CSS 变量（见 globals.css 的 :root / [data-theme]）。
+         *
+         * 为什么要这样：同一份界面要能出三套底色（原味纸墨 / 提白 / 冷白）互相对照，
+         * 写死十六进制就只能在构建时定一套。变量用「通道三元组」写法，
+         * 这样 bg-surface/70 这类透明度修饰符还能正常工作。
+         */
+        /** 页面/卡片的底 */
         surface: {
-          DEFAULT: '#efe5d7',
-          deep: '#e7dbca',
-          card: '#fcf8f2',
-          soft: '#f7f0e6',
-          line: '#e6d9c6',
-          'line-2': '#d8c8b2',
+          DEFAULT: 'rgb(var(--c-surface) / <alpha-value>)',
+          deep: 'rgb(var(--c-surface-deep) / <alpha-value>)',
+          card: 'rgb(var(--c-surface-card) / <alpha-value>)',
+          soft: 'rgb(var(--c-surface-soft) / <alpha-value>)',
+          line: 'rgb(var(--c-surface-line) / <alpha-value>)',
+          'line-2': 'rgb(var(--c-surface-line-2) / <alpha-value>)',
         },
-        /** 正文与骨架：暖褐灰，落在纸上不刺眼 */
+        /** 正文与骨架 */
         ink: {
-          50: '#f6f0e5',
-          100: '#e9dcc9',
-          200: '#cdbda8',
-          300: '#ab9c89',
-          400: '#8f7f6f',
-          500: '#7a695c',
-          600: '#5f4d41',
-          700: '#4a3a30',
-          800: '#3b2f27',
-          900: '#2f2620',
+          50: 'rgb(var(--c-ink-50) / <alpha-value>)',
+          100: 'rgb(var(--c-ink-100) / <alpha-value>)',
+          200: 'rgb(var(--c-ink-200) / <alpha-value>)',
+          300: 'rgb(var(--c-ink-300) / <alpha-value>)',
+          400: 'rgb(var(--c-ink-400) / <alpha-value>)',
+          500: 'rgb(var(--c-ink-500) / <alpha-value>)',
+          600: 'rgb(var(--c-ink-600) / <alpha-value>)',
+          700: 'rgb(var(--c-ink-700) / <alpha-value>)',
+          800: 'rgb(var(--c-ink-800) / <alpha-value>)',
+          900: 'rgb(var(--c-ink-900) / <alpha-value>)',
         },
         /** 幕布红 / 朱砂：全站唯一强调色（品牌、主按钮、选中态、AI 点缀） */
         accent: {
-          50: '#fbeceb',
-          100: '#f7dedb',
-          200: '#efc6c5',
-          300: '#e09a9c',
-          400: '#cf4a52',
-          500: '#c0303a',
-          600: '#a3252a',
-          700: '#8e1a20',
-          800: '#7d1418',
-          900: '#5e0f12',
+          50: 'rgb(var(--c-accent-50) / <alpha-value>)',
+          100: 'rgb(var(--c-accent-100) / <alpha-value>)',
+          200: 'rgb(var(--c-accent-200) / <alpha-value>)',
+          300: 'rgb(var(--c-accent-300) / <alpha-value>)',
+          400: 'rgb(var(--c-accent-400) / <alpha-value>)',
+          500: 'rgb(var(--c-accent-500) / <alpha-value>)',
+          600: 'rgb(var(--c-accent-600) / <alpha-value>)',
+          700: 'rgb(var(--c-accent-700) / <alpha-value>)',
+          800: 'rgb(var(--c-accent-800) / <alpha-value>)',
+          900: 'rgb(var(--c-accent-900) / <alpha-value>)',
         },
         /**
          * 完成态：原来的 success 是绿色，与「幕布红唯一强调色」冲突，
          * 改成暖赭（纸上的印章色），只用在「已完成/已出图」这类小徽标上。
          */
         done: {
-          50: '#f7f1e7',
-          100: '#efe4d2',
-          200: '#dfcfb0',
-          300: '#c9b48e',
-          400: '#b49b6f',
-          500: '#a98f63',
-          600: '#8e7749',
-          700: '#6f5d38',
-          800: '#57482b',
-          900: '#40351f',
+          50: 'rgb(var(--c-done-50) / <alpha-value>)',
+          100: 'rgb(var(--c-done-100) / <alpha-value>)',
+          200: 'rgb(var(--c-done-200) / <alpha-value>)',
+          300: 'rgb(var(--c-done-300) / <alpha-value>)',
+          400: 'rgb(var(--c-done-400) / <alpha-value>)',
+          500: 'rgb(var(--c-done-500) / <alpha-value>)',
+          600: 'rgb(var(--c-done-600) / <alpha-value>)',
+          700: 'rgb(var(--c-done-700) / <alpha-value>)',
+          800: 'rgb(var(--c-done-800) / <alpha-value>)',
+          900: 'rgb(var(--c-done-900) / <alpha-value>)',
         },
         /** 分镜视觉（放映厅）：深棕黑面板 + 浅金参数值 */
         cinema: {

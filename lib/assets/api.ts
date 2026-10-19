@@ -26,6 +26,9 @@ export const deleteProject = (id: string) =>
       return true
     })
 
+/** 载入示例项目：服务端写一整套六步产物，返回新项目（不调模型、不扣额度） */
+export const loadSampleProject = () => postJson<{ project: ProjectDto }>('/api/sample', {})
+
 export const listSnapshots = <T>(projectId: string, kind: string) =>
   fetch(`/api/snapshots?projectId=${projectId}&kind=${kind}`)
     .then((r) => r.json())

@@ -52,7 +52,7 @@ export default function ActList({ acts, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="ledger-list">
       {acts.map((act, index) => {
         const meta = ACT_META[act.key] ?? ACT_META.setup
         const expanded = open[act.id] ?? index === 0
@@ -75,7 +75,7 @@ export default function ActList({ acts, onChange }: Props) {
         return (
           <article
             key={act.id}
-            className={`actcard ${ACCENT[act.key] ?? ACCENT.setup}`}
+            className={`actcard ledger-row ${ACCENT[act.key] ?? ACCENT.setup}`}
           >
             <div className="flex items-start justify-between gap-3">
               <h3>{meta.label}</h3>

@@ -137,7 +137,7 @@ export function buildCharacterPrompt(idea: string, genre?: Genre) {
 
   const user = `故事想法：${idea}
 
-请设计 3-5 个核心角色。注意：角色要能撑起 10 集的冲突，动机之间要互相咬合。`
+请设计 3-5 个核心角色。注意：角色要能撑起整部剧的冲突，动机之间要互相咬合。`
   return { system, user }
 }
 
@@ -233,7 +233,24 @@ ${roster}
 
 // ─────────────────────── 第三步：分集剧情 ───────────────────────
 
-export function buildEpisodePrompt(idea: string, characters: Character[], acts: Act[], genre?: Genre) {
+export interface EpisodePromptOptions {
+  /** 本批从第几集开始（1-based） */
+  start?: number
+  /** 本批写几集 */
+  count?: number
+  /** 全剧总集数 */
+  total?: number
+  /** 已生成部分的剧情摘要，供后续批次承接 */
+  previous?: string
+}
+
+export function buildEpisodePrompt(
+  idea: string,
+  characters: Character[],
+  acts: Act[],
+  genre?: Genre,
+  options: EpisodePromptOptions = {},
+) {
   const roster = characters
     .map((c) => `- ${c.name}（${c.identity}）：动机是「${c.motivation}」`)
     .join('\n')
@@ -242,17 +259,43 @@ export function buildEpisodePrompt(idea: string, characters: Character[], acts: 
     .map((a) => `【${a.title}】${a.summary}\n关键情节点：${a.beats.join('；')}`)
     .join('\n\n')
 
+  const total = options.total ?? options.count ?? 10
+  const start = options.start ?? 1
+  const count = options.count ?? total
+  const end = start + count - 1
+  const batched = start > 1 || count < total
+  const previous = (options.previous ?? '').trim()
+
+  const task = batched
+    ? `你的任务：把三幕大纲拆成 ${total} 集竖屏短剧，每集 1-3 分钟。
+**本批只写第 ${start} 集到第 ${end} 集（共 ${count} 集）**，其余集数由后续批次补上。`
+    : `你的任务：把三幕大纲拆成 ${total} 集竖屏短剧，每集 1-3 分钟。`
+
+  const pace =
+    total >= 30
+      ? `- ${total} 集的冲突强度必须递进：第 1 集抓人，前四分之一建立局面，中段持续升级，最后五分之一连续高潮
+- 第 ${total} 集收尾，但钩子可以留一个余味（开放式或反转式结尾）`
+      : `- ${total} 集的冲突强度必须递进：第 1 集抓人，第 4-6 集进入中段升级，第 8-${total} 集连续高潮
+- 第 ${total} 集收尾，但钩子可以留一个余味（开放式或反转式结尾）`
+
+  const previousBlock = previous
+    ? `
+## 已生成的前 ${start - 1} 集（承接用，不要重复）
+${previous}
+`
+    : ''
+
   const system = `${ROLE}
 
-你的任务：把三幕大纲拆成 10 集竖屏短剧，每集 1-3 分钟。
+${task}
 
 ## 短剧节奏要求（这是重点）
 - **每集必须有明确的冲突推进**，不能有一集是纯铺垫或纯过渡
 - **结尾钩子必须是"未解决的问题"**：一个新危机爆发、一个秘密被揭开、一个决定被打断、一句反转的台词——让观众非点下一集不可
 - 钩子要具体，写清发生了什么，不要写"留下悬念""引发观众好奇"这种描述钩子的话
-- 10 集的冲突强度必须递进：第 1 集抓人，第 4-6 集进入中段升级，第 8-10 集连续高潮
-- 第 10 集收尾，但钩子可以留一个余味（开放式或反转式结尾）
+${pace}
 - 剧情必须严格基于给定的三幕结构推进，按三幕顺序分配到各集
+${previousBlock}
 
 ## JSON 模板
 {
@@ -265,7 +308,7 @@ export function buildEpisodePrompt(idea: string, characters: Character[], acts: 
     }
   ]
 }
-注意：episodes 数组必须正好 10 个元素，number 从 1 连续到 10。${JSON_RULE}${genreClause(genre)}`
+注意：episodes 数组必须正好 ${count} 个元素，number 从 ${start} 连续到 ${end}。${JSON_RULE}${genreClause(genre)}`
 
   const user = `故事想法：${idea}
 
@@ -275,6 +318,6 @@ ${roster}
 三幕大纲：
 ${structure}
 
-请基于以上内容，生成 10 集分集剧情。`
+请基于以上内容，生成 ${count} 集分集剧情。`
   return { system, user }
 }

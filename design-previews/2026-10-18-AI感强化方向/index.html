@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计方向预览 — 成剧 · AI 感强化</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Playfair+Display:wght@500;600&family=DM+Mono:wght@400;500&family=Archivo:wght@400;500;600&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#f2f2f0;color:#191b21;
+    font:400 14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif}
+  .qmdp-frame{position:sticky;top:0;z-index:30;height:58px;display:flex;align-items:center;
+    justify-content:space-between;gap:16px;padding:0 18px;background:#fbfbfa;
+    border-bottom:1px solid #d8dbe1;box-shadow:0 10px 30px rgb(15 23 42 / 6%)}
+  .qmdp-frame strong{font-size:14px;font-weight:650}
+  .qmdp-frame .sub{color:#5b6472;font-size:12.5px}
+  .qmdp-frame-right{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#5b6472}
+  .qmdp-key{border:1px solid #d8dbe1;border-radius:6px;padding:2px 6px;font-size:11.5px;background:#fff;
+    font-variant-numeric:tabular-nums}
+  .qmdp-dials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:14px 18px;
+    background:#fbfbfa;border-bottom:1px solid #d8dbe1}
+  .qmdp-dial{display:grid;gap:6px;font-size:12.5px;color:#3b4250}
+  .qmdp-dial-head{display:flex;justify-content:space-between;gap:8px}
+  .qmdp-dial output{font-variant-numeric:tabular-nums;font-weight:650;color:#191b21}
+  .qmdp-dial input[type=range]{width:100%;accent-color:#4b5563;margin:0}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding:22px 18px 8px;
+    max-width:1360px;margin:0 auto}
+  .card{position:relative;display:flex;flex-direction:column;min-width:0;background:#fff;
+    border:2px solid #e3e3e0;border-radius:12px;overflow:hidden;transition:border-color 160ms ease}
+  .card.qmdp-selected{border-color:#191b21}
+  .rec{position:absolute;top:12px;right:12px;z-index:3;background:#191b21;color:#fff;border-radius:999px;
+    padding:4px 10px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .mock{position:relative;overflow:hidden;background:#fff}
+  .mock .stage{transform-origin:top left}
+  .stage{width:960px;height:600px;overflow:hidden;position:relative}
+  .stage *{box-sizing:border-box;margin:0;padding:0;list-style:none;text-decoration:none}
+  .meta{padding:14px 18px 4px;display:grid;gap:8px;min-width:0}
+  .meta .tag{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:#191b21}
+  .meta .tag i{font-style:normal;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
+    color:#fff;background:#3b4250;border-radius:5px;padding:2px 7px;letter-spacing:.06em}
+  .meta p{color:#4b5260;font-size:13px;line-height:1.6;max-width:64ch}
+  .qmdp-pick-button{position:relative;z-index:1;margin:12px 18px 18px;min-height:44px;width:calc(100% - 36px);
+    border:1px solid #c9ccd3;background:#f7f7f6;color:#191b21;border-radius:9px;font-size:13.5px;
+    font-weight:600;cursor:pointer;transition:transform 150ms ease,box-shadow 150ms ease,background 150ms ease}
+  .qmdp-pick-button:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgb(15 23 42 / 12%);background:#fff}
+  .qmdp-pick-button:active{transform:translateY(0) scale(.99)}
+  .qmdp-selected .qmdp-pick-button{background:#168a5f;border-color:#168a5f;color:#fff}
+  .spec{max-width:1360px;margin:0 auto;padding:22px 18px 120px;display:grid;gap:14px}
+  .spec h2{font-size:15px;margin:0 0 2px}
+  .spec .note{color:#5b6472;font-size:12.5px}
+  .spec-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .spec-card{background:#fff;border:1px solid #e3e3e0;border-radius:10px;padding:14px 16px}
+  .spec-card h3{font-size:13.5px;margin:0 0 8px;display:flex;gap:8px;align-items:center}
+  .spec-card h3 i{font-style:normal;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#3b4250;
+    color:#fff;border-radius:5px;padding:2px 6px}
+  .spec-card dl{display:grid;grid-template-columns:76px 1fr;gap:6px 10px;font-size:12.5px;color:#4b5260}
+  .spec-card dt{color:#8a909c}
+  .spec-card dd{margin:0}
+  .confirm{position:fixed;inset:0;display:none;place-items:center;background:rgb(15 23 42 / 40%);z-index:60}
+  .confirm.open{display:grid}
+  .dialog{width:min(520px,calc(100vw - 32px));background:#fff;border-radius:12px;padding:20px;
+    box-shadow:0 30px 60px rgb(15 23 42 / 28%)}
+  .dialog h2{margin:0 0 8px;font-size:16px}
+  .dialog p{margin:0 0 12px;font-size:13px;color:#4b5260}
+  .dialog textarea{width:100%;min-height:84px;resize:vertical;border:1px solid #d8dbe1;border-radius:8px;
+    padding:10px;font:inherit;font-size:13px}
+  .dialog .row{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
+  .dialog button{min-height:40px;padding:0 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;
+    border:1px solid #c9ccd3;background:#f7f7f6;color:#191b21}
+  .dialog button.primary{background:#191b21;border-color:#191b21;color:#fff}
+  .pickbar{position:fixed;bottom:0;left:0;right:0;padding:14px;background:#191b21;color:#fff;text-align:center;
+    font-size:13px;transform:translateY(100%);transition:transform 200ms cubic-bezier(.23,1,.32,1);z-index:50}
+  .pickbar.show{transform:translateY(0)}
+  @media (max-width:900px){
+    .grid{grid-template-columns:1fr;padding:16px 14px 8px;gap:18px}
+    .spec-grid{grid-template-columns:1fr}
+    .qmdp-dials{grid-template-columns:1fr;gap:10px;padding:12px 14px}
+    .qmdp-frame{height:auto;flex-direction:column;align-items:flex-start;gap:6px;padding:10px 14px}
+    .qmdp-frame-right{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+
+<div class="qmdp-frame">
+  <span><strong>成剧 · AI 感强化方向</strong>
+    <span class="sub">　设计方向样机，不是最终页面；选定方向后才进入正式实现</span></span>
+  <span class="qmdp-frame-right" id="pickStatus">
+    <span class="qmdp-key">1 E</span><span class="qmdp-key">2 F</span><span class="qmdp-key">3 G</span><span class="qmdp-key">4 H</span>
+  </span>
+</div>
+
+<div class="qmdp-dials" data-qmdp-dials aria-label="设计拨盘">
+  <label class="qmdp-dial"><span class="qmdp-dial-head"><span>视觉冒险度</span>
+    <output data-qmdp-output="variance">7</output></span>
+    <input data-qmdp-dial="variance" id="variance" type="range" min="1" max="10" value="7"></label>
+  <label class="qmdp-dial"><span class="qmdp-dial-head"><span>动效强度</span>
+    <output data-qmdp-output="motion">5</output></span>
+    <input data-qmdp-dial="motion" id="motion" type="range" min="1" max="10" value="5"></label>
+  <label class="qmdp-dial"><span class="qmdp-dial-head"><span>信息密度</span>
+    <output data-qmdp-output="density">7</output></span>
+    <input data-qmdp-dial="density" id="density" type="range" min="1" max="10" value="7"></label>
+</div>
+
+<main class="grid">
+
+  <!-- ═══════════ E · 通透光感（浅色，但有材质与运行态） ═══════════ -->
+  <article class="card" data-design-option data-name="通透光感">
+    <div class="mock">
+      <div class="stage e-stage">
+        <style>
+          .e-stage{display:flex;flex-direction:column;color:#1a1815;position:relative;
+            background:
+              radial-gradient(90% 70% at 12% 0%, #ffffff 0%, rgba(255,255,255,0) 58%),
+              radial-gradient(70% 60% at 92% 104%, rgba(210,72,63,.07), rgba(210,72,63,0) 62%),
+              #f2efe9;
+            font-family:"Manrope",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .e-stage::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+            background-image:radial-gradient(rgba(60,45,30,.055) .5px, transparent .6px);
+            background-size:3px 3px}
+          .e-top{height:56px;flex:0 0 56px;display:flex;align-items:center;gap:14px;padding:0 20px;
+            border-bottom:1px solid rgba(30,24,18,.09);position:relative;z-index:1}
+          .e-brand{font-size:17px;font-weight:700;letter-spacing:.03em}
+          .e-proj{font-size:12px;color:#6b645b;border-left:1px solid rgba(30,24,18,.12);padding-left:12px}
+          .e-grow{flex:1}
+          .e-railpill{display:flex;align-items:center;gap:8px;background:#17151a;color:#e9e2d8;
+            border-radius:999px;padding:7px 13px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+            letter-spacing:.02em;box-shadow:inset 0 1px 0 rgba(255,236,214,.14),0 8px 20px -12px rgba(20,14,10,.7)}
+          .e-railpill i{width:6px;height:6px;border-radius:50%;background:#e0524b;display:inline-block;
+            box-shadow:0 0 8px rgba(224,82,75,.55)}
+          .e-railpill b{color:#f2eee8;font-weight:500}
+          .e-quota{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#7d7468}
+          .e-body{flex:1;min-height:0;display:flex;gap:16px;padding:14px 20px 18px;position:relative;z-index:1}
+          .e-nav{width:156px;flex:0 0 156px;display:flex;flex-direction:column;gap:2px}
+          .e-step{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;font-size:12.5px;
+            color:#6b645b}
+          .e-step em{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#a79e92;font-style:normal}
+          .e-step.on{background:#fbfaf8;color:#1a1815;font-weight:600;
+            box-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(30,24,18,.06),0 10px 24px -18px rgba(40,30,20,.7)}
+          .e-step.on em{color:#d2483f}
+          .e-canvas{flex:1;min-width:0;display:flex;flex-direction:column;padding:16px 18px 6px;
+            background:#fbfaf8;border-radius:14px;
+            box-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(30,24,18,.07),0 22px 48px -36px rgba(40,30,20,.75)}
+          .e-ch{display:flex;align-items:baseline;gap:10px;padding-bottom:12px;
+            border-bottom:1px solid rgba(30,24,18,.08)}
+          .e-ch h3{font-size:15px;font-weight:700}
+          .e-ch .n{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#a79e92;letter-spacing:.1em}
+          .e-ch .gen{margin-left:auto;font-size:10.5px;color:#d2483f;background:rgba(210,72,63,.08);
+            border:1px solid rgba(210,72,63,.18);border-radius:5px;padding:2px 7px}
+          .e-idea{font-size:13px;line-height:1.7;color:#3f3a34;padding:12px 2px;
+            border-bottom:1px solid rgba(30,24,18,.07)}
+          .e-idea span{color:#a79e92}
+          .e-row{display:grid;grid-template-columns:30px 108px 1fr 52px;gap:10px;align-items:baseline;
+            padding:11px 2px;border-bottom:1px solid rgba(30,24,18,.06);font-size:12.5px}
+          .e-row:last-child{border-bottom:0}
+          .e-row .i{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#b3aa9e}
+          .e-row b{font-weight:600;font-size:13px}
+          .e-row b small{display:block;font-weight:400;font-family:"IBM Plex Mono",monospace;
+            font-size:10px;color:#a79e92;margin-top:2px}
+          .e-row p{color:#5c554c;line-height:1.55}
+          .e-row .more{font-size:10.5px;color:#a79e92;text-align:right}
+          .e-deck{width:288px;flex:0 0 288px;border-radius:14px;padding:13px 14px;
+            background:linear-gradient(180deg,#1c191f,#121014 70%);color:#c9c2b7;
+            box-shadow:inset 0 1px 0 rgba(255,236,214,.16),inset 0 0 0 1px rgba(255,236,214,.07),
+              0 28px 54px -32px rgba(20,14,10,.85)}
+          .e-dh{display:flex;align-items:baseline;gap:8px;padding-bottom:10px;border-bottom:1px solid rgba(255,236,214,.12)}
+          .e-dh b{font-size:12.5px;color:#f0ebe2;font-weight:600;letter-spacing:.02em}
+          .e-dh em{margin-left:auto;font-style:normal;font-family:"IBM Plex Mono",monospace;
+            font-size:9.5px;color:#8a8177}
+          .e-frame{margin:11px 0;aspect-ratio:9/16;height:176px;border-radius:5px;position:relative;
+            background:linear-gradient(180deg,#2b3d4f,#101a24 62%);overflow:hidden;
+            box-shadow:inset 0 0 26px rgba(0,0,0,.55)}
+          .e-frame i{position:absolute;left:8px;bottom:6px;font-style:normal;
+            font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:#8a8177}
+          .e-param{display:flex;justify-content:space-between;padding:7px 0;
+            border-bottom:1px solid rgba(255,236,214,.08);font-size:11.5px;color:#8a8177}
+          .e-param span{font-family:"IBM Plex Mono",monospace;color:#e3b87f;font-size:11.5px}
+          .e-prompt{margin-top:9px;font-family:"IBM Plex Mono",monospace;font-size:9px;line-height:1.6;
+            color:#6f6860;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+        </style>
+        <header class="e-top">
+          <span class="e-brand">成剧</span>
+          <span class="e-proj">快递员的最后一单</span>
+          <span class="e-grow"></span>
+          <span class="e-railpill"><i></i>GPT-5.1 · <b>生成中 8.2s</b> · 3.1k · STEP 1/6</span>
+          <span class="e-quota">额度 4/5</span>
+        </header>
+        <div class="e-body">
+          <nav class="e-nav">
+            <a class="e-step on"><em>01</em>核心人物</a>
+            <a class="e-step"><em>02</em>三幕大纲</a>
+            <a class="e-step"><em>03</em>分集剧情</a>
+            <a class="e-step"><em>04</em>视觉定妆</a>
+            <a class="e-step"><em>05</em>场景</a>
+            <a class="e-step"><em>06</em>分镜提示词</a>
+          </nav>
+          <section class="e-canvas">
+            <div class="e-ch"><h3>核心人物</h3><span class="n">03 CHAR</span>
+              <span class="gen">AI 已生成 · 可改</span></div>
+            <div class="e-idea">一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易
+              <span>　· 直接改这句，重跑</span></div>
+            <div class="e-row"><span class="i">01</span>
+              <span><b>陈默<small>29 · 城中村</small></b></span>
+              <p>核心动机：证明自己不是「送完就走」的人。弧光：从被动接单到主动放弃。</p>
+              <span class="more">换一版</span></div>
+            <div class="e-row"><span class="i">02</span>
+              <span><b>苏婉<small>68 · 老城区</small></b></span>
+              <p>核心动机：守住一个六十年前的约定。弧光：从体面克制到松口。</p>
+              <span class="more">换一版</span></div>
+            <div class="e-row"><span class="i">03</span>
+              <span><b>沈之遥<small>41 · 外地经商</small></b></span>
+              <p>核心动机：拿回遗产，也在等父亲先开口。</p>
+              <span class="more">换一版</span></div>
+          </section>
+          <aside class="e-deck">
+            <div class="e-dh"><b>分镜视觉</b><em>SHOT 01</em></div>
+            <div class="e-frame"><i>9:16 · 城郊别墅门外</i></div>
+            <div class="e-param">景别 <span>中景</span></div>
+            <div class="e-param">画幅 <span>9:16</span></div>
+            <div class="e-param">时长 <span>5s</span></div>
+            <div class="e-prompt">medium shot, man outside an iron gate in heavy rain, cold blue night tones, single warm window glow, cinematic, 9:16</div>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>E</i>通透光感</span>
+      <p>浅色，但不是白底灰线：暖光从左上打进来、面板有 1px 内高光和暖调多层阴影、3% 细颗粒；顶部常驻一条运行轨道，右边停靠一块深色产出舱。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 E · 通透光感</button>
+  </article>
+
+  <!-- ═══════════ F · 黑金旗舰 ═══════════ -->
+  <article class="card" data-design-option data-name="黑金旗舰">
+    <div class="mock">
+      <div class="stage f-stage">
+        <style>
+          .f-stage{display:flex;flex-direction:column;background:#0b0b0c;color:#ede7dc;
+            font-family:"Work Sans",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .f-top{height:56px;flex:0 0 56px;display:flex;align-items:center;gap:18px;padding:0 28px;
+            border-bottom:1px solid rgba(215,194,154,.18)}
+          .f-brand{font-size:16px;font-weight:600;letter-spacing:.24em;color:#f4efe6}
+          .f-latin{font-family:"Playfair Display",serif;font-size:9.5px;letter-spacing:.3em;
+            color:#d7c29a;text-transform:uppercase}
+          .f-grow{flex:1}
+          .f-head{display:flex;align-items:baseline;gap:10px;padding:14px 28px 12px;
+            border-bottom:1px solid rgba(215,194,154,.14)}
+          .f-head h3{font-size:15px;font-weight:500;letter-spacing:.06em}
+          .f-head em{margin-left:auto;font-style:normal;font-family:"DM Mono",monospace;font-size:10px;
+            color:#8c8478;letter-spacing:.12em}
+          .f-body{flex:1;min-height:0;display:flex;gap:0;padding:0 28px}
+          .f-left{flex:1;min-width:0;display:flex;flex-direction:column;padding:18px 0 16px}
+          .f-quote{font-family:"Playfair Display",serif;font-size:21px;line-height:1.5;color:#f1ebe0;
+            letter-spacing:.01em;padding-right:26px}
+          .f-quote small{display:block;font-family:"Work Sans",sans-serif;font-size:10.5px;letter-spacing:.1em;
+            color:#8c8478;margin-top:10px;text-transform:uppercase}
+          .f-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:22px;
+            border-top:1px solid rgba(215,194,154,.16)}
+          .f-col{padding:14px 18px 0;border-left:1px solid rgba(215,194,154,.1)}
+          .f-col:first-child{border-left:0;padding-left:0}
+          .f-col .k{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:.16em;color:#8c8478}
+          .f-col b{display:block;font-size:13.5px;font-weight:500;margin-top:6px;color:#f1ebe0}
+          .f-col p{font-size:11.5px;line-height:1.65;color:#a49c8f;margin-top:7px}
+          .f-col .seal{width:16px;height:16px;background:#d7c29a;margin-top:10px}
+          .f-right{width:250px;flex:0 0 250px;border-left:1px solid rgba(215,194,154,.16);
+            padding:18px 0 16px 22px;display:flex;flex-direction:column}
+          .f-rh{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:.16em;color:#8c8478;
+            display:flex;gap:8px;padding-bottom:10px;border-bottom:1px solid rgba(215,194,154,.12)}
+          .f-rh em{margin-left:auto;font-style:normal;color:#d7c29a}
+          .f-frame{margin:12px 0;aspect-ratio:9/16;height:196px;background:linear-gradient(180deg,#2b3d4f,#0e1720 62%);
+            border:1px solid rgba(215,194,154,.22);position:relative}
+          .f-frame i{position:absolute;left:8px;bottom:6px;font-style:normal;font-family:"DM Mono",monospace;
+            font-size:9px;color:#8c8478}
+          .f-p{display:flex;justify-content:space-between;padding:7px 0;font-size:11.5px;color:#8c8478;
+            border-bottom:1px solid rgba(215,194,154,.08)}
+          .f-p span{font-family:"DM Mono",monospace;color:#d7c29a}
+          .f-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding-top:12px;
+            border-top:1px solid rgba(215,194,154,.14);font-family:"DM Mono",monospace;font-size:9.5px;color:#8c8478}
+          .f-seal{width:22px;height:22px;display:grid;place-items:center;border:1px solid #d7c29a;color:#d7c29a;
+            font-family:"Work Sans",sans-serif;font-size:11px}
+        </style>
+        <header class="f-top">
+          <span class="f-brand">成剧</span>
+          <span class="f-latin">Chengju Studio</span>
+          <span class="f-grow"></span>
+          <span style="font-family:'DM Mono',monospace;font-size:10.5px;color:#d7c29a">额度 04 / 05</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10.5px;color:#6f6a62">v1.4</span>
+        </header>
+        <div class="f-head"><h3>核心人物</h3><em>GENERATING · 8.2S · 3 CHAR · STEP 01/06</em></div>
+        <div class="f-body">
+          <section class="f-left">
+            <p class="f-quote">一个快递员意外继承了百万遗产，<br>条件是替原主人完成七桩未竟的交易。
+              <small>你的想法 · 可改写后重新生成</small></p>
+            <div class="f-cols">
+              <div class="f-col"><span class="k">01 · 陈默 / 29</span><b>城中村</b>
+                <p>证明自己不是「送完就走」的人。<br>从被动接单到主动放弃。</p><span class="seal"></span></div>
+              <div class="f-col"><span class="k">02 · 苏婉 / 68</span><b>老城区</b>
+                <p>守住一个六十年前的约定。<br>从体面克制到松口。</p><span class="seal"></span></div>
+              <div class="f-col"><span class="k">03 · 沈之遥 / 41</span><b>外地经商</b>
+                <p>拿回遗产，也在等父亲先开口。</p><span class="seal" style="background:none;border:1px solid #4a453d"></span></div>
+            </div>
+          </section>
+          <aside class="f-right">
+            <div class="f-rh">分镜视觉 <em>SHOT 01</em></div>
+            <div class="f-frame"><i>9:16 · 城郊别墅门外 · 夜 · 雨</i></div>
+            <div class="f-p">景别 <span>中景</span></div>
+            <div class="f-p">运镜 <span>缓慢推近</span></div>
+            <div class="f-p">时长 <span>5s</span></div>
+            <div class="f-foot"><span class="f-seal">剧</span>CHENGJU · 分镜台已就绪</div>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>F</i>黑金旗舰</span>
+      <p>近黑底 + 香槟金细线 + 衬线西文标题，像一本精装剧本的封面语言。金色只出现在分隔线与关键数字上，不发光、不渐变。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 F · 黑金旗舰</button>
+  </article>
+
+  <!-- ═══════════ G · 深空控制台 ═══════════ -->
+  <article class="card" data-design-option data-name="深空控制台">
+    <div class="mock">
+      <div class="stage g-stage">
+        <style>
+          .g-stage{display:flex;flex-direction:column;background:#07090d;color:#c7d0db;
+            font-family:"Archivo",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .g-tel{height:40px;flex:0 0 40px;display:grid;grid-template-columns:1.1fr .9fr .9fr .9fr .9fr;
+            background:#0a0d12;border-bottom:1px solid #1a2028}
+          .g-cell{display:flex;align-items:center;gap:7px;padding:0 12px;border-left:1px solid #141a22;
+            font-family:"IBM Plex Mono",monospace;font-size:10px;color:#4f5b69;letter-spacing:.1em}
+          .g-cell:first-child{border-left:0}
+          .g-cell b{color:#c7d0db;font-weight:500;letter-spacing:0}
+          .g-live{margin-left:auto;color:#7dd3c0;letter-spacing:.12em}
+          .g-live i{width:5px;height:5px;border-radius:50%;background:#7dd3c0;display:inline-block}
+          .g-head{height:44px;flex:0 0 44px;display:flex;align-items:center;gap:12px;padding:0 14px;
+            border-bottom:1px solid #1a2028}
+          .g-brand{font-size:14px;font-weight:600;color:#e6edf5;letter-spacing:.02em}
+          .g-proj{font-size:11.5px;color:#6c7988}
+          .g-grow{flex:1}
+          .g-hbtn{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#8b98a8;border:1px solid #202832;
+            border-radius:4px;padding:4px 9px;letter-spacing:.04em}
+          .g-body{flex:1;min-height:0;display:flex}
+          .g-rail{width:54px;flex:0 0 54px;border-right:1px solid #1a2028;background:#090c11;padding-top:8px}
+          .g-rail a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;
+            font-family:"IBM Plex Mono",monospace;font-size:9px;color:#4f5b69}
+          .g-rail a.on{color:#7dd3c0;background:#0e141b;box-shadow:inset 2px 0 0 #7dd3c0}
+          .g-main{flex:1;min-width:0;padding:12px 14px;display:flex;flex-direction:column}
+          .g-prompt{border:1px solid #1a2028;background:#0a0e13;border-radius:5px;padding:10px 12px;
+            font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.7;color:#8b98a8}
+          .g-prompt b{color:#7dd3c0;font-weight:400}
+          .g-label{margin:14px 0 7px;font-family:"IBM Plex Mono",monospace;font-size:9px;
+            letter-spacing:.16em;color:#4f5b69}
+          .g-th{display:grid;grid-template-columns:34px 104px 1fr 64px;gap:9px;padding:0 2px 6px;
+            font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.14em;color:#3f4a57;
+            border-bottom:1px solid #1a2028}
+          .g-tr{display:grid;grid-template-columns:34px 104px 1fr 64px;gap:9px;padding:9px 2px;
+            border-bottom:1px solid #111720;font-size:11.5px;align-items:baseline}
+          .g-tr .id{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#4f5b69}
+          .g-tr b{font-weight:500;color:#e6edf5;font-size:12px}
+          .g-tr b small{display:block;font-weight:400;font-family:"IBM Plex Mono",monospace;
+            font-size:9.5px;color:#5f6b7a;margin-top:2px}
+          .g-tr p{color:#8b98a8;line-height:1.55;font-size:11.5px}
+          .g-tr .st{font-family:"IBM Plex Mono",monospace;font-size:9px;color:#7dd3c0;text-align:right}
+          .g-side{width:216px;flex:0 0 216px;border-left:1px solid #1a2028;background:#090c11;padding:12px}
+          .g-sh{display:flex;gap:7px;align-items:baseline;font-family:"IBM Plex Mono",monospace;
+            font-size:9px;letter-spacing:.14em;color:#4f5b69;padding-bottom:9px;border-bottom:1px solid #1a2028}
+          .g-sh em{margin-left:auto;font-style:normal;color:#7dd3c0}
+          .g-frame{margin:10px 0;aspect-ratio:9/16;height:172px;border:1px solid #202832;
+            background:linear-gradient(180deg,#26384a,#0c141c 62%);position:relative;
+            box-shadow:inset 0 0 30px rgba(0,0,0,.6)}
+          .g-frame i{position:absolute;left:7px;bottom:5px;font-style:normal;
+            font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:#5f6b7a}
+          .g-kv{display:grid;grid-template-columns:1fr auto;font-size:10.5px}
+          .g-kv dt{padding:6px 0;color:#5f6b7a;border-bottom:1px solid #111720}
+          .g-kv dd{padding:6px 0;text-align:right;font-family:"IBM Plex Mono",monospace;
+            color:#c7d0db;border-bottom:1px solid #111720}
+        </style>
+        <div class="g-tel">
+          <div class="g-cell">MODEL <b>gpt-5.1</b></div>
+          <div class="g-cell">STEP <b>01 / 06</b></div>
+          <div class="g-cell">ELAPSED <b>8.2s</b></div>
+          <div class="g-cell">TOKENS <b>3,120</b></div>
+          <div class="g-cell g-live"><i></i>RUNNING</div>
+        </div>
+        <header class="g-head">
+          <span class="g-brand">成剧</span>
+          <span class="g-proj">快递员的最后一单 / 核心人物</span>
+          <span class="g-grow"></span>
+          <span class="g-hbtn">导出 · 提示词包</span>
+        </header>
+        <div class="g-body">
+          <nav class="g-rail">
+            <a class="on">01<br>人物</a><a>02<br>三幕</a><a>03<br>分集</a>
+            <a>04<br>定妆</a><a>05<br>场景</a><a>06<br>分镜</a>
+          </nav>
+          <section class="g-main">
+            <div class="g-prompt">&gt; 一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易<b>▌</b></div>
+            <div class="g-label">CHARACTERS · 3 NODES · EDITABLE</div>
+            <div class="g-th"><span>ID</span><span>NAME</span><span>MOTIVE</span><span>STATE</span></div>
+            <div class="g-tr"><span class="id">c_01</span>
+              <span><b>陈默<small>29 · 城中村</small></b></span>
+              <p>证明自己不是「送完就走」的人</p><span class="st">FINAL</span></div>
+            <div class="g-tr"><span class="id">c_02</span>
+              <span><b>苏婉<small>68 · 老城区</small></b></span>
+              <p>守住一个六十年前的约定</p><span class="st">FINAL</span></div>
+            <div class="g-tr"><span class="id">c_03</span>
+              <span><b>沈之遥<small>41 · 外地经商</small></b></span>
+              <p>拿回遗产，也在等父亲先开口</p><span class="st" style="color:#c99a5b">REVIEW</span></div>
+          </section>
+          <aside class="g-side">
+            <div class="g-sh">STORYBOARD<em>SHOT 01</em></div>
+            <div class="g-frame"><i>9:16 · 城郊别墅门外</i></div>
+            <dl class="g-kv">
+              <dt>景别</dt><dd>中景</dd>
+              <dt>画幅</dt><dd>9:16</dd>
+              <dt>时长</dt><dd>5s</dd>
+              <dt>运镜</dt><dd>推近</dd>
+            </dl>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>G</i>深空控制台</span>
+      <p>最"工程"的一套：顶部一条全宽遥测条常驻模型 / 步骤 / 耗时 / token / 运行状态，全站以大写字距和等宽数字为主，信号色只有一点薄荷。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 G · 深空控制台</button>
+  </article>
+
+  <!-- ═══════════ H · 双舱（浅工作 / 深产出） ═══════════ -->
+  <article class="card" data-design-option data-name="双舱">
+    <span class="rec">推荐</span>
+    <div class="mock">
+      <div class="stage h-stage">
+        <style>
+          .h-stage{display:flex;flex-direction:column;background:#f5f3ef;color:#1a1815;
+            font-family:"Work Sans",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .h-top{height:54px;flex:0 0 54px;display:flex;align-items:center;gap:14px;padding:0 22px;
+            border-bottom:1px solid rgba(30,24,18,.1);position:relative}
+          .h-brand{font-size:16px;font-weight:700;letter-spacing:.03em}
+          .h-proj{font-size:12px;color:#6b645b}
+          .h-grow{flex:1}
+          .h-steps{display:flex;gap:0;align-items:center}
+          .h-steps a{font-size:11px;color:#8d857a;padding:0 9px;border-left:1px solid rgba(30,24,18,.1);
+            font-family:"JetBrains Mono",monospace;letter-spacing:.02em}
+          .h-steps a:first-child{border-left:0}
+          .h-steps a.on{color:#1a1815;font-weight:600}
+          .h-run{display:flex;align-items:center;gap:7px;font-family:"JetBrains Mono",monospace;
+            font-size:10px;color:#9a9287}
+          .h-run i{width:6px;height:6px;border-radius:50%;background:#c2410c;display:inline-block}
+          .h-body{flex:1;min-height:0;display:flex;position:relative}
+          .h-left{flex:1;min-width:0;display:flex;flex-direction:column;padding:16px 22px 14px}
+          .h-k{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.16em;color:#a09789}
+          .h-idea{font-size:13.5px;line-height:1.7;color:#3f3a34;margin-top:8px;padding-bottom:13px;
+            border-bottom:1px solid rgba(30,24,18,.09)}
+          .h-idea span{color:#a09789;font-family:"JetBrains Mono",monospace;font-size:10px}
+          .h-rows{margin-top:2px}
+          .h-row{display:grid;grid-template-columns:28px 100px 1fr;gap:11px;padding:11px 0;
+            border-bottom:1px solid rgba(30,24,18,.07);align-items:baseline}
+          .h-row:last-child{border-bottom:0}
+          .h-row .i{font-family:"JetBrains Mono",monospace;font-size:10px;color:#b3aa9e}
+          .h-row b{font-size:13px;font-weight:600}
+          .h-row b small{display:block;font-weight:400;font-family:"JetBrains Mono",monospace;
+            font-size:9.5px;color:#a09789;margin-top:2px}
+          .h-row p{font-size:12px;line-height:1.6;color:#5c554c}
+          .h-seam{width:1px;flex:0 0 1px;background:rgba(30,24,18,.14);position:relative}
+          .h-seam::after{content:"";position:absolute;top:50%;left:-2px;width:5px;height:44px;
+            background:#f5f3ef;border-radius:3px;box-shadow:0 0 0 1px rgba(30,24,18,.14)}
+          .h-right{width:366px;flex:0 0 366px;background:linear-gradient(180deg,#17151a,#100e12 72%);
+            color:#cfc8bd;padding:15px 16px;display:flex;flex-direction:column}
+          .h-rh{display:flex;align-items:baseline;gap:8px;padding-bottom:10px;
+            border-bottom:1px solid rgba(255,236,214,.13)}
+          .h-rh b{font-size:12.5px;color:#f0ebe2;font-weight:600}
+          .h-rh em{margin-left:auto;font-style:normal;font-family:"JetBrains Mono",monospace;
+            font-size:9.5px;color:#8a8177}
+          .h-stagebox{display:flex;gap:14px;margin-top:12px;flex:1;min-height:0}
+          .h-frame{width:150px;flex:0 0 150px;aspect-ratio:9/16;border-radius:5px;position:relative;
+            background:linear-gradient(180deg,#2b3d4f,#0f1922 62%);overflow:hidden;
+            box-shadow:inset 0 0 26px rgba(0,0,0,.55)}
+          .h-frame i{position:absolute;left:8px;bottom:6px;font-style:normal;
+            font-family:"JetBrains Mono",monospace;font-size:9px;color:#8a8177}
+          .h-params{flex:1;min-width:0;display:flex;flex-direction:column}
+          .h-p{display:flex;justify-content:space-between;padding:7px 0;font-size:11.5px;color:#8a8177;
+            border-bottom:1px solid rgba(255,236,214,.08)}
+          .h-p span{font-family:"JetBrains Mono",monospace;color:#e3b87f}
+          .h-prompt{margin-top:9px;font-family:"JetBrains Mono",monospace;font-size:9px;line-height:1.65;
+            color:#6f6860;overflow:hidden}
+          .h-prompt b{display:block;color:#9d9488;font-weight:400;font-size:9px;letter-spacing:.1em;margin-bottom:4px}
+        </style>
+        <header class="h-top">
+          <span class="h-brand">成剧</span>
+          <span class="h-proj">快递员的最后一单</span>
+          <span class="h-grow"></span>
+          <nav class="h-steps"><a class="on">01 人物</a><a>02 三幕</a><a>03 分集</a>
+            <a>04 定妆</a><a>05 场景</a><a>06 分镜</a></nav>
+          <span class="h-run"><i></i>8.2s · 3.1k</span>
+        </header>
+        <div class="h-body">
+          <section class="h-left">
+            <span class="h-k">IDEA → CHARACTERS</span>
+            <p class="h-idea">一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易
+              <span>　可改后重跑</span></p>
+            <div class="h-rows">
+              <div class="h-row"><span class="i">01</span>
+                <span><b>陈默<small>29 · 城中村</small></b></span>
+                <p>证明自己不是「送完就走」的人。弧光：从被动接单到主动放弃。</p></div>
+              <div class="h-row"><span class="i">02</span>
+                <span><b>苏婉<small>68 · 老城区</small></b></span>
+                <p>守住一个六十年前的约定。弧光：从体面克制到松口。</p></div>
+              <div class="h-row"><span class="i">03</span>
+                <span><b>沈之遥<small>41 · 外地经商</small></b></span>
+                <p>拿回遗产，也在等父亲先开口。</p></div>
+            </div>
+          </section>
+          <div class="h-seam" aria-hidden="true"></div>
+          <aside class="h-right">
+            <div class="h-rh"><b>产出舱 · 分镜视觉</b><em>SHOT 01</em></div>
+            <div class="h-stagebox">
+              <div class="h-frame"><i>9:16 · 城郊别墅门外</i></div>
+              <div class="h-params">
+                <div class="h-p">景别 <span>中景</span></div>
+                <div class="h-p">画幅 <span>9:16</span></div>
+                <div class="h-p">时长 <span>5s</span></div>
+                <div class="h-p">运镜 <span>推近</span></div>
+                <div class="h-prompt"><b>PROMPT</b>medium shot, man outside an iron gate in heavy rain, cold blue night tones, single warm window glow, cinematic, 9:16</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>H</i>双舱</span>
+      <p>一条硬缝把屏幕分成两半：左边是浅色工作面，只读不闪；右边整块深色产出舱，画面和提示词都长在那儿。不是白底页面上贴一块黑，而是两种材质各占一半。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 H · 双舱</button>
+  </article>
+
+</main>
+
+<section class="spec">
+  <h2>方向说明</h2>
+  <p class="note">样机只用于选视觉与交互气质，不是最终页面。也可以只挑细节混搭，在对话里告诉我（如：要 H 的双舱 + G 的遥测条）。</p>
+  <div class="spec-grid">
+    <div class="spec-card">
+      <h3><i>E</i>通透光感</h3>
+      <dl>
+        <dt>AI 感机制</dt><dd>生成材质（1px 内高光 + 暖调多层阴影 + 3% 颗粒）+ 顶部运行轨道 + 右侧深色产出舱</dd>
+        <dt>一句话气质</dt><dd>像一台摆在暖光下的高级设备，浅色但不寡淡</dd>
+        <dt>字体策略</dt><dd>Manrope + IBM Plex Mono；中文系统栈</dd>
+        <dt>色彩策略</dt><dd>暖白 #F2EFE9 / #FBFAF8 + 深舱 #17151A，信号色 #D2483F 只用在运行点和当前步</dd>
+        <dt>布局动作</dt><dd>左导航 + 主画布 + 停靠深舱（不等分，29% 给产出）</dd>
+        <dt>记忆点</dt><dd>那条黑曜石质感的运行轨道，和浅色画面形成唯一一处硬对比</dd>
+      </dl>
+    </div>
+    <div class="spec-card">
+      <h3><i>F</i>黑金旗舰</h3>
+      <dl>
+        <dt>AI 感机制</dt><dd>全站深色 + 香槟金细线 + 衬线西文标题 + 等宽遥测行，把"创作"这件事做得有仪式感</dd>
+        <dt>一句话气质</dt><dd>像一本精装剧本的封面，克制、贵、不喧哗</dd>
+        <dt>字体策略</dt><dd>Playfair Display（西文标题）+ Work Sans + DM Mono</dd>
+        <dt>色彩策略</dt><dd>#0B0B0C 底 + #D7C29A 金，单一强调，无渐变无光晕</dd>
+        <dt>布局动作</dt><dd>对称编辑网格，三等分靠金色细线而不是卡片分隔</dd>
+        <dt>记忆点</dt><dd>金色的分隔线与那枚"剧"字方印</dd>
+      </dl>
+    </div>
+    <div class="spec-card">
+      <h3><i>G</i>深空控制台</h3>
+      <dl>
+        <dt>AI 感机制</dt><dd>全宽遥测条常驻模型 / 步骤 / 耗时 / token / RUNNING，机器状态就是界面骨架</dd>
+        <dt>一句话气质</dt><dd>像专业渲染农场或模型控制台，信息密度拉满</dd>
+        <dt>字体策略</dt><dd>Archivo + IBM Plex Mono，大小写与字距承担层级</dd>
+        <dt>色彩策略</dt><dd>#07090D / #0A0D12 / #11161D 三级面 + 薄荷信号 #7DD3C0（不发光）</dd>
+        <dt>布局动作</dt><dd>遥测条 + 图标轨 + 主区 + 侧栏，几乎全是 1px 线</dd>
+        <dt>记忆点</dt><dd>顶部那条永远在跳秒的遥测条</dd>
+      </dl>
+    </div>
+    <div class="spec-card">
+      <h3><i>H</i>双舱 <span style="font-size:11.5px;color:#0d9488;font-weight:600">推荐</span></h3>
+      <dl>
+        <dt>AI 感机制</dt><dd>深色产出舱占 38% 面积，与浅色工作面用一条硬缝分开；画面和 prompt 永远长在深色里</dd>
+        <dt>一句话气质</dt><dd>像导演的桌面：左边改本子，右边看监视器</dd>
+        <dt>字体策略</dt><dd>Work Sans + JetBrains Mono（提示词与参数全等宽）</dd>
+        <dt>色彩策略</dt><dd>浅面 #F5F3EF / #FBFAF8 + 深舱 #17151A→#100E12，信号 #C2410C</dd>
+        <dt>布局动作</dt><dd>硬缝分屏，六步压成顶部胶囊条，给产出舱让出整块高度</dd>
+        <dt>记忆点</dt><dd>那条从顶栏贯到页底的缝，和缝两侧完全不同的两种材质</dd>
+      </dl>
+    </div>
+  </div>
+  <p class="note">为什么浅色更容易像"传统业务"：冷白 + 灰线 + 青绿是 B2B 后台的标准解，它证明"专业"但不证明"生成"。浅色方案要成立，必须至少补两项——生成材质、运行态可见、非对称构图。E 补了三项，H 直接把一半屏幕交给深色产出舱。
+  F 与 G 是深色的两条不同路：F 卖"仪式感"，G 卖"算力感"。</p>
+</section>
+
+<div class="confirm" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="dialog">
+    <h2 id="confirmTitle">确认设计方向</h2>
+    <p id="confirmMeta"></p>
+    <textarea id="adjustments" placeholder="可选：写下想调整的地方，比如「要 H 的双舱 + G 的遥测条」"></textarea>
+    <div class="row">
+      <button type="button" id="cancelPick">取消</button>
+      <button type="button" class="primary" id="confirmPick">确认并回传</button>
+    </div>
+  </div>
+</div>
+
+<div class="pickbar" id="pickbar"></div>
+
+<script>
+(() => {
+  const fit = () => {
+    const narrow = window.innerWidth < 620
+    document.querySelectorAll('.mock').forEach((mock) => {
+      const stage = mock.querySelector('.stage')
+      if (!stage) return
+      const s = Math.max(mock.clientWidth / 960, narrow ? 0.42 : 0)
+      stage.style.transform = 'scale(' + s + ')'
+      mock.style.height = Math.round(600 * s) + 'px'
+    })
+  }
+  const grid = document.querySelector('.grid')
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(grid)
+  window.addEventListener('resize', fit)
+  fit()
+
+  const cards = [...document.querySelectorAll('.card[data-design-option]')]
+  const letters = 'EFGH'
+  let pending = null
+
+  const dials = () => ({
+    variance: Number(document.getElementById('variance').value),
+    motion: Number(document.getElementById('motion').value),
+    density: Number(document.getElementById('density').value),
+  })
+  ;['variance', 'motion', 'density'].forEach((key) => {
+    const input = document.getElementById(key)
+    const out = document.querySelector('[data-qmdp-output="' + key + '"]')
+    const sync = () => { out.value = input.value; out.textContent = input.value }
+    input.addEventListener('input', sync)
+    sync()
+  })
+
+  const meta = document.getElementById('confirmMeta')
+  const dialog = document.getElementById('confirm')
+  const textarea = document.getElementById('adjustments')
+
+  function openConfirm(index) {
+    const card = cards[index]
+    if (!card) return
+    cards.forEach((c, i) => c.classList.toggle('qmdp-selected', i === index))
+    const d = dials()
+    pending = { id: letters[index], name: card.dataset.name, label: '选 ' + letters[index] + '：' + card.dataset.name }
+    meta.textContent = pending.label + ' · 视觉冒险度 ' + d.variance + ' / 动效强度 ' + d.motion +
+      ' / 信息密度 ' + d.density
+    dialog.classList.add('open')
+    textarea.focus()
+  }
+  function closeConfirm() { dialog.classList.remove('open') }
+
+  cards.forEach((card, i) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.qmdp-pick-button')) return
+      openConfirm(i)
+    })
+  })
+  document.querySelectorAll('.qmdp-pick-button').forEach((btn, i) => {
+    btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openConfirm(i) })
+  })
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest('input,textarea,select')) return
+    const i = ['1', '2', '3', '4'].indexOf(e.key)
+    if (i > -1) openConfirm(i)
+  })
+
+  document.getElementById('cancelPick').addEventListener('click', closeConfirm)
+  document.getElementById('confirmPick').addEventListener('click', async () => {
+    if (!pending) return
+    const bar = document.getElementById('pickbar')
+    const payload = { ...pending, note: pending.name, dials: dials(), adjustments: textarea.value.trim() }
+    let ok = false
+    try {
+      if (location.protocol !== 'file:') {
+        const res = await fetch('/api/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        ok = res.ok
+      }
+    } catch (err) { ok = false }
+    if (!ok && navigator.clipboard) {
+      await navigator.clipboard.writeText(
+        payload.label + '；拨盘：视觉冒险度 ' + payload.dials.variance + ' / 动效强度 ' +
+        payload.dials.motion + ' / 信息密度 ' + payload.dials.density +
+        (payload.adjustments ? '；建议：' + payload.adjustments : '')
+      ).catch(() => {})
+    }
+    bar.textContent = payload.label + (ok ? ' — 已回传' : ' — 当前未能自动回传，已复制，请回到对话发送')
+    bar.classList.add('show')
+    document.getElementById('pickStatus').textContent = '已选择 ' + payload.id
+    closeConfirm()
+  })
+})()
+</script>
+</body>
+</html>

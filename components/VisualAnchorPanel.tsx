@@ -276,6 +276,7 @@ export default function VisualAnchorPanel({
 
       {imagePrompts.length > 0 && <BatchImageKit prompts={imagePrompts} />}
 
+      <div className="ledger-list">
       {visuals.map((vc, i) => {
         const prompt = imagePrompts.find((p) => p.name === vc.name)
         const keys = attached[vc.name] ?? []
@@ -284,8 +285,8 @@ export default function VisualAnchorPanel({
           <article
             key={vc.id}
             id={`vc-${vc.name}`}
-            className={`min-w-0 rounded-card border bg-surface-card p-3.5 transition-colors sm:p-4 ${
-              highlight === vc.name ? "border-accent-400 ring-2 ring-accent-200" : "border-ink-200"
+            className={`ledger-row min-w-0 transition-colors ${
+              highlight === vc.name ? "is-active" : ""
             }`}
           >
             <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
@@ -413,6 +414,7 @@ export default function VisualAnchorPanel({
           </article>
         )
       })}
+      </div>
     </div>
   )
 }

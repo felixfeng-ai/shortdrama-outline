@@ -11,15 +11,25 @@
 //   用尽（0）     红色 + 明确告知「明天恢复 / 可自建」
 import { useEffect, useState } from 'react'
 import { fetchQuota, type QuotaDto } from '@/lib/assets/api'
+import { DEFAULT_EPISODE_COUNT, projectQuotaUnits } from '@/lib/episodes'
 
 interface Props {
   /** 生成成功后 +1，用来触发重新查询（额度已经变了） */
   refreshKey?: number
   /** 顶部品牌旁的紧凑版：一行数字 + 一条细进度，不再是自己一张卡 */
   compact?: boolean
+  /** 顶栏里的一行等宽小字：额度属于"机器状态"，不该占掉半条顶栏 */
+  inline?: boolean
+  /** 当前选定的集数：顶栏按这个集数估算「还能跑几部」 */
+  episodeCount?: number
 }
 
-export default function QuotaBar({ refreshKey = 0, compact = false }: Props) {
+export default function QuotaBar({
+  refreshKey = 0,
+  compact = false,
+  inline = false,
+  episodeCount = DEFAULT_EPISODE_COUNT,
+}: Props) {
   const [quota, setQuota] = useState<QuotaDto | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -34,6 +44,7 @@ export default function QuotaBar({ refreshKey = 0, compact = false }: Props) {
 
   if (failed) return null
   if (!quota) {
+    if (inline) return <span className="h-quota" aria-hidden="true">额度 —</span>
     if (compact) {
       return <div className="hidden h-6 w-52 animate-pulse rounded-chip bg-surface-soft sm:block" aria-hidden="true" />
     }
@@ -69,6 +80,25 @@ export default function QuotaBar({ refreshKey = 0, compact = false }: Props) {
       ? `可跑 ${quota.projectsLeft} 个完整项目`
       : '还能跑几步（不够一个完整项目）'
   const detail = `本日额度 ${quota.remaining}/${quota.limit} 单位（1 个完整项目 = 13 单位）`
+
+  // 顶栏内联版：只留数字，明细进 title
+  if (inline) {
+    const perProject = projectQuotaUnits(episodeCount)
+    const projects = Math.floor(quota.remaining / Math.max(1, perProject))
+    // 这里不再引用 10 集口径的「可跑 N 个完整项目」，否则和按集数估算的数字自相矛盾
+    const inlineTitle = exhausted
+      ? `${label}（本日 ${quota.remaining}/${quota.limit} 单位）。明天恢复，或自建实例使用自己的 API Key。`
+      : `${label}：本日 ${quota.remaining}/${quota.limit} 单位。按 ${episodeCount} 集/部估算，每部约 ${perProject} 单位，约可跑 ${projects} 部。`
+    return (
+      <span
+        className="h-quota"
+        style={exhausted || low ? { color: 'rgb(var(--c-accent-700))' } : undefined}
+        title={inlineTitle}
+      >
+        {exhausted ? '额度用尽' : `额度 ${quota.remaining}/${quota.limit} · ${projects} 部`}
+      </span>
+    )
+  }
 
   // 紧凑版：挂在顶部品牌旁边，只留一行数字 + 一条细进度
   if (compact) {

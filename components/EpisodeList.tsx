@@ -17,11 +17,11 @@ export default function EpisodeList({ episodes, onChange }: Props) {
     onChange(episodes.filter((e) => e.id !== id).map((e, i) => ({ ...e, number: i + 1 })))
 
   return (
-    <div className="space-y-3">
+    <div className="ledger-list">
       {episodes.map((episode) => (
         <article
           key={episode.id}
-          className="rounded-card border border-surface-line bg-surface-card p-4 transition-shadow hover:shadow-lift"
+          className="ledger-row"
         >
           <div className="mb-2 flex items-start gap-3">
             {/* 集数徽标 */}

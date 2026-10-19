@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { THEME_BOOTSTRAP } from '@/lib/theme'
 
 export const metadata: Metadata = {
   // 品牌名在前，描述性关键词留在后面——品牌要靠描述词才被搜到
@@ -28,7 +29,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" data-theme="h-deck" suppressHydrationWarning>
+      <head>
+        {/* 首屏就定好底色：否则会先闪一下默认色再跳成选中的那套 */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body>{children}</body>
     </html>
   )

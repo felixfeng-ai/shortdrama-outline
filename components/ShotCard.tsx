@@ -8,6 +8,7 @@
 //   3. 生成参数（竖屏 9:16 / 时长 / 尾帧）—— 接出图平台的最后一公里
 //   4. 返修状态 —— 返修雷达的落点
 import AutoTextarea from './AutoTextarea'
+import { useState } from 'react'
 import CopyButton from './CopyButton'
 import { shotToWorkOrder } from '@/lib/assets/export'
 import { CAMERA_MOVES, SHOT_DURATIONS, SHOT_SIZES, isSupportedDuration, type Shot, type ShotStatus } from '@/lib/assets/types'
@@ -31,24 +32,27 @@ const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
 
 export default function ShotCard({ shot, index, onUpdate, onRemove, active = false, onSelect }: Props) {
   const missing = shot.missingRefFor ?? []
+  const [open, setOpen] = useState(false)
 
   return (
     <article
       // 点卡片任意位置就把放映厅切到这一镜：提示词、参数、缩略图都跟着换
       onClick={() => onSelect?.(shot.id)}
-      className={`lift min-w-0 rounded-card border bg-surface-card p-3.5 sm:p-4
-        ${active ? 'border-accent-300 ring-1 ring-accent-200' : 'border-surface-line'}`}
+      className={`lift ledger-row min-w-0 ${active ? 'is-active' : ''}`}
     >
-      {/* 头部：镜号 + 状态 + 删除 */}
-      <div className="mb-3 flex items-start gap-2.5 sm:gap-3">
-        <span className="mt-0.5 w-7 shrink-0 text-center text-lg leading-7 text-ink-900">
-          {shot.shot}
+      {/*
+        摘要行：镜号 + 场景 + 参数一行看完，点箭头才展开编辑。
+        生成完 12 镜时，一屏能扫完比"每镜都是一张大卡"重要得多。
+      */}
+      <div className="flex items-start gap-2.5 sm:gap-3">
+        <span className="mt-0.5 w-7 shrink-0 text-center font-mono text-[15px] leading-7 text-ink-900">
+          {String(shot.shot).padStart(2, '0')}
         </span>
 
         <div className="min-w-0 flex-1">
           {/* 集号：分镜是全剧的，没有它分不清这一镜属于哪一集 */}
           {shot.episode > 0 && (
-            <span className="mb-0.5 inline-block rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-500">
+            <span className="mb-0.5 mr-1 inline-block rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-500">
               第 {shot.episode} 集
             </span>
           )}
@@ -59,7 +63,17 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
             placeholder="场景"
             className="-ml-2 text-sm font-semibold text-ink-900"
           />
+          <span className="mt-0.5 block truncate font-mono text-[10.5px] text-ink-400">
+            {shot.shotSize || '中景'} · {shot.camera} · {shot.params.ratio} · {shot.params.duration}s
+            {shot.characters.length > 0 ? ` · ${shot.characters.join('、')}` : ''}
+          </span>
         </div>
+
+        {missing.length > 0 && (
+          <span className="mt-1 shrink-0 rounded-chip bg-accent-100 px-1.5 py-0.5 text-[10px] font-semibold text-accent-800">
+            缺图 {missing.length}
+          </span>
+        )}
 
         <select
           value={shot.status}
@@ -74,6 +88,22 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
 
         <button
           type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+          aria-expanded={open}
+          aria-label={open ? `收起第 ${shot.shot} 镜` : `展开第 ${shot.shot} 镜`}
+          className="shrink-0 rounded-chip p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-800"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            className={`h-4 w-4 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.8] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          >
+            <path d="M5 7.5l5 5 5-5" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
           onClick={() => onRemove(shot.id)}
           aria-label={`删除第 ${shot.shot} 镜`}
           className="shrink-0 rounded-chip p-2 text-ink-200 transition-colors hover:bg-accent-50 hover:text-accent-600"
@@ -84,7 +114,8 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
         </button>
       </div>
 
-      <div className="min-w-0 space-y-2 pl-0 sm:pl-10">
+      {open && (
+      <div className="mt-3 min-w-0 space-y-2 pl-0 sm:pl-10">
         {/* B6：本镜参考图标注 —— 双人同框不一致的主要防线 */}
         <div className={`flex min-w-0 flex-wrap items-center gap-1.5 break-words rounded-chip border px-3 py-2 text-xs
           ${missing.length > 0 ? 'border-accent-200 bg-accent-50/70' : 'border-surface-line bg-surface/70'}`}>
@@ -265,6 +296,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
           />
         </div>
       </div>
+      )}
     </article>
   )
 }

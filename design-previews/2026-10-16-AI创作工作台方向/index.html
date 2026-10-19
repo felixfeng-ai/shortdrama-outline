@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计方向预览 — 成剧 · AI 创作工作台</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---------- 预览壳：中性克制，不参与方向竞争 ---------- */
+  *{box-sizing:border-box}
+  body{margin:0;background:#f2f2f0;color:#191b21;
+    font:400 14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif}
+  .qmdp-frame{position:sticky;top:0;z-index:30;height:58px;display:flex;align-items:center;
+    justify-content:space-between;gap:16px;padding:0 18px;background:#fbfbfa;
+    border-bottom:1px solid #d8dbe1;box-shadow:0 10px 30px rgb(15 23 42 / 6%)}
+  .qmdp-frame strong{font-size:14px;font-weight:650}
+  .qmdp-frame .sub{color:#5b6472;font-size:12.5px}
+  .qmdp-frame-right{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#5b6472}
+  .qmdp-key{border:1px solid #d8dbe1;border-radius:6px;padding:2px 6px;font-size:11.5px;background:#fff;
+    font-variant-numeric:tabular-nums}
+  .qmdp-dials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:14px 18px;
+    background:#fbfbfa;border-bottom:1px solid #d8dbe1}
+  .qmdp-dial{display:grid;gap:6px;font-size:12.5px;color:#3b4250}
+  .qmdp-dial-head{display:flex;justify-content:space-between;gap:8px}
+  .qmdp-dial output{font-variant-numeric:tabular-nums;font-weight:650;color:#191b21}
+  .qmdp-dial input[type=range]{width:100%;accent-color:#4b5563;margin:0}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding:22px 18px 8px;
+    max-width:1360px;margin:0 auto}
+  .card{position:relative;display:flex;flex-direction:column;min-width:0;background:#fff;
+    border:2px solid #e3e3e0;border-radius:12px;overflow:hidden;transition:border-color 160ms ease}
+  .card.qmdp-selected{border-color:#191b21}
+  .rec{position:absolute;top:12px;right:12px;z-index:3;background:#191b21;color:#fff;border-radius:999px;
+    padding:4px 10px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .mock{position:relative;overflow:hidden;background:#fff}
+  .mock .stage{transform-origin:top left}
+  .stage{width:960px;height:600px;overflow:hidden;position:relative}
+  .stage *{box-sizing:border-box;margin:0;padding:0;list-style:none;text-decoration:none}
+  .meta{padding:14px 18px 4px;display:grid;gap:8px;min-width:0}
+  .meta .tag{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:#191b21}
+  .meta .tag i{font-style:normal;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
+    color:#fff;background:#3b4250;border-radius:5px;padding:2px 7px;letter-spacing:.06em}
+  .meta p{color:#4b5260;font-size:13px;line-height:1.6;max-width:64ch}
+  .qmdp-pick-button{position:relative;z-index:1;margin:12px 18px 18px;min-height:44px;width:calc(100% - 36px);
+    border:1px solid #c9ccd3;background:#f7f7f6;color:#191b21;border-radius:9px;font-size:13.5px;
+    font-weight:600;cursor:pointer;transition:transform 150ms ease,box-shadow 150ms ease,background 150ms ease}
+  .qmdp-pick-button:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgb(15 23 42 / 12%);background:#fff}
+  .qmdp-pick-button:active{transform:translateY(0) scale(.99)}
+  .qmdp-selected .qmdp-pick-button{background:#168a5f;border-color:#168a5f;color:#fff}
+
+  /* 说明区 */
+  .spec{max-width:1360px;margin:0 auto;padding:22px 18px 120px;display:grid;gap:14px}
+  .spec h2{font-size:15px;margin:0 0 2px}
+  .spec .note{color:#5b6472;font-size:12.5px}
+  .spec-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .spec-card{background:#fff;border:1px solid #e3e3e0;border-radius:10px;padding:14px 16px}
+  .spec-card h3{font-size:13.5px;margin:0 0 8px;display:flex;gap:8px;align-items:center}
+  .spec-card h3 i{font-style:normal;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#3b4250;
+    color:#fff;border-radius:5px;padding:2px 6px}
+  .spec-card dl{display:grid;grid-template-columns:76px 1fr;gap:6px 10px;font-size:12.5px;color:#4b5260}
+  .spec-card dt{color:#8a909c}
+  .spec-card dd{margin:0}
+
+  .confirm{position:fixed;inset:0;display:none;place-items:center;background:rgb(15 23 42 / 40%);z-index:60}
+  .confirm.open{display:grid}
+  .dialog{width:min(520px,calc(100vw - 32px));background:#fff;border-radius:12px;padding:20px;
+    box-shadow:0 30px 60px rgb(15 23 42 / 28%)}
+  .dialog h2{margin:0 0 8px;font-size:16px}
+  .dialog p{margin:0 0 12px;font-size:13px;color:#4b5260}
+  .dialog textarea{width:100%;min-height:84px;resize:vertical;border:1px solid #d8dbe1;border-radius:8px;
+    padding:10px;font:inherit;font-size:13px}
+  .dialog .row{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
+  .dialog button{min-height:40px;padding:0 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;
+    border:1px solid #c9ccd3;background:#f7f7f6;color:#191b21}
+  .dialog button.primary{background:#191b21;border-color:#191b21;color:#fff}
+  .pickbar{position:fixed;bottom:0;left:0;right:0;padding:14px;background:#191b21;color:#fff;text-align:center;
+    font-size:13px;transform:translateY(100%);transition:transform 200ms cubic-bezier(.23,1,.32,1);z-index:50}
+  .pickbar.show{transform:translateY(0)}
+
+  @media (max-width:900px){
+    .grid{grid-template-columns:1fr;padding:16px 14px 8px;gap:18px}
+    .spec-grid{grid-template-columns:1fr}
+    .qmdp-dials{grid-template-columns:1fr;gap:10px;padding:12px 14px}
+    .qmdp-frame{height:auto;flex-direction:column;align-items:flex-start;gap:6px;padding:10px 14px}
+    .qmdp-frame-right{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+
+<!-- 页面自带选择外壳：预览服务检测到 .qmdp-frame 后不再重复注入 -->
+<div class="qmdp-frame">
+  <span><strong>成剧 · AI 创作工作台方向</strong>
+    <span class="sub">　设计方向样机，不是最终页面；选定方向后才进入正式实现</span></span>
+  <span class="qmdp-frame-right" id="pickStatus">
+    <span class="qmdp-key">1 A</span><span class="qmdp-key">2 B</span><span class="qmdp-key">3 C</span><span class="qmdp-key">4 D</span>
+  </span>
+</div>
+
+<div class="qmdp-dials" data-qmdp-dials aria-label="设计拨盘">
+  <label class="qmdp-dial"><span class="qmdp-dial-head"><span>视觉冒险度</span>
+    <output data-qmdp-output="variance">7</output></span>
+    <input data-qmdp-dial="variance" id="variance" type="range" min="1" max="10" value="7"></label>
+  <label class="qmdp-dial"><span class="qmdp-dial-head"><span>动效强度</span>
+    <output data-qmdp-output="motion">5</output></span>
+    <input data-qmdp-dial="motion" id="motion" type="range" min="1" max="10" value="5"></label>
+  <label class="qmdp-dial"><span class="qmdp-dial-head"><span>信息密度</span>
+    <output data-qmdp-output="density">7</output></span>
+    <input data-qmdp-dial="density" id="density" type="range" min="1" max="10" value="7"></label>
+</div>
+
+<main class="grid">
+
+  <!-- ═══════════ 方向 A · 深色工作站 ═══════════ -->
+  <article class="card" data-design-option data-name="深色工作站">
+    <div class="mock">
+      <div class="stage a-stage">
+        <style>
+          .a-stage{display:flex;background:#0f172a;color:#e6ebf2;
+            font-family:"IBM Plex Sans",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .a-rail{width:186px;flex:0 0 186px;background:#131c2e;border-right:1px solid #1e293b;
+            padding:18px 14px;display:flex;flex-direction:column;gap:18px}
+          .a-brand{font-size:19px;font-weight:600;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+          .a-brand span{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;
+            background:#e0605f;color:#1b1210;border-radius:4px;padding:2px 5px;font-weight:500}
+          .a-nav{display:flex;flex-direction:column;gap:2px}
+          .a-nav a{font-size:13.5px;color:#8b98ab;padding:9px 10px;border-radius:6px;display:flex;
+            justify-content:space-between;align-items:center}
+          .a-nav a.on{background:#1e293b;color:#fff;font-weight:500}
+          .a-nav a em{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#5d6b80;font-style:normal}
+          .a-nav a.on em{color:#e0605f}
+          .a-quota{margin-top:auto;border-top:1px solid #1e293b;padding-top:12px;
+            font-family:"IBM Plex Mono",monospace;font-size:11px;color:#8b98ab;line-height:1.7}
+          .a-quota b{color:#e6ebf2;font-weight:500}
+          .a-main{flex:1;min-width:0;display:flex;flex-direction:column}
+          .a-head{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #1e293b}
+          .a-head h3{font-size:16px;font-weight:600}
+          .a-head .no{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#5d6b80;letter-spacing:.08em}
+          .a-run{margin-left:auto;display:flex;align-items:center;gap:8px;
+            font-family:"IBM Plex Mono",monospace;font-size:11px;color:#9fb0c6;
+            border:1px solid #1e293b;background:#131c2e;border-radius:999px;padding:5px 11px}
+          .a-run i{width:6px;height:6px;border-radius:50%;background:#e0605f;display:inline-block}
+          .a-input{margin:16px 20px;padding:14px 16px;background:#131c2e;border:1px solid #1e293b;
+            border-radius:8px;font-size:13.5px;line-height:1.65;color:#c8d2e0}
+          .a-input b{color:#5d6b80;font-weight:400}
+          .a-rows{flex:1;min-height:0;margin:0 20px;border-top:1px solid #1e293b}
+          .a-row{display:grid;grid-template-columns:38px 108px 1fr;gap:12px;align-items:baseline;
+            padding:13px 2px;border-bottom:1px solid #1b2537}
+          .a-idx{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:#5d6b80}
+          .a-name{font-size:14px;font-weight:600}
+          .a-name small{display:block;font-weight:400;font-size:11.5px;color:#8b98ab;margin-top:3px;
+            font-family:"IBM Plex Mono",monospace}
+          .a-move{font-size:12.5px;color:#9fb0c6;line-height:1.6}
+          .a-insp{width:262px;flex:0 0 262px;background:#131c2e;border-left:1px solid #1e293b;padding:16px 16px}
+          .a-insp-head{display:flex;align-items:baseline;gap:8px;padding-bottom:12px;border-bottom:1px solid #1e293b}
+          .a-insp-head b{font-size:13px;font-weight:600}
+          .a-insp-head em{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#5d6b80;font-style:normal;
+            margin-left:auto}
+          .a-frame{margin:14px 0;aspect-ratio:9/16;height:186px;border-radius:6px;position:relative;
+            background:linear-gradient(180deg,#243447,#101a26 60%);border:1px solid #24314a;overflow:hidden}
+          .a-frame i{position:absolute;left:10px;bottom:8px;font-family:"IBM Plex Mono",monospace;
+            font-size:10px;color:#5d6b80;font-style:normal}
+          .a-frame .bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:#e0605f}
+          .a-spec{display:flex;flex-direction:column;gap:0}
+          .a-spec div{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #1b2537;
+            font-size:12.5px;color:#8b98ab}
+          .a-spec div:last-child{border-bottom:0}
+          .a-spec span{font-family:"IBM Plex Mono",monospace;color:#d9be8a;font-weight:500}
+        </style>
+        <aside class="a-rail">
+          <div class="a-brand">成剧 <span>AI</span></div>
+          <nav class="a-nav">
+            <a class="on">核心人物 <em>03</em></a>
+            <a>三幕大纲 <em>03</em></a>
+            <a>分集剧情 <em>12</em></a>
+            <a>视觉定妆 <em>03</em></a>
+            <a>场景 <em>07</em></a>
+            <a>分镜提示词 <em>12</em></a>
+          </nav>
+          <div class="a-quota">今日额度 <b>4 / 5</b><br>本步 8.2s · 3.1k tokens</div>
+        </aside>
+        <section class="a-main">
+          <header class="a-head">
+            <h3>核心人物</h3><span class="no">STEP 01 / 06</span>
+            <span class="a-run"><i></i>生成中 8.2s</span>
+          </header>
+          <div class="a-input">一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易
+            <b>　— 来自你的想法，可继续编辑</b></div>
+          <div class="a-rows">
+            <div class="a-row"><span class="a-idx">01</span>
+              <span class="a-name">陈默<small>29 · 城中村</small></span>
+              <span class="a-move">核心动机：证明自己不是「送完就走」的人。弧光：从被动接单到主动放弃。</span></div>
+            <div class="a-row"><span class="a-idx">02</span>
+              <span class="a-name">苏婉<small>68 · 老城区</small></span>
+              <span class="a-move">核心动机：守住一个六十年前的约定。弧光：从体面克制到松口。</span></div>
+            <div class="a-row"><span class="a-idx">03</span>
+              <span class="a-name">沈之遥<small>41 · 外地经商</small></span>
+              <span class="a-move">核心动机：拿回遗产。弧光：从只想拿钱到承认自己在等父亲先开口。</span></div>
+          </div>
+        </section>
+        <aside class="a-insp">
+          <div class="a-insp-head"><b>分镜视觉</b><em>SHOT 01</em></div>
+          <div class="a-frame"><i>9:16 · 城郊别墅门外</i><span class="bar"></span></div>
+          <div class="a-spec">
+            <div>景别 <span>中景</span></div>
+            <div>画幅 <span>9:16</span></div>
+            <div>时长 <span>5s</span></div>
+            <div>运镜 <span>缓慢推近</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>A</i>深色工作站</span>
+      <p>整屏深色，用「面」而不是卡片分区；所有参数、编号、耗时长在等宽字体上对齐，像一台正在跑的机器。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 A · 深色工作站</button>
+  </article>
+
+  <!-- ═══════════ 方向 B · 亮色控制台（推荐） ═══════════ -->
+  <article class="card" data-design-option data-name="亮色控制台">
+    <span class="rec">推荐</span>
+    <div class="mock">
+      <div class="stage b-stage">
+        <style>
+          .b-stage{display:flex;flex-direction:column;background:#f8fafc;color:#0f172a;
+            font-family:"Manrope",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .b-top{height:52px;flex:0 0 52px;display:flex;align-items:center;gap:14px;padding:0 18px;
+            background:#fff;border-bottom:1px solid #e2e8f0}
+          .b-top b{font-size:16px;font-weight:700;letter-spacing:-.01em}
+          .b-top .proj{font-size:12.5px;color:#475569;border-left:1px solid #e2e8f0;padding-left:12px}
+          .b-top .grow{flex:1}
+          .b-top .quota{font-family:"Space Mono",monospace;font-size:11.5px;color:#0f766e;
+            border:1px solid #99f6e4;background:#f0fdfa;border-radius:6px;padding:4px 9px}
+          .b-top .cta{background:#0d9488;color:#fff;border-radius:7px;padding:8px 15px;font-size:12.5px;font-weight:600}
+          .b-body{flex:1;min-height:0;display:flex}
+          .b-side{width:150px;flex:0 0 150px;background:#fff;border-right:1px solid #e2e8f0;padding:12px 0}
+          .b-side a{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;
+            font-size:13px;color:#475569;border-left:2px solid transparent}
+          .b-side a.on{color:#0d9488;font-weight:600;background:#f0fdfa;border-left-color:#0d9488}
+          .b-side a em{font-family:"Space Mono",monospace;font-size:10.5px;color:#94a3b8;font-style:normal}
+          .b-center{flex:1;min-width:0;display:flex;flex-direction:column}
+          .b-bar{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid #e2e8f0;
+            background:#fff}
+          .b-bar h3{font-size:14px;font-weight:700}
+          .b-bar .run{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11.5px;color:#0f766e;
+            font-family:"Space Mono",monospace}
+          .b-bar .run i{width:6px;height:6px;border-radius:50%;background:#0d9488}
+          .b-idea{margin:14px 16px 6px;padding:12px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;
+            font-size:13px;line-height:1.65;color:#1e293b}
+          .b-idea span{color:#94a3b8}
+          .b-table{margin:10px 16px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#fff}
+          .b-th{display:grid;grid-template-columns:40px 1fr 1fr 92px;gap:10px;padding:8px 12px;background:#f1f5f9;
+            font-size:10.5px;color:#64748b;letter-spacing:.06em;text-transform:uppercase;
+            font-family:"Space Mono",monospace}
+          .b-tr{display:grid;grid-template-columns:40px 1fr 1fr 92px;gap:10px;padding:11px 12px;border-top:1px solid #eef2f6;
+            font-size:12.5px;align-items:center}
+          .b-tr b{font-weight:600}
+          .b-tr small{display:block;color:#94a3b8;font-size:11px;margin-top:2px}
+          .b-tr .cell{color:#475569;line-height:1.5}
+          .b-tag{justify-self:start;font-family:"Space Mono",monospace;font-size:10.5px;color:#0f766e;
+            background:#f0fdfa;border:1px solid #99f6e4;border-radius:5px;padding:2px 7px}
+          .b-right{width:236px;flex:0 0 236px;background:#fff;border-left:1px solid #e2e8f0;padding:14px}
+          .b-right h4{font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;
+            padding-bottom:10px;border-bottom:1px solid #e2e8f0}
+          .b-right h4 em{font-family:"Space Mono",monospace;font-size:10.5px;color:#94a3b8;font-style:normal}
+          .b-shot{margin:12px 0;aspect-ratio:9/16;height:170px;border-radius:6px;background:#e8eef4;
+            border:1px solid #dbe4ec;position:relative;overflow:hidden}
+          .b-shot i{position:absolute;left:8px;bottom:6px;font-family:"Space Mono",monospace;font-size:10px;
+            color:#64748b;font-style:normal}
+          .b-kv{display:grid;grid-template-columns:1fr auto;gap:0;font-size:12px}
+          .b-kv div{display:contents}
+          .b-kv dt{padding:7px 0;color:#64748b;border-bottom:1px solid #eef2f6}
+          .b-kv dd{padding:7px 0;text-align:right;border-bottom:1px solid #eef2f6;
+            font-family:"Space Mono",monospace;color:#0f172a;font-weight:500}
+        </style>
+        <header class="b-top">
+          <b>成剧</b>
+          <span class="proj">示例 · 快递员的最后一单</span>
+          <span class="grow"></span>
+          <span class="quota">今日 4 / 5</span>
+          <span class="cta">生成核心人物</span>
+        </header>
+        <div class="b-body">
+          <nav class="b-side">
+            <a class="on">核心人物 <em>03</em></a>
+            <a>三幕大纲 <em>03</em></a>
+            <a>分集剧情 <em>12</em></a>
+            <a>视觉定妆 <em>03</em></a>
+            <a>场景 <em>07</em></a>
+            <a>分镜提示词 <em>12</em></a>
+          </nav>
+          <section class="b-center">
+            <div class="b-bar"><h3>核心人物</h3>
+              <span class="run"><i></i>生成中 · 8.2s</span></div>
+            <div class="b-idea">一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易
+              <span>　· 可直接编辑</span></div>
+            <div class="b-table">
+              <div class="b-th"><span>#</span><span>角色</span><span>核心动机</span><span>状态</span></div>
+              <div class="b-tr"><span>01</span>
+                <span><b>陈默</b><small>29 · 城中村</small></span>
+                <span class="cell">证明自己不是「送完就走」的人</span>
+                <span class="b-tag">已定稿</span></div>
+              <div class="b-tr"><span>02</span>
+                <span><b>苏婉</b><small>68 · 老城区</small></span>
+                <span class="cell">守住一个六十年前的约定</span>
+                <span class="b-tag">已定稿</span></div>
+              <div class="b-tr"><span>03</span>
+                <span><b>沈之遥</b><small>41 · 外地经商</small></span>
+                <span class="cell">拿回遗产，也在等父亲先开口</span>
+                <span class="b-tag">待复核</span></div>
+            </div>
+          </section>
+          <aside class="b-right">
+            <h4>分镜视觉 <em>SHOT 01</em></h4>
+            <div class="b-shot"><i>9:16 · 城郊别墅门外</i></div>
+            <dl class="b-kv">
+              <div><dt>景别</dt><dd>中景</dd></div>
+              <div><dt>画幅</dt><dd>9:16</dd></div>
+              <div><dt>时长</dt><dd>5s</dd></div>
+              <div><dt>运镜</dt><dd>推近</dd></div>
+            </dl>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>B</i>亮色控制台</span>
+      <p>冷白底 + 细线分区，完全没有卡片的阴影与留白；角色变成一张可扫读的表，参数右对齐成列。阅读还是浅底，但界面的语言是工具。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 B · 亮色控制台</button>
+  </article>
+
+  <!-- ═══════════ 方向 C · 对话工作台 ═══════════ -->
+  <article class="card" data-design-option data-name="对话工作台">
+    <div class="mock">
+      <div class="stage c-stage">
+        <style>
+          .c-stage{display:flex;flex-direction:column;background:#fafaf9;color:#1c1c1e;
+            font-family:"Work Sans",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .c-top{height:48px;flex:0 0 48px;display:flex;align-items:center;gap:14px;padding:0 22px;
+            border-bottom:1px solid #ebebe8;background:#fff}
+          .c-top b{font-size:15.5px;font-weight:600;letter-spacing:-.005em}
+          .c-top .proj{font-size:12px;color:#89898f}
+          .c-top .grow{flex:1}
+          .c-top .quota{font-family:"JetBrains Mono",monospace;font-size:11px;color:#0369a1}
+          .c-canvas{flex:1;min-height:0;position:relative;display:flex;justify-content:center;
+            padding:20px 0 0;overflow:hidden}
+          .c-col{width:556px;display:flex;flex-direction:column;min-width:0}
+          .c-prompt{background:#fff;border:1px solid #e2e1de;border-radius:12px;padding:15px 17px}
+          .c-prompt p{font-size:15px;line-height:1.7;color:#1c1c1e}
+          .c-prompt p em{font-style:normal;color:#0369a1;border-bottom:1px solid #bcd6ea}
+          .c-prompt .row{display:flex;align-items:center;gap:10px;margin-top:13px;
+            padding-top:12px;border-top:1px solid #f0efec}
+          .c-prompt .chips{display:flex;gap:6px;flex:1}
+          .c-prompt .chips span{font-size:11.5px;color:#5a5a60;border:1px solid #e2e1de;border-radius:999px;
+            padding:4px 10px}
+          .c-prompt .go{background:#0369a1;color:#fff;border-radius:8px;padding:9px 17px;font-size:12.5px;
+            font-weight:600}
+          .c-run{display:flex;align-items:center;gap:9px;padding:13px 4px;
+            font-family:"JetBrains Mono",monospace;font-size:11.5px;color:#0369a1}
+          .c-run i{width:7px;height:7px;border-radius:50%;background:#0369a1;display:inline-block}
+          .c-run s{flex:1;height:1px;background:linear-gradient(90deg,#bcd6ea,rgba(188,214,234,0));border:0}
+          .c-art{background:#fff;border:1px solid #e2e1de;border-radius:12px;overflow:hidden}
+          .c-art-head{display:flex;align-items:center;gap:9px;padding:11px 15px;background:#f7f7f4;
+            border-bottom:1px solid #ecebe8}
+          .c-art-head .badge{font-size:10.5px;font-weight:600;color:#0369a1;background:#e8f1f8;
+            border-radius:5px;padding:2px 7px;letter-spacing:.02em}
+          .c-art-head b{font-size:13.5px;font-weight:600}
+          .c-art-head .meta{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:10.5px;color:#a0a0a6}
+          .c-body{padding:4px 15px 12px}
+          .c-line{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:10px 0;
+            border-bottom:1px dashed #efeeeb;align-items:baseline}
+          .c-line:last-child{border-bottom:0}
+          .c-line .idx{font-family:"JetBrains Mono",monospace;font-size:11px;color:#a8a8ae}
+          .c-line b{font-size:13.5px;font-weight:600}
+          .c-line b small{font-weight:400;font-family:"JetBrains Mono",monospace;font-size:11px;
+            color:#9b9ba1;margin-left:7px}
+          .c-line p{font-size:12.5px;color:#55555b;line-height:1.6;margin-top:4px}
+          .c-float{position:absolute;top:92px;right:-6px;width:196px;background:#101012;border-radius:10px;
+            padding:11px;box-shadow:0 18px 40px rgba(12,12,14,.28)}
+          .c-float .fh{display:flex;align-items:baseline;gap:7px;padding-bottom:8px;border-bottom:1px solid #26262a}
+          .c-float .fh b{font-size:11.5px;color:#efe9df;font-weight:600}
+          .c-float .fh em{margin-left:auto;font-style:normal;font-family:"JetBrains Mono",monospace;
+            font-size:10px;color:#7c766c}
+          .c-float .fv{margin-top:9px;aspect-ratio:9/16;height:190px;border-radius:5px;
+            background:linear-gradient(180deg,#27384a,#101a25 62%);position:relative;overflow:hidden}
+          .c-float .fv i{position:absolute;left:8px;bottom:6px;font-style:normal;
+            font-family:"JetBrains Mono",monospace;font-size:9.5px;color:#7c766c}
+          .c-float .fs{display:flex;justify-content:space-between;margin-top:9px;
+            font-family:"JetBrains Mono",monospace;font-size:10.5px;color:#7c766c}
+          .c-float .fs b{color:#d9be8a;font-weight:500}
+        </style>
+        <header class="c-top">
+          <b>成剧</b><span class="proj">示例 · 快递员的最后一单</span>
+          <span class="grow"></span><span class="quota">今日 4 / 5</span>
+        </header>
+        <div class="c-canvas">
+          <div class="c-col">
+            <div class="c-prompt">
+              <p>一个快递员意外继承了<em>百万遗产</em>，条件是替原主人完成七桩未竟的交易</p>
+              <div class="row">
+                <span class="chips"><span>都市</span><span>悬疑</span><span>逆袭复仇</span></span>
+                <span class="go">生成核心人物</span>
+              </div>
+            </div>
+            <div class="c-run"><i></i>正在生成 核心人物 · 8.2s · 1,240 字<s></s>停止</div>
+            <div class="c-art">
+              <div class="c-art-head"><span class="badge">AI 生成</span><b>核心人物</b>
+                <span class="meta">3 个角色 · 可编辑</span></div>
+              <div class="c-body">
+                <div class="c-line"><span class="idx">01</span>
+                  <div><b>陈默<small>29 · 城中村</small></b>
+                    <p>核心动机：证明自己不是「送完就走」的人。弧光：从被动接单到主动放弃。</p></div></div>
+                <div class="c-line"><span class="idx">02</span>
+                  <div><b>苏婉<small>68 · 老城区</small></b>
+                    <p>核心动机：守住一个六十年前的约定。弧光：从体面克制到松口。</p></div></div>
+                <div class="c-line"><span class="idx">03</span>
+                  <div><b>沈之遥<small>41 · 外地经商</small></b>
+                    <p>核心动机：拿回遗产，也在等父亲先开口。</p></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="c-float">
+            <div class="fh"><b>分镜视觉</b><em>SHOT 01</em></div>
+            <div class="fv"><i>9:16 · 城郊别墅门外</i></div>
+            <div class="fs"><span>景别</span><b>中景</b></div>
+            <div class="fs"><span>时长</span><b>5s</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>C</i>对话工作台</span>
+      <p>没有三栏。整个工作区是一条从「你的想法 → AI 生成块」的流，产出物作为可折叠的块留在对话里；分镜预览可以拉出来随手看。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 C · 对话工作台</button>
+  </article>
+
+  <!-- ═══════════ 方向 D · 分镜台 ═══════════ -->
+  <article class="card" data-design-option data-name="分镜台">
+    <div class="mock">
+      <div class="stage d-stage">
+        <style>
+          .d-stage{display:flex;flex-direction:column;background:#101012;color:#e9e5de;
+            font-family:"Barlow Condensed","Work Sans",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+          .d-top{height:50px;flex:0 0 50px;display:flex;align-items:center;gap:16px;padding:0 18px;
+            background:#151517;border-bottom:1px solid #232326}
+          .d-top b{font-size:19px;font-weight:600;letter-spacing:.06em;color:#f2ede4}
+          .d-top .proj{font-size:12.5px;color:#8b857c;letter-spacing:.02em}
+          .d-top .grow{flex:1}
+          .d-top .count{font-family:"JetBrains Mono",monospace;font-size:11px;color:#d9be8a}
+          .d-top .exp{border:1px solid #33333a;border-radius:6px;padding:6px 12px;font-size:12px;color:#c9c2b7}
+          .d-body{flex:1;min-height:0;display:flex}
+          .d-rail{width:112px;flex:0 0 112px;background:#131315;border-right:1px solid #232326;padding:12px 0}
+          .d-rail a{display:block;padding:10px 14px;font-size:12.5px;color:#8b857c;letter-spacing:.02em}
+          .d-rail a.on{color:#d9be8a;background:#1b1b1f;font-weight:500}
+          .d-main{flex:1;min-width:0;display:flex;flex-direction:column;padding:16px 20px 14px}
+          .d-label{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:#6f6a63;
+            letter-spacing:.12em;text-transform:uppercase}
+          .d-strip{display:flex;gap:9px;margin-top:11px}
+          .d-cell{width:76px;aspect-ratio:9/16;border-radius:5px;border:1px solid #2b2b31;position:relative;
+            overflow:hidden;background:#181a1f}
+          .d-cell.on{border-color:#d9be8a;box-shadow:0 0 0 1px #d9be8a}
+          .d-cell i{position:absolute;top:4px;left:5px;font-style:normal;
+            font-family:"JetBrains Mono",monospace;font-size:9.5px;color:#9a938a}
+          .d-cell.on i{color:#d9be8a}
+          .d-cell s{position:absolute;inset:0;display:block;opacity:.85}
+          .d-f1{background:linear-gradient(180deg,#2b3d4f,#111b24 60%)}
+          .d-f2{background:linear-gradient(180deg,#3a3327,#171310 60%)}
+          .d-f3{background:linear-gradient(180deg,#243a33,#0f1a17 60%)}
+          .d-f4{background:linear-gradient(180deg,#2f2a3c,#14111c 60%)}
+          .d-f5{background:linear-gradient(180deg,#3b2b2b,#1a1110 60%)}
+          .d-sub{display:flex;gap:9px;margin-top:6px;font-family:"JetBrains Mono",monospace;font-size:9.5px;
+            color:#5d5852}
+          .d-sub span{width:76px}
+          .d-hr{height:1px;background:#232326;margin:16px 0}
+          .d-table{flex:1;min-height:0}
+          .d-th{display:grid;grid-template-columns:52px 86px 86px 74px 66px 1fr;gap:12px;padding:0 2px 9px;
+            font-family:"JetBrains Mono",monospace;font-size:10px;color:#6f6a63;letter-spacing:.1em;
+            text-transform:uppercase;border-bottom:1px solid #232326}
+          .d-tr{display:grid;grid-template-columns:52px 86px 86px 74px 66px 1fr;gap:12px;padding:11px 2px;
+            border-bottom:1px solid #1c1c1f;font-size:13px;align-items:center;color:#d5cfc6}
+          .d-tr.mono span{font-family:"JetBrains Mono",monospace;font-size:12px}
+          .d-tr .shot{font-family:"JetBrains Mono",monospace;color:#d9be8a;font-size:12.5px}
+          .d-tr .note{font-size:12.5px;color:#8b857c;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+          .d-tr.hot{background:#191919}
+          .d-viewer{width:266px;flex:0 0 266px;background:#131315;border-left:1px solid #232326;padding:16px}
+          .d-viewer .vh{display:flex;align-items:baseline;gap:8px;padding-bottom:10px;border-bottom:1px solid #232326}
+          .d-viewer .vh b{font-size:13px;letter-spacing:.04em;color:#f2ede4}
+          .d-viewer .vh em{margin-left:auto;font-style:normal;font-family:"JetBrains Mono",monospace;
+            font-size:10.5px;color:#d9be8a}
+          .d-view{margin:13px 0;aspect-ratio:9/16;height:198px;border-radius:6px;
+            background:linear-gradient(180deg,#2b3d4f,#111b24 60%);position:relative;overflow:hidden;
+            box-shadow:inset 0 0 30px rgba(0,0,0,.5)}
+          .d-view i{position:absolute;left:9px;bottom:7px;font-style:normal;
+            font-family:"JetBrains Mono",monospace;font-size:9.5px;color:#8b857c}
+          .d-view .rec{position:static;display:block;background:none;color:#8b857c;padding:0;border-radius:0}
+          .d-vs div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1c1c1f;
+            font-size:12.5px;color:#8b857c}
+          .d-vs div:last-child{border-bottom:0}
+          .d-vs span{font-family:"JetBrains Mono",monospace;color:#d9be8a;font-weight:500}
+        </style>
+        <header class="d-top">
+          <b>成剧</b><span class="proj">快递员的最后一单 · 分镜提示词</span>
+          <span class="grow"></span>
+          <span class="count">SHOT 03 / 12</span>
+          <span class="exp">导出提示词包</span>
+        </header>
+        <div class="d-body">
+          <nav class="d-rail">
+            <a>核心人物</a><a>三幕大纲</a><a>分集剧情</a><a>视觉定妆</a><a>场景</a>
+            <a class="on">分镜提示词</a>
+          </nav>
+          <section class="d-main">
+            <div class="d-label">镜头带 · 第一集</div>
+            <div class="d-strip">
+              <div class="d-cell"><i>01</i><s class="d-f1"></s></div>
+              <div class="d-cell"><i>02</i><s class="d-f2"></s></div>
+              <div class="d-cell on"><i>03</i><s class="d-f3"></s></div>
+              <div class="d-cell"><i>04</i><s class="d-f4"></s></div>
+              <div class="d-cell"><i>05</i><s class="d-f5"></s></div>
+            </div>
+            <div class="d-sub"><span>5s</span><span>5s</span><span>5s</span><span>5s</span><span>5s</span></div>
+            <div class="d-hr"></div>
+            <div class="d-table">
+              <div class="d-th"><span>镜号</span><span>景别</span><span>运镜</span><span>画幅</span><span>时长</span><span>画面说明</span></div>
+              <div class="d-tr mono"><span class="shot">01</span><span>中景</span><span>固定</span><span>9:16</span><span>5s</span>
+                <span class="note">雨夜，陈默站在铁门外抬头看二楼唯一亮着的窗</span></div>
+              <div class="d-tr mono"><span class="shot">02</span><span>近景</span><span>推近</span><span>9:16</span><span>5s</span>
+                <span class="note">一只手从门缝递出文件，雨水打湿纸面</span></div>
+              <div class="d-tr mono hot"><span class="shot">03</span><span>中景</span><span>缓慢推近</span><span>9:16</span><span>5s</span>
+                <span class="note">门开了一条缝，苏婉看了一眼信封就把门关上</span></div>
+              <div class="d-tr mono"><span class="shot">04</span><span>特写</span><span>固定</span><span>9:16</span><span>5s</span>
+                <span class="note">泛黄的车票从门缝滑落，落在积水里</span></div>
+            </div>
+          </section>
+          <aside class="d-viewer">
+            <div class="vh"><b>检视器</b><em>SHOT 03</em></div>
+            <div class="d-view"><i>9:16 · 城郊别墅门外 · 夜 · 雨</i></div>
+            <div class="d-vs">
+              <div>景别 <span>中景</span></div>
+              <div>运镜 <span>缓慢推近</span></div>
+              <div>时长 <span>5s</span></div>
+              <div>首尾帧 <span>已接</span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="meta"><span class="tag"><i>D</i>分镜台</span>
+      <p>把 9:16 的画面格当成主角：横向镜头带 + 下方镜头表 + 右侧检视器。一眼就知道这是个在拍片子的台子，不是写文档的地方。</p></div>
+    <button type="button" class="qmdp-pick-button" data-qmdp-native-handler="true">选择 D · 分镜台</button>
+  </article>
+
+</main>
+
+<section class="spec">
+  <h2>方向说明</h2>
+  <p class="note">样机只用于选视觉与交互气质，不是最终页面。也可以只挑其中一个细节，在对话里告诉我（如：要 A 的深色 + B 的表格结构）。</p>
+  <div class="spec-grid">
+    <div class="spec-card">
+      <h3><i>A</i>深色工作站</h3>
+      <dl>
+        <dt>一句话气质</dt><dd>像 Cursor / Linear 的桌面客户端，一台在运转的机器</dd>
+        <dt>字体策略</dt><dd>IBM Plex Sans + IBM Plex Mono（编号、耗时、参数全等宽）</dd>
+        <dt>色彩策略</dt><dd>暗底三级面 #0F172A / #131C2E / #1E293B，强调色换成品牌朱砂的暗底版本 #E0605F</dd>
+        <dt>布局动作</dt><dd>左轨 + 主工作区 + 右检视器，靠「面」和 1px 线分区，一张卡片都没有</dd>
+        <dt>记忆点</dt><dd>顶部那条运行轨道：生成中 · 8.2s · token 数，机器在干活是看得见的</dd>
+      </dl>
+    </div>
+    <div class="spec-card">
+      <h3><i>B</i>亮色控制台 <span style="font-size:11.5px;color:#0d9488;font-weight:600">推荐</span></h3>
+      <dl>
+        <dt>一句话气质</dt><dd>像 Figma / Airtable 这类网络应用：冷静、可扫读、没有装饰</dd>
+        <dt>字体策略</dt><dd>Manrope + Space Mono；中文系统栈，靠字重与字号拉层级</dd>
+        <dt>色彩策略</dt><dd>中性冷白 #F8FAFC + 细线 #E2E8F0，强调走青瓷 #0D9488（脱离朱砂的印刷感）</dd>
+        <dt>布局动作</dt><dd>角色与分镜变成可对齐的表，参数右对齐成列；卡片阴影全部删掉，只留 1px 线</dd>
+        <dt>记忆点</dt><dd>整页没有一个卡片，全靠线和留白切分——这是工具的语言，不是内容网站的语言</dd>
+      </dl>
+    </div>
+    <div class="spec-card">
+      <h3><i>C</i>对话工作台</h3>
+      <dl>
+        <dt>一句话气质</dt><dd>像 Claude 的 Canvas：你的想法和 AI 的产出在同一条流里</dd>
+        <dt>字体策略</dt><dd>Work Sans + JetBrains Mono，正文略大（15px），对话优先</dd>
+        <dt>色彩策略</dt><dd>暖白 #FAFAF9 + 钢蓝 #0369A1，最轻的一套色彩</dd>
+        <dt>布局动作</dt><dd>单列 556px，生成结果作为「块」留在流里；分镜预览拉出成浮窗</dd>
+        <dt>记忆点</dt><dd>每个生成块头顶那枚「AI 生成」的来源徽标，产出物是可追溯的</dd>
+      </dl>
+    </div>
+    <div class="spec-card">
+      <h3><i>D</i>分镜台</h3>
+      <dl>
+        <dt>一句话气质</dt><dd>像剪辑软件的监看台：影院黑 + 暖金，画面是主角</dd>
+        <dt>字体策略</dt><dd>Barlow Condensed + JetBrains Mono（窄体做标签，参数等宽）</dd>
+        <dt>色彩策略</dt><dd>#101012 / #151517 深底 + 暖金 #D9BE8A，沿用现在放映厅的色系并放大到全站</dd>
+        <dt>布局动作</dt><dd>横向镜头带 + 镜头表 + 右侧检视器，工作流从「写字」变成「过片子」</dd>
+        <dt>记忆点</dt><dd>一排 9:16 画面格排成胶片带，当前镜头带金边</dd>
+      </dl>
+    </div>
+  </div>
+  <p class="note">色彩来源：A / B 的色板取自 ui-ux-pro-max 的 Developer Tool 与 Productivity / B2B 条目（#0F172A 系、#F8FAFC 系、青瓷 #0D9488），强调色按品牌替换。
+  它默认给「AI 工具」的推荐是 #7C3AED 紫 + #EC4899 粉，那是 AI 界面最同质化的一套，没有采用。C 用中性暖白 + 单一钢蓝，D 用品牌原有的影院色系（数据库无匹配条目，属通用深色媒体默认 + 品牌色）。</p>
+</section>
+
+<div class="confirm" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="dialog">
+    <h2 id="confirmTitle">确认设计方向</h2>
+    <p id="confirmMeta"></p>
+    <textarea id="adjustments" placeholder="可选：写下想调整的地方，比如「更稳一点」「要 A 的深色 + B 的表格」"></textarea>
+    <div class="row">
+      <button type="button" id="cancelPick">取消</button>
+      <button type="button" class="primary" id="confirmPick">确认并回传</button>
+    </div>
+  </div>
+</div>
+
+<div class="pickbar" id="pickbar"></div>
+
+<script>
+(() => {
+  // 舞台等比缩放：960×600 的逻辑稿缩到卡片宽度；窄屏保底 0.42 并可控裁切
+  const fit = () => {
+    const narrow = window.innerWidth < 620
+    document.querySelectorAll('.mock').forEach((mock) => {
+      const stage = mock.querySelector('.stage')
+      if (!stage) return
+      const s = Math.max(mock.clientWidth / 960, narrow ? 0.42 : 0)
+      stage.style.transform = 'scale(' + s + ')'
+      mock.style.height = Math.round(600 * s) + 'px'
+    })
+  }
+  const grid = document.querySelector('.grid')
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(grid)
+  window.addEventListener('resize', fit)
+  fit()
+
+  const cards = [...document.querySelectorAll('.card[data-design-option]')]
+  const letters = 'ABCD'
+  let pending = null
+
+  const dials = () => ({
+    variance: Number(document.getElementById('variance').value),
+    motion: Number(document.getElementById('motion').value),
+    density: Number(document.getElementById('density').value),
+  })
+  ;['variance', 'motion', 'density'].forEach((key) => {
+    const input = document.getElementById(key)
+    const out = document.querySelector('[data-qmdp-output="' + key + '"]')
+    const sync = () => { out.value = input.value; out.textContent = input.value }
+    input.addEventListener('input', sync)
+    sync()
+  })
+
+  const meta = document.getElementById('confirmMeta')
+  const dialog = document.getElementById('confirm')
+  const textarea = document.getElementById('adjustments')
+
+  function openConfirm(index) {
+    const card = cards[index]
+    if (!card) return
+    cards.forEach((c, i) => c.classList.toggle('qmdp-selected', i === index))
+    const d = dials()
+    pending = { id: letters[index], name: card.dataset.name, label: '选 ' + letters[index] + '：' + card.dataset.name }
+    meta.textContent = pending.label + ' · 视觉冒险度 ' + d.variance + ' / 动效强度 ' + d.motion +
+      ' / 信息密度 ' + d.density
+    dialog.classList.add('open')
+    textarea.focus()
+  }
+  function closeConfirm() { dialog.classList.remove('open') }
+
+  cards.forEach((card, i) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.qmdp-pick-button')) return
+      openConfirm(i)
+    })
+  })
+  document.querySelectorAll('.qmdp-pick-button').forEach((btn, i) => {
+    btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openConfirm(i) })
+  })
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest('input,textarea,select')) return
+    const i = ['1', '2', '3', '4'].indexOf(e.key)
+    if (i > -1) openConfirm(i)
+  })
+
+  document.getElementById('cancelPick').addEventListener('click', closeConfirm)
+  document.getElementById('confirmPick').addEventListener('click', async () => {
+    if (!pending) return
+    const bar = document.getElementById('pickbar')
+    const payload = { ...pending, note: pending.name, dials: dials(), adjustments: textarea.value.trim() }
+    let ok = false
+    try {
+      if (location.protocol !== 'file:') {
+        const res = await fetch('/api/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        ok = res.ok
+      }
+    } catch (err) { ok = false }
+    if (!ok && navigator.clipboard) {
+      await navigator.clipboard.writeText(
+        payload.label + '；拨盘：视觉冒险度 ' + payload.dials.variance + ' / 动效强度 ' +
+        payload.dials.motion + ' / 信息密度 ' + payload.dials.density +
+        (payload.adjustments ? '；建议：' + payload.adjustments : '')
+      ).catch(() => {})
+    }
+    bar.textContent = payload.label + (ok ? ' — 已回传' : ' — 当前未能自动回传，已复制，请回到对话发送')
+    bar.classList.add('show')
+    document.getElementById('pickStatus').textContent = '已选择 ' + payload.id
+    closeConfirm()
+  })
+})()
+</script>
+</body>
+</html>

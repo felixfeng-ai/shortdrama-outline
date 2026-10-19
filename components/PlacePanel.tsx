@@ -64,9 +64,9 @@ export default function PlacePanel({
         </p>
       )}
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-3 ledger-list">
         {places.map((place) => (
-          <article key={place.id} className="min-w-0 rounded-chip border border-ink-200 bg-surface-card px-3 py-2.5">
+          <article key={place.id} className="ledger-row min-w-0">
             <p className="text-sm font-semibold text-ink-900">{place.name}</p>
             <dl className="mt-2 space-y-1.5">
               {FIELDS.map(({ key, label, hint }) => (

@@ -157,25 +157,28 @@ export default function IdeaPanel({
         {/* 撑开空白，把生成按钮压到卡片底部中间（和 demo 一致） */}
         <div className="fill min-h-[7rem]" />
 
-        <button type="button" onClick={onGenerate} disabled={!canGenerate} className="bmain">
-          {/* 按钮说的必须是它真做的事：这里调的是生成核心人物，不是大纲 */}
-          {loading ? '正在生成人物…' : '生成 · 核心人物'}
-          <svg className="glowstar" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 1.6c.8 5.4 4 8.6 9.4 9.4-5.4.8-8.6 4-9.4 9.4-.8-5.4-4-8.6-9.4-9.4 5.4-.8 8.6-4 9.4-9.4z" />
-          </svg>
-        </button>
-
-        {hasResult && (
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={loading}
-            className="mx-auto mt-2 flex w-auto rounded-pill border border-surface-line px-7 py-2 text-sm text-ink-600
-              transition-colors hover:border-accent-300 hover:text-accent-700 disabled:opacity-50"
-          >
-            清空重来
+        {/* 主操作与清空并排：两者作用于同一件事，不该一上一下各占一行 */}
+        <div className="mt-3.5 flex flex-wrap items-center gap-2">
+          <button type="button" onClick={onGenerate} disabled={!canGenerate} className="bmain">
+            {/* 按钮说的必须是它真做的事：这里调的是生成核心人物，不是大纲 */}
+            {loading ? '正在生成人物…' : '生成 · 核心人物'}
+            <svg className="glowstar" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 1.6c.8 5.4 4 8.6 9.4 9.4-5.4.8-8.6 4-9.4 9.4-.8-5.4-4-8.6-9.4-9.4 5.4-.8 8.6-4 9.4-9.4z" />
+            </svg>
           </button>
-        )}
+
+          {hasResult && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={loading}
+              className="h-10 rounded-card border border-surface-line px-4 text-sm text-ink-600
+                transition-colors hover:border-accent-300 hover:text-accent-700 disabled:opacity-50"
+            >
+              清空重来
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── 两张小卡：示例想法 / 关键词联想 ── */}

@@ -5,15 +5,17 @@ import ActList from '@/components/ActList'
 import CharacterList from '@/components/CharacterList'
 import AttachReview from '@/components/AttachReview'
 import EpisodeList from '@/components/EpisodeList'
+import EpisodeCountPicker from '@/components/EpisodeCountPicker'
 import IdeaPanel from '@/components/IdeaPanel'
-import StepIndicator from '@/components/StepIndicator'
 import StepSection from '@/components/StepSection'
-import SideNav from '@/components/SideNav'
+import StepPills from '@/components/StepPills'
 import AssistantDock from '@/components/AssistantDock'
 import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
+import ReleaseNotice from '@/components/ReleaseNotice'
 import TodoPanel from '@/components/TodoPanel'
 import { buildTodoList } from '@/lib/todo'
+import { DEFAULT_EPISODE_COUNT, clampEpisodeCount } from '@/lib/episodes'
 import AgentDock from '@/components/AgentDock'
 import type { AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
@@ -29,6 +31,7 @@ import {
   renameProject,
   deleteProject,
   fetchQuota,
+  loadSampleProject,
   generateVisuals,
   generateScenes,
   registerRefs,
@@ -209,8 +212,86 @@ export default function Home() {
   const [notice, setNotice] = useState<string | null>(null)
   /** 项目列表：用于「切换 / 重命名 / 删除」 */
   const [projects, setProjects] = useState<ProjectDto[]>([])
-  /** 场记是否展开（与右下角放映厅互斥，避免两个浮层把内容挤没） */
+  /** 场记是否展开：H 双舱里它就是右舱的第二个 tab */
   const [agentOpen, setAgentOpen] = useState(false)
+  /** 窄屏抽屉是否展开（桌面端是常驻右舱，这个状态不参与） */
+  const [deckOpen, setDeckOpen] = useState(false)
+  /** 停在「产出」tab 时收到的新回答数；切到场记即清零 */
+  const [agentUnread, setAgentUnread] = useState(0)
+  useEffect(() => {
+    if (agentOpen) setAgentUnread(0)
+  }, [agentOpen])
+  /* 窄屏抽屉：Esc 收起 + 展开时锁住背景滚动 */
+  useEffect(() => {
+    if (!deckOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDeckOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    const mobile = window.matchMedia('(max-width: 920px)').matches
+    const previous = document.body.style.overflow
+    if (mobile) document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previous
+    }
+  }, [deckOpen])
+  /** 本剧集数：默认 30，记住上次选择 */
+  const [episodeCount, setEpisodeCount] = useState(DEFAULT_EPISODE_COUNT)
+  const episodeProjectRef = useRef<string | null>(null)
+  useEffect(() => {
+    try {
+      const saved = Number(window.localStorage.getItem('chengju:episode-count'))
+      if (Number.isFinite(saved) && saved > 0) setEpisodeCount(clampEpisodeCount(saved))
+    } catch {
+      // 隐私模式读不到就沿用默认值
+    }
+  }, [])
+  /* 集数是项目级设置：切项目时优先读这个项目自己存过的值 */
+  useEffect(() => {
+    if (!projectId || episodeProjectRef.current === projectId) return
+    episodeProjectRef.current = projectId
+    try {
+      const saved = Number(window.localStorage.getItem(`chengju:episodes:${projectId}`))
+      if (Number.isFinite(saved) && saved > 0) setEpisodeCount(clampEpisodeCount(saved))
+    } catch {
+      // 读不到就沿用全局默认
+    }
+  }, [projectId])
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('chengju:episode-count', String(episodeCount))
+      if (projectId && episodeProjectRef.current === projectId) {
+        window.localStorage.setItem(`chengju:episodes:${projectId}`, String(episodeCount))
+      }
+    } catch {
+      // 写不了不影响本次生成
+    }
+  }, [episodeCount, projectId])
+  /*
+    打开已有项目时，选择器要反映这个项目真实的集数，而不是上次生成时用的数字。
+    流式生成期间不同步——否则一集集到达时会把用户刚选的 60 集改回 3、5、8…
+  */
+  useEffect(() => {
+    if (episodes.length === 0) return
+    if (status.episodes === 'streaming' || status.episodes === 'loading') return
+    setEpisodeCount(clampEpisodeCount(episodes.length))
+  }, [episodes.length, status.episodes])
+  /*
+    生成中用真实耗时替代「正在加载」四个字。
+    这是双舱里"机器在干活"的证据，所以必须是真实的秒数，不写假数字。
+  */
+  const [elapsed, setElapsed] = useState(0)
+  const anyRunning = Object.values(status).some((s) => s === 'loading' || s === 'streaming')
+  useEffect(() => {
+    if (!anyRunning) {
+      setElapsed(0)
+      return
+    }
+    const startedAt = Date.now()
+    const timer = window.setInterval(() => setElapsed((Date.now() - startedAt) / 1000), 100)
+    return () => window.clearInterval(timer)
+  }, [anyRunning])
   /** 给助手的额度快照：它要能回答「还能用几次」 */
   const [agentQuota, setAgentQuota] = useState<{ remaining: number; limit: number; projectsLeft: number } | null>(null)
   /** 上一次扫描的挂接明细：角色名 -> 命中记录（带置信度），界面据此标注「靠什么认出来的」 */
@@ -450,7 +531,7 @@ export default function Home() {
     abortRef.current = controller
     try {
       const pid = await ensureProject(idea.trim().slice(0, 20))
-      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid }, (event, data) => {
+      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid, count: episodeCount }, (event, data) => {
         if (isCleared(epoch)) return
         if (event !== 'episodes' && event !== 'done') return
 
@@ -1140,6 +1221,23 @@ export default function Home() {
   }
 
   /**
+   * 载入示例项目：第一次来的用户先看见"做出来是什么样"。
+   * 走服务端写库（不调模型、不扣额度），所以刷新后它还在，也能当普通项目切走删掉。
+   */
+  async function handleLoadSample() {
+    try {
+      const { project } = await loadSampleProject()
+      await refreshProjects()
+      clearWorkspace()
+      const restored = await loadProject(project.id).catch(() => false)
+      if (!restored) throw new Error('示例没有载入成功，请重试')
+      setNotice(`已载入示例项目「${project.title}」——六步都有内容，可以直接乱点着看。`)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '示例载入失败，请重试')
+    }
+  }
+
+  /**
    * 场记看到的状态快照。
    *
    * 只读快照是刻意的：工具拿到的是一份拷贝，它改不到真东西——
@@ -1208,64 +1306,52 @@ export default function Home() {
       */}
       {/* 顶栏：与 demo 完全一致——左边品牌 + AI 徽标，右边齿轮与头像 */}
       {/* 顶栏吸顶：向下滚动时品牌与额度一直可见 */}
-      <header className="sticky top-0 z-30 mx-auto w-full max-w-[96rem] bg-surface/95 px-4 pt-5 backdrop-blur-sm sm:px-6">
-        <div className="topbar">
-          <div className="flex min-w-0 items-center gap-3">
-              <h1 className="brandname">成剧</h1>
-            <span className="ai-badge" title="全流程 AI 生成">AI</span>
-            {/* 一句话说清平台是干什么的：输入是想法，产出是能直接出图的分镜提示词 */}
-            <p className="hidden min-w-0 truncate text-xs text-ink-500 lg:block">一句想法 → 分镜提示词</p>
-            <span aria-hidden="true" className="hidden h-4 w-px shrink-0 bg-surface-line lg:block" />
-            {/* 额度是全局状态，挂在品牌旁边的空白处，不再挤在输入卡里 */}
-            <QuotaBar refreshKey={quotaRefreshKey} compact />
-          </div>
+      <header className="h-top">
+        <h1 className="h-brand">成剧</h1>
+        <span className="h-ai" title="全流程 AI 生成">AI</span>
+        <span className="h-slogan hidden lg:inline">一句想法 → 分镜提示词</span>
+        <span className="h-div hidden lg:block" aria-hidden="true" />
+        <QuotaBar refreshKey={quotaRefreshKey} inline episodeCount={episodeCount} />
 
-          <div className="topacts">
-            {/* 右上是线上那版：三条硬指标 + 自建入口（与 demo 的齿轮/头像不同，这里按线上保持一致） */}
-            <ul className="hidden flex-wrap items-center gap-1.5 sm:flex">
-              {['零部署', '图不上传', '一键打包带走'].map((tag) => (
-                <li key={tag} className="rounded-pill bg-surface-soft px-2.5 py-1 text-[11px] font-medium text-ink-600">
-                  {tag}
-                </li>
-              ))}
-            </ul>
-            <a
-              href="https://github.com/felixfeng-ai/shortdrama-outline"
-              target="_blank"
-              rel="noreferrer"
-              title="代码在这里，可以拿去自建"
-              className="rounded-full p-1.5 text-ink-500 transition-colors hover:bg-surface-soft
-                hover:text-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 fill-current">
-                <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03a9.4 9.4 0 0 1 5 0c1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
-              </svg>
-            </a>
-          </div>
-        </div>
+        <StepPills
+          current={viewIndex}
+          completed={stepCompleted}
+          onJump={goToStep}
+          canJump={canJump}
+        />
+
+        <span className={`h-run ${anyRunning ? 'busy' : ''}`} aria-live="polite">
+          <i aria-hidden="true" />
+          {anyRunning ? `生成中 · ${elapsed.toFixed(1)}s` : '就绪'}
+        </span>
+
+        <ul className="hidden flex-wrap items-center gap-1.5 2xl:flex">
+          {['零部署', '图不上传', '一键打包带走'].map((tag) => (
+            <li key={tag} className="rounded-pill bg-surface-soft px-2.5 py-1 text-[11px] font-medium text-ink-600">
+              {tag}
+            </li>
+          ))}
+        </ul>
+
+        <a
+          href="https://github.com/felixfeng-ai/shortdrama-outline"
+          target="_blank"
+          rel="noreferrer"
+          title="代码在这里，可以拿去自建"
+          className="rounded-full p-1.5 text-ink-500 transition-colors hover:bg-surface-soft
+            hover:text-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current">
+            <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03a9.4 9.4 0 0 1 5 0c1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+          </svg>
+        </a>
       </header>
 
-      <main className="mx-auto w-full max-w-[96rem] px-4 pb-20 sm:px-6">
-        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-8
-          xl:grid-cols-[13rem_20rem_minmax(0,1fr)] 2xl:grid-cols-[15rem_22rem_minmax(0,1fr)]">
-          {/* 最左：六步导航（对齐参考图的左侧面板；窄屏折成顶上的步骤条） */}
-          <div className="hidden min-w-0 xl:block">
-            <div className="navpanel xl:sticky xl:top-24">
-              <SideNav
-                current={viewIndex}
-                completed={stepCompleted}
-                onJump={goToStep}
-                canJump={canJump}
-              />
-            </div>
-          </div>
-
-          {/* 中：输入区（桌面端吸附） */}
-          <div className="min-w-0">
-            {/* 外层撑满整行高度，内层才能真正吸顶（直接给 grid item 加 sticky 是没用的） */}
-            <div className="lg:sticky lg:top-24">
-              <div className="mb-3.5">
-                <ProjectBar
+      <div className="h-main">
+        <main className="h-work">
+          <ReleaseNotice />
+          <div className="mb-3.5">
+            <ProjectBar
                   projects={projects}
                   currentId={projectId}
                   hasContent={hasResult}
@@ -1273,7 +1359,19 @@ export default function Home() {
                   onRename={(id, title) => { void handleRenameProject(id, title) }}
                   onDelete={(id) => { void handleDeleteProject(id) }}
                   onNew={handleNewProject}
+                  onLoadSample={() => { void handleLoadSample() }}
                 />
+                {/* 空工作台时给一条最短的上手路径：先看示例长什么样 */}
+                {!hasResult && (
+                  <button
+                    type="button"
+                    onClick={() => { void handleLoadSample() }}
+                    className="mt-2 w-full rounded-card border border-dashed border-surface-line-2 px-3 py-2 text-[11px]
+                      text-ink-500 transition-colors hover:border-accent-300 hover:bg-accent-50/50 hover:text-accent-700"
+                  >
+                    第一次来？载入示例项目看看六步的样子
+                  </button>
+                )}
               </div>
               <IdeaPanel
               idea={idea}
@@ -1285,11 +1383,8 @@ export default function Home() {
               loading={status.characters === 'loading'}
               hasResult={hasResult}
             />
-            </div>
-          </div>
 
-          {/* 右：窄屏步骤条 + 六步内容 */}
-          <div className="min-w-0 space-y-5">
+          <div className="mt-6 space-y-5">
             {/*
               项目待办：把散在六个分区里的状态收成一张清单（只读，不写任何东西）。
               某一步一生成完，下一屏不用再翻——该做什么、哪里要修，都在这里。
@@ -1317,14 +1412,6 @@ export default function Home() {
                 </button>
               </div>
             )}
-            <div className="surface px-4 py-3.5 xl:hidden">
-              <StepIndicator
-                current={viewIndex}
-                onJump={goToStep}
-                completed={stepCompleted}
-              />
-            </div>
-
             {/* 第一步：人物 */}
             <StepSection
               index={1}
@@ -1407,6 +1494,12 @@ export default function Home() {
               onGenerate={generateEpisodes}
               skeletonVariant="episodes"
             >
+              <EpisodeCountPicker
+                value={episodeCount}
+                onChange={setEpisodeCount}
+                existing={episodes.length}
+                disabled={status.episodes === 'streaming' || status.episodes === 'loading'}
+              />
               {episodesStale && staleNotice('上游内容已改动，当前分集是基于旧版本生成的，建议重新生成一次。')}
               <EpisodeList episodes={episodes} onChange={setEpisodes} />
             </StepSection>
@@ -1659,19 +1752,92 @@ export default function Home() {
               </div>
             )}
 
-            <div aria-hidden="true" className="hidden xl:block xl:h-[420px]" />
-            {/*
-              放映厅：窄屏在流里（贴着内容末尾），xl 起脱离文档流固定在右下角——
-              和 demo 一样进页面就能看到，右栏底部那个 420px 的空白保证内容不被永久盖住。
-            */}
+          </div>
+        </main>
+
+        {/*
+          产出舱：H 的右半屏。
+          data-theme 让它内部直接继承墨层 token；两个 tab 常驻挂载，
+          切走只是 display:none，对话与滚动位置都不会丢。
+        */}
+        {deckOpen && (
+          <div
+            className="h-deck-scrim"
+            aria-hidden="true"
+            onClick={() => setDeckOpen(false)}
+          />
+        )}
+        <aside
+          className={`h-deck ${deckOpen ? 'open' : ''}`}
+          data-theme="paper-light-dark-ai"
+          aria-label="产出舱"
+        >
+          {/* 窄屏抓手：收起时就是一条「› 问进度、改某一镜…」的输入行 */}
+          <button
+            type="button"
+            className="h-deck-grab"
+            aria-expanded={deckOpen}
+            aria-controls="deck-body"
+            aria-label={deckOpen ? '收起产出舱' : '展开产出舱'}
+            onClick={() => {
+              // 收起时这一行写的是「问进度、改某一镜」——展开就该落在场记，
+              // 而不是把用户丢到「产出」tab 再自己找一遍
+              if (!deckOpen) setAgentOpen(true)
+              setDeckOpen((v) => !v)
+            }}
+          >
+            <span className="h-deck-grab-handle" aria-hidden="true" />
+            <span className="h-deck-grab-row" aria-hidden="true">
+              <span className="car">›</span>
+              <span className="txt">问进度、改某一镜…</span>
+              {!deckOpen && agentUnread > 0 && (
+                <span className="h-deck-grab-count">{agentUnread > 9 ? '9+' : agentUnread}</span>
+              )}
+              <span className="go">↵</span>
+            </span>
+          </button>
+          <div className="h-deck-tabs" role="tablist" aria-label="产出舱视图">
+            <button
+              type="button"
+              role="tab"
+              id="deck-tab-output"
+              aria-selected={!agentOpen}
+              aria-controls="deck-pane-output"
+              className={`h-deck-tab ${agentOpen ? '' : 'on'}`}
+              onClick={() => setAgentOpen(false)}
+            >
+              产出
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="deck-tab-agent"
+              aria-selected={agentOpen}
+              aria-controls="deck-pane-agent"
+              className={`h-deck-tab ${agentOpen ? 'on' : ''}`}
+              onClick={() => setAgentOpen(true)}
+            >
+              场记
+              {!agentOpen && agentUnread > 0 && (
+                <span className="h-deck-badge" aria-label={`${agentUnread} 条新消息`}>
+                  {agentUnread > 9 ? '9+' : agentUnread}
+                </span>
+              )}
+            </button>
+            <span className="h-deck-meta">
+              {anyRunning
+                ? `生成中 · ${elapsed.toFixed(1)}s`
+                : `SHOT ${activeShot ? String(activeShot.shot).padStart(2, '0') : '--'}`}
+            </span>
+          </div>
+
+          <div className="h-deck-body" id="deck-body">
             <div
-              /*
-                与左下角的场记互斥：**不卸载**而是淡出下移——卸载是硬切，
-                而且会让放映厅的额度/快照查询在每次开关时重发一遍。
-              */
-              className={`ml-auto w-full min-w-0 max-w-[26rem] xl:fixed xl:bottom-6 xl:right-6 xl:z-30
-                ${agentOpen ? 'dock-yield' : 'dock-show'}`}
-              aria-hidden={agentOpen}
+              className="h-deck-pane"
+              id="deck-pane-output"
+              role="tabpanel"
+              aria-labelledby="deck-tab-output"
+              style={{ display: agentOpen ? 'none' : 'flex' }}
             >
               <AssistantDock
                 shot={activeShot}
@@ -1681,18 +1847,34 @@ export default function Home() {
                 onApply={applyAssistantText}
               />
             </div>
+            <div
+              className="h-deck-pane"
+              id="deck-pane-agent"
+              role="tabpanel"
+              aria-labelledby="deck-tab-agent"
+              style={{ display: agentOpen ? 'flex' : 'none' }}
+            >
+              <AgentDock
+                variant="docked"
+                state={agentState}
+                open
+                onOpenChange={setAgentOpen}
+                onNewMessage={() => {
+                  // 正停在场记里就不用提示；停在产出/别的步骤才点亮角标
+                  if (!agentOpen) setAgentUnread((n) => n + 1)
+                }}
+                context={
+                  view === 'shots' && activeShot
+                    ? `第 ${activeShot.shot} 镜 · ${activeShot.scene || '未命名场景'}`
+                    : `第 ${viewIndex} 步 · ${stepOf(view)?.nav ?? ''}`
+                }
+                onApplyCard={applyAgentCard}
+                onRegenerate={regenerateByAgent}
+              />
+            </div>
           </div>
-        </div>
-      </main>
-
-      {/* 左下角场记：与右下角放映厅互斥（AGENT.md §2） */}
-      <AgentDock
-        state={agentState}
-        open={agentOpen}
-        onOpenChange={setAgentOpen}
-        onApplyCard={applyAgentCard}
-        onRegenerate={regenerateByAgent}
-      />
+        </aside>
+      </div>
     </div>
   )
 }

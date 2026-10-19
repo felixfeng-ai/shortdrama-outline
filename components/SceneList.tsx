@@ -18,9 +18,9 @@ export default function SceneList({ scenes, onChange }: Props) {
     onChange(scenes.filter((s) => s.id !== id).map((s, i) => ({ ...s, number: i + 1 })))
 
   return (
-    <div className="space-y-3">
+    <div className="ledger-list">
       {scenes.map((scene) => (
-        <article key={scene.id} className="rounded-card border border-surface-line bg-surface-card p-4">
+        <article key={scene.id} className="ledger-row">
           <div className="mb-2 flex items-start gap-3">
             <span className="folio mt-0.5 w-6 shrink-0 text-center text-done-600">{scene.number}</span>
 

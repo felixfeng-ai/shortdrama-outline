@@ -3,6 +3,7 @@
 // 截断超长字段、限制数组长度，避免有人塞一个几 MB 的 body 把 token 烧光。
 
 import { InputError } from './api'
+import { MAX_EPISODE_COUNT } from './episodes'
 import { MAX_IDEA_LENGTH, MIN_IDEA_LENGTH, type Act, type ActKey, type Character, type Episode } from './types'
 
 /** 与界面上的上限保持一致：最多 5 个人物、3 幕、每幕 8 个情节点 */
@@ -82,7 +83,8 @@ export function readActs(value: unknown, hint = '请先生成三幕大纲'): Act
 export function readEpisodes(value: unknown, hint = "请先生成分集剧情"): Episode[] {
   const list = (Array.isArray(value) ? value : [])
     .filter(isObject)
-    .slice(0, 10)
+    // 上限跟可选集数一致；不再写死 10，否则 30/60 集保存时会被截断
+    .slice(0, MAX_EPISODE_COUNT)
     .map((item, index) => ({
       id: clamp(item.id, 64) || `ep-${index}`,
       number: index + 1,

@@ -199,7 +199,7 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
       if (!state.quota) return { ok: false, content: '额度信息暂时读不到（接口没返回）。' }
       return {
         ok: true,
-        content: `今日剩余 ${state.quota.remaining}/${state.quota.limit} 单位，还能跑 ${state.quota.projectsLeft} 个完整项目。`,
+        content: `今日剩余 ${state.quota.remaining}/${state.quota.limit} 单位，按 10 集/部估算还能跑 ${state.quota.projectsLeft} 部；集数越多，每部消耗的批次额度越高。`,
       }
     },
 

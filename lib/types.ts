@@ -132,7 +132,7 @@ export const STEPS: {
 }[] = [
   { key: 'characters', index: 1, title: '生成核心人物', nav: '核心人物', short: '人物', subtitle: '3-5 个有动机、有冲突的角色', layer: 'story' },
   { key: 'acts', index: 2, title: '生成三幕大纲', nav: '三幕大纲', short: '三幕', subtitle: '铺垫 → 冲突 → 结局', layer: 'story' },
-  { key: 'episodes', index: 3, title: '生成分集剧情', nav: '分集剧情', short: '分集', subtitle: '10 集，每集结尾留钩子', layer: 'story' },
+  { key: 'episodes', index: 3, title: '生成分集剧情', nav: '分集剧情', short: '分集', subtitle: '按选定集数拆分，每集结尾留钩子', layer: 'story' },
   { key: 'visuals', index: 4, title: '角色视觉定妆', nav: '定妆', short: '定妆', subtitle: '把角色变成可复用的视觉锚点', layer: 'asset' },
   { key: 'scenes', index: 5, title: '生成场景', nav: '场景', short: '场景', subtitle: '一场戏 = 一个连续时空', layer: 'asset' },
   { key: 'shots', index: 6, title: '生成分镜', nav: '分镜', short: '分镜', subtitle: '每镜带角色锚点与参考图', layer: 'asset' },

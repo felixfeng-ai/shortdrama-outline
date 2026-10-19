@@ -3,6 +3,278 @@
 @tailwind utilities;
 
 /*
+  三套底色的变量（tailwind.config.ts 把颜色都接到了这些变量上）。
+  切换方式：<html data-theme="paper | paper-light | neutral">，见 lib/theme.ts。
+
+  paper       原味纸墨：暖米纸，气质最像稿纸
+  paper-light 提白版：保留暖感但把黄压掉，接近 Notion / Linear 那种浅底
+  neutral     冷白版：中性偏冷的浅灰白，最像常见的线上产品（朱砂仍作品牌色）
+*/
+:root,
+[data-theme="paper"] {
+  --c-surface: 239 229 215;
+  --c-surface-deep: 231 219 202;
+  --c-surface-card: 252 248 242;
+  --c-surface-soft: 247 240 230;
+  --c-surface-line: 230 217 198;
+  --c-surface-line-2: 216 200 178;
+  --c-ink-50: 246 240 229;
+  --c-ink-100: 233 220 201;
+  --c-ink-200: 205 189 168;
+  --c-ink-300: 171 156 137;
+  --c-ink-400: 143 127 111;
+  --c-ink-500: 122 105 92;
+  --c-ink-600: 95 77 65;
+  --c-ink-700: 74 58 48;
+  --c-ink-800: 59 47 39;
+  --c-ink-900: 47 38 32;
+  --c-accent-50: 251 236 235;
+  --c-accent-100: 247 222 219;
+  --c-accent-200: 239 198 197;
+  --c-accent-300: 224 154 156;
+  --c-accent-400: 207 74 82;
+  --c-accent-500: 192 48 58;
+  --c-accent-600: 163 37 42;
+  --c-accent-700: 142 26 32;
+  --c-accent-800: 125 20 24;
+  --c-accent-900: 94 15 18;
+  --c-done-50: 247 241 231;
+  --c-done-100: 239 228 210;
+  --c-done-200: 223 207 176;
+  --c-done-300: 201 180 142;
+  --c-done-400: 180 155 111;
+  --c-done-500: 169 143 99;
+  --c-done-600: 142 119 73;
+  --c-done-700: 111 93 56;
+  --c-done-800: 87 72 43;
+  --c-done-900: 64 53 31;
+  /* 移植过来的组件类里用到的几个中间色，一并变量化，否则换主题时会留下暖色孤岛 */
+  --c-chip: 236 230 223;
+  --c-chip-hover: 229 221 212;
+  --c-chip-lead: 244 223 220;
+  --c-prose: 246 239 228;
+  --c-actmini: 240 234 225;
+}
+
+/* 提白：底更白、黄更少；墨、朱砂、放映厅都不动 */
+[data-theme="paper-light"] {
+  --c-surface: 247 244 238;
+  --c-surface-deep: 239 235 227;
+  --c-surface-card: 255 253 250;
+  --c-surface-soft: 246 242 234;
+  --c-surface-line: 232 225 213;
+  --c-surface-line-2: 220 211 196;
+  --c-chip: 240 236 229;
+  --c-chip-hover: 233 228 219;
+  --c-chip-lead: 246 228 225;
+  --c-prose: 246 242 234;
+  --c-actmini: 241 237 229;
+}
+
+/* 冷白：底走中性偏冷，墨色换成中性冷灰；朱砂保留当品牌色 */
+[data-theme="neutral"] {
+  --c-surface: 247 248 249;
+  --c-surface-deep: 238 240 242;
+  --c-surface-card: 255 255 255;
+  --c-surface-soft: 243 245 246;
+  --c-surface-line: 230 233 236;
+  --c-surface-line-2: 214 219 224;
+  --c-ink-50: 246 247 248;
+  --c-ink-100: 233 236 238;
+  --c-ink-200: 210 215 219;
+  --c-ink-300: 174 181 187;
+  --c-ink-400: 138 146 153;
+  --c-ink-500: 106 114 122;
+  --c-ink-600: 78 86 93;
+  --c-ink-700: 58 65 71;
+  --c-ink-800: 43 49 54;
+  --c-ink-900: 30 34 37;
+  --c-chip: 236 239 241;
+  --c-chip-hover: 228 232 235;
+  --c-chip-lead: 248 235 233;
+  --c-prose: 242 245 247;
+  --c-actmini: 238 241 243;
+}
+
+/*
+  第四套：宣纸 × 浓墨。
+
+  浅的是写作的纸（输入卡、大纲、分集、提示词），深的是 AI 干活的地方——
+  放映厅、提问条、生成中、场记面板，以及分镜卡里的参数行与提示词框。
+  深色不是"另一种主题色"，而是同一种墨的浓处：浅底是墨在纸上晕开，深底是浓墨。
+  底与墨沿用提白（长文阅读舒服），只有墨层这一层换材质。
+*/
+[data-theme="paper-light-dark-ai"] {
+  --c-surface: 247 244 238;
+  --c-surface-deep: 239 235 227;
+  --c-surface-card: 255 253 250;
+  --c-surface-soft: 246 242 234;
+  --c-surface-line: 232 225 213;
+  --c-surface-line-2: 220 211 196;
+  --c-chip: 240 236 229;
+  --c-chip-hover: 233 228 219;
+  --c-chip-lead: 246 228 225;
+  --c-prose: 246 242 234;
+  --c-actmini: 241 237 229;
+
+  /*
+    墨层用的一组深色。
+
+    只用一组暖墨，不用冷灰：暖纸底配冷灰黑，一页两个色温，看着就是"不伦不类"。
+    墨色延续放映厅原本的暖棕黑血统（cinema #2a1f19），只是更深一档。
+  */
+  /* 两级面：越往上越浅（抬起块 / 面板头部 / 输入条） */
+  --ai-base: 33 26 21; /* #211A15 面板底 */
+  --ai-raised: 47 38 31; /* #2F261F */
+  /* 墨边：暖白描边，不用纯白（纯白落在暖纸上会发冷） */
+  --ai-line: rgba(228, 206, 176, 0.13);
+  --ai-line-strong: rgba(228, 206, 176, 0.22);
+  /*
+    墨上文字三档。主/次都过 7:1 —— 中文笔画在暗底损失更大，
+    chinese-typography 要求暗色正文按 AAA（7:1）设防，不是英文页常用的 4.5:1。
+  */
+  --ai-fg: 243 236 226; /* #F3ECE2 对面板底 14.6:1 */
+  --ai-fg-2: 200 184 165; /* #C8B8A5 8.9:1 */
+  --ai-fg-3: 182 164 144; /* #B6A490 7.4:1 */
+  /* 朱砂落在暗底要提亮一档，否则糊成褐色 */
+  --ai-hot: 234 124 130; /* #EA7C82 */
+  /* 薄雾：用在本身已经是不透明墨块的容器里 */
+  --ai-hot-wash: rgba(234, 124, 130, 0.14);
+  /* 暖红面板：用在"父层没有底色"的地方，必须是实色，否则透过纸底 */
+  --ai-hot-panel: 58 42 38;
+  /* 深色浮层的阴影也走暖调，不用纯黑，避免和暖纸打架 */
+  --ai-shadow: 0 22px 44px -26px rgba(38, 22, 14, 0.55), 0 4px 14px -10px rgba(38, 22, 14, 0.45);
+}
+
+/*
+  第五套：H 双舱（当前正式方向，见 DESIGN.md）。
+
+  工作面是暖白纸（无纸纹、无卡片阴影），产出舱是另一块主题域——舱的内部
+  用 data-theme="paper-light-dark-ai" 让它直接继承墨层 token，不再复制一套深色规则。
+*/
+[data-theme="h-deck"] {
+  /*
+    底色从暖米（R245 G243 B239，R-B 差 6）收到近中性（R-B 差 2）。
+    差 6 在白底屏上就是一层看得见的黄；差 2 只在暖光下才有一点点温度。
+  */
+  --c-surface: 246 246 244;
+  --c-surface-deep: 238 238 235;
+  --c-surface-card: 255 255 255;
+  --c-surface-soft: 245 245 243;
+  --c-surface-line: 228 228 224;
+  --c-surface-line-2: 212 212 207;
+  --c-ink-50: 248 246 242;
+  --c-ink-100: 238 234 227;
+  --c-ink-200: 214 208 198;
+  --c-ink-300: 179 170 158;
+  --c-ink-400: 141 133 122;
+  --c-ink-500: 108 100 89;
+  --c-ink-600: 85 78 68;
+  --c-ink-700: 63 58 52;
+  --c-ink-800: 42 38 34;
+  --c-ink-900: 26 24 21;
+  /* 强调色：朱砂往暖橙收一档，落在暖白上有"墨未干"的温度 */
+  --c-accent-50: 253 244 238;
+  --c-accent-100: 250 231 220;
+  --c-accent-200: 243 203 182;
+  --c-accent-300: 233 165 132;
+  --c-accent-400: 222 123 80;
+  --c-accent-500: 212 90 43;
+  --c-accent-600: 194 65 12;
+  --c-accent-700: 163 54 10;
+  --c-accent-800: 134 44 9;
+  --c-accent-900: 107 36 8;
+  --c-done-50: 247 242 233;
+  --c-done-100: 239 231 216;
+  --c-done-200: 223 208 182;
+  --c-done-300: 201 181 146;
+  --c-done-400: 180 156 114;
+  --c-done-500: 169 145 101;
+  --c-done-600: 142 119 73;
+  --c-done-700: 111 93 56;
+  --c-done-800: 87 72 43;
+  --c-done-900: 64 53 31;
+  --c-chip: 244 244 242;
+  --c-chip-hover: 236 236 233;
+  --c-chip-lead: 253 240 232;
+  --c-prose: 246 246 244;
+  --c-actmini: 246 246 244;
+}
+
+/* 工作面不要纸纹；标题一律无衬线——衬线是"小说页"的信号 */
+[data-theme="h-deck"] body { background-image: none; }
+[data-theme="h-deck"] :is(h1, h2, h3, .font-serif) {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+[data-theme="h-deck"] .brandname { letter-spacing: 0.02em; }
+
+/* H 下 .surface 退化成"带顶部发丝线的带"，不再是带阴影的卡片 */
+[data-theme="h-deck"] .surface {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-top: 1px solid rgba(20, 20, 20, 0.08);
+}
+[data-theme="h-deck"] .navpanel { box-shadow: none; }
+[data-theme="h-deck"] .btn-primary {
+  background-image: linear-gradient(180deg, rgb(var(--c-accent-400)), rgb(var(--c-accent-600)) 45%, rgb(var(--c-accent-800)));
+  box-shadow: 0 10px 22px -14px rgba(120, 50, 20, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/*
+  灵感卡在 H 里不再是「半屏大卡 + 居中发光按钮」——那是落地页的做法。
+  改成：无卡片、底部一条发丝线，按钮左对齐跟在标签后面，去掉星芒装饰。
+*/
+[data-theme="h-deck"] .compose {
+  padding: 4px 0 14px;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.08);
+}
+[data-theme="h-deck"] .compose .ta { height: 62px; font-size: 16.5px; line-height: 1.55; }
+[data-theme="h-deck"] .compose .fill { display: none; }
+[data-theme="h-deck"] .chips { gap: 8px; margin-top: 10px; }
+[data-theme="h-deck"] .chip { padding: 6px 12px; font-size: 12.5px; }
+[data-theme="h-deck"] .bmain {
+  align-self: center;
+  margin-top: 0;
+  min-width: 0;
+  height: 40px;
+  padding: 0 18px;
+  font-size: 13px;
+  background-image: linear-gradient(180deg, rgb(var(--c-accent-500)), rgb(var(--c-accent-700)));
+  box-shadow: 0 8px 18px -12px rgba(120, 50, 20, 0.55);
+}
+[data-theme="h-deck"] .bmain .glowstar { display: none; }
+[data-theme="h-deck"] .recent { gap: 12px; }
+[data-theme="h-deck"] .mini {
+  padding: 12px 14px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(20, 20, 20, 0.07);
+}
+
+/*
+  三幕里未展开的两幕：原来是对齐 demo 的 80px 衬线大字块。
+  行化之后第一幕是行、后两幕是方块，看着像两个组件——统一成同一套行。
+*/
+[data-theme="h-deck"] .actmini {
+  height: auto;
+  justify-content: flex-start;
+  padding: 12px 2px;
+  background: transparent;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.07);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: rgb(var(--c-ink-700));
+}
+[data-theme="h-deck"] .actmini:hover { background: rgba(20, 20, 20, 0.018); }
+
+/*
   纸墨底座（对齐 concept-reference.png）。
 
   四条不能动的规则：
@@ -28,6 +300,26 @@
       radial-gradient(70% 60% at 100% 100%, rgba(120, 92, 60, 0.09), transparent 65%);
     background-size: 3px 3px, auto, auto, auto, auto, auto;
     background-attachment: fixed;
+  }
+
+  /* 纸纹跟着主题走：提白版把黄压掉，冷白版只留中性颗粒、去掉暖色压角 */
+  [data-theme="paper-light"] body {
+    background-image:
+      radial-gradient(rgba(120, 110, 90, 0.035) 0.5px, transparent 0.6px),
+      repeating-linear-gradient(0deg, rgba(120, 105, 80, 0.014) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(90deg, rgba(120, 105, 80, 0.011) 0 1px, transparent 1px 4px),
+      radial-gradient(120% 90% at 50% 40%, rgba(255, 255, 253, 0.6), transparent 60%),
+      radial-gradient(70% 60% at 0% 0%, rgba(120, 105, 80, 0.05), transparent 65%),
+      radial-gradient(70% 60% at 100% 100%, rgba(120, 105, 80, 0.05), transparent 65%);
+  }
+
+  [data-theme="neutral"] body {
+    background-image:
+      radial-gradient(rgba(90, 105, 120, 0.035) 0.5px, transparent 0.6px),
+      radial-gradient(120% 90% at 50% 30%, rgba(255, 255, 255, 0.75), transparent 65%),
+      radial-gradient(70% 60% at 0% 0%, rgba(90, 105, 120, 0.045), transparent 65%),
+      radial-gradient(70% 60% at 100% 100%, rgba(90, 105, 120, 0.045), transparent 65%);
+    background-size: 3px 3px, auto, auto, auto;
   }
 
   h1, h2, h3 {
@@ -175,6 +467,173 @@
   }
 }
 
+/*
+  ── 墨层（只在第四套主题下生效）──────────────────────────────────────
+  作用对象一句话：AI 干活的地方。用 :is() 收成一组，新增 AI 组件只要挂上
+  .cinema / .darkroom 或者场记的 aria-label，就自动跟着走，不用再加覆盖规则。
+
+  上一版这里是逐块刷冷灰 #0e0e12，还漏掉了分镜卡里的 .darkroom（仍是暖棕黑），
+  于是同一页出现两个黑、两种色温。现在墨层只有一个底、一套边、一套字。
+  删掉这一整块就等于退回提白版。
+*/
+
+/* 墨块：面板底 + 一圈墨边 + 暖调阴影（墨从纸上浮起来，不是没加载出来的黑块） */
+[data-theme="paper-light-dark-ai"] :is(.cinema, .darkroom),
+[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] {
+  background-color: rgb(var(--ai-base));
+  background-image: linear-gradient(180deg, rgb(var(--ai-raised)), rgb(var(--ai-base)) 62%);
+  box-shadow: inset 0 0 0 1px var(--ai-line), var(--ai-shadow);
+}
+
+/* 墨面上的分隔线：统一成一条暖白细线 */
+[data-theme="paper-light-dark-ai"] :is(.cin-head, .spec),
+[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] :is(header, footer, form),
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+  :is(.border-surface-line, .border-accent-200, .border-accent-200\/70, .border-accent-300) {
+  border-color: var(--ai-line);
+}
+
+/* 墨面上的三档文字：主 / 次 / 弱，都比原先亮一档 */
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+  :is(.text-ink-900, .text-ink-800, .text-ink-700) {
+  color: rgb(var(--ai-fg));
+}
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+  :is(.text-ink-600, .text-ink-500) {
+  color: rgb(var(--ai-fg-2));
+}
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+  :is(.text-ink-400, .text-ink-300) {
+  color: rgb(var(--ai-fg-3));
+}
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"]) .font-serif {
+  color: rgb(var(--ai-fg));
+}
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+  :is(.text-accent-800, .text-accent-700) {
+  color: rgb(var(--ai-hot));
+}
+
+/* 墨面里的浅色块：卡面换成抬起块，浅红换成暖红 */
+[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] .bg-surface-card {
+  background-color: rgb(var(--ai-raised));
+}
+[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] .bg-surface-soft {
+  background-color: rgb(var(--ai-base));
+}
+/* 场记面板内部本身是不透明墨块，浅红可以走半透明薄雾 */
+[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"]
+  :is(.bg-accent-50, .bg-accent-50\/50, .bg-accent-50\/60, .bg-accent-100\/80) {
+  background-color: var(--ai-hot-wash);
+}
+/*
+  提问条上方的 AI 回答卡：它的父层没有底色，用薄雾会直接透出纸底，
+  所以这里必须给一个实色暖红面板。
+*/
+[data-theme="paper-light-dark-ai"] .ai-surface :is(.bg-accent-50, .bg-accent-50\/70) {
+  background-color: rgb(var(--ai-hot-panel));
+}
+
+/*
+  场记头部的朱砂渐晕：浅粉渐晕落在暖墨上会发灰，换成暖红。
+  直接覆盖 background-image，不跟 --tw-gradient-* 变量纠缠。
+*/
+[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] .bg-gradient-to-r.from-accent-50 {
+  background-image: linear-gradient(
+    to right,
+    var(--ai-hot-wash),
+    rgba(234, 124, 130, 0.05) 42%,
+    transparent
+  );
+}
+
+/* 输入：暗底上用墨上文字，占位降到第三档但仍看得清 */
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+  :is(input, textarea) {
+  color: rgb(var(--ai-fg));
+}
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+  :is(input, textarea)::placeholder {
+  color: rgb(var(--ai-fg-3));
+}
+
+/* 提问条：同一块墨，只是做成胶囊 */
+[data-theme="paper-light-dark-ai"] .ask {
+  background-image: linear-gradient(180deg, rgb(var(--ai-raised)), rgb(var(--ai-base)));
+  border-color: var(--ai-line-strong);
+  box-shadow: var(--ai-shadow), inset 0 1px 0 rgba(255, 245, 232, 0.06);
+}
+
+/* 生成中状态：深底上一道朱砂流光 */
+[data-theme="paper-light-dark-ai"] .ai-status {
+  background-color: transparent;
+  background-image:
+    linear-gradient(100deg, var(--ai-hot-wash), rgba(234, 124, 130, 0.32) 50%, var(--ai-hot-wash)),
+    linear-gradient(180deg, rgb(var(--ai-raised)), rgb(var(--ai-base)));
+  color: rgb(var(--ai-fg));
+  box-shadow: inset 0 0 0 1px rgba(234, 124, 130, 0.3);
+}
+
+/* 放映厅里的小字标注：暗底本来就吃亏，跟着墨面的第三档字色走 */
+[data-theme="paper-light-dark-ai"] .cinema :is(.cin-no, .plate .hint) {
+  color: rgb(var(--ai-fg-3));
+}
+
+/*
+  右下角那条浮层（提问条 + 分镜视觉）收成一块连续的墨工具。
+
+  上一版这里是两块各自带边框的黑块叠在一起，中间还留一道缝，看着像给浅色页面
+  打了两个补丁。现在外面一层墨、一条墨边，里头用一条暖白细线分区，
+  读起来是"一个深色工具"，不是"两块黑"。
+*/
+[data-theme="paper-light-dark-ai"] .ai-dock {
+  padding: 10px;
+  border-radius: theme(borderRadius.panel);
+  background-color: rgb(var(--ai-base));
+  background-image: linear-gradient(180deg, rgb(var(--ai-raised)), rgb(var(--ai-base)) 58%);
+  box-shadow: inset 0 0 0 1px var(--ai-line), var(--ai-shadow);
+}
+
+/* 提问条在工具里改走抬起块：不再自带一条浅色边框 */
+[data-theme="paper-light-dark-ai"] .ai-dock .ask {
+  border-color: transparent;
+  background-image: linear-gradient(180deg, rgb(var(--ai-raised)), rgb(38 31 26));
+  box-shadow: inset 0 0 0 1px var(--ai-line);
+}
+
+/* 分镜视觉区让位给外框：去掉自己的底和描边，只留一条分区线 */
+[data-theme="paper-light-dark-ai"] .ai-dock .cinema {
+  padding: 10px 6px 2px;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  border-top: 1px solid var(--ai-line);
+}
+/* 分区线由外框那条承担，标题行不必再画一条 */
+[data-theme="paper-light-dark-ai"] .ai-dock .cin-head {
+  padding-bottom: 6px;
+  border-bottom-color: transparent;
+}
+
+/* 左下角场记浮标：同一个墨，不再是一枚浅色圆钮浮在纸上 */
+[data-theme="paper-light-dark-ai"] .agent-fab {
+  background-color: rgb(var(--ai-base));
+  border-color: var(--ai-line-strong);
+  color: rgb(var(--ai-hot));
+  box-shadow: var(--ai-shadow);
+}
+[data-theme="paper-light-dark-ai"] .agent-fab:hover {
+  background-color: rgb(var(--ai-raised));
+  border-color: rgba(234, 124, 130, 0.5);
+}
+
+/*
+  只在 AI 那几块上做深色，不碰顶栏。
+  教训：这里原先写过 `[data-theme=...] header { background: 近黑 }`——
+  它把所有 <header> 都吃了，包括每个步骤卡片自己的头部，
+  于是卡片变成"黑头白身子"，看起来像没加载完。选择器要窄到只命中 AI 面。
+*/
+
 @layer utilities {
   .skeleton-bar {
     @apply animate-pulse rounded-chip bg-ink-100;
@@ -185,6 +644,610 @@
     overflow-wrap: anywhere;
     word-break: break-word;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   H 双舱外壳（见 DESIGN.md）。这几个类不放进 layer：
+   它们要压过工具类里的间距与圆角，且只服务这一套骨架。
+   ───────────────────────────────────────────────────────────── */
+.h-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(20, 20, 20, 0.08);
+  backdrop-filter: blur(10px) saturate(1.05);
+}
+.h-brand {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  color: rgb(var(--c-ink-900));
+}
+.h-ai {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgb(var(--c-accent-600));
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.h-slogan { font-size: 11.5px; color: rgb(var(--c-ink-400)); white-space: nowrap; }
+.h-div { width: 1px; height: 16px; background: rgba(30, 24, 18, 0.12); flex: 0 0 1px; }
+.h-pills {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-left: auto;
+}
+.h-pills::-webkit-scrollbar { display: none; }
+.h-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--c-ink-400));
+  font-size: 11px;
+  line-height: 1.4;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1), color 150ms;
+}
+.h-pill em {
+  font-style: normal;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: rgb(var(--c-ink-300));
+}
+.h-pill:hover:not(:disabled) { background: rgba(30, 24, 18, 0.05); color: rgb(var(--c-ink-700)); }
+.h-pill.on {
+  background: #fbfaf8;
+  color: rgb(var(--c-ink-900));
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(30, 24, 18, 0.08);
+}
+.h-pill.on em { color: rgb(var(--c-accent-600)); font-weight: 600; }
+.h-pill.done em { color: rgb(var(--c-done-600)); }
+.h-pill:disabled { cursor: not-allowed; opacity: 0.42; }
+.h-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: rgb(var(--c-ink-400));
+  font-variant-numeric: tabular-nums;
+}
+.h-run i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(var(--c-ink-300));
+}
+.h-run.busy { color: rgb(var(--c-accent-700)); }
+.h-run.busy i { background: rgb(var(--c-accent-600)); animation: h-breathe 1.8s ease-in-out infinite; }
+.h-quota {
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: rgb(var(--c-ink-500));
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes h-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+
+.h-main {
+  display: flex;
+  align-items: flex-start;
+  min-height: calc(100dvh - 54px);
+}
+.h-work {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* 工作面是一张白纸，不是页面底色：左侧整体读起来才像工具 */
+  background: #fff;
+  padding: 18px 24px 96px;
+}
+.h-deck {
+  /*
+    舱的宽度按视口比例走：H 样机里它是 960 画布的 38%，折到 1440 上约 460px。
+    写死 380 会让双舱变成"主内容 + 一条窄边"，硬缝就不成立了。
+  */
+  width: clamp(360px, 32vw, 520px);
+  flex: 0 0 clamp(360px, 32vw, 520px);
+  position: sticky;
+  top: 54px;
+  height: calc(100dvh - 54px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #17151a, #100e12 72%);
+  border-left: 1px solid rgba(20, 20, 20, 0.16);
+  box-shadow: -30px 0 70px -60px rgba(20, 14, 10, 0.9);
+  color: #cfc8bd;
+}
+.h-deck-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(255, 236, 214, 0.13);
+}
+.h-deck-tab {
+  border: 0;
+  background: transparent;
+  border-radius: 5px;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  color: #8a8177;
+  transition: background-color 150ms, color 150ms;
+}
+.h-deck-tab:hover { background: rgba(255, 236, 214, 0.06); color: #cfc8bd; }
+.h-deck-tab.on {
+  background: #2c2620;
+  color: #f0ebe2;
+  font-weight: 600;
+}
+.h-deck-meta {
+  margin-left: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  color: #8a8177;
+  font-variant-numeric: tabular-nums;
+}
+.h-deck-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 14px;
+  overflow: hidden;
+}
+.h-deck-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── 列表行化 ────────────────────────────────────────────────
+   列表不再是一格一格的卡片，而是一张连续的清单：
+   行与行之间只有一条发丝线，hover 只提亮一点背景。 */
+.ledger-list {
+  display: flex;
+  flex-direction: column;
+}
+.ledger-row {
+  position: relative;
+  padding: 14px 2px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.07);
+  border-radius: 0;
+  box-shadow: none;
+}
+.ledger-row:last-child { border-bottom: 0; }
+.ledger-row:hover { background: rgba(20, 20, 20, 0.018); }
+.ledger-row.lift:hover { transform: none; box-shadow: none; }
+.ledger-row.is-active {
+  background: rgba(194, 65, 12, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(194, 65, 12, 0.22);
+}
+
+/* ── 分集集数选择 ── */
+.ep-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.07);
+}
+.ep-label {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: rgb(var(--c-ink-400));
+}
+.ep-chip {
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: rgb(var(--c-ink-600));
+  background: transparent;
+  transition: background-color 140ms, border-color 140ms, color 140ms;
+}
+.ep-chip:hover:not(:disabled) { border-color: rgb(var(--c-accent-300)); }
+.ep-chip.on {
+  background: rgb(var(--c-chip-lead));
+  border-color: rgb(var(--c-accent-200));
+  color: rgb(var(--c-accent-800));
+  font-weight: 600;
+}
+.ep-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.ep-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgb(var(--c-ink-400));
+}
+.ep-custom input {
+  width: 64px;
+  padding: 3px 7px;
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 6px;
+  background: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: rgb(var(--c-ink-800));
+}
+.ep-hint {
+  margin-left: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: rgb(var(--c-ink-400));
+}
+
+/* ── 上线公告：一条带朱砂点的发丝线，不做成卡片 ── */
+.release-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 2px 12px;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.08);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: rgb(var(--c-ink-600));
+}
+.release-dot {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: rgb(var(--c-accent-600));
+}
+.release-note p { flex: 1; min-width: 0; margin: 0; }
+.release-note b { color: rgb(var(--c-ink-900)); font-weight: 600; }
+.release-note button {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11.5px;
+  color: rgb(var(--c-ink-500));
+}
+.release-note button:hover {
+  border-color: rgb(var(--c-accent-300));
+  color: rgb(var(--c-accent-700));
+}
+
+/* ── 场记未读角标 ── */
+.h-deck-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e3b87f;
+  color: #241d16;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 15px;
+  vertical-align: middle;
+}
+.h-deck-grab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e3b87f;
+  color: #241d16;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* 窄屏抽屉：只露 58px，上滑展开到 72dvh */
+.h-deck-grab { display: none; }
+.h-deck-scrim { display: none; }
+
+/* 舱内的两块 AI 面不再自带外框：舱本身就是那块墨 */
+.h-deck .ai-dock {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.h-deck .ai-dock .cinema {
+  padding: 12px 0 0;
+  background: none;
+  box-shadow: none;
+  border-top: 1px solid var(--ai-line);
+}
+.h-deck section[aria-label="AI 场记"] {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  background-image: none;
+  box-shadow: none;
+}
+
+/* ── 舱内场记：说话人段落、等宽轨迹、提案卡 ───────────────── */
+.h-deck section[aria-label="AI 场记"] .deck-ctx {
+  margin: 9px 16px 0;
+  padding: 5px 8px;
+  border: 1px solid rgba(227, 184, 127, 0.26);
+  border-radius: 5px;
+  background: rgba(227, 184, 127, 0.06);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: #c9a878;
+}
+.h-deck section[aria-label="AI 场记"] .deck-ctx b {
+  color: #e3b87f;
+  font-weight: 500;
+}
+.h-deck section[aria-label="AI 场记"] .msg {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: baseline;
+}
+.h-deck section[aria-label="AI 场记"] .who {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: #7d7468;
+}
+.h-deck section[aria-label="AI 场记"] .who.gold { color: #e3b87f; }
+.h-deck section[aria-label="AI 场记"] .msg p,
+.h-deck section[aria-label="AI 场记"] .msg-body p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #cfc8bd;
+}
+.h-deck section[aria-label="AI 场记"] .msg-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.h-deck section[aria-label="AI 场记"] .msg-note {
+  padding-left: 43px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8a8177;
+}
+.h-deck section[aria-label="AI 场记"] .trail {
+  display: flex;
+  flex-direction: column;
+  padding-left: 43px;
+}
+.h-deck section[aria-label="AI 场记"] .trail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 1px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: #8a8177;
+}
+.h-deck section[aria-label="AI 场记"] .trail-row:disabled { opacity: 1; }
+.h-deck section[aria-label="AI 场记"] .trail-mark { color: #5f5852; }
+.h-deck section[aria-label="AI 场记"] .trail-more {
+  margin-left: auto;
+  color: #8a8177;
+}
+.h-deck section[aria-label="AI 场记"] .trail-detail {
+  margin: 4px 0 2px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(255, 236, 214, 0.04);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: #8a8177;
+}
+.h-deck section[aria-label="AI 场记"] .prop {
+  padding: 9px 10px;
+  border: 1px solid rgba(227, 184, 127, 0.24);
+  border-radius: 6px;
+  background: rgba(227, 184, 127, 0.05);
+}
+.h-deck section[aria-label="AI 场记"] .prop-h {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #e3b87f;
+}
+.h-deck section[aria-label="AI 场记"] .prop-b {
+  margin-top: 5px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #cfc8bd;
+}
+.h-deck section[aria-label="AI 场记"] .prop-a {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+}
+.h-deck section[aria-label="AI 场记"] .prop-a button {
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 10px;
+}
+.h-deck section[aria-label="AI 场记"] .prop-a .ok {
+  background: #e3b87f;
+  color: #241d16;
+  font-weight: 600;
+}
+.h-deck section[aria-label="AI 场记"] .prop-a .no {
+  border: 1px solid rgba(255, 236, 214, 0.16);
+  color: #a79e92;
+}
+
+/* 输入行走终端语言：› 前缀 + 方角发送键 */
+.h-deck section[aria-label="AI 场记"] form { position: relative; }
+.h-deck section[aria-label="AI 场记"] form::before {
+  content: "›";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #e3b87f;
+  pointer-events: none;
+}
+.h-deck section[aria-label="AI 场记"] form input {
+  padding-left: 26px;
+  border-radius: 6px;
+  background: rgba(255, 236, 214, 0.04);
+  border-color: rgba(255, 236, 214, 0.16);
+  color: #f0ebe2;
+}
+.h-deck section[aria-label="AI 场记"] form input::placeholder {
+  color: #7d7468;
+}
+.h-deck section[aria-label="AI 场记"] form button[type="submit"] {
+  border-radius: 5px;
+}
+
+@media (max-width: 1279px) {
+  .h-slogan, .h-div { display: none; }
+  /* 运行态让位给六步：1180 宽时六步必须能整排看全，不能靠横向滚动 */
+  .h-run { display: none; }
+  .h-top { gap: 8px; }
+}
+/* 断点压到 920：125% 缩放的 1400 屏等于 1120 CSS px，双舱必须还在 */
+@media (max-width: 920px) {
+  .h-main { display: block; min-height: 0; }
+  /* 底部留出抽屉收起时的 58px，最后一段内容不会被压住 */
+  .h-work { padding: 16px 16px 96px; }
+  .h-deck {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    height: 72dvh;
+    transform: translateY(calc(100% - 58px));
+    transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
+    border-left: 0;
+    border-top: 1px solid rgba(20, 20, 20, 0.18);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -24px 60px -30px rgba(20, 14, 10, 0.55);
+    overflow: hidden;
+    z-index: 40;
+  }
+  .h-deck.open { transform: none; }
+  .h-deck-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(20, 14, 10, 0.3);
+    animation: h-scrim-in 180ms ease-out both;
+  }
+  @keyframes h-scrim-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .h-deck-grab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    height: 58px;
+    flex: 0 0 auto;
+    padding: 0 14px;
+    border: 0;
+    background: transparent;
+    color: #cfc8bd;
+  }
+  .h-deck-grab-handle {
+    width: 34px;
+    height: 4px;
+    border-radius: 2px;
+    background: #3a342d;
+  }
+  .h-deck-grab-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .h-deck-grab-row .car {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    color: #e3b87f;
+  }
+  .h-deck-grab-row .txt {
+    flex: 1;
+    text-align: left;
+    font-size: 11.5px;
+    color: #7d7468;
+  }
+  .h-deck-grab-row .go {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    background: #e3b87f;
+    color: #241d16;
+    font-size: 11px;
+  }
+  .h-deck-grab-row .h-deck-grab-count { margin-left: auto; }
+  /* 展开后只留一根抓手，输入行让位给真正的会话 */
+  .h-deck.open .h-deck-grab { height: 22px; padding: 0; }
+  .h-deck.open .h-deck-grab-row { display: none; }
+  .h-deck-pane { overflow-y: auto; }
+  .h-top { gap: 10px; padding: 0 12px; }
+  .h-pills { margin-left: 0; }
+  .h-pill { padding: 4px 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .h-run.busy i { animation: none; }
 }
 
 /*
@@ -215,7 +1278,7 @@
   .avatar svg { width: 26px; height: 26px; fill: currentColor; stroke: none; }
 
   /* ── 左侧六步导航 ── */
-  .navpanel { @apply rounded-panel; padding: 16px 14px; background: #fbf5ec; box-shadow: theme(boxShadow.surface); }
+  .navpanel { @apply rounded-panel; padding: 16px 14px; background: rgb(var(--c-surface-card)); box-shadow: theme(boxShadow.surface); }
   .navpanel ul { @apply list-none; margin: 0; padding: 0; }
   .navpanel button {
     @apply relative flex w-full items-center gap-3.5 rounded-chip border-0 text-left;
@@ -239,11 +1302,11 @@
   /* ── 中间：故事输入卡 ── */
   .compose { @apply relative flex flex-col rounded-card bg-surface-card; padding: 26px 28px 30px; box-shadow: inset 0 0 0 1px theme(colors.surface.line), theme(boxShadow.surface); }
   .compose .ta { width: 100%; height: 80px; border: 0; background: transparent; resize: none; outline: none; font-size: 17px; line-height: 1.7; color: theme(colors.ink.800); }
-  .compose .ta::placeholder { color: #9a8b7c; }
+  .compose .ta::placeholder { color: rgb(var(--c-ink-400)); }
   .chips { @apply flex flex-wrap; gap: 14px; margin-top: 6px; }
-  .chip { @apply relative cursor-pointer rounded-pill border-0; padding: 9px 22px; background: #ece6df; color: theme(colors.ink.700); font-size: 15px; letter-spacing: .01em; }
-  .chip:hover { background: #e5ddd4; }
-  .chip.lead { background: #f4dfdc; color: #5b3f3a; }
+  .chip { @apply relative cursor-pointer rounded-pill border-0; padding: 9px 22px; background: rgb(var(--c-chip)); color: theme(colors.ink.700); font-size: 15px; letter-spacing: .01em; }
+  .chip:hover { background: rgb(var(--c-chip-hover)); }
+  .chip.lead { background: rgb(var(--c-chip-lead)); color: rgb(var(--c-accent-800)); }
   .fill { flex: 1; }
   .bmain {
     @apply relative flex items-center justify-center self-center rounded-pill border-0 cursor-pointer;
@@ -258,25 +1321,25 @@
   /* ── 中间下方的两张小卡 ── */
   /* minmax(0,1fr) 而不是 1fr：卡片里有 input 时，1fr 的最小内容宽度会把整张卡撑破列宽 */
   .recent { @apply grid gap-4; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 88px; }
-  .mini { @apply flex min-w-0 items-center gap-3 overflow-hidden rounded-card; padding: 16px 18px; background: #f7f0e6; box-shadow: theme(boxShadow.surface); }
+  .mini { @apply flex min-w-0 items-center gap-3 overflow-hidden rounded-card; padding: 16px 18px; background: rgb(var(--c-surface-soft)); box-shadow: theme(boxShadow.surface); }
   .mini .mtxt { @apply min-w-0 flex-1; }
   .mini .mtxt p { @apply truncate; font-size: 14.5px; color: theme(colors.ink.700); }
   .mini .mtxt input { min-width: 0; }
   .mini .ruler { display: block; height: 2px; width: 62%; margin-top: 9px; border-radius: 2px; background: linear-gradient(90deg, rgba(190,140,120,.75), rgba(190,140,120,.35) 60%, rgba(190,140,120,0)); }
-  .mini .mico { @apply flex shrink-0 items-center justify-center rounded-chip; width: 32px; height: 32px; background: #f6dcd8; }
+  .mini .mico { @apply flex shrink-0 items-center justify-center rounded-chip; width: 32px; height: 32px; background: rgb(var(--c-accent-50)); }
   .mini .mico svg { width: 21px; height: 21px; fill: none; stroke: theme(colors.accent.500); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
   /* ── 右侧：三幕卡 ── */
   .actcard { @apply rounded-card bg-surface-card; padding: 20px 22px 18px; box-shadow: inset 0 0 0 1px theme(colors.surface.line), theme(boxShadow.surface); }
-  .actcard h3 { @apply font-serif; font-size: 21px; font-weight: 700; color: #3b2a22; letter-spacing: .02em; }
+  .actcard h3 { @apply font-serif; font-size: 21px; font-weight: 700; color: rgb(var(--c-ink-900)); letter-spacing: .02em; }
   .steps { @apply flex items-center; gap: 9px; margin-top: 14px; }
-  .steps span { font-size: 12.5px; color: #9c4a44; letter-spacing: .01em; }
+  .steps span { font-size: 12.5px; color: rgb(var(--c-accent-700)); letter-spacing: .01em; }
   .steps .dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: theme(colors.accent.400); }
   .steps .dot.glow { width: 7px; height: 7px; flex: 0 0 7px; background: theme(colors.accent.500); box-shadow: 0 0 8px 1px rgba(192,48,58,.55); }
   .steps .rail { flex: 1; height: 1.5px; border-radius: 2px; background: linear-gradient(90deg, rgba(192,48,58,.18), rgba(192,48,58,.4)); }
-  .prose { @apply rounded-card; margin-top: 16px; padding: 15px 16px; background: #f6efe4; font-size: 14px; line-height: 1.8; color: theme(colors.ink.700); }
+  .prose { @apply rounded-card; margin-top: 16px; padding: 15px 16px; background: rgb(var(--c-prose)); font-size: 14px; line-height: 1.8; color: theme(colors.ink.700); }
   .acts2 { @apply grid gap-4; grid-template-columns: 1fr 1fr; }
-  .actmini { @apply flex items-center justify-center rounded-card; height: 80px; background: #f0eae1; font-family: Georgia, "Songti SC", SimSun, serif; font-size: 19px; font-weight: 700; color: #6d5c4c; letter-spacing: .02em; }
+  .actmini { @apply flex items-center justify-center rounded-card; height: 80px; background: rgb(var(--c-actmini)); font-family: Georgia, "Songti SC", SimSun, serif; font-size: 19px; font-weight: 700; color: rgb(var(--c-ink-600)); letter-spacing: .02em; }
 
   /* ── AI 提问条 ── */
   .ask {

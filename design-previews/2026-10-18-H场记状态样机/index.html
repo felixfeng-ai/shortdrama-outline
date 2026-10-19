@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H 方案 · 场记三态样机 — 成剧</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#ecebe8;color:#191b21;
+    font:400 14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif}
+  .qmdp-frame{position:sticky;top:0;z-index:30;height:56px;display:flex;align-items:center;
+    justify-content:space-between;gap:16px;padding:0 20px;background:#fbfbfa;
+    border-bottom:1px solid #d8dbe1}
+  .qmdp-frame strong{font-size:14px;font-weight:650}
+  .qmdp-frame .sub{color:#5b6472;font-size:12.5px}
+  .wrap{max-width:1360px;margin:0 auto;padding:20px 18px 80px;display:grid;gap:20px}
+  .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+  .state{background:#fff;border:1px solid #e0dfdc;border-radius:12px;overflow:hidden;display:flex;
+    flex-direction:column;min-width:0}
+  .state-head{display:flex;align-items:baseline;gap:10px;padding:13px 16px 11px;border-bottom:1px solid #eeece9}
+  .state-head .n{font-family:"JetBrains Mono",monospace;font-size:11px;color:#fff;background:#3b4250;
+    border-radius:5px;padding:2px 7px}
+  .state-head h2{font-size:14px;margin:0;font-weight:650}
+  .state-head p{margin:0;color:#6b7280;font-size:12px;margin-left:auto}
+  .mock{position:relative;overflow:hidden;background:#f5f3ef}
+  .mock .stage{transform-origin:top left}
+  .notes{padding:12px 16px 14px;font-size:12.5px;color:#4b5260;line-height:1.7}
+  .notes b{color:#191b21;font-weight:600}
+  .notes ul{margin:0;padding-left:16px}
+  .notes li{margin:3px 0}
+
+  /* ---------- H 设计系统（三个状态共用） ---------- */
+  .hx-stage{width:960px;height:600px;display:flex;flex-direction:column;background:#f5f3ef;color:#1a1815;
+    font-family:"Work Sans",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+  .hx-top{height:54px;flex:0 0 54px;display:flex;align-items:center;gap:14px;padding:0 22px;
+    border-bottom:1px solid rgba(30,24,18,.1)}
+  .hx-brand{font-size:16px;font-weight:700;letter-spacing:.03em}
+  .hx-proj{font-size:12px;color:#6b645b}
+  .hx-grow{flex:1}
+  .hx-steps{display:flex;align-items:center}
+  .hx-steps a{font-family:"JetBrains Mono",monospace;font-size:11px;color:#8d857a;padding:0 9px;
+    border-left:1px solid rgba(30,24,18,.1);letter-spacing:.02em}
+  .hx-steps a:first-child{border-left:0}
+  .hx-steps a.on{color:#1a1815;font-weight:600}
+  .hx-run{display:flex;align-items:center;gap:7px;font-family:"JetBrains Mono",monospace;
+    font-size:10px;color:#9a9287}
+  .hx-run i{width:6px;height:6px;border-radius:50%;background:#c2410c;display:inline-block}
+  .hx-body{flex:1;min-height:0;display:flex}
+  .hx-left{flex:1;min-width:0;display:flex;flex-direction:column;padding:16px 22px 14px}
+  .hx-k{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.16em;color:#a09789}
+  .hx-idea{font-size:13.5px;line-height:1.7;color:#3f3a34;margin-top:8px;padding-bottom:13px;
+    border-bottom:1px solid rgba(30,24,18,.09)}
+  .hx-idea span{color:#a09789;font-family:"JetBrains Mono",monospace;font-size:10px}
+  .hx-rows{margin-top:2px}
+  .hx-row{display:grid;grid-template-columns:28px 100px 1fr;gap:11px;padding:10px 0;
+    border-bottom:1px solid rgba(30,24,18,.07);align-items:baseline}
+  .hx-row:last-child{border-bottom:0}
+  .hx-row .i{font-family:"JetBrains Mono",monospace;font-size:10px;color:#b3aa9e}
+  .hx-row b{font-size:13px;font-weight:600}
+  .hx-row b small{display:block;font-weight:400;font-family:"JetBrains Mono",monospace;
+    font-size:9.5px;color:#a09789;margin-top:2px}
+  .hx-row p{font-size:12px;line-height:1.6;color:#5c554c}
+  .hx-seam{width:1px;flex:0 0 1px;background:rgba(30,24,18,.14)}
+  .hx-deck{width:366px;flex:0 0 366px;background:linear-gradient(180deg,#17151a,#100e12 72%);
+    color:#cfc8bd;padding:14px 15px 12px;display:flex;flex-direction:column;min-height:0}
+  .hx-dh{display:flex;align-items:center;gap:9px;padding-bottom:10px;
+    border-bottom:1px solid rgba(255,236,214,.13)}
+  .hx-seg{display:flex;background:rgba(255,236,214,.06);border:1px solid rgba(255,236,214,.1);
+    border-radius:6px;padding:2px}
+  .hx-seg span{font-size:11px;color:#8a8177;padding:3px 11px;border-radius:4px;letter-spacing:.02em}
+  .hx-seg span.on{background:#2c2620;color:#f0ebe2;font-weight:500}
+  .hx-dh em{margin-left:auto;font-style:normal;font-family:"JetBrains Mono",monospace;
+    font-size:9.5px;color:#8a8177;letter-spacing:.06em}
+  .hx-stagebox{display:flex;gap:14px;margin-top:12px;flex:1;min-height:0}
+  .hx-frame{width:150px;flex:0 0 150px;aspect-ratio:9/16;border-radius:5px;position:relative;
+    background:linear-gradient(180deg,#2b3d4f,#0f1922 62%);overflow:hidden;
+    box-shadow:inset 0 0 26px rgba(0,0,0,.55)}
+  .hx-frame i{position:absolute;left:8px;bottom:6px;font-style:normal;
+    font-family:"JetBrains Mono",monospace;font-size:9px;color:#8a8177}
+  .hx-params{flex:1;min-width:0;display:flex;flex-direction:column}
+  .hx-p{display:flex;justify-content:space-between;padding:7px 0;font-size:11.5px;color:#8a8177;
+    border-bottom:1px solid rgba(255,236,214,.08)}
+  .hx-p span{font-family:"JetBrains Mono",monospace;color:#e3b87f}
+  .hx-prompt{margin-top:9px;font-family:"JetBrains Mono",monospace;font-size:9px;line-height:1.65;
+    color:#6f6860}
+  .hx-prompt b{display:block;color:#9d9488;font-weight:400;letter-spacing:.1em;margin-bottom:4px}
+  .hx-ghost{margin-top:auto;border:1px solid rgba(255,236,214,.16);border-radius:5px;text-align:center;
+    padding:7px 0;font-size:10.5px;color:#bdb4a7}
+  /* 场记态 */
+  .hx-ctx{display:flex;align-items:center;gap:7px;margin-top:10px;padding:6px 9px;
+    border:1px solid rgba(227,184,127,.28);border-radius:5px;background:rgba(227,184,127,.06);
+    font-family:"JetBrains Mono",monospace;font-size:9.5px;color:#c9a878}
+  .hx-ctx b{font-weight:500;color:#e3b87f}
+  .hx-thread{flex:1;min-height:0;overflow:hidden;padding:10px 2px 0;display:flex;flex-direction:column;gap:9px}
+  .hx-msg{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:baseline}
+  .hx-msg .who{font-size:9.5px;color:#7d7468;font-family:"JetBrains Mono",monospace}
+  .hx-msg .who.gold{color:#e3b87f}
+  .hx-msg p{font-size:11.5px;line-height:1.6;color:#cfc8bd}
+  .hx-trace{padding-left:42px;font-family:"JetBrains Mono",monospace;font-size:9.5px;line-height:1.7;
+    color:#6f6860;display:flex;flex-direction:column}
+  .hx-trace b{color:#9a9186;font-weight:400}
+  .hx-prop{border:1px solid rgba(227,184,127,.24);border-radius:6px;background:rgba(227,184,127,.05);
+    padding:9px 10px}
+  .hx-prop-h{font-size:10px;color:#e3b87f;font-family:"JetBrains Mono",monospace;letter-spacing:.04em}
+  .hx-prop-b{font-size:11px;color:#cfc8bd;margin-top:5px;line-height:1.55}
+  .hx-prop-a{display:flex;gap:7px;margin-top:8px}
+  .hx-prop-a span{border-radius:4px;padding:4px 10px;font-size:10px}
+  .hx-prop-a .ok{background:#e3b87f;color:#241d16;font-weight:600}
+  .hx-prop-a .no{border:1px solid rgba(255,236,214,.16);color:#a79e92}
+  .hx-input{display:flex;align-items:center;gap:8px;margin-top:10px;border:1px solid rgba(255,236,214,.16);
+    border-radius:6px;padding:8px 9px;background:rgba(255,236,214,.04)}
+  .hx-input .car{font-family:"JetBrains Mono",monospace;font-size:12px;color:#e3b87f}
+  .hx-input .ph{flex:1;font-size:11px;color:#7d7468}
+  .hx-input .send{width:22px;height:22px;border-radius:4px;display:grid;place-items:center;
+    background:#e3b87f;color:#241d16;font-size:11px}
+  .hx-foot{margin-top:7px;font-family:"JetBrains Mono",monospace;font-size:8.5px;color:#5f5852;
+    display:flex;justify-content:space-between}
+  .phone-wrap{max-width:100%;overflow:hidden}
+  @media (max-width:760px){
+    .row2{grid-template-columns:1fr}
+    .phone{transform:scale(.78);transform-origin:top left;margin-bottom:-167px}
+    .phone-wrap{overflow:visible}
+  }
+</style>
+</head>
+<body>
+
+<div class="qmdp-frame">
+  <span><strong>H 方案 · 场记三态样机</strong>
+    <span class="sub">　产出态 / 场记态 / 窄屏抽屉，是设计样机，不是最终页面</span></span>
+  <span class="sub">成剧 · 2026-10-18</span>
+</div>
+
+<div class="wrap">
+  <div class="row2">
+
+    <!-- 01 产出态 -->
+    <section class="state">
+      <div class="state-head"><span class="n">01</span><h2>产出态（默认）</h2>
+        <p>进来先看到画面与参数</p></div>
+      <div class="mock">
+        <div class="stage hx-stage">
+          <header class="hx-top">
+            <span class="hx-brand">成剧</span><span class="hx-proj">快递员的最后一单</span>
+            <span class="hx-grow"></span>
+            <nav class="hx-steps"><a class="on">01 人物</a><a>02 三幕</a><a>03 分集</a>
+              <a>04 定妆</a><a>05 场景</a><a>06 分镜</a></nav>
+            <span class="hx-run"><i></i>8.2s · 3.1k</span>
+          </header>
+          <div class="hx-body">
+            <section class="hx-left">
+              <span class="hx-k">IDEA → CHARACTERS</span>
+              <p class="hx-idea">一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易<span>　可改后重跑</span></p>
+              <div class="hx-rows">
+                <div class="hx-row"><span class="i">01</span>
+                  <span><b>陈默<small>29 · 城中村</small></b></span>
+                  <p>证明自己不是「送完就走」的人。弧光：从被动接单到主动放弃。</p></div>
+                <div class="hx-row"><span class="i">02</span>
+                  <span><b>苏婉<small>68 · 老城区</small></b></span>
+                  <p>守住一个六十年前的约定。弧光：从体面克制到松口。</p></div>
+                <div class="hx-row"><span class="i">03</span>
+                  <span><b>沈之遥<small>41 · 外地经商</small></b></span>
+                  <p>拿回遗产，也在等父亲先开口。</p></div>
+              </div>
+            </section>
+            <div class="hx-seam"></div>
+            <aside class="hx-deck">
+              <div class="hx-dh">
+                <div class="hx-seg"><span class="on">产出</span><span>场记</span></div>
+                <em>SHOT 01</em>
+              </div>
+              <div class="hx-stagebox">
+                <div class="hx-frame"><i>9:16 · 城郊别墅门外</i></div>
+                <div class="hx-params">
+                  <div class="hx-p">景别 <span>中景</span></div>
+                  <div class="hx-p">画幅 <span>9:16</span></div>
+                  <div class="hx-p">时长 <span>5s</span></div>
+                  <div class="hx-p">运镜 <span>推近</span></div>
+                  <div class="hx-prompt"><b>PROMPT</b>medium shot, man outside an iron gate in heavy rain, cold blue night tones, single warm window glow, cinematic, 9:16</div>
+                  <div class="hx-ghost">重新生成这一镜</div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+      <div class="notes"><ul>
+        <li><b>深舱是默认态</b>：左浅右深，画面和提示词永远长在深色里。</li>
+        <li>舱头一个分段控件「产出 / 场记」，不新增浮层、不再互斥隐藏。</li>
+        <li>顶部仍是六步胶囊 + 运行态 <b>8.2s · 3.1k</b>，进度感靠它承担。</li>
+      </ul></div>
+    </section>
+
+    <!-- 02 场记态 -->
+    <section class="state">
+      <div class="state-head"><span class="n">02</span><h2>场记态</h2>
+        <p>同一个舱，换成对话</p></div>
+      <div class="mock">
+        <div class="stage hx-stage">
+          <header class="hx-top">
+            <span class="hx-brand">成剧</span><span class="hx-proj">快递员的最后一单</span>
+            <span class="hx-grow"></span>
+            <nav class="hx-steps"><a class="on">01 人物</a><a>02 三幕</a><a>03 分集</a>
+              <a>04 定妆</a><a>05 场景</a><a>06 分镜</a></nav>
+            <span class="hx-run"><i></i>8.2s · 3.1k</span>
+          </header>
+          <div class="hx-body">
+            <section class="hx-left">
+              <span class="hx-k">IDEA → CHARACTERS</span>
+              <p class="hx-idea">一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易<span>　可改后重跑</span></p>
+              <div class="hx-rows">
+                <div class="hx-row"><span class="i">01</span>
+                  <span><b>陈默<small>29 · 城中村</small></b></span>
+                  <p>证明自己不是「送完就走」的人。弧光：从被动接单到主动放弃。</p></div>
+                <div class="hx-row"><span class="i">02</span>
+                  <span><b>苏婉<small>68 · 老城区</small></b></span>
+                  <p>守住一个六十年前的约定。弧光：从体面克制到松口。</p></div>
+                <div class="hx-row"><span class="i">03</span>
+                  <span><b>沈之遥<small>41 · 外地经商</small></b></span>
+                  <p>拿回遗产，也在等父亲先开口。</p></div>
+              </div>
+            </section>
+            <div class="hx-seam"></div>
+            <aside class="hx-deck">
+              <div class="hx-dh">
+                <div class="hx-seg"><span>产出</span><span class="on">场记</span></div>
+                <em>8.2s · 3.1k</em>
+              </div>
+              <div class="hx-ctx">正在看 <b>第 3 镜 · 城郊别墅门外</b></div>
+              <div class="hx-thread">
+                <div class="hx-msg"><span class="who">你</span><p>这一镜雨太大了，看不清脸。</p></div>
+                <div class="hx-msg"><span class="who gold">场记</span><p>好，我把雨量调小、镜头推近半档。</p></div>
+                <div class="hx-trace"><span>├ <b>读</b> shots.step03</span><span>└ <b>写</b> shots.step03 ✓</span></div>
+                <div class="hx-prop">
+                  <div class="hx-prop-h">待确认 · 改第 3 镜</div>
+                  <div class="hx-prop-b">雨量 中 → 小　景别 中景 → 近景</div>
+                  <div class="hx-prop-a"><span class="ok">应用</span><span class="no">先不用</span></div>
+                </div>
+                <div class="hx-msg"><span class="who">你</span><p>顺便把这一镜的提示词同步成英文。</p></div>
+                <div class="hx-msg"><span class="who gold">场记</span><p>已同步。要不要把首尾帧也接上？</p></div>
+              </div>
+              <div class="hx-input"><span class="car">›</span>
+                <span class="ph">问进度、改某一镜，或让我重跑第三步…</span><span class="send">↵</span></div>
+              <div class="hx-foot"><span>本轮 2/6 次查询</span><span>13 单位 / 完整流程</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+      <div class="notes"><ul>
+        <li><b>上下文胶囊</b>：点谁就问谁；没选中时是全局问答（进度、导出）。</li>
+        <li><b>工具轨迹</b>用等宽 <code>├ └</code> 缩进，替代气泡——机器在干什么看得见。</li>
+        <li><b>改内容走提案卡</b>：不直接改，应用才写入。沿用现有 confirm 逻辑。</li>
+      </ul></div>
+    </section>
+  </div>
+
+  <!-- 03 窄屏抽屉 -->
+  <section class="state">
+    <div class="state-head"><span class="n">03</span><h2>窄屏抽屉（&lt; 1100px）</h2>
+      <p>同一个场记，改成从底部上滑</p></div>
+    <div style="display:flex;gap:26px;padding:20px;background:#f4f3f0;align-items:flex-start;flex-wrap:wrap">
+      <div class="phone-wrap" style="flex:0 0 auto">
+      <div class="phone" style="width:390px;height:760px;background:#f5f3ef;border-radius:26px;overflow:hidden;
+        box-shadow:0 20px 50px -20px rgba(30,24,18,.45),0 0 0 8px #1b1b1e;position:relative;flex:0 0 390px;
+        display:flex;flex-direction:column;font-family:'Work Sans',system-ui,'PingFang SC',sans-serif;color:#1a1815">
+        <div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px;
+          border-bottom:1px solid rgba(30,24,18,.1)">
+          <span style="font-size:15px;font-weight:700">成剧</span>
+          <span style="font-size:11px;color:#6b645b">快递员的最后一单</span>
+          <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#9a9287">4/5</span>
+        </div>
+        <div style="display:flex;gap:0;padding:9px 12px;border-bottom:1px solid rgba(30,24,18,.08);overflow:hidden">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a1815;font-weight:600;margin-right:9px">01 人物</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#9a9287;margin-right:9px">02 三幕</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#9a9287;margin-right:9px">03 分集</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#9a9287">04 定妆</span>
+        </div>
+        <div style="padding:14px 16px;flex:0 0 auto">
+          <p style="margin:0;font-size:13px;line-height:1.7;color:#3f3a34">
+            一个快递员意外继承了百万遗产，条件是替原主人完成七桩未竟的交易</p>
+          <p style="margin:12px 0 0;font-size:12px;color:#5c554c;line-height:1.6">
+            01 陈默 · 29 城中村<br>证明自己不是「送完就走」的人</p>
+        </div>
+        <!-- 抽屉 -->
+        <div style="margin-top:auto;height:470px;background:linear-gradient(180deg,#17151a,#100e12 72%);
+          border-radius:14px 14px 0 0;padding:10px 14px 12px;display:flex;flex-direction:column;
+          box-shadow:0 -16px 40px -20px rgba(20,14,10,.7);color:#cfc8bd">
+          <div style="width:36px;height:4px;border-radius:2px;background:#3a342d;margin:0 auto 10px"></div>
+          <div style="display:flex;align-items:center;gap:8px;padding-bottom:9px;
+            border-bottom:1px solid rgba(255,236,214,.13)">
+            <div class="hx-seg"><span>产出</span><span class="on">场记</span></div>
+            <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:#8a8177">8.2s · 3.1k</span>
+          </div>
+          <div class="hx-ctx" style="margin-top:9px">正在看 <b>第 3 镜 · 城郊别墅门外</b></div>
+          <div style="flex:1;min-height:0;padding-top:9px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+            <div class="hx-msg"><span class="who">你</span><p>这一镜雨太大了，看不清脸。</p></div>
+            <div class="hx-msg"><span class="who gold">场记</span><p>好，我把雨量调小、镜头推近半档。</p></div>
+            <div class="hx-trace"><span>├ <b>读</b> shots.step03</span><span>└ <b>写</b> shots.step03 ✓</span></div>
+            <div class="hx-prop">
+              <div class="hx-prop-h">待确认 · 改第 3 镜</div>
+              <div class="hx-prop-b">雨量 中 → 小　景别 中景 → 近景</div>
+              <div class="hx-prop-a"><span class="ok">应用</span><span class="no">先不用</span></div>
+            </div>
+          </div>
+          <div class="hx-input"><span class="car">›</span>
+            <span class="ph">问进度、改某一镜…</span><span class="send">↵</span></div>
+          <div class="hx-foot"><span>本轮 2/6 次查询</span><span>13 单位 / 流程</span></div>
+        </div>
+      </div>
+      </div>
+      <div style="flex:1;min-width:280px;font-size:13px;color:#4b5260;line-height:1.75">
+        <p style="margin:0 0 10px"><b style="color:#191b21">收起时只留一行</b></p>
+        <div style="background:#17151a;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;max-width:360px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e3b87f">›</span>
+          <span style="font-size:11px;color:#7d7468;flex:1">问进度、改某一镜…</span>
+          <span style="width:20px;height:20px;border-radius:4px;background:#e3b87f;color:#241d16;
+            display:grid;place-items:center;font-size:10px">↵</span>
+        </div>
+        <p style="margin:12px 0 6px">这条 <b style="color:#191b21">横在屏幕底部、常驻不走的深色输入行</b>，是窄屏下唯一需要保留的 AI 入口：</p>
+        <ul style="margin:0;padding-left:18px">
+          <li>上滑或点它 → 展开成 70vh 的深色面板，左栏内容仍在背后。</li>
+          <li>展开后「产出 / 场记」仍是同一组分段控件，不换第二套导航。</li>
+          <li>收起不丢失会话与滚动位置；发送中收起，回来能看到已到达的内容。</li>
+          <li>输入行永远在拇指区，不等同于全屏弹窗，不打断选角/改文案。</li>
+        </ul>
+        <p style="margin:12px 0 0;color:#6b7280;font-size:12px">窄屏下深舱不再占 38% 宽度，而是变成上下结构：内容在上，场记在下。</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const fit = () => {
+    document.querySelectorAll('.mock').forEach((mock) => {
+      const stage = mock.querySelector('.stage')
+      if (!stage) return
+      const s = mock.clientWidth / 960
+      stage.style.transform = 'scale(' + s + ')'
+      mock.style.height = Math.round(600 * s) + 'px'
+    })
+  }
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(document.querySelector('.wrap'))
+  window.addEventListener('resize', fit)
+  fit()
+})()
+</script>
+</body>
+</html>

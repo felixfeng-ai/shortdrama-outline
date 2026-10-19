@@ -19,17 +19,37 @@ interface Props {
   state: AgentState
   open: boolean
   onOpenChange: (open: boolean) => void
+  /**
+   * floating：原来的左下角浮标 + 浮层；
+   * docked：直接长在 H 的产出舱里（没有浮标，也不再自己定位）。
+   */
+  variant?: 'floating' | 'docked'
+  /** 舱里显示「正在看什么」：当前镜头或当前步骤 */
+  context?: string
+  /** 一轮回答结束（含失败说明）时通知外层，用来点亮未读角标 */
+  onNewMessage?: () => void
   /** 用户确认「改写某一镜」后，页面负责写回去 */
   onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => void
   /** 用户确认「重新生成某一步」后，页面负责触发 */
   onRegenerate: (step: StepKey) => void
 }
 
-/** 对话里的一行：用户 / 助手 / 工具调用 / 待确认卡片 */
+/** 一轮里的一个"过程步骤"（查了什么、拿到什么） */
+interface ProcessStep {
+  label: string
+  /** 原始返回；默认折叠，想看细节才展开 */
+  detail: string
+}
+
+/**
+ * 对话里的一块内容。过程（查了什么）与回答分开建模：
+ * 把工具原始返回直接糊在对话里，用户读到的是 `✗ ✓` 这种机器串——
+ * 那是排障信息，不该是默认视图。
+ */
 type Line =
   | { role: 'user'; text: string }
   | { role: 'assistant'; text: string }
-  | { role: 'tool'; text: string }
+  | { role: 'process'; steps: ProcessStep[] }
   | { role: 'note'; text: string }
   | { role: 'card'; card: AgentCard }
 
@@ -42,7 +62,51 @@ const TOOL_LABEL: Record<string, string> = {
   propose_regenerate: '提议重跑某步',
 }
 
-export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRegenerate }: Props) {
+/**
+ * 过程时间轴：一行一个"查了什么"，原始返回默认折叠。
+ *
+ * 为什么默认折叠：工具返回是给自己看的排障信息（`人物✗ 三幕✗ …`），
+ * 用户要的是结论。想核对的时候点开就行——这也让"它到底查了没"可被验证。
+ */
+function ProcessTrail({ steps }: { steps: ProcessStep[] }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+  return (
+    // 工具轨迹走等宽缩进（├ └），不用左侧竖线——竖线是装饰，缩进才是结构
+    <div className="trail">
+      {steps.map((step, i) => {
+        const last = i === steps.length - 1
+        return (
+          <div key={`${step.label}-${i}`}>
+            <button
+              type="button"
+              onClick={() => step.detail && setOpenIndex(openIndex === i ? null : i)}
+              disabled={!step.detail}
+              className="trail-row"
+            >
+              <span aria-hidden="true" className="trail-mark">{last ? '└' : '├'}</span>
+              <span className="trail-label">{step.label}</span>
+              {step.detail && <span className="trail-more">{openIndex === i ? '−' : '+'}</span>}
+            </button>
+            {openIndex === i && step.detail && (
+              <p className="trail-detail">{step.detail}</p>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function AgentDock({
+  state,
+  open,
+  onOpenChange,
+  variant = 'floating',
+  context,
+  onNewMessage,
+  onApplyCard,
+  onRegenerate,
+}: Props) {
   const [lines, setLines] = useState<Line[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -59,6 +123,31 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
   const push = (line: Line) => {
     setLines((prev) => [...prev, line])
     scrollToEnd()
+  }
+
+  /** 追加一个过程步骤（同一轮里连续的过程合并成一个块） */
+  const pushStep = (step: ProcessStep) => {
+    setLines((prev) => {
+      const last = prev[prev.length - 1]
+      if (last && last.role === 'process') {
+        return [...prev.slice(0, -1), { role: 'process', steps: [...last.steps, step] }]
+      }
+      return [...prev, { role: 'process', steps: [step] }]
+    })
+    scrollToEnd()
+  }
+
+  /** 把最新一步的原始返回补上（默认折叠） */
+  const fillStepDetail = (name: string, detail: string) => {
+    setLines((prev) => {
+      const last = prev[prev.length - 1]
+      if (!last || last.role !== 'process') return prev
+      const steps = last.steps.map((s, i) =>
+        i === last.steps.length - 1 && !s.detail ? { ...s, detail } : s,
+      )
+      void name
+      return [...prev.slice(0, -1), { role: 'process', steps }]
+    })
   }
 
   const send = async () => {
@@ -96,9 +185,9 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
         executors,
         onEvent: (event: LoopEvent) => {
           if (event.type === 'tool-call') {
-            push({ role: 'tool', text: `已读：${TOOL_LABEL[event.name] ?? event.name}` })
+            pushStep({ label: `已读 ${TOOL_LABEL[event.name] ?? event.name}`, detail: '' })
           } else if (event.type === 'tool-result') {
-            push({ role: 'note', text: event.content.slice(0, 160) })
+            fillStepDetail(event.name, event.content.slice(0, 600))
           }
         },
       })
@@ -110,18 +199,20 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
       setBusy(false)
       busyRef.current = false
       scrollToEnd()
+      onNewMessage?.()
     }
   }
 
   return (
     <>
       {/* 左下角图标 */}
+      {variant === 'floating' && (
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
         aria-expanded={open}
         title="AI 场记：问项目进度、怎么导出、或让它改某一镜"
-        className="group fixed bottom-6 left-6 z-40 flex h-12 w-12 items-center justify-center rounded-full
+        className="agent-fab group fixed bottom-6 left-6 z-40 flex h-12 w-12 items-center justify-center rounded-full
           border border-accent-300 bg-surface-card text-accent-700 shadow-surface
           transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-50 hover:shadow-lift"
       >
@@ -140,12 +231,14 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
           <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-accent-500" />
         )}
       </button>
+      )}
 
-      {open && (
+      {(variant === 'docked' || open) && (
         <section
           aria-label="AI 场记"
-          className="panel-in fixed bottom-20 left-6 z-40 flex h-[580px] w-[430px] max-w-[calc(100vw-3rem)] flex-col
-            overflow-hidden rounded-panel border border-surface-line bg-surface-card shadow-lift"
+          className={variant === 'docked'
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+            : 'panel-in fixed bottom-20 left-6 z-40 flex h-[600px] w-[440px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-panel border border-surface-line bg-surface-card shadow-lift'}
         >
           {/* 头部：一条极淡的朱砂渐晕 + 场记身份 + 状态 */}
           <header className="relative flex items-center gap-2.5 border-b border-surface-line px-4 py-3">
@@ -159,23 +252,29 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
             </span>
             <span className="relative min-w-0 flex-1">
               <span className="block font-serif text-sm font-bold leading-tight text-ink-900">AI 场记</span>
-              <span className="block text-[10.5px] leading-tight text-ink-400">
+              <span className="block text-xs leading-tight text-ink-400">
                 {busy ? '正在查资料…' : '知道拍到哪了 · 也会替你去改，改前先问你'}
               </span>
             </span>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="收起场记"
-              className="relative shrink-0 rounded-full p-1.5 text-ink-400 transition-colors hover:bg-surface-soft hover:text-ink-700"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current [stroke-width:1.8] [stroke-linecap:round]">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
+            {variant === 'floating' && (
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                aria-label="收起场记"
+                className="relative shrink-0 rounded-full p-1.5 text-ink-400 transition-colors hover:bg-surface-soft hover:text-ink-700"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current [stroke-width:1.8] [stroke-linecap:round]">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            )}
           </header>
 
-          <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3.5">
+          {variant === 'docked' && context && (
+            <div className="deck-ctx">正在看 <b>{context}</b></div>
+          )}
+
+          <div ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
             {lines.length === 0 && (
               <div className="space-y-2.5">
                 <p className="text-xs text-ink-500">它会先查一眼项目，再回答你：</p>
@@ -192,7 +291,7 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
                       transition-all duration-150 hover:-translate-y-[1px] hover:border-accent-300 hover:bg-accent-50/50"
                   >
                     <span className="block text-xs text-ink-800">{item.q}</span>
-                    <span className="mt-0.5 block text-[10.5px] text-ink-400">{item.hint}</span>
+                    <span className="mt-0.5 block text-xs text-ink-400">{item.hint}</span>
                   </button>
                 ))}
               </div>
@@ -201,51 +300,52 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
             {lines.map((line, i) => {
               if (line.role === 'user') {
                 return (
-                  <p key={i} className="ml-10 rounded-card rounded-br-chip bg-accent-100/80 px-3.5 py-2.5 text-xs leading-relaxed text-ink-800">
-                    {line.text}
-                  </p>
+                  <div key={i} className="msg">
+                    <span className="who">你</span>
+                    <p>{line.text}</p>
+                  </div>
                 )
               }
               if (line.role === 'assistant') {
                 return (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <span
-                      aria-hidden="true"
-                      className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-50 font-serif text-[11px] font-bold text-accent-700"
-                    >
-                      记
-                    </span>
-                    <p className="min-w-0 flex-1 whitespace-pre-wrap rounded-card rounded-bl-chip bg-surface-soft px-3.5 py-2.5 text-xs leading-relaxed text-ink-800">
-                      {line.text}
-                    </p>
+                  <div key={i} className="msg">
+                    <span className="who gold">场记</span>
+                    {/* 分段渲染：模型爱用空行分段，整块 pre-wrap 出来会挤成一坨 */}
+                    <div className="msg-body">
+                      {line.text.split(/\n{2,}/).map((para, j) => (
+                        <p key={j}>
+                          {para.split('\n').map((row, k) => (
+                            <span key={k} className="block">
+                              {row}
+                            </span>
+                          ))}
+                        </p>
+                      ))}
+                    </div>
                   </div>
                 )
               }
-              if (line.role === 'tool') {
-                return (
-                  <p key={i} className="ml-3 flex items-center gap-2 border-l border-accent-200 pl-3 text-[10.5px] text-accent-700">
-                    <span aria-hidden="true" className="-ml-[17px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400" />
-                    {line.text}
-                  </p>
-                )
+              if (line.role === 'process') {
+                return <ProcessTrail key={i} steps={line.steps} />
               }
               if (line.role === 'note') {
                 return (
-                  <p key={i} className="ml-3 border-l border-surface-line pl-3 text-[10.5px] leading-relaxed text-ink-400">
+                  // 引用说明用缩进表达从属，不用左侧竖线（P-38 禁止卡片/列表项左侧竖线装饰）
+                  <p key={i} className="msg-note">
                     {line.text}
                   </p>
                 )
               }
               // 待确认卡片：用户点了才真正改
               return (
-                <div key={i} className="rounded-card border border-accent-200 bg-accent-50/60 px-3 py-2.5">
-                  <p className="text-[11px] font-semibold text-accent-800">
+                <div key={i} className="prop">
+                  <p className="prop-h">
                     {line.card.kind === 'shot-edit' ? `待确认：第 ${line.card.shot} 镜 · ${line.card.summary}` : `待确认：重新生成「${line.card.stepLabel}」`}
                   </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-ink-700">
+                  <p className="prop-b">
                     {line.card.kind === 'shot-edit' ? line.card.text : line.card.reason}
                   </p>
-                  <div className="mt-2 flex gap-2">
+                  <div className="prop-a">
                     <button
                       type="button"
                       onClick={() => {
@@ -253,14 +353,14 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
                         else onRegenerate(line.card.step)
                         push({ role: 'note', text: '已按你的确认执行。' })
                       }}
-                      className="rounded-pill bg-accent-600 px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-accent-700"
+                      className="ok"
                     >
                       确认
                     </button>
                     <button
                       type="button"
                       onClick={() => push({ role: 'note', text: '已忽略这条建议。' })}
-                      className="rounded-pill border border-surface-line px-3 py-1.5 text-[11px] text-ink-600"
+                      className="no"
                     >
                       忽略
                     </button>
@@ -271,7 +371,7 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
           </div>
 
           {degraded && (
-            <p className="border-t border-surface-line px-4 py-2 text-[10.5px] text-ink-400">
+            <p className="border-t border-surface-line px-4 py-2 text-xs text-ink-400">
               本次模型不支持工具调用，只能用对话上下文回答。
             </p>
           )}
@@ -309,7 +409,7 @@ export default function AgentDock({ state, open, onOpenChange, onApplyCard, onRe
               )}
             </button>
           </form>
-          <p className="px-4 pb-3 text-[10px] text-ink-400">
+          <p className="px-4 pb-3 text-[11px] text-ink-400">
             一次完整流程 13 单位；这里的每次提问按模型往返计费，单轮最多 6 次查询。
           </p>
         </section>

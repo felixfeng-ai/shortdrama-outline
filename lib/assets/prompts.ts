@@ -72,6 +72,8 @@ export function buildScenePrompt(idea: string, characters: Character[], episodes
   const epList = episodes
     .map((e) => `第 ${e.number} 集《${e.title}》：${e.synopsis}`)
     .join("\n")
+  // 场次下限跟实际集数走：30/60 集的项目不能还按 10 集的 40-60 场来要求
+  const epCount = Math.max(1, episodes.length)
 
   const system = `${ROLE}
 
@@ -85,7 +87,7 @@ export function buildScenePrompt(idea: string, characters: Character[], episodes
 - 不要引入给定人物之外的新角色
 
 ## 数量要求（最容易做少的地方）
-- **每一集至少拆出 4 场**，10 集就是 40-60 场
+- **每一集至少拆出 4 场**，${epCount} 集就是 ${epCount * 4}-${epCount * 6} 场
 - 一集只给 1 场是错的：一集 1-3 分钟里通常要换 4 次以上的地点或时间
 - 宁可拆细，不要合并：同一地点但时间跳了（「白天」→「当晚」）也要另起一场
 - 拆少了的代价在下游：分镜按「一场 2-5 镜」展开，场次少一半，成片时长就少一半

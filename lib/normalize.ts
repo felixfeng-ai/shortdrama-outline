@@ -76,15 +76,21 @@ export function normalizeActs(raw: unknown): Act[] {
  * 用 Date.now() 的话每次 id 都变，React 会把已经渲染好的卡片全部重挂。
  * 调用方在一次生成开始时取一次 Date.now() 传进来即可。
  */
-export function normalizeEpisodes(raw: unknown, stamp: number = Date.now()): Episode[] {
+export function normalizeEpisodes(
+  raw: unknown,
+  stamp: number = Date.now(),
+  options: { offset?: number; limit?: number } = {},
+): Episode[] {
+  // 分批生成时，第 11 集那一批的数组下标从 0 开始，offset 负责把编号接回全剧
+  const offset = Math.max(0, Math.floor(options.offset ?? 0))
   const list = pickArray(raw, 'episodes')
   const episodes = list
     .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
     .map((item, index) => ({
-      id: `ep-${index}-${stamp}`,
+      id: `ep-${offset + index}-${stamp}`,
       // 集数以数组下标为准，避免模型写错 number 导致界面乱序
-      number: index + 1,
-      title: str(item.title, `第 ${index + 1} 集`),
+      number: offset + index + 1,
+      title: str(item.title, `第 ${offset + index + 1} 集`),
       synopsis: str(item.synopsis, '剧情梗概待补充'),
       hook: str(item.hook, '结尾钩子待补充'),
     }))
@@ -92,5 +98,5 @@ export function normalizeEpisodes(raw: unknown, stamp: number = Date.now()): Epi
   if (episodes.length === 0) {
     throw new AiError('AI 没有生成出有效的分集，请重新生成', 502)
   }
-  return episodes.slice(0, 10)
+  return options.limit === undefined ? episodes : episodes.slice(0, Math.max(0, options.limit))
 }

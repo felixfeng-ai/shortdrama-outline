@@ -1,6 +1,6 @@
-// 第三步：基于人物 + 三幕大纲生成 10 集分集剧情。
+// 第三步：基于人物 + 三幕大纲生成分集剧情（集数由前端选择）。
 //
-// 这一步是三步里唯一走流式的：10 集内容量大，一次性等要几十秒，
+// 这一步是三步里唯一走流式的：分集内容量大，一次性等要几十秒，
 // 用户全程只能看骨架屏。改成分集一集一集地推给前端，边生成边渲染。
 //
 // 事件约定（SSE）：
@@ -13,6 +13,12 @@ import { parseJson, streamChat } from '@/lib/deepseek'
 import { normalizeEpisodes } from '@/lib/normalize'
 import { extractCompleteItems } from '@/lib/partial-json'
 import { buildEpisodePrompt } from '@/lib/prompts'
+import {
+  episodeQuotaUnits,
+  episodeTokenBudget,
+  planEpisodeBatches,
+  readEpisodeCount,
+} from '@/lib/episodes'
 import { readGenre, type Act, type Character, type Episode } from '@/lib/types'
 import { readActs, readCharacters, readIdea } from '@/lib/validate'
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
@@ -20,8 +26,8 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { persistIfProject } from "@/lib/assets/persist"
 
 export const runtime = 'nodejs'
-// 10 集输出量大，给足时间
-export const maxDuration = 180
+// 长集数要分多批写（60 集约 6 批），给足时间
+export const maxDuration = 600
 
 export async function POST(req: Request) {
   // 入参校验失败时流还没建立，按老规矩返回普通 JSON 信封，前端才能读到 error 文案
@@ -30,6 +36,7 @@ export async function POST(req: Request) {
   let acts: Act[]
   let genre: ReturnType<typeof readGenre>
   let projectId: string | null = null
+  let count: number
   try {
     const body = await req.json().catch(() => null)
     idea = readIdea(body?.idea)
@@ -37,6 +44,7 @@ export async function POST(req: Request) {
     acts = readActs(body?.acts, '请先生成三幕大纲，再生成分集剧情')
     genre = readGenre(body?.genre)
     projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
+    count = readEpisodeCount(body?.count)
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -46,16 +54,23 @@ export async function POST(req: Request) {
   // 断裂的事件流而不是可解析的 JSON 信封，错误文案就丢了。
   // 这里单独包一层 try/catch，与上面入参校验的处理方式保持一致。
   try {
-    chargeQuota(getDbForRequest(), identityFromRequest(req), "episodes")
+    // 长集数按批次计价：每 10 集 3 单位，一次扣完，避免流建立后再抛额度错误
+    chargeQuota(
+      getDbForRequest(),
+      identityFromRequest(req),
+      "episodes",
+      Date.now(),
+      episodeQuotaUnits(count),
+    )
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
   }
 
-  const { system, user } = buildEpisodePrompt(idea, characters, acts, genre)
   const encoder = new TextEncoder()
   // 一次生成固定一个时间戳：同一集在多次推送里 id 保持不变，React 才不会重挂卡片
   const stamp = Date.now()
+  const batches = planEpisodeBatches(count)
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -71,29 +86,49 @@ export async function POST(req: Request) {
       }
 
       try {
-        let buffer = ''
-        let emitted = 0
+        // 长集数分批写：每批 10 集，后一批带上前文的标题与梗概，避免重复与断裂
+        const finalEpisodes: Episode[] = []
+        for (const batch of batches) {
+          const batchCount = batch.end - batch.start + 1
+          const { system, user } = buildEpisodePrompt(idea, characters, acts, genre, {
+            start: batch.start,
+            count: batchCount,
+            total: count,
+            previous: finalEpisodes
+              .map((e) => `${e.number}. ${e.title}：${e.synopsis.slice(0, 60)}`)
+              .join('\n'),
+          })
 
-        for await (const delta of streamChat(system, user, {
-          temperature: 0.85,
-          maxTokens: 8000,
-          signal: req.signal,
-        })) {
-          buffer += delta
+          let buffer = ''
+          let emitted = 0
 
-          const { items } = extractCompleteItems(buffer)
-          if (items.length <= emitted) continue
-          emitted = items.length
+          for await (const delta of streamChat(system, user, {
+            temperature: 0.85,
+            maxTokens: episodeTokenBudget(batchCount),
+            signal: req.signal,
+          })) {
+            buffer += delta
 
-          // 每次推全量而不是只推新增的那几集：normalizeEpisodes 按数组下标定集数，
-          // 只喂新增部分的话每批都会从第 1 集重新编号
-          send('episodes', { episodes: normalizeEpisodes(items, stamp) })
+            const { items } = extractCompleteItems(buffer)
+            if (items.length <= emitted) continue
+            emitted = items.length
+
+            // 每次推全量；offset 让第 11 集那批接在全剧编号后面
+            const partial = normalizeEpisodes({ episodes: items }, stamp, {
+              offset: batch.start - 1,
+              limit: batchCount,
+            })
+            send('episodes', { episodes: [...finalEpisodes, ...partial] })
+          }
+
+          const batchEpisodes = normalizeEpisodes(parseJson<unknown>(buffer), stamp, {
+            offset: batch.start - 1,
+            limit: batchCount,
+          })
+          finalEpisodes.push(...batchEpisodes)
+          send('episodes', { episodes: finalEpisodes })
         }
 
-        // 流结束。用完整缓冲区整体解析一次作为最终结果：
-        // 增量扫描只认「已经闭合的对象」，模型若换了外层结构可能一集都抠不出来，
-        // 这一步是兜底，保证拿到的结果和一次性调用时完全一致
-        const finalEpisodes: Episode[] = normalizeEpisodes(parseJson<unknown>(buffer), stamp)
         // 落快照放在流末尾：中途失败不写半份分集，恢复出来的必须是一份完整的分集
         persistIfProject(getDbForRequest(), projectId, 'episodes', finalEpisodes, { kinds: ['acts'] })
         send('done', { episodes: finalEpisodes })
