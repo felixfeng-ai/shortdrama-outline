@@ -9,6 +9,7 @@ import {
   MAX_EPISODE_COUNT,
   clampEpisodeCount,
   episodeQuotaUnits,
+  episodeTimeEstimate,
   episodeTokenBudget,
   planEpisodeBatches,
   projectQuotaUnits,
@@ -107,4 +108,10 @@ test("EP9 起始集夹在 1..120", () => {
   assert.equal(readEpisodeStart(2), 2)
   assert.equal(readEpisodeStart(0), 1)
   assert.equal(readEpisodeStart(999), MAX_EPISODE_COUNT)
+})
+
+test("EP10 长任务耗时估算随集数增长", () => {
+  assert.equal(episodeTimeEstimate(10), "1-2 分钟")
+  assert.equal(episodeTimeEstimate(30), "2-3 分钟")
+  assert.equal(episodeTimeEstimate(60), "4-6 分钟")
 })

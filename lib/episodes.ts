@@ -57,6 +57,13 @@ export function episodeQuotaUnits(count: number): number {
   return planEpisodeBatches(count).length * 3
 }
 
+/** 粗估生成耗时：10 集约 1-2 分钟，30 集约 2-3 分钟，60 集约 4-6 分钟 */
+export function episodeTimeEstimate(count: number): string {
+  const low = Math.max(1, Math.round(count / 15))
+  const high = Math.max(2, Math.round(count / 10))
+  return `${low}-${high} 分钟`
+}
+
 /**
  * 一部完整项目的额度：其余五步固定 10 单位（人物 1 + 三幕 1 + 定妆 2 + 场景 2 + 分镜 4），
  * 分集按批次累加。10 集 = 13（与历史口径一致），30 集 = 19，60 集 = 28。

@@ -32,6 +32,8 @@ interface Props {
   /** 生成完成后把"下一步"提前到步骤头，免得用户滚到底 */
   nextLabel?: string
   onNext?: () => void
+  /** 长任务的成本 / 耗时预期，放在主按钮旁边 */
+  actionHint?: string
   /**
    * 是否显示这一步。一页只放当前步骤（点左栏切换），
    * 传 false 时整段不渲染——它不是被藏起来，而是真的不在 DOM 里。
@@ -68,6 +70,7 @@ export default function StepSection({
   onCancel,
   nextLabel,
   onNext,
+  actionHint,
 }: Props) {
   if (!visible) return null
 
@@ -119,6 +122,9 @@ export default function StepSection({
             >
               {nextLabel} →
             </button>
+          )}
+          {actionHint && (
+            <span className="text-[11px] text-ink-400">{actionHint}</span>
           )}
           <button
             type="button"

@@ -21,7 +21,13 @@ import PacingCurve from '@/components/PacingCurve'
 import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
 import TodoPanel from '@/components/TodoPanel'
 import { buildTodoList } from '@/lib/todo'
-import { DEFAULT_EPISODE_COUNT, MIN_EPISODE_COUNT, clampEpisodeCount } from '@/lib/episodes'
+import {
+  DEFAULT_EPISODE_COUNT,
+  MIN_EPISODE_COUNT,
+  clampEpisodeCount,
+  episodeQuotaUnits,
+  episodeTimeEstimate,
+} from '@/lib/episodes'
 import { EMPTY_BRIEF, briefSignature, isBriefEmpty, readBrief, type CreativeBrief } from '@/lib/brief'
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
 import { EMPTY_LOOK, lookSignature, readLook, type LookBook } from '@/lib/look'
@@ -232,9 +238,20 @@ export default function Home() {
   const [deckOpen, setDeckOpen] = useState(false)
   /** 停在「产出」tab 时收到的新回答数；切到场记即清零 */
   const [agentUnread, setAgentUnread] = useState(0)
+  /** 用户手动点过 tab 之后，不再自动切换 */
+  const tabTouched = useRef(false)
   useEffect(() => {
     if (agentOpen) setAgentUnread(0)
   }, [agentOpen])
+  /*
+    右舱跟随当前步骤：前五步默认场记（那时"产出"只有一块空的分镜位），
+    到分镜步默认产出。按步骤而不是按 shots.length，避免异步加载时闪一下。
+    一旦用户自己点过 tab，就尊重他的选择。
+  */
+  useEffect(() => {
+    if (tabTouched.current) return
+    setAgentOpen(view !== 'shots')
+  }, [view])
   /* 窄屏抽屉：Esc 收起 + 展开时锁住背景滚动 */
   useEffect(() => {
     if (!deckOpen) return
@@ -1809,6 +1826,7 @@ export default function Home() {
               actionLabel="分集"
               onGenerate={generateEpisodes}
               skeletonVariant="episodes"
+              actionHint={`${episodeCount} 集 · 约 ${episodeQuotaUnits(episodeCount)} 单位 · ${episodeTimeEstimate(episodeCount)}`}
             >
               <EpisodeCountPicker
                 value={episodeCount}
@@ -2142,7 +2160,7 @@ export default function Home() {
               aria-selected={!agentOpen}
               aria-controls="deck-pane-output"
               className={`h-deck-tab ${agentOpen ? '' : 'on'}`}
-              onClick={() => setAgentOpen(false)}
+              onClick={() => { tabTouched.current = true; setAgentOpen(false) }}
             >
               产出
             </button>
@@ -2153,7 +2171,7 @@ export default function Home() {
               aria-selected={agentOpen}
               aria-controls="deck-pane-agent"
               className={`h-deck-tab ${agentOpen ? 'on' : ''}`}
-              onClick={() => setAgentOpen(true)}
+              onClick={() => { tabTouched.current = true; setAgentOpen(true) }}
             >
               场记
               {!agentOpen && agentUnread > 0 && (
