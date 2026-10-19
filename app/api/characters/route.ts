@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
+    const variant = body?.variant === 'B' ? 'B' : 'A'
     chargeQuota(getDbForRequest(), identityFromRequest(req), "characters")
 
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
         : buildCharacterPrompt(idea, genre, brief)
 
     // 人物设定需要想象力，温度调高一些
-    const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
+    const raw = await chatJson<unknown>(system, user, { temperature: variant === 'B' ? 0.7 : 1.0 })
     const characters = normalizeCharacters(raw)
 
     /*

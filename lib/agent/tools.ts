@@ -7,6 +7,7 @@
 import type { StepKey } from '../types'
 import type { CreativeBrief } from '../brief'
 import type { JudgmentEntry } from '../judgment-log'
+import { isFlatPacing, pacingHint, pacingSeries } from '../pacing'
 
 export interface AgentShot {
   shot: number
@@ -26,6 +27,7 @@ export interface AgentState {
   hasIdea: boolean
   brief: CreativeBrief
   judgments: JudgmentEntry[]
+  episodes: { number: number; title: string; hook: string; intensity?: number }[]
   completed: Record<StepKey, boolean>
   shots: AgentShot[]
   expiredShots: number
@@ -69,6 +71,11 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
   {
     name: 'audit_shots',
     description: '查分镜的健康状况：共几镜、几镜缺参考图（含镜号与角色名）、几镜提示词掉了角色锚点、几镜标了返修。',
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'review_episodes',
+    description: '只读审片：检查分集的钩子是否缺失/过短，以及整体节奏曲线是否是一条平线。回答「这一版好不好」时用，不要直接改内容。',
     parameters: { type: 'object', properties: {}, required: [] },
   },
   {
@@ -213,6 +220,25 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
       parts.push(state.expiredShots > 0 ? `${state.expiredShots} 个镜头的提示词缺了当前锚点，需要重新生成分镜` : '提示词锚点都对得上')
       parts.push(rework.length > 0 ? `${rework.length} 个镜头标了需返修` : '没有标返修的镜头')
       return { ok: true, content: parts.join('；') + '。' }
+    },
+
+    review_episodes: () => {
+      const eps = state.episodes
+      if (eps.length === 0) {
+        return { ok: true, content: '还没有分集，暂时没有可审的内容。' }
+      }
+      const empty = eps.filter((e) => !e.hook.trim())
+      const short = eps.filter((e) => e.hook.trim() && e.hook.trim().length < 20)
+      const series = pacingSeries(eps)
+      const parts = [`共 ${eps.length} 集`]
+      if (empty.length > 0) {
+        parts.push(`${empty.length} 集没有钩子（第 ${empty.map((e) => e.number).slice(0, 5).join('、')} 集）`)
+      }
+      if (short.length > 0) {
+        parts.push(`${short.length} 集钩子少于 20 字（第 ${short.map((e) => e.number).slice(0, 5).join('、')} 集）`)
+      }
+      parts.push(isFlatPacing(series) ? '强度几乎是一条平线，中段容易掉' : pacingHint(series))
+      return { ok: true, content: parts.filter(Boolean).join('；') + '。' }
     },
 
     get_quota: () => {

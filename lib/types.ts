@@ -29,6 +29,8 @@ export interface Episode {
   title: string // 标题
   synopsis: string // 剧情梗概
   hook: string // 结尾钩子
+  /** 情绪/冲突强度 1-5，由人判断；缺省按 3 处理 */
+  intensity?: number
 }
 
 /**

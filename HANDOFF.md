@@ -21,7 +21,8 @@
 - **判断层 P0（已实现，本地未推送）**：导演意图卡 + 判断日志。
   代码在 `lib/brief.ts` / `lib/judgment-log.ts` / `components/BriefCard.tsx` / `components/JudgmentLogPanel.tsx`；
   意图注入人物、三幕、分集、分镜四步，改意图会让下游标过期。
-- **后续**：P1（关键步骤 A/B、Look Book）、P2（审片人、节奏曲线），见 [JUDGMENT.md](JUDGMENT.md) §6。
+- **判断层 P1/P2（已实现，本地未推送）**：人物/三幕 A/B、视觉宪法、节奏曲线、`review_episodes` 只读审片。
+  首集 A/B 暂缓（流式 + 分批成本高），其余见 [JUDGMENT.md](JUDGMENT.md) §6。
 
 ---
 

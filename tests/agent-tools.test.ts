@@ -15,6 +15,7 @@ function state(over: Partial<AgentState> = {}): AgentState {
     hasIdea: true,
     brief: EMPTY_BRIEF,
     judgments: [],
+    episodes: [],
     completed: { characters: true, acts: false, episodes: false, visuals: false, scenes: false, shots: false },
     shots: [],
     expiredShots: 0,
@@ -117,4 +118,19 @@ test("AT8 未知工具名不抛异常，返回可读的失败", () => {
   const exec = createToolExecutors(state())
   assert.equal(exec["delete-everything"], undefined, "不该存在这种工具")
   assert.equal(exec.propose_regenerate({}).ok, false)
+})
+
+test("AT9 review_episodes 指出缺钩子、短钩子与平线节奏", () => {
+  const exec = createToolExecutors(state({
+    episodes: [
+      { number: 1, title: "一", hook: "太短", intensity: 3 },
+      { number: 2, title: "二", hook: "", intensity: 3 },
+      { number: 3, title: "三", hook: "这个钩子写得足够长，已经超过二十个字符了", intensity: 3 },
+    ],
+  }))
+  const r = exec.review_episodes({})
+  assert.equal(r.ok, true)
+  assert.match(r.content, /1 集没有钩子/)
+  assert.match(r.content, /少于 20 字/)
+  assert.match(r.content, /平线/)
 })

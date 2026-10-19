@@ -15,11 +15,15 @@ import ProjectBar from '@/components/ProjectBar'
 import ReleaseNotice from '@/components/ReleaseNotice'
 import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
+import LookBookCard from '@/components/LookBookCard'
+import VariantPicker from '@/components/VariantPicker'
+import PacingCurve from '@/components/PacingCurve'
 import TodoPanel from '@/components/TodoPanel'
 import { buildTodoList } from '@/lib/todo'
 import { DEFAULT_EPISODE_COUNT, clampEpisodeCount } from '@/lib/episodes'
 import { EMPTY_BRIEF, briefSignature, readBrief, type CreativeBrief } from '@/lib/brief'
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
+import { EMPTY_LOOK, lookSignature, readLook, type LookBook } from '@/lib/look'
 import AgentDock from '@/components/AgentDock'
 import type { AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
@@ -161,6 +165,10 @@ const STEP_ANCHORS: Record<StepKey, string> = {
   shots: 'step-shots',
 }
 
+type VariantSession =
+  | { step: 'characters'; a: Character[]; b: Character[] }
+  | { step: 'acts'; a: Act[]; b: Act[] }
+
 export default function Home() {
   // ── 数据（全部存在内存里，没有数据库）──
   const [idea, setIdea] = useState('')
@@ -285,7 +293,11 @@ export default function Home() {
   /** 创作意图卡 + 判断日志：都是项目级资产，P0 先存本地 */
   const [brief, setBrief] = useState<CreativeBrief>(EMPTY_BRIEF)
   const [judgments, setJudgments] = useState<JudgmentEntry[]>([])
+  const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
+  const [variantSession, setVariantSession] = useState<VariantSession | null>(null)
+  const [variantLoading, setVariantLoading] = useState(false)
   const briefSig = useMemo(() => briefSignature(brief), [brief])
+  const lookSig = useMemo(() => lookSignature(look), [look])
   const briefLoadedFor = useRef<string | null>(null)
 
   useEffect(() => {
@@ -293,11 +305,14 @@ export default function Home() {
     try {
       const briefRaw = window.localStorage.getItem(`chengju:brief:${projectId}`)
       const logRaw = window.localStorage.getItem(`chengju:judgments:${projectId}`)
+      const lookRaw = window.localStorage.getItem(`chengju:look:${projectId}`)
       setBrief(readBrief(briefRaw ? JSON.parse(briefRaw) : null))
       setJudgments(readJudgments(logRaw ? JSON.parse(logRaw) : null))
+      setLook(readLook(lookRaw ? JSON.parse(lookRaw) : null))
     } catch {
       setBrief(EMPTY_BRIEF)
       setJudgments([])
+      setLook(EMPTY_LOOK)
     } finally {
       briefLoadedFor.current = projectId
     }
@@ -308,13 +323,60 @@ export default function Home() {
     try {
       window.localStorage.setItem(`chengju:brief:${projectId}`, JSON.stringify(brief))
       window.localStorage.setItem(`chengju:judgments:${projectId}`, JSON.stringify(judgments))
+      window.localStorage.setItem(`chengju:look:${projectId}`, JSON.stringify(look))
     } catch {
       // 隐私模式写不了，不影响本次生成
     }
-  }, [projectId, brief, judgments])
+  }, [projectId, brief, judgments, look])
 
   const recordJudgment = (step: string, action: string, reason = '') => {
     setJudgments((prev) => appendJudgment(prev, { step, action, reason }))
+  }
+
+  /** 一次出两版，让用户选——这是"判断"最直接的落点 */
+  const requestVariants = async (step: 'characters' | 'acts') => {
+    if (variantLoading) return
+    setVariantLoading(true)
+    setErrors((e) => ({ ...e, [step]: null }))
+    try {
+      const pid = await ensureProject(idea.trim().slice(0, 20))
+      if (step === 'characters') {
+        const base = { idea: idea.trim(), genre: genre.id, projectId: pid, brief }
+        const [a, b] = await Promise.all([
+          postJson<{ characters: Character[] }>('/api/characters', { ...base, variant: 'A' }),
+          postJson<{ characters: Character[] }>('/api/characters', { ...base, variant: 'B' }),
+        ])
+        setVariantSession({ step, a: a.characters, b: b.characters })
+      } else {
+        const base = { idea: idea.trim(), genre: genre.id, characters, projectId: pid, brief }
+        const [a, b] = await Promise.all([
+          postJson<{ acts: Act[] }>('/api/acts', { ...base, variant: 'A' }),
+          postJson<{ acts: Act[] }>('/api/acts', { ...base, variant: 'B' }),
+        ])
+        setVariantSession({ step, a: a.acts, b: b.acts })
+      }
+      setQuotaRefreshKey((n) => n + 1)
+    } catch (error) {
+      setErrors((e) => ({
+        ...e,
+        [step]: error instanceof Error ? error.message : '两版生成失败，请重试',
+      }))
+    } finally {
+      setVariantLoading(false)
+    }
+  }
+
+  const pickVariant = (id: 'A' | 'B', reason: string) => {
+    const session = variantSession
+    if (!session) return
+    if (session.step === 'characters') {
+      setCharacters(id === 'A' ? session.a : session.b)
+    } else {
+      setActs(id === 'A' ? session.a : session.b)
+      setActsBuiltFrom(`${charactersSig}|${briefSig}`)
+    }
+    recordJudgment(session.step, `选定 ${id} 版`, reason)
+    setVariantSession(null)
   }
   /*
     生成中用真实耗时替代「正在加载」四个字。
@@ -1055,14 +1117,14 @@ export default function Home() {
     setErrors((e) => ({ ...e, shots: null }))
     setShots([])
 
-    const builtFrom = `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}`
+    const builtFrom = `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}|${lookSig}`
 
     ;(async () => {
       try {
         const pid = await ensureProject(idea.trim().slice(0, 20))
         await postSse(
           "/api/shots",
-          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts, brief },
+          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts, brief, look },
           (event, data) => {
             if (isCleared(epoch)) return
             const payload = data as { shots?: Shot[] }
@@ -1307,6 +1369,12 @@ export default function Home() {
     hasIdea: idea.trim().length > 0,
     brief,
     judgments,
+    episodes: episodes.map((e) => ({
+      number: e.number,
+      title: e.title,
+      hook: e.hook,
+      intensity: e.intensity,
+    })),
     completed: stepCompleted,
     shots: shots.map((s) => ({
       shot: s.shot,
@@ -1412,6 +1480,40 @@ export default function Home() {
         <main className="h-work">
           <ReleaseNotice />
           <BriefCard value={brief} onChange={setBrief} />
+          {variantSession && (
+            <VariantPicker
+              stepLabel={variantSession.step === 'characters' ? '核心人物' : '三幕大纲'}
+              options={
+                variantSession.step === 'characters'
+                  ? [
+                      {
+                        id: 'A' as const,
+                        title: `${variantSession.a.length} 个角色`,
+                        lines: variantSession.a.map((c) => `${c.name} · ${c.motivation}`),
+                      },
+                      {
+                        id: 'B' as const,
+                        title: `${variantSession.b.length} 个角色`,
+                        lines: variantSession.b.map((c) => `${c.name} · ${c.motivation}`),
+                      },
+                    ]
+                  : [
+                      {
+                        id: 'A' as const,
+                        title: '三幕 A',
+                        lines: variantSession.a.map((a) => `${a.title}：${a.summary.slice(0, 50)}`),
+                      },
+                      {
+                        id: 'B' as const,
+                        title: '三幕 B',
+                        lines: variantSession.b.map((a) => `${a.title}：${a.summary.slice(0, 50)}`),
+                      },
+                    ]
+              }
+              onPick={pickVariant}
+              onCancel={() => setVariantSession(null)}
+            />
+          )}
           <div className="mb-3.5">
             <ProjectBar
                   projects={projects}
@@ -1497,19 +1599,31 @@ export default function Home() {
               onGenerate={generateCharacters}
               skeletonVariant="characters"
               extraAction={
-                characters.length < 5 ? (
+                <>
                   <button
                     type="button"
-                    onClick={addCharacter}
-                    disabled={addingCharacter || status.characters === 'loading'}
-                    className="rounded-chip border border-ink-200 px-3 py-2 text-xs font-medium text-ink-600
-                      transition-colors hover:border-accent-300 hover:bg-accent-50 hover:text-accent-700
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300
-                      disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => { void requestVariants('characters') }}
+                    disabled={variantLoading || status.characters === 'loading'}
+                    title="一次生成两版人物，消耗 2 单位"
+                    className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-2 text-xs font-medium text-accent-700
+                      transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {addingCharacter ? '添加中…' : '+ 添加角色'}
+                    {variantLoading ? '生成两版…' : '两版对比'}
                   </button>
-                ) : null
+                  {characters.length < 5 ? (
+                    <button
+                      type="button"
+                      onClick={addCharacter}
+                      disabled={addingCharacter || status.characters === 'loading'}
+                      className="rounded-chip border border-ink-200 px-3 py-2 text-xs font-medium text-ink-600
+                        transition-colors hover:border-accent-300 hover:bg-accent-50 hover:text-accent-700
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300
+                        disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {addingCharacter ? '添加中…' : '+ 添加角色'}
+                    </button>
+                  ) : null}
+                </>
               }
             >
               <CharacterList
@@ -1538,6 +1652,18 @@ export default function Home() {
               actionLabel="三幕大纲"
               onGenerate={generateActs}
               skeletonVariant="acts"
+              extraAction={
+                <button
+                  type="button"
+                  onClick={() => { void requestVariants('acts') }}
+                  disabled={variantLoading || status.acts === 'loading'}
+                  title="一次生成两版三幕大纲，消耗 2 单位"
+                  className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-2 text-xs font-medium text-accent-700
+                    transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {variantLoading ? '生成两版…' : '两版对比'}
+                </button>
+              }
             >
               {actsStale && staleNotice('人物设定已改动，当前三幕大纲是基于旧人物生成的，建议重新生成一次。')}
               <ActList acts={acts} onChange={setActs} />
@@ -1567,6 +1693,7 @@ export default function Home() {
                 disabled={status.episodes === 'streaming' || status.episodes === 'loading'}
               />
               {episodesStale && staleNotice('上游内容已改动，当前分集是基于旧版本生成的，建议重新生成一次。')}
+              <PacingCurve episodes={episodes} />
               <EpisodeList episodes={episodes} onChange={setEpisodes} />
             </StepSection>
 
@@ -1587,6 +1714,7 @@ export default function Home() {
               onGenerate={generateVisualAnchors}
               skeletonVariant="characters"
             >
+              <LookBookCard value={look} onChange={setLook} />
               {visuals.length > 0 && (
                 <VersionBar
                   stale={visualsBuiltFrom !== charactersSig}
@@ -1660,9 +1788,9 @@ export default function Home() {
             >
               {shots.length > 0 && (
                 <VersionBar
-                  stale={shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}`}
+                  stale={shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}|${lookSig}`}
                   staleReason={
-                    shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}`
+                    shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}|${lookSig}`
                       ? "上游内容已改动"
                       : null
                   }

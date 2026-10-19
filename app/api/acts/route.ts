@@ -23,11 +23,12 @@ export async function POST(req: Request) {
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
+    const variant = body?.variant === 'B' ? 'B' : 'A'
     chargeQuota(getDbForRequest(), identityFromRequest(req), "acts")
 
 
     const { system, user } = buildActPrompt(idea, characters, genre, brief)
-    const raw = await chatJson<unknown>(system, user, { temperature: 0.8 })
+    const raw = await chatJson<unknown>(system, user, { temperature: variant === 'B' ? 0.5 : 0.8 })
     const acts = normalizeActs(raw)
 
     // 落快照，血缘指向人物那一版；刷新后要靠它把大纲恢复出来

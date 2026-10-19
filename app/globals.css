@@ -1091,6 +1091,117 @@
 }
 .jlog-form button:disabled { opacity: 0.45; }
 
+/* ── 两版对比（临时决策面，允许有边界） ── */
+.variants {
+  margin-bottom: 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid rgba(194, 65, 12, 0.22);
+  border-radius: 10px;
+  background: #fbfaf8;
+}
+.variants-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.07);
+}
+.variants-head b { font-size: 13px; color: rgb(var(--c-ink-900)); }
+.variants-sub { flex: 1; font-size: 11.5px; color: rgb(var(--c-ink-400)); }
+.variants-cancel {
+  padding: 3px 10px;
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11.5px;
+  color: rgb(var(--c-ink-500));
+}
+.variants-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 0 10px; }
+.variant {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(20, 20, 20, 0.08);
+  border-radius: 8px;
+  background: #fff;
+}
+.variant-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: rgb(var(--c-ink-900));
+  color: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+.variant-title { margin: 0; font-size: 12.5px; font-weight: 600; color: rgb(var(--c-ink-800)); }
+.variant-lines {
+  flex: 1;
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: rgb(var(--c-ink-600));
+}
+.variant-pick {
+  align-self: flex-start;
+  padding: 5px 14px;
+  border: 1px solid rgb(var(--c-accent-300));
+  border-radius: 6px;
+  background: rgb(var(--c-chip-lead));
+  color: rgb(var(--c-accent-800));
+  font-size: 12px;
+  font-weight: 600;
+}
+.variants-reason {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  color: rgb(var(--c-ink-800));
+}
+@media (max-width: 720px) {
+  .variants-grid { grid-template-columns: 1fr; }
+}
+
+/* ── 节奏曲线 ── */
+.pacing {
+  margin-bottom: 12px;
+  padding: 6px 2px 6px;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.07);
+}
+.pacing-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.pacing-title { font-size: 11.5px; font-weight: 600; color: rgb(var(--c-ink-700)); }
+.pacing-hint {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: rgb(var(--c-ink-400));
+}
+.pacing svg { display: block; width: 100%; height: 44px; }
+.pacing-line {
+  fill: none;
+  stroke: rgb(var(--c-accent-600));
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pacing-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9px;
+  color: rgb(var(--c-ink-300));
+}
+
 /* ── 场记未读角标 ── */
 .h-deck-badge {
   display: inline-grid;

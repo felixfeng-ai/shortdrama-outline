@@ -4,6 +4,7 @@
 
 import { InputError } from './api'
 import { MAX_EPISODE_COUNT } from './episodes'
+import { clampIntensity } from './pacing'
 import { MAX_IDEA_LENGTH, MIN_IDEA_LENGTH, type Act, type ActKey, type Character, type Episode } from './types'
 
 /** 与界面上的上限保持一致：最多 5 个人物、3 幕、每幕 8 个情节点 */
@@ -91,6 +92,8 @@ export function readEpisodes(value: unknown, hint = "请先生成分集剧情"):
       title: clamp(item.title, 60) || `第 ${index + 1} 集`,
       synopsis: clamp(item.synopsis, 1000),
       hook: clamp(item.hook),
+      intensity:
+        typeof item.intensity === 'number' ? clampIntensity(item.intensity) : undefined,
     }))
 
   if (list.length === 0) throw new InputError(hint)

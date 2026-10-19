@@ -37,6 +37,20 @@ export default function EpisodeList({ episodes, onChange }: Props) {
               />
             </div>
 
+            <label className="flex shrink-0 items-center gap-1 text-[10.5px] text-ink-400">
+              强度
+              <select
+                value={episode.intensity ?? 3}
+                onChange={(e) => update(episode.id, { intensity: Number(e.target.value) })}
+                aria-label={`第 ${episode.number} 集强度`}
+                className="rounded-chip border border-surface-line bg-transparent px-1.5 py-0.5 text-[11px] text-ink-700"
+              >
+                {[1, 2, 3, 4, 5].map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+
             <button
               type="button"
               onClick={() => remove(episode.id)}

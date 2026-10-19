@@ -16,6 +16,7 @@ import { normalizeShots } from "@/lib/assets/normalize"
 import { persistIfProject } from "@/lib/assets/persist"
 import { buildShotPrompt } from "@/lib/assets/prompts"
 import { readBrief } from "@/lib/brief"
+import { readLook } from "@/lib/look"
 import { buildPlaceRefMap, buildRefMap } from "@/lib/assets/refs"
 import type { VisualCharacter } from "@/lib/assets/types"
 import { extractCompleteItems } from "@/lib/partial-json"
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
   let genre: ReturnType<typeof readGenre>
   let projectId: string | null
   let brief: ReturnType<typeof readBrief>
+  let look: ReturnType<typeof readLook>
   /** 地点名 -> 地点锚点串，整形时按 place 精确匹配 */
   const placeMap = new Map<string, string>()
   try {
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
     projectId = typeof body?.projectId === "string" ? body.projectId : null
     genre = readGenre(body?.genre)
     brief = readBrief(body?.brief)
+    look = readLook(body?.look)
     // 地点锚点表：只认 name + anchor 都在的记录，缺一个就跳过——
     // 挂不上锚点比挂错锚点安全
     for (const p of (Array.isArray(body?.places) ? body.places : [])) {
@@ -78,7 +81,7 @@ export async function POST(req: Request) {
     return NextResponse.json(body, { status })
   }
 
-  const { system, user } = buildShotPrompt(idea, scenes as never, visuals, acts, genre, brief)
+  const { system, user } = buildShotPrompt(idea, scenes as never, visuals, acts, genre, brief, look)
   const encoder = new TextEncoder()
   // 一次生成固定一个 stamp：同一镜在多次推送里 id 保持不变，React 才不会重挂卡片
   const stamp = Date.now()

@@ -56,6 +56,7 @@ type Line =
 const TOOL_LABEL: Record<string, string> = {
   get_project_status: '读项目状态',
   audit_shots: '查分镜',
+  review_episodes: '审分集',
   get_quota: '查额度',
   search_docs: '查文档',
   propose_shot_edit: '提议改写镜头',
