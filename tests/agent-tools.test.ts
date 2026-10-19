@@ -2,6 +2,7 @@
 import assert from "node:assert/strict"
 
 import { AGENT_TOOL_SCHEMAS, createToolExecutors, type AgentState } from "../lib/agent/tools.ts"
+import { EMPTY_BRIEF } from "../lib/brief.ts"
 
 // ── AT 工具层 ──
 //
@@ -12,6 +13,8 @@ function state(over: Partial<AgentState> = {}): AgentState {
   return {
     projectTitle: "别墅夜戏",
     hasIdea: true,
+    brief: EMPTY_BRIEF,
+    judgments: [],
     completed: { characters: true, acts: false, episodes: false, visuals: false, scenes: false, shots: false },
     shots: [],
     expiredShots: 0,

@@ -18,10 +18,10 @@
 - **窄屏 ≤920px**：右舱折成底部抽屉，收起 58px、展开 72dvh。
 - **分集**：10 / 30 / 60 + 自定义 6–120，每 10 集一批生成，额度按批扣（每 10 集 3 单位）。
 - **文档**：`DESIGN.md`（设计系统）、`AGENT.md`（场记规格）、`specs/episode-count/spec.md`（集数能力规格）。
-- **下一个方向（未实现）**：[JUDGMENT.md](JUDGMENT.md) 的判断层。
-  P0 = 导演意图卡 + 判断日志；规格见 [specs/intent-card/spec.md](specs/intent-card/spec.md)
-  与 [specs/judgment-log/spec.md](specs/judgment-log/spec.md)。
-  竞品与可行性验证已补进 JUDGMENT.md §8（2026-10-19）。
+- **判断层 P0（已实现，本地未推送）**：导演意图卡 + 判断日志。
+  代码在 `lib/brief.ts` / `lib/judgment-log.ts` / `components/BriefCard.tsx` / `components/JudgmentLogPanel.tsx`；
+  意图注入人物、三幕、分集、分镜四步，改意图会让下游标过期。
+- **后续**：P1（关键步骤 A/B、Look Book）、P2（审片人、节奏曲线），见 [JUDGMENT.md](JUDGMENT.md) §6。
 
 ---
 

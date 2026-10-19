@@ -7,6 +7,7 @@
 // 实测返回 400 "This response_format type is unavailable now"。
 // 因此这里用 json_object + prompt 内嵌字段约束，并在 normalize 阶段做后校验
 // （见 lib/assets/normalize.ts 的锚点强制注入）。
+import { briefPromptBlock, type CreativeBrief } from '../brief.ts'
 import type { Act, Character, Episode, Genre } from "../types.ts"
 import { genreClause } from "../prompts.ts"
 import { CAMERA_MOVES, SHOT_SIZES, type Scene, type VisualCharacter } from "./types.ts"
@@ -145,6 +146,7 @@ export function buildShotPrompt(
   visuals: VisualCharacter[],
   acts: Act[] = [],
   genre?: Genre,
+  brief?: CreativeBrief,
 ) {
   const roster = visuals
     .map((v) => `- ${v.name}：${v.anchor || "（未设定视觉锚点）"}`)
@@ -223,7 +225,7 @@ ${structure}
 ${sceneList}
 
 请把这些场次拆成镜头。`
-  return { system, user }
+  return { system: system + briefPromptBlock(brief), user }
 }
 
 /** 出图提示词：给定锚点，产出中英双语的角色定妆图提示词（纯文本，不调图像 API） */

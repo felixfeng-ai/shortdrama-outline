@@ -5,6 +5,8 @@
 //   2. 能"写"的只有 propose_*，它们只返回一张待确认卡片（AgentCard），
 //      落库由用户点确认后走既有链路完成。这是版本与血缘不被打散的保障。
 import type { StepKey } from '../types'
+import type { CreativeBrief } from '../brief'
+import type { JudgmentEntry } from '../judgment-log'
 
 export interface AgentShot {
   shot: number
@@ -22,6 +24,8 @@ export interface AgentShot {
 export interface AgentState {
   projectTitle: string
   hasIdea: boolean
+  brief: CreativeBrief
+  judgments: JudgmentEntry[]
   completed: Record<StepKey, boolean>
   shots: AgentShot[]
   expiredShots: number
@@ -172,10 +176,26 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
     .join(' ')
 
   return {
-    get_project_status: () => ({
-      ok: true,
-      content: `项目『${state.projectTitle || '未命名'}』：${stepLine}。分镜共 ${state.shots.length} 镜。`,
-    }),
+    get_project_status: () => {
+      const b = state.brief
+      const briefLine = [b.emotion, b.audience, b.references].filter(Boolean).length > 0 || b.redline
+        ? `创作意图：${[b.emotion, b.audience, b.references].filter(Boolean).join(' · ') || '（未填情绪/观众）'}${b.redline ? `；不要变成：${b.redline}` : ''}`
+        : ''
+      const logLine = state.judgments.length > 0
+        ? `最近的判断：${state.judgments
+            .slice(-3)
+            .map((j) => `${j.action}${j.reason ? `（${j.reason}）` : ''}`)
+            .join('；')}`
+        : ''
+      return {
+        ok: true,
+        content: [
+          `项目『${state.projectTitle || '未命名'}』：${stepLine}。分镜共 ${state.shots.length} 镜。`,
+          briefLine,
+          logLine,
+        ].filter(Boolean).join('\n'),
+      }
+    },
 
     audit_shots: () => {
       if (state.shots.length === 0) {

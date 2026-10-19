@@ -13,9 +13,13 @@ import AssistantDock from '@/components/AssistantDock'
 import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
 import ReleaseNotice from '@/components/ReleaseNotice'
+import BriefCard from '@/components/BriefCard'
+import JudgmentLogPanel from '@/components/JudgmentLogPanel'
 import TodoPanel from '@/components/TodoPanel'
 import { buildTodoList } from '@/lib/todo'
 import { DEFAULT_EPISODE_COUNT, clampEpisodeCount } from '@/lib/episodes'
+import { EMPTY_BRIEF, briefSignature, readBrief, type CreativeBrief } from '@/lib/brief'
+import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
 import AgentDock from '@/components/AgentDock'
 import type { AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
@@ -277,6 +281,41 @@ export default function Home() {
     if (status.episodes === 'streaming' || status.episodes === 'loading') return
     setEpisodeCount(clampEpisodeCount(episodes.length))
   }, [episodes.length, status.episodes])
+
+  /** 创作意图卡 + 判断日志：都是项目级资产，P0 先存本地 */
+  const [brief, setBrief] = useState<CreativeBrief>(EMPTY_BRIEF)
+  const [judgments, setJudgments] = useState<JudgmentEntry[]>([])
+  const briefSig = useMemo(() => briefSignature(brief), [brief])
+  const briefLoadedFor = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId || briefLoadedFor.current === projectId) return
+    try {
+      const briefRaw = window.localStorage.getItem(`chengju:brief:${projectId}`)
+      const logRaw = window.localStorage.getItem(`chengju:judgments:${projectId}`)
+      setBrief(readBrief(briefRaw ? JSON.parse(briefRaw) : null))
+      setJudgments(readJudgments(logRaw ? JSON.parse(logRaw) : null))
+    } catch {
+      setBrief(EMPTY_BRIEF)
+      setJudgments([])
+    } finally {
+      briefLoadedFor.current = projectId
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    if (!projectId || briefLoadedFor.current !== projectId) return
+    try {
+      window.localStorage.setItem(`chengju:brief:${projectId}`, JSON.stringify(brief))
+      window.localStorage.setItem(`chengju:judgments:${projectId}`, JSON.stringify(judgments))
+    } catch {
+      // 隐私模式写不了，不影响本次生成
+    }
+  }, [projectId, brief, judgments])
+
+  const recordJudgment = (step: string, action: string, reason = '') => {
+    setJudgments((prev) => appendJudgment(prev, { step, action, reason }))
+  }
   /*
     生成中用真实耗时替代「正在加载」四个字。
     这是双舱里"机器在干活"的证据，所以必须是真实的秒数，不写假数字。
@@ -389,13 +428,28 @@ export default function Home() {
   }
 
   // 上游改过之后，下游结果就是基于旧版本生成的
-  const actsStale = hasActs && actsBuiltFrom !== charactersSig
-  const episodesStale = hasEpisodes && episodesBuiltFrom !== `${charactersSig}|${actsSig}`
+  const actsStale = hasActs && actsBuiltFrom !== `${charactersSig}|${briefSig}`
+  const episodesStale = hasEpisodes && episodesBuiltFrom !== `${charactersSig}|${actsSig}|${briefSig}`
 
   const isCleared = (epoch: number) => resetEpoch.current !== epoch
 
   // ── 通用：跑一个步骤，统一处理 loading / error / 被清空 ──
+  /*
+    不能只看 status —— 恢复历史项目时内容已经在，但 status 仍是 idle。
+    判断日志要按"有没有内容"来决定这是首次生成还是重新生成。
+  */
+  const stepHasContent = (step: StepKey): boolean => {
+    if (step === 'characters') return characters.length > 0
+    if (step === 'acts') return acts.length > 0
+    if (step === 'episodes') return episodes.length > 0
+    if (step === 'visuals') return visuals.length > 0
+    if (step === 'scenes') return scenes.length > 0
+    return shots.length > 0
+  }
+
   async function runStep<T>(step: StepKey, task: () => Promise<T>, onSuccess: (data: T) => void) {
+    // 已经有结果时再点，就是一次"重新生成"——自动留一条判断记录
+    if (stepHasContent(step)) recordJudgment(step, '重新生成')
     const epoch = resetEpoch.current
     // 每个长任务一个 controller：用户点「停止」时中断这一跑，不动别的
     const controller = new AbortController()
@@ -440,7 +494,7 @@ export default function Home() {
         const pid = await ensureProject(idea.trim().slice(0, 20))
         return postJson<{ characters: Character[] }>(
           '/api/characters',
-          { idea: idea.trim(), genre: genre.id, projectId: pid },
+          { idea: idea.trim(), genre: genre.id, projectId: pid, brief },
           abortRef.current?.signal,
         )
       },
@@ -449,6 +503,7 @@ export default function Home() {
 
   /** 只换掉某一个角色 */
   const regenerateCharacter = async (id: string) => {
+    recordJudgment('characters', '换一个角色')
     const epoch = resetEpoch.current
     setRegeneratingId(id)
     setErrors((e) => ({ ...e, characters: null }))
@@ -458,6 +513,7 @@ export default function Home() {
         genre: genre.id,
         mode: 'single',
         existing: characters.filter((c) => c.id !== id),
+        brief,
       })
       if (isCleared(epoch)) return
       const fresh = data.characters[0]
@@ -483,6 +539,7 @@ export default function Home() {
         genre: genre.id,
         mode: 'single',
         existing: characters,
+        brief,
       })
       if (isCleared(epoch)) return
       const fresh = data.characters[0]
@@ -504,13 +561,13 @@ export default function Home() {
         const pid = await ensureProject(idea.trim().slice(0, 20))
         return postJson<{ acts: Act[] }>(
           '/api/acts',
-          { idea: idea.trim(), genre: genre.id, characters, projectId: pid },
+          { idea: idea.trim(), genre: genre.id, characters, projectId: pid, brief },
           abortRef.current?.signal,
         )
       },
       ({ acts: list }) => {
         setActs(list)
-        setActsBuiltFrom(charactersSig) // 记下这批大纲是基于哪一版人物生成的
+        setActsBuiltFrom(`${charactersSig}|${briefSig}`) // 记下这批大纲基于哪版人物与哪版意图
       },
     )
 
@@ -518,8 +575,9 @@ export default function Home() {
   // 这里不复用 runStep：它的 task 只在全部完成时返回一次结果，
   // 而流式需要在接收过程中就反复更新界面。
   const generateEpisodes = async () => {
+    if (episodes.length > 0) recordJudgment('episodes', '重新生成分集')
     const epoch = resetEpoch.current
-    const builtFrom = `${charactersSig}|${actsSig}`
+    const builtFrom = `${charactersSig}|${actsSig}|${briefSig}`
 
     setStatus((s) => ({ ...s, episodes: 'streaming' }))
     setErrors((e) => ({ ...e, episodes: null }))
@@ -531,7 +589,7 @@ export default function Home() {
     abortRef.current = controller
     try {
       const pid = await ensureProject(idea.trim().slice(0, 20))
-      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid, count: episodeCount }, (event, data) => {
+      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid, count: episodeCount, brief }, (event, data) => {
         if (isCleared(epoch)) return
         if (event !== 'episodes' && event !== 'done') return
 
@@ -989,6 +1047,7 @@ export default function Home() {
 
   // ── 分镜（SSE 流式，复用现有 postSse）─────────────────────────
   const generateShotList = () => {
+    if (shots.length > 0) recordJudgment('shots', '重新生成分镜')
     const epoch = resetEpoch.current
     const controller = new AbortController()
     abortRef.current = controller
@@ -996,14 +1055,14 @@ export default function Home() {
     setErrors((e) => ({ ...e, shots: null }))
     setShots([])
 
-    const builtFrom = `${charactersSig}|${JSON.stringify(scenes)}`
+    const builtFrom = `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}`
 
     ;(async () => {
       try {
         const pid = await ensureProject(idea.trim().slice(0, 20))
         await postSse(
           "/api/shots",
-          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts },
+          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts, brief },
           (event, data) => {
             if (isCleared(epoch)) return
             const payload = data as { shots?: Shot[] }
@@ -1246,6 +1305,8 @@ export default function Home() {
   const agentState: AgentState = {
     projectTitle: projects.find((p) => p.id === projectId)?.title ?? idea.trim().slice(0, 20),
     hasIdea: idea.trim().length > 0,
+    brief,
+    judgments,
     completed: stepCompleted,
     shots: shots.map((s) => ({
       shot: s.shot,
@@ -1350,6 +1411,7 @@ export default function Home() {
       <div className="h-main">
         <main className="h-work">
           <ReleaseNotice />
+          <BriefCard value={brief} onChange={setBrief} />
           <div className="mb-3.5">
             <ProjectBar
                   projects={projects}
@@ -1397,6 +1459,10 @@ export default function Home() {
                 hasIdea: idea.trim().length > 0,
               })}
               onGo={goToStep}
+            />
+            <JudgmentLogPanel
+              entries={judgments}
+              onAdd={(reason) => recordJudgment('manual', '手记', reason)}
             />
             {/* 轻提示：已恢复上次项目、已停止这一步——都是说明，不是错误 */}
             {notice && (
@@ -1594,9 +1660,9 @@ export default function Home() {
             >
               {shots.length > 0 && (
                 <VersionBar
-                  stale={shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}`}
+                  stale={shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}`}
                   staleReason={
-                    shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}`
+                    shotsBuiltFrom !== `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}`
                       ? "上游内容已改动"
                       : null
                   }

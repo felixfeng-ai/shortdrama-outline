@@ -8,6 +8,7 @@ import { readGenre } from '@/lib/types'
 import { chatJson } from '@/lib/deepseek'
 import { normalizeCharacters } from '@/lib/normalize'
 import { buildCharacterPrompt, buildSingleCharacterPrompt } from '@/lib/prompts'
+import { readBrief } from '@/lib/brief'
 import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
@@ -28,11 +29,14 @@ export async function POST(req: Request) {
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
     const genre = readGenre(body?.genre)
+    const brief = readBrief(body?.brief)
     chargeQuota(getDbForRequest(), identityFromRequest(req), "characters")
 
 
     const { system, user } =
-      mode === 'single' ? buildSingleCharacterPrompt(idea, existing, genre) : buildCharacterPrompt(idea, genre)
+      mode === 'single'
+        ? buildSingleCharacterPrompt(idea, existing, genre, brief)
+        : buildCharacterPrompt(idea, genre, brief)
 
     // 人物设定需要想象力，温度调高一些
     const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })

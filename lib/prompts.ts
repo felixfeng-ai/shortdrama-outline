@@ -5,6 +5,7 @@
 // 注意带 .ts 后缀：这个文件现在要 import 值（GENRES），
 // 测试跑的是 node 原生 ESM，解析器不猜扩展名（写 './types' 会 ERR_MODULE_NOT_FOUND）
 import { GENRES, type Act, type Character, type Genre } from './types.ts'
+import { briefPromptBlock, type CreativeBrief } from './brief.ts'
 
 /** 三步共用的角色设定，保证输出口径一致 */
 const MAX_IDEAS = 3
@@ -110,7 +111,7 @@ ${pickable.length > 0 ? `
 
 // ─────────────────────── 第一步：核心人物 ───────────────────────
 
-export function buildCharacterPrompt(idea: string, genre?: Genre) {
+export function buildCharacterPrompt(idea: string, genre?: Genre, brief?: CreativeBrief) {
   const system = `${ROLE}
 
 你的任务：根据用户的一句话故事想法，设计 3-5 个核心角色。
@@ -138,14 +139,19 @@ export function buildCharacterPrompt(idea: string, genre?: Genre) {
   const user = `故事想法：${idea}
 
 请设计 3-5 个核心角色。注意：角色要能撑起整部剧的冲突，动机之间要互相咬合。`
-  return { system, user }
+  return { system: system + briefPromptBlock(brief), user }
 }
 
 /**
  * 第一步的变体：只重新生成一个角色。
  * 用在「某个角色不满意，单独换一个」的场景，会要求新角色与现有阵容互补。
  */
-export function buildSingleCharacterPrompt(idea: string, existing: Character[], genre?: Genre) {
+export function buildSingleCharacterPrompt(
+  idea: string,
+  existing: Character[],
+  genre?: Genre,
+  brief?: CreativeBrief,
+) {
   const roster =
     existing.length > 0
       ? existing.map((c) => `- ${c.name}（${c.identity}）：动机是「${c.motivation}」`).join('\n')
@@ -182,12 +188,17 @@ export function buildSingleCharacterPrompt(idea: string, existing: Character[], 
 ${roster}
 
 请补充 1 个与上述角色能产生冲突的新角色。`
-  return { system, user }
+  return { system: system + briefPromptBlock(brief), user }
 }
 
 // ─────────────────────── 第二步：三幕大纲 ───────────────────────
 
-export function buildActPrompt(idea: string, characters: Character[], genre?: Genre) {
+export function buildActPrompt(
+  idea: string,
+  characters: Character[],
+  genre?: Genre,
+  brief?: CreativeBrief,
+) {
   const roster = characters
     .map((c) => `- ${c.name}（${c.identity}）：动机是「${c.motivation}」；弧光是「${c.arc}」`)
     .join('\n')
@@ -228,7 +239,7 @@ export function buildActPrompt(idea: string, characters: Character[], genre?: Ge
 ${roster}
 
 请基于以上人物，写出三幕大纲。`
-  return { system, user }
+  return { system: system + briefPromptBlock(brief), user }
 }
 
 // ─────────────────────── 第三步：分集剧情 ───────────────────────
@@ -242,6 +253,8 @@ export interface EpisodePromptOptions {
   total?: number
   /** 已生成部分的剧情摘要，供后续批次承接 */
   previous?: string
+  /** 导演意图卡 */
+  brief?: CreativeBrief
 }
 
 export function buildEpisodePrompt(
@@ -319,5 +332,5 @@ ${roster}
 ${structure}
 
 请基于以上内容，生成 ${count} 集分集剧情。`
-  return { system, user }
+  return { system: system + briefPromptBlock(options.brief), user }
 }

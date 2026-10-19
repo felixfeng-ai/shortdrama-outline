@@ -13,6 +13,7 @@ import { parseJson, streamChat } from '@/lib/deepseek'
 import { normalizeEpisodes } from '@/lib/normalize'
 import { extractCompleteItems } from '@/lib/partial-json'
 import { buildEpisodePrompt } from '@/lib/prompts'
+import { readBrief } from '@/lib/brief'
 import {
   episodeQuotaUnits,
   episodeTokenBudget,
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   let genre: ReturnType<typeof readGenre>
   let projectId: string | null = null
   let count: number
+  let brief: ReturnType<typeof readBrief>
   try {
     const body = await req.json().catch(() => null)
     idea = readIdea(body?.idea)
@@ -45,6 +47,7 @@ export async function POST(req: Request) {
     genre = readGenre(body?.genre)
     projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
     count = readEpisodeCount(body?.count)
+    brief = readBrief(body?.brief)
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -94,6 +97,7 @@ export async function POST(req: Request) {
             start: batch.start,
             count: batchCount,
             total: count,
+            brief,
             previous: finalEpisodes
               .map((e) => `${e.number}. ${e.title}：${e.synopsis.slice(0, 60)}`)
               .join('\n'),
