@@ -13,6 +13,7 @@ import {
   planEpisodeBatches,
   projectQuotaUnits,
   readEpisodeCount,
+  readEpisodeStart,
 } from "../lib/episodes.ts"
 import type { Act, Character } from "../lib/types.ts"
 
@@ -100,4 +101,10 @@ test("EP8 一部完整项目的额度随集数变化：10/30/60 = 13/19/28", () 
   assert.equal(projectQuotaUnits(10), 13)
   assert.equal(projectQuotaUnits(30), 19)
   assert.equal(projectQuotaUnits(60), 28)
+})
+
+test("EP9 起始集夹在 1..120", () => {
+  assert.equal(readEpisodeStart(2), 2)
+  assert.equal(readEpisodeStart(0), 1)
+  assert.equal(readEpisodeStart(999), MAX_EPISODE_COUNT)
 })

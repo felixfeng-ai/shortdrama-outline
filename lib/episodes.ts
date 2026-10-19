@@ -24,6 +24,13 @@ export function readEpisodeCount(value: unknown, fallback = DEFAULT_EPISODE_COUN
   return Number.isFinite(n) ? clampEpisodeCount(n) : fallback
 }
 
+/** 从第几集开始（1-based）；用于"先定第一集，再生成其余" */
+export function readEpisodeStart(value: unknown, fallback = 1): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(MAX_EPISODE_COUNT, Math.max(1, Math.round(n)))
+}
+
 export interface EpisodeBatch {
   start: number
   end: number

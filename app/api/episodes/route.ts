@@ -19,6 +19,7 @@ import {
   episodeTokenBudget,
   planEpisodeBatches,
   readEpisodeCount,
+  readEpisodeStart,
 } from '@/lib/episodes'
 import { readGenre, type Act, type Character, type Episode } from '@/lib/types'
 import { readActs, readCharacters, readIdea } from '@/lib/validate'
@@ -39,6 +40,10 @@ export async function POST(req: Request) {
   let projectId: string | null = null
   let count: number
   let brief: ReturnType<typeof readBrief>
+  let start: number
+  let total: number
+  let preview: boolean
+  let variant: 'A' | 'B'
   try {
     const body = await req.json().catch(() => null)
     idea = readIdea(body?.idea)
@@ -48,6 +53,10 @@ export async function POST(req: Request) {
     projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
     count = readEpisodeCount(body?.count)
     brief = readBrief(body?.brief)
+    start = readEpisodeStart(body?.start)
+    total = readEpisodeCount(body?.total ?? start + count - 1, start + count - 1)
+    preview = body?.preview === true
+    variant = body?.variant === 'B' ? 'B' : 'A'
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -63,7 +72,7 @@ export async function POST(req: Request) {
       identityFromRequest(req),
       "episodes",
       Date.now(),
-      episodeQuotaUnits(count),
+      preview ? 1 : episodeQuotaUnits(count),
     )
   } catch (error) {
     const { body, status } = errorResponse(error)
@@ -73,7 +82,10 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder()
   // 一次生成固定一个时间戳：同一集在多次推送里 id 保持不变，React 才不会重挂卡片
   const stamp = Date.now()
-  const batches = planEpisodeBatches(count)
+  const batches = planEpisodeBatches(count).map((b) => ({
+    start: b.start + start - 1,
+    end: b.end + start - 1,
+  }))
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -96,7 +108,7 @@ export async function POST(req: Request) {
           const { system, user } = buildEpisodePrompt(idea, characters, acts, genre, {
             start: batch.start,
             count: batchCount,
-            total: count,
+            total,
             brief,
             previous: finalEpisodes
               .map((e) => `${e.number}. ${e.title}：${e.synopsis.slice(0, 60)}`)
@@ -107,7 +119,7 @@ export async function POST(req: Request) {
           let emitted = 0
 
           for await (const delta of streamChat(system, user, {
-            temperature: 0.85,
+            temperature: variant === 'B' ? 0.7 : 0.85,
             maxTokens: episodeTokenBudget(batchCount),
             signal: req.signal,
           })) {

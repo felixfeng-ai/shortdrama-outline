@@ -20,7 +20,7 @@ import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
 import TodoPanel from '@/components/TodoPanel'
 import { buildTodoList } from '@/lib/todo'
-import { DEFAULT_EPISODE_COUNT, clampEpisodeCount } from '@/lib/episodes'
+import { DEFAULT_EPISODE_COUNT, MIN_EPISODE_COUNT, clampEpisodeCount } from '@/lib/episodes'
 import { EMPTY_BRIEF, briefSignature, readBrief, type CreativeBrief } from '@/lib/brief'
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
 import { EMPTY_LOOK, lookSignature, readLook, type LookBook } from '@/lib/look'
@@ -168,6 +168,7 @@ const STEP_ANCHORS: Record<StepKey, string> = {
 type VariantSession =
   | { step: 'characters'; a: Character[]; b: Character[] }
   | { step: 'acts'; a: Act[]; b: Act[] }
+  | { step: 'first-episode'; a: Episode[]; b: Episode[] }
 
 export default function Home() {
   // ── 数据（全部存在内存里，没有数据库）──
@@ -285,7 +286,8 @@ export default function Home() {
     流式生成期间不同步——否则一集集到达时会把用户刚选的 60 集改回 3、5、8…
   */
   useEffect(() => {
-    if (episodes.length === 0) return
+    // 少于下限时不要回写：第一集 A/B 选完后只剩 1 集，会把集数误改成 6
+    if (episodes.length < MIN_EPISODE_COUNT) return
     if (status.episodes === 'streaming' || status.episodes === 'loading') return
     setEpisodeCount(clampEpisodeCount(episodes.length))
   }, [episodes.length, status.episodes])
@@ -296,6 +298,8 @@ export default function Home() {
   const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
   const [variantSession, setVariantSession] = useState<VariantSession | null>(null)
   const [variantLoading, setVariantLoading] = useState(false)
+  /** 用户选定的第一集：后续生成从第 2 集接着写 */
+  const [episodeSeed, setEpisodeSeed] = useState<Episode | null>(null)
   const briefSig = useMemo(() => briefSignature(brief), [brief])
   const lookSig = useMemo(() => lookSignature(look), [look])
   const briefLoadedFor = useRef<string | null>(null)
@@ -369,6 +373,14 @@ export default function Home() {
   const pickVariant = (id: 'A' | 'B', reason: string) => {
     const session = variantSession
     if (!session) return
+    if (session.step === 'first-episode') {
+      const chosen = id === 'A' ? session.a[0] : session.b[0]
+      setEpisodeSeed(chosen)
+      setEpisodes([chosen])
+      recordJudgment('episodes', `选定第一集 ${id} 版`, reason)
+      setVariantSession(null)
+      return
+    }
     if (session.step === 'characters') {
       setCharacters(id === 'A' ? session.a : session.b)
     } else {
@@ -377,6 +389,54 @@ export default function Home() {
     }
     recordJudgment(session.step, `选定 ${id} 版`, reason)
     setVariantSession(null)
+  }
+
+  /** 第一集开两个方向：各生成 1 集，选定后从第 2 集接着写 */
+  const requestFirstEpisodes = async () => {
+    if (variantLoading) return
+    setVariantLoading(true)
+    setErrors((e) => ({ ...e, episodes: null }))
+    try {
+      const pid = await ensureProject(idea.trim().slice(0, 20))
+      const call = (variant: 'A' | 'B') =>
+        new Promise<Episode>((resolve, reject) => {
+          let last: Episode | null = null
+          void postSse(
+            '/api/episodes',
+            {
+              idea: idea.trim(),
+              genre: genre.id,
+              characters,
+              acts,
+              projectId: pid,
+              count: 1,
+              start: 1,
+              total: episodeCount,
+              preview: true,
+              variant,
+              brief,
+            },
+            (event, data) => {
+              const payload = data as { episodes?: Episode[] }
+              if (payload.episodes?.[0]) last = payload.episodes[0]
+              if (event === 'done') {
+                if (last) resolve(last)
+                else reject(new Error('第一集没有生成出有效内容'))
+              }
+            },
+          ).catch(reject)
+        })
+      const [a, b] = await Promise.all([call('A'), call('B')])
+      setVariantSession({ step: 'first-episode', a: [a], b: [b] })
+      setQuotaRefreshKey((n) => n + 1)
+    } catch (error) {
+      setErrors((e) => ({
+        ...e,
+        episodes: error instanceof Error ? error.message : '第一集两版生成失败，请重试',
+      }))
+    } finally {
+      setVariantLoading(false)
+    }
   }
   /*
     生成中用真实耗时替代「正在加载」四个字。
@@ -640,22 +700,26 @@ export default function Home() {
     if (episodes.length > 0) recordJudgment('episodes', '重新生成分集')
     const epoch = resetEpoch.current
     const builtFrom = `${charactersSig}|${actsSig}|${briefSig}`
+    const seed = episodeSeed
+    const startAt = seed ? 2 : 1
+    const runCount = seed ? Math.max(1, episodeCount - 1) : episodeCount
 
     setStatus((s) => ({ ...s, episodes: 'streaming' }))
     setErrors((e) => ({ ...e, episodes: null }))
-    // 先清空，重新生成时才看得出是一集集新出现的，而不是新旧混在一起
-    setEpisodes([])
+    // 先清空，重新生成时才看得出是一集集新出现的；有选定第一集时它保持不动
+    setEpisodes(seed ? [seed] : [])
 
     let finished = false
     const controller = new AbortController()
     abortRef.current = controller
     try {
       const pid = await ensureProject(idea.trim().slice(0, 20))
-      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid, count: episodeCount, brief }, (event, data) => {
+      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid, count: runCount, start: startAt, total: episodeCount, brief }, (event, data) => {
         if (isCleared(epoch)) return
         if (event !== 'episodes' && event !== 'done') return
 
-        setEpisodes((data as { episodes: Episode[] }).episodes)
+        const incoming = (data as { episodes: Episode[] }).episodes
+        setEpisodes(seed ? [seed, ...incoming] : incoming)
         // 拿到的这一份就是基于当前上游生成的，标记一下，免得触发「已过期」提示
         setEpisodesBuiltFrom(builtFrom)
 
@@ -1264,6 +1328,7 @@ export default function Home() {
     setCharacters([])
     setActs([])
     setEpisodes([])
+    setEpisodeSeed(null)
     setStatus(IDLE_STATUS)
     setErrors(IDLE_ERRORS)
     setActsBuiltFrom(null)
@@ -1283,6 +1348,7 @@ export default function Home() {
     setCharacters([])
     setActs([])
     setEpisodes([])
+    setEpisodeSeed(null)
     setVisuals([])
     setImagePrompts([])
     setScenes([])
@@ -1482,7 +1548,13 @@ export default function Home() {
           <BriefCard value={brief} onChange={setBrief} />
           {variantSession && (
             <VariantPicker
-              stepLabel={variantSession.step === 'characters' ? '核心人物' : '三幕大纲'}
+              stepLabel={
+                variantSession.step === 'characters'
+                  ? '核心人物'
+                  : variantSession.step === 'acts'
+                    ? '三幕大纲'
+                    : '第一集'
+              }
               options={
                 variantSession.step === 'characters'
                   ? [
@@ -1497,7 +1569,8 @@ export default function Home() {
                         lines: variantSession.b.map((c) => `${c.name} · ${c.motivation}`),
                       },
                     ]
-                  : [
+                  : variantSession.step === 'acts'
+                    ? [
                       {
                         id: 'A' as const,
                         title: '三幕 A',
@@ -1508,7 +1581,19 @@ export default function Home() {
                         title: '三幕 B',
                         lines: variantSession.b.map((a) => `${a.title}：${a.summary.slice(0, 50)}`),
                       },
-                    ]
+                      ]
+                    : [
+                        {
+                          id: 'A' as const,
+                          title: `第 1 集 · ${variantSession.a[0].title}`,
+                          lines: [variantSession.a[0].synopsis, `钩子：${variantSession.a[0].hook}`],
+                        },
+                        {
+                          id: 'B' as const,
+                          title: `第 1 集 · ${variantSession.b[0].title}`,
+                          lines: [variantSession.b[0].synopsis, `钩子：${variantSession.b[0].hook}`],
+                        },
+                      ]
               }
               onPick={pickVariant}
               onCancel={() => setVariantSession(null)}
@@ -1692,6 +1777,23 @@ export default function Home() {
                 existing={episodes.length}
                 disabled={status.episodes === 'streaming' || status.episodes === 'loading'}
               />
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { void requestFirstEpisodes() }}
+                  disabled={variantLoading || !hasActs}
+                  title="各生成 1 集第一集方向，共消耗 2 单位"
+                  className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-1.5 text-[11.5px] font-medium text-accent-700
+                    transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {variantLoading ? '生成第一集中…' : '第一集开两个方向'}
+                </button>
+                {episodeSeed && (
+                  <span className="text-[11px] text-ink-500">
+                    已选定第一集「{episodeSeed.title}」· 生成会从第 2 集接着写
+                  </span>
+                )}
+              </div>
               {episodesStale && staleNotice('上游内容已改动，当前分集是基于旧版本生成的，建议重新生成一次。')}
               <PacingCurve episodes={episodes} />
               <EpisodeList episodes={episodes} onChange={setEpisodes} />
