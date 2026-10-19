@@ -38,6 +38,8 @@ interface Props {
   loading: boolean
   /** 是否已经有任意结果，决定「重新开始」按钮是否可用 */
   hasResult: boolean
+  /** 首访：还没写想法、也没有结果时，隐藏说明与关键词提示，只留主线 */
+  firstRun?: boolean
 }
 
 /**
@@ -54,6 +56,7 @@ export default function IdeaPanel({
   onReset,
   loading,
   hasResult,
+  firstRun = false,
 }: Props) {
   // 与接口的校验口径一致，避免「按钮能点但请求必被拒」
   const canGenerate = idea.trim().length >= MIN_IDEA_LENGTH && !loading
@@ -252,7 +255,7 @@ export default function IdeaPanel({
       {brainstormError && <p className="text-xs text-accent-700">{brainstormError}</p>}
 
       {/* 关键词提示：点一下追加进关键词框 */}
-      <div className="flex flex-wrap gap-1.5">
+      {!firstRun && <div className="flex flex-wrap gap-1.5">
         {KEYWORD_HINTS.map((word) => (
           <button
             key={word}
@@ -264,9 +267,9 @@ export default function IdeaPanel({
             + {word}
           </button>
         ))}
-      </div>
+      </div>}
 
-      <p className="border-t border-surface-line pt-3 text-xs leading-relaxed text-ink-500">
+      {!firstRun && <p className="border-t border-surface-line pt-3 text-xs leading-relaxed text-ink-500">
         六步工作流：先定人物、搭三幕、拆分集，再定妆、拆场景、出分镜。每一步都能手动修改。
         <a
           href="https://github.com/felixfeng-ai/shortdrama-outline"
@@ -276,7 +279,7 @@ export default function IdeaPanel({
         >
           代码可自建
         </a>
-      </p>
+      </p>}
     </div>
   )
 }
