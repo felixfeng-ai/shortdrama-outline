@@ -981,6 +981,8 @@
 }
 .workmeta-sep { font-size: 10px; color: rgb(var(--c-ink-300)); }
 .workmeta-panel {
+  display: grid;
+  gap: 8px;
   padding: 10px 2px 12px;
   border-bottom: 1px solid rgba(20, 20, 20, 0.07);
 }
