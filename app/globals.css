@@ -671,6 +671,17 @@
   line-height: 1;
   color: rgb(var(--c-ink-900));
 }
+.h-lockup { display: inline-flex; align-items: baseline; gap: 7px; min-width: 0; }
+.h-wordmark {
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  color: rgb(var(--c-ink-400));
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .h-ai {
   display: inline-flex;
   align-items: center;
@@ -1454,6 +1465,7 @@
 
 @media (max-width: 1279px) {
   .h-slogan, .h-div { display: none; }
+  .h-wordmark { display: none; }
   /* 运行态让位给六步：1180 宽时六步必须能整排看全，不能靠横向滚动 */
   .h-run { display: none; }
   .h-top { gap: 8px; }

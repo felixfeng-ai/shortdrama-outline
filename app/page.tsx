@@ -1534,9 +1534,12 @@ export default function Home() {
       {/* 顶栏：与 demo 完全一致——左边品牌 + AI 徽标，右边齿轮与头像 */}
       {/* 顶栏吸顶：向下滚动时品牌与额度一直可见 */}
       <header className="h-top">
-        <h1 className="h-brand">成剧</h1>
+        <div className="h-lockup">
+          <h1 className="h-brand">成剧</h1>
+          <span className="h-wordmark">VEYAFRAME</span>
+        </div>
         <span className="h-ai" title="全流程 AI 生成">AI</span>
-        <span className="h-slogan hidden lg:inline">一句想法 → 分镜提示词</span>
+        <span className="h-slogan hidden lg:inline">一句想法 → 能出图的分镜</span>
         <span className="h-div hidden lg:block" aria-hidden="true" />
         <QuotaBar refreshKey={quotaRefreshKey} inline episodeCount={episodeCount} />
 

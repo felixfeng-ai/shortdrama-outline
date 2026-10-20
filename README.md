@@ -1,8 +1,10 @@
 ﻿<div align="center">
 
-# 成剧
+# 成剧 VeyaFrame
 
-**短剧与漫剧的 AI 分镜台：一句想法，到大纲、分集与能直接出图的提示词**
+**短剧与漫剧的 AI 分镜台：一句想法，到能出图的分镜提示词**
+
+**VeyaFrame — From one line to a storyboard you can generate.**
 
 独立短剧编剧的 AI 创作与资产工具。**打开网页就用，不装任何东西。**
 
