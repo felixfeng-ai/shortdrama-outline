@@ -87,10 +87,25 @@ const config: Config = {
         },
       },
       fontFamily: {
-        /** 标题/品牌：衬线（参考图的「成剧」「第一幕 · 铺垫」都是衬线） */
+        /**
+         * 西文/数字：Albert Sans（自托管 latin 子集，约 32KB）。
+         * 中文：系统栈，优先苹方，其次鸿蒙/MiSans，最后微软雅黑。
+         * 不引中文字体——主流的即梦/可灵/豆包也都是这个策略。
+         */
         serif: ['Georgia', 'Songti SC', 'SimSun', 'Noto Serif SC', 'serif'],
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', 'sans-serif'],
-        mono: ['ui-monospace', 'SF Mono', 'Menlo', 'Consolas', 'monospace'],
+        sans: [
+          'var(--font-latin)',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'PingFang SC',
+          'HarmonyOS Sans SC',
+          'MiSans',
+          'Hiragino Sans GB',
+          'Microsoft YaHei',
+          'Noto Sans SC',
+          'sans-serif',
+        ],
+        mono: ['var(--font-mono)', 'ui-monospace', 'SF Mono', 'Menlo', 'Consolas', 'monospace'],
       },
       borderRadius: {
         /** 参考图：卡片 14px、内嵌块 12px、徽标 8px、胶囊按钮走全圆 */

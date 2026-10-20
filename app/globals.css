@@ -204,8 +204,9 @@
 /* 工作面不要纸纹；标题一律无衬线——衬线是"小说页"的信号 */
 [data-theme="h-deck"] body { background-image: none; }
 [data-theme="h-deck"] :is(h1, h2, h3, .font-serif) {
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
-    "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "HarmonyOS Sans SC", "MiSans", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
+    sans-serif;
 }
 [data-theme="h-deck"] .brandname { letter-spacing: 0.02em; }
 
@@ -709,7 +710,7 @@
 }
 .h-pill em {
   font-style: normal;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 9.5px;
   letter-spacing: 0.04em;
   color: rgb(var(--c-ink-300));
@@ -738,7 +739,7 @@
   align-items: center;
   gap: 7px;
   flex: 0 0 auto;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10px;
   color: rgb(var(--c-ink-400));
   font-variant-numeric: tabular-nums;
@@ -753,7 +754,7 @@
 .h-run.busy i { background: rgb(var(--c-accent-600)); animation: h-breathe 1.8s ease-in-out infinite; }
 .h-quota {
   flex: 0 0 auto;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: rgb(var(--c-ink-500));
   white-space: nowrap;
@@ -818,7 +819,7 @@
 }
 .h-deck-meta {
   margin-left: auto;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 9.5px;
   color: #8a8177;
   font-variant-numeric: tabular-nums;
@@ -873,7 +874,7 @@
   border-bottom: 1px solid rgba(20, 20, 20, 0.07);
 }
 .ep-label {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   letter-spacing: 0.04em;
   color: rgb(var(--c-ink-400));
@@ -908,13 +909,13 @@
   border: 1px solid rgb(var(--c-surface-line));
   border-radius: 6px;
   background: #fff;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   color: rgb(var(--c-ink-800));
 }
 .ep-hint {
   margin-left: auto;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: rgb(var(--c-ink-400));
 }
@@ -1028,7 +1029,7 @@
 .brief-label {
   flex: 0 0 64px;
   width: 64px;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: rgb(var(--c-ink-400));
 }
@@ -1083,7 +1084,7 @@
 }
 .jlog-title { font-size: 11.5px; font-weight: 600; color: rgb(var(--c-ink-700)); }
 .jlog-count {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: rgb(var(--c-ink-400));
 }
@@ -1102,7 +1103,7 @@
 .jlog-list li { display: flex; gap: 8px; align-items: baseline; min-width: 0; font-size: 11.5px; }
 .jlog-time {
   flex: 0 0 auto;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10px;
   color: rgb(var(--c-ink-300));
 }
@@ -1180,7 +1181,7 @@
   border-radius: 5px;
   background: rgb(var(--c-ink-900));
   color: #fff;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11px;
 }
 .variant-title { margin: 0; font-size: 12.5px; font-weight: 600; color: rgb(var(--c-ink-800)); }
@@ -1226,7 +1227,7 @@
 .pacing-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
 .pacing-title { font-size: 11.5px; font-weight: 600; color: rgb(var(--c-ink-700)); }
 .pacing-hint {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: rgb(var(--c-ink-400));
 }
@@ -1241,7 +1242,7 @@
 .pacing-scale {
   display: flex;
   justify-content: space-between;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 9px;
   color: rgb(var(--c-ink-300));
 }
@@ -1257,7 +1258,7 @@
   border-radius: 999px;
   background: #e3b87f;
   color: #241d16;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 9px;
   font-weight: 600;
   line-height: 15px;
@@ -1272,7 +1273,7 @@
   border-radius: 999px;
   background: #e3b87f;
   color: #241d16;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 9.5px;
   font-weight: 600;
   line-height: 18px;
@@ -1312,7 +1313,7 @@
   border: 1px solid rgba(227, 184, 127, 0.26);
   border-radius: 5px;
   background: rgba(227, 184, 127, 0.06);
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: #c9a878;
 }
@@ -1327,7 +1328,7 @@
   align-items: baseline;
 }
 .h-deck section[aria-label="AI 场记"] .who {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10px;
   color: #7d7468;
 }
@@ -1363,7 +1364,7 @@
   border: 0;
   background: none;
   text-align: left;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: #8a8177;
 }
@@ -1378,7 +1379,7 @@
   padding: 6px 8px;
   border-radius: 4px;
   background: rgba(255, 236, 214, 0.04);
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -1391,7 +1392,7 @@
   background: rgba(227, 184, 127, 0.05);
 }
 .h-deck section[aria-label="AI 场记"] .prop-h {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
   color: #e3b87f;
@@ -1430,7 +1431,7 @@
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   color: #e3b87f;
   pointer-events: none;
@@ -1517,7 +1518,7 @@
     width: 100%;
   }
   .h-deck-grab-row .car {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 13px;
     color: #e3b87f;
   }
@@ -1670,7 +1671,7 @@
   .cin-head { padding-bottom: 12px; border-bottom: 1px solid theme(colors.cinema.line); @apply flex items-baseline gap-2.5; }
   .cin-title { font-size: 15px; letter-spacing: .05em; color: #efe4d2; }
   .cin-scene { @apply min-w-0 flex-1 truncate; font-size: 11.5px; color: #d9cdb9; }
-  .cin-no { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: .08em; color: #94856f; }
+  .cin-no { font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: .08em; color: #94856f; }
   .cin-body { @apply flex; gap: 22px; padding-top: 16px; }
   .plate { @apply relative overflow-hidden rounded-chip; flex: 0 0 30%; aspect-ratio: 9 / 16; background-image: linear-gradient(180deg, #2c3b46, #1a242c 55%, #12181d); box-shadow: inset 0 0 24px rgba(0,0,0,.55); }
   .plate img { @apply h-full w-full object-cover; }
