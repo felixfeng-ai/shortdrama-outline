@@ -10,6 +10,7 @@
 //   3. 计数落在 SQLite（和资产链同一个库），进程重启不丢
 //   4. 所有判定都是「先查再扣」，超限直接拒绝，不进入模型调用
 import type { DatabaseSync } from "node:sqlite"
+import { ownerFromRequest } from "./session.ts"
 
 /** 每个生成步骤的「权重」——一次调用大概烧多少 token 的比例 */
 export const STEP_COST: Record<string, number> = {
@@ -178,6 +179,8 @@ export function chargeQuota(
  * 几个常见的头，最后兜底一个常量——开发环境全算同一个人。
  */
 export function identityFromRequest(req: Request): string {
+  const session = ownerFromRequest(req)
+  if (session !== "local") return session
   const get = (name: string) => req.headers.get(name)?.split(",")[0]?.trim() || ""
   const ip = get("x-forwarded-for") || get("x-real-ip") || get("cf-connecting-ip")
   return ip || "local"

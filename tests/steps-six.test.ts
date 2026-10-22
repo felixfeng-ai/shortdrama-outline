@@ -13,6 +13,7 @@ const pageSrc = fs.readFileSync("app/page.tsx", "utf8")
 const indicatorSrc = fs.readFileSync("components/StepIndicator.tsx", "utf8")
 const sideNavSrc = fs.readFileSync("components/SideNav.tsx", "utf8")
 const stepPillsSrc = fs.readFileSync("components/StepPills.tsx", "utf8")
+const stepSectionSrc = fs.readFileSync("components/StepSection.tsx", "utf8")
 
 test("G2 STEPS 覆盖六个步骤，index 连续", () => {
   assert.equal(STEPS.length, 6)
@@ -110,4 +111,11 @@ test("G4b 生成完必须有下一步提示，且角色生成完要指到定妆"
   assert.ok(pageSrc.includes("SIDE_STEP"), "缺少顺手解锁的资产步骤映射")
   assert.ok(/characters:\s*{\s*key:\s*'visuals'/.test(pageSrc), "角色生成完应当提示去定妆")
   assert.ok(pageSrc.includes("下一步："), "提示文案里要有「下一步」")
+})
+
+test("G4c 窄屏步骤头操作区必须换行，不能把按钮顶出内容区", () => {
+  assert.ok(
+    stepSectionSrc.includes("flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0"),
+    "步骤头操作区缺少窄屏换行样式",
+  )
 })

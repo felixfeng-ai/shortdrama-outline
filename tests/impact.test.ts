@@ -90,11 +90,33 @@ test("I2 分镜基于当前定妆生成 → expired 为 0（不比对、不误�
 })
 
 test("I2b 还没有分镜 / payload 不是数组时不崩", () => {
-  assert.deepEqual(auditShots([snap()], []), { total: 0, expired: 0, outOfSync: false })
+  assert.deepEqual(auditShots([snap()], []), {
+    total: 0, expired: 0, outOfSync: false, lockedTraitShots: 0, lockedTraitIssues: [],
+  })
   assert.equal(
     auditShots([snap()], [snap({ id: "shots-1", kind: "shots", parents: [], payload: { oops: 1 } })]).total,
     0,
   )
+})
+
+test("I4 分镜即使与当前定妆对齐，也要逐项检查禁改项", () => {
+  const anchor = "age: 28岁, face: 偏长脸、窄眼, hair: 黑色短发、齐耳, distinguishing feature: 左眉尾浅疤"
+  const audit = auditShots(
+    [snap({ payload: [vc({ anchor })] })],
+    [snap({
+      id: "shots-current",
+      kind: "shots",
+      version: 2,
+      parents: ["vc-2"],
+      payload: [shot({ prompt: "portrait, age: 28岁, face: 偏长脸、窄眼" })],
+    })],
+  )
+
+  assert.equal(audit.outOfSync, false)
+  assert.equal(audit.lockedTraitShots, 1)
+  assert.deepEqual(audit.lockedTraitIssues, [
+    { shot: 1, character: "张三", traits: ["hair", "marks"] },
+  ])
 })
 
 // ── I3：整条链走一遍 ────────────────────────────────────────────

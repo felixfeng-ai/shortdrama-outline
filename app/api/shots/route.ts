@@ -22,6 +22,8 @@ import type { VisualCharacter } from "@/lib/assets/types"
 import { extractCompleteItems } from "@/lib/partial-json"
 import { readActs, readCharacters, readIdea } from "@/lib/validate"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { assertProjectAccess } from "@/lib/assets/access"
+import { ownerFromRequest } from "@/lib/session"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -50,12 +52,14 @@ export async function POST(req: Request) {
   const placeMap = new Map<string, string>()
   try {
     const body = await req.json().catch(() => null)
+    const db = getDbForRequest()
+    projectId = typeof body?.projectId === "string" ? body.projectId : null
+    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
     idea = readIdea(body?.idea)
     readCharacters(body?.characters, "请先生成核心人物，再拆镜头")
     scenes = readScenes(body?.scenes)
     visuals = (Array.isArray(body?.visualCharacters) ? body.visualCharacters : []) as VisualCharacter[]
     acts = Array.isArray(body?.acts) ? readActs(body.acts) : []
-    projectId = typeof body?.projectId === "string" ? body.projectId : null
     genre = readGenre(body?.genre)
     brief = readBrief(body?.brief)
     look = readLook(body?.look)

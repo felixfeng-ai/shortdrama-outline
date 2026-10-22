@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* 首屏就定好底色：否则会先闪一下默认色再跳成选中的那套 */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
-      <body>{children}</body>
+      <body className="signal-desk">{children}</body>
     </html>
   )
 }

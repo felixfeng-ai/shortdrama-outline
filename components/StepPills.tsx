@@ -26,11 +26,13 @@ export default function StepPills({ current, completed, onJump, canJump }: Props
             onClick={() => reachable && onJump(step.key)}
             disabled={!reachable}
             aria-current={isCurrent ? 'step' : undefined}
+            aria-label={`${step.index}. ${step.nav}`}
             title={step.subtitle}
             className={`h-pill ${isCurrent ? 'on' : ''} ${isDone && !isCurrent ? 'done' : ''}`}
           >
             <em>{String(step.index).padStart(2, '0')}</em>
-            {step.nav}
+            <span className="pill-full">{step.nav}</span>
+            <span className="pill-short">{step.short}</span>
             {isDone && !isCurrent && <span className="h-pill-dot" aria-hidden="true" />}
           </button>
         )

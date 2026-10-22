@@ -15,6 +15,7 @@ export type { ArtifactKind }
 export interface Project {
   id: string
   title: string
+  ownerId: string | null
   createdAt: number
   updatedAt: number
 }
@@ -29,7 +30,7 @@ export interface Snapshot {
   createdAt: number
 }
 
-interface ProjectRow { id: string; title: string; created_at: number; updated_at: number }
+interface ProjectRow { id: string; title: string; owner_id: string | null; created_at: number; updated_at: number }
 interface SnapshotRow {
   id: string; project_id: string; kind: string; version: number
   payload: string; created_at: number
@@ -37,7 +38,13 @@ interface SnapshotRow {
 interface ParentRow { to_snapshot_id: string }
 
 function toProject(row: ProjectRow): Project {
-  return { id: row.id, title: row.title, createdAt: row.created_at, updatedAt: row.updated_at }
+  return {
+    id: row.id,
+    title: row.title,
+    ownerId: row.owner_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
 }
 
 function toSnapshot(row: SnapshotRow, parents: string[]): Snapshot {
@@ -53,33 +60,45 @@ function toSnapshot(row: SnapshotRow, parents: string[]): Snapshot {
 }
 
 /** 新建项目 */
-export function createProject(db: DatabaseSync, title: string): Project {
+export function createProject(db: DatabaseSync, title: string, ownerId = "local"): Project {
   const now = Date.now()
-  const project: Project = { id: randomUUID(), title, createdAt: now, updatedAt: now }
-  db.prepare("INSERT INTO projects (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)")
-    .run(project.id, project.title, project.createdAt, project.updatedAt)
+  const project: Project = { id: randomUUID(), title, ownerId, createdAt: now, updatedAt: now }
+  db.prepare("INSERT INTO projects (id, title, owner_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+    .run(project.id, project.title, project.ownerId, project.createdAt, project.updatedAt)
   return project
 }
 
-export function getProject(db: DatabaseSync, id: string): Project | null {
-  const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as ProjectRow | undefined
-  return row ? toProject(row) : null
+export function getProject(db: DatabaseSync, id: string, ownerId?: string): Project | null {
+  const row = ownerId
+    ? db.prepare("SELECT * FROM projects WHERE id = ? AND owner_id = ?").get(id, ownerId)
+    : db.prepare("SELECT * FROM projects WHERE id = ?").get(id)
+  return row ? toProject(row as ProjectRow) : null
 }
 
-export function listProjects(db: DatabaseSync): Project[] {
-  const rows = db.prepare("SELECT * FROM projects ORDER BY updated_at DESC").all() as ProjectRow[]
-  return rows.map(toProject)
+export function listProjects(db: DatabaseSync, ownerId?: string): Project[] {
+  const rows = ownerId
+    ? db.prepare("SELECT * FROM projects WHERE owner_id = ? ORDER BY updated_at DESC").all(ownerId)
+    : db.prepare("SELECT * FROM projects ORDER BY updated_at DESC").all()
+  return (rows as ProjectRow[]).map(toProject)
+}
+
+/** 仅用于本地升级：把旧版没有 owner 的项目一次性归到当前本地会话。 */
+export function claimLegacyProjects(db: DatabaseSync, ownerId: string): number {
+  const result = db.prepare("UPDATE projects SET owner_id = ? WHERE owner_id IS NULL").run(ownerId)
+  return Number(result.changes)
 }
 
 /** 重命名项目。返回改名后的项目；id 不存在时返回 null（不抛） */
-export function renameProject(db: DatabaseSync, id: string, title: string): Project | null {
+export function renameProject(db: DatabaseSync, id: string, title: string, ownerId?: string): Project | null {
   const name = title.trim()
   if (!name) return null
-  const result = db
-    .prepare("UPDATE projects SET title = ?, updated_at = ? WHERE id = ?")
-    .run(name, Date.now(), id)
+  const result = ownerId
+    ? db.prepare("UPDATE projects SET title = ?, updated_at = ? WHERE id = ? AND owner_id = ?")
+      .run(name, Date.now(), id, ownerId)
+    : db.prepare("UPDATE projects SET title = ?, updated_at = ? WHERE id = ?")
+      .run(name, Date.now(), id)
   if (result.changes === 0) return null
-  return getProject(db, id)
+  return getProject(db, id, ownerId)
 }
 
 /**
@@ -90,8 +109,10 @@ export function renameProject(db: DatabaseSync, id: string, title: string): Proj
  * 不需要在这里手写三条 DELETE，那反而容易漏（漏掉的孤儿快照会永远留在库里）。
  * 返回是否真的删掉了（id 不存在时 false）。
  */
-export function deleteProject(db: DatabaseSync, id: string): boolean {
-  const result = db.prepare("DELETE FROM projects WHERE id = ?").run(id)
+export function deleteProject(db: DatabaseSync, id: string, ownerId?: string): boolean {
+  const result = ownerId
+    ? db.prepare("DELETE FROM projects WHERE id = ? AND owner_id = ?").run(id, ownerId)
+    : db.prepare("DELETE FROM projects WHERE id = ?").run(id)
   return result.changes > 0
 }
 

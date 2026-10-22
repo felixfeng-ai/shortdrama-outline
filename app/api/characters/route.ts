@@ -13,6 +13,8 @@ import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
+import { assertProjectAccess } from "@/lib/assets/access"
+import { ownerFromRequest } from "@/lib/session"
 
 export const runtime = 'nodejs'
 // 生成较慢，放宽函数超时（Vercel 上生效）
@@ -21,6 +23,9 @@ export const maxDuration = 120
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null)
+    const db = getDbForRequest()
+    const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
+    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
     const idea = readIdea(body?.idea)
 
     // 只重新生成一个角色时，把现有阵容传给模型，避免功能重复
@@ -31,7 +36,7 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
-    chargeQuota(getDbForRequest(), identityFromRequest(req), "characters")
+    chargeQuota(db, identityFromRequest(req), "characters")
 
 
     const { system, user } =
@@ -49,8 +54,6 @@ export async function POST(req: Request) {
       恢复项目时输入框里的那句话就能填回去，不用让用户重打。
       落库失败不影响生成结果（persistIfProject 内部兜住）。
     */
-    const db = getDbForRequest()
-    const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
     persistIfProject(db, projectId, 'idea', { idea, genre: genre.id }, { kinds: [] })
     persistIfProject(db, projectId, 'characters', characters, { kinds: ['idea'] })
 

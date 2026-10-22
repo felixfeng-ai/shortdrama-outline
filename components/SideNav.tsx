@@ -55,6 +55,8 @@ export default function SideNav({ current, completed, onJump, canJump }: Props) 
           type="button"
           onClick={() => reachable && onJump(step.key)}
           disabled={!reachable}
+          title={step.nav}
+          aria-label={step.nav}
           aria-current={isCurrent ? 'step' : undefined}
           className={`group relative flex w-full items-center gap-3 rounded-chip px-4 py-4 text-left
             transition-colors ${isCurrent ? 'on' : isDone ? 'done' : 'hover:bg-surface-deep/60'}
@@ -77,7 +79,7 @@ export default function SideNav({ current, completed, onJump, canJump }: Props) 
                 isCurrent ? 'font-semibold text-accent-700' : isDone ? 'text-done-700' : 'text-ink-700'
               }`}
             >
-              {step.nav}
+              {step.short}
             </span>
           </span>
         </button>
@@ -86,7 +88,7 @@ export default function SideNav({ current, completed, onJump, canJump }: Props) 
   }
 
   return (
-    <nav aria-label="创作流程">
+    <nav aria-label="创作流程" className="navpanel">
       {/* 参考图的左栏就是一串图标 + 名称，不分段、不写说明 */}
       <ul className="space-y-1.5">
         {[...story, ...asset].map(renderItem)}

@@ -7,6 +7,7 @@
 // 纪律：这个模块只读不写。它告诉你该做什么、去哪儿做，绝不自己动手改任何东西——
 // 一旦它能写，六步各自的「重新生成」就不再是唯一的改动入口，版本与血缘会乱。
 import type { StepKey } from './types'
+import { reviewShots } from './project-status.ts'
 
 export interface TodoShot {
   shot: number
@@ -80,7 +81,8 @@ export function buildTodoList(input: TodoInput): TodoItem[] {
   }
 
   // 缺参考图：把涉及的镜头号与角色名列出来，光说「有 2 个」用户还得自己找
-  const missing = input.shots.filter((s) => s.missingRefFor.length > 0)
+  const shotReview = reviewShots(input.shots, input.expiredShots)
+  const missing = shotReview.missing
   if (missing.length > 0) {
     const names = [...new Set(missing.flatMap((s) => s.missingRefFor))]
     const shotNos = missing.map((s) => `第 ${s.shot} 镜`).slice(0, 4).join('、')
@@ -92,7 +94,7 @@ export function buildTodoList(input: TodoInput): TodoItem[] {
     })
   }
 
-  const rework = input.shots.filter((s) => s.status === 'rework')
+  const rework = shotReview.rework
   if (rework.length > 0) {
     const shotNos = rework.map((s) => `第 ${s.shot} 镜`).slice(0, 4).join('、')
     items.push({

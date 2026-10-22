@@ -9,7 +9,50 @@
 // 因为项目已经有「零新增依赖」的惯例（测试框架也是这么处理的）。
 import type { Shot, VisualCharacter, Scene } from './types'
 
+/**
+ * 项目包是用户带走的长期契约，不是内部临时数据结构。
+ * 读取器必须用 schemaVersion 分支，不能靠字段是否碰巧存在来猜版本。
+ */
+export const PROJECT_PACKAGE_SCHEMA = 'chengju.project' as const
+export const PROJECT_PACKAGE_SCHEMA_VERSION = 1 as const
+
+export interface ProjectPackageManifest<
+  TProject = unknown,
+  TStory = unknown,
+  TAssets = unknown,
+  TRef = unknown,
+> {
+  schema: typeof PROJECT_PACKAGE_SCHEMA
+  schemaVersion: typeof PROJECT_PACKAGE_SCHEMA_VERSION
+  project: TProject
+  exportedAt: number
+  story: TStory
+  assets: TAssets
+  refs: TRef[]
+}
+
+export function buildProjectPackageManifest<
+  TProject,
+  TStory,
+  TAssets,
+  TRef,
+>(input: {
+  project: TProject
+  exportedAt: number
+  story: TStory
+  assets: TAssets
+  refs: TRef[]
+}): ProjectPackageManifest<TProject, TStory, TAssets, TRef> {
+  return {
+    schema: PROJECT_PACKAGE_SCHEMA,
+    schemaVersion: PROJECT_PACKAGE_SCHEMA_VERSION,
+    ...input,
+  }
+}
+
 export interface ExportManifest {
+  schema: typeof PROJECT_PACKAGE_SCHEMA
+  schemaVersion: typeof PROJECT_PACKAGE_SCHEMA_VERSION
   project: { id: string; title: string; createdAt: number; updatedAt: number }
   latest: Record<string, { version: number; payload: unknown }>
   refs: unknown[]

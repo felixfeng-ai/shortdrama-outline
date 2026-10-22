@@ -97,6 +97,8 @@ export const SAMPLE_EPISODES: Episode[] = [
 export const SAMPLE_VISUALS: VisualCharacter[] = [
   {
     id: 'sv-1',
+    entityId: 'sc-1',
+    lockedTraits: ['age', 'face', 'hair', 'marks'],
     name: '陈默',
     age: '29 岁',
     face: '偏长脸、窄眼、下颌线硬',
@@ -108,6 +110,8 @@ export const SAMPLE_VISUALS: VisualCharacter[] = [
   },
   {
     id: 'sv-2',
+    entityId: 'sc-2',
+    lockedTraits: ['age', 'face', 'hair', 'marks'],
     name: '苏婉',
     age: '68 岁',
     face: '圆脸、眼下细纹、眼神克制',
@@ -119,6 +123,8 @@ export const SAMPLE_VISUALS: VisualCharacter[] = [
   },
   {
     id: 'sv-3',
+    entityId: 'sc-3',
+    lockedTraits: ['age', 'face', 'hair', 'marks'],
     name: '沈之遥',
     age: '41 岁',
     face: '方下颌、眉毛浓、嘴角向下',

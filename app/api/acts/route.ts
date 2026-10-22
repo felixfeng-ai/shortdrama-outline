@@ -10,6 +10,8 @@ import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
+import { assertProjectAccess } from "@/lib/assets/access"
+import { ownerFromRequest } from "@/lib/session"
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -17,6 +19,9 @@ export const maxDuration = 120
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null)
+    const db = getDbForRequest()
+    const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
+    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
     const idea = readIdea(body?.idea)
     const characters = readCharacters(body?.characters, '请先生成核心人物，再生成三幕大纲')
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
@@ -24,7 +29,7 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
-    chargeQuota(getDbForRequest(), identityFromRequest(req), "acts")
+    chargeQuota(db, identityFromRequest(req), "acts")
 
 
     const { system, user } = buildActPrompt(idea, characters, genre, brief)
@@ -32,8 +37,7 @@ export async function POST(req: Request) {
     const acts = normalizeActs(raw)
 
     // 落快照，血缘指向人物那一版；刷新后要靠它把大纲恢复出来
-    const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
-    persistIfProject(getDbForRequest(), projectId, 'acts', acts, { kinds: ['characters'] })
+    persistIfProject(db, projectId, 'acts', acts, { kinds: ['characters'] })
 
     return NextResponse.json(ok({ acts }))
   } catch (error) {

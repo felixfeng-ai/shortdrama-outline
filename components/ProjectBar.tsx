@@ -19,6 +19,8 @@ interface Props {
   onNew: () => void
   /** 载入示例项目：第一次来的人先看见"做出来是什么样" */
   onLoadSample: () => void
+  /** 匿名会话项目只能靠导出带走，项目条常驻备份入口 */
+  onBackup: () => void
 }
 
 function when(ts: number): string {
@@ -38,6 +40,7 @@ export default function ProjectBar({
   onDelete,
   onNew,
   onLoadSample,
+  onBackup,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -54,27 +57,53 @@ export default function ProjectBar({
   }
 
   return (
-    <div className="surface px-3.5 py-3">
-      <div className="flex items-center gap-2">
+    <div className="surface project-ledger px-3.5 py-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <span className="shrink-0 text-[11px] text-ink-400">项目</span>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="min-w-0 flex-1 truncate rounded-chip px-2 py-1 text-left text-sm font-medium text-ink-900
+          className="group flex min-w-[9rem] flex-1 items-center gap-2 truncate rounded-chip px-2 py-1 text-left text-sm font-medium text-ink-900
             transition-colors hover:bg-surface-deep/60"
           title={projects.length > 0 ? '切换项目' : '还没有保存过项目'}
         >
-          {title}
+          <span className="min-w-0 flex-1 truncate">{title}</span>
+          <svg
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            className={`h-3.5 w-3.5 shrink-0 fill-none stroke-current text-ink-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          >
+            <path d="m4 6 4 4 4-4" />
+          </svg>
         </button>
+        <span
+          className="inline-flex shrink-0 items-center gap-1 rounded-pill bg-surface-soft px-2.5 py-1.5 text-[11px] text-ink-500"
+          title="项目绑定当前浏览器的匿名会话；清理浏览器数据或更换设备后，需要用导出的项目包备份"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3 w-3 fill-none stroke-current [stroke-width:1.4]">
+            <rect x="3" y="7" width="10" height="7" rx="1.5" />
+            <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+          </svg>
+          仅本机
+        </span>
         <button
           type="button"
           onClick={startRename}
           disabled={!current}
-          className="shrink-0 rounded-pill border border-surface-line px-2.5 py-1 text-[11px] text-ink-600
+          className="shrink-0 rounded-pill border border-surface-line px-2.5 py-1.5 text-xs text-ink-600
             transition-colors hover:border-accent-300 hover:text-accent-700 disabled:opacity-40"
         >
           重命名
+        </button>
+        <button
+          type="button"
+          disabled={!hasContent}
+          onClick={onBackup}
+          className="project-backup rounded-chip border border-surface-line px-2.5 py-1.5 text-xs text-ink-600 sm:ml-auto
+            transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          导出备份
         </button>
       </div>
 

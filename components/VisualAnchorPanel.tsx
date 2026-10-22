@@ -8,7 +8,8 @@ import { useEffect, useState } from 'react'
 import AutoTextarea from './AutoTextarea'
 import CopyButton from './CopyButton'
 import RefImagePicker from './RefImagePicker'
-import type { VisualCharacter } from '@/lib/assets/types'
+import { visualTraitLabel } from '@/lib/assets/anchors'
+import { DEFAULT_LOCKED_VISUAL_TRAITS, type VisualCharacter } from '@/lib/assets/types'
 import { getPreviewUrl, type VaultFile } from '@/lib/assets/vault'
 
 interface ImagePrompt { name: string; zh: string; en: string }
@@ -259,7 +260,7 @@ export default function VisualAnchorPanel({
         这一步写的是「他长什么样」（脸/发/服装），是同一批角色的第二层，不是新角色。
       */}
       <div className="flex items-start gap-2.5 rounded-card border border-done-200 bg-done-50/60 px-3.5 py-3">
-        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-chip bg-done-500 text-[11px] font-bold text-white">
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-chip bg-accent-700 text-[11px] font-bold text-white">
           4
         </span>
         <div className="min-w-0">
@@ -280,6 +281,7 @@ export default function VisualAnchorPanel({
       {visuals.map((vc, i) => {
         const prompt = imagePrompts.find((p) => p.name === vc.name)
         const keys = attached[vc.name] ?? []
+        const lockedTraits = vc.lockedTraits ?? [...DEFAULT_LOCKED_VISUAL_TRAITS]
 
         return (
           <article
@@ -300,6 +302,16 @@ export default function VisualAnchorPanel({
                   className="min-w-0 text-base font-semibold text-ink-900"
                 />
               </div>
+            </div>
+
+            <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px] text-ink-500">
+              <span className="font-medium text-accent-800">禁改项</span>
+              {lockedTraits.map((trait) => (
+                <span key={trait} className="rounded-chip border border-accent-200 bg-accent-50/60 px-1.5 py-0.5">
+                  {visualTraitLabel(trait)}
+                </span>
+              ))}
+              <span className="text-ink-400">服装、道具可随场景调整</span>
             </div>
 
             <dl className="space-y-2">

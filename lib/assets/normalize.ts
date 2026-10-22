@@ -4,7 +4,7 @@
 // 这里的是「资产链的镜头」。分开是因为镜头还多了一层「锚点注入 + 参考图标注」，
 // 且要在流式过程中被反复调用（每收到一个镜头就整形一次）。
 import {
-  CAMERA_MOVES, DEFAULT_SHOT_DURATION, SHOT_SIZES,
+  CAMERA_MOVES, DEFAULT_LOCKED_VISUAL_TRAITS, DEFAULT_SHOT_DURATION, SHOT_SIZES,
   type Shot, type Scene, type VisualCharacter, type VisualPlace,
 } from "./types.ts"
 import { compilePlaceAnchor, injectAnchor } from "./anchors.ts"
@@ -173,8 +173,17 @@ export function normalizePlaces(raw: unknown): VisualPlace[] {
   return [...byName.values()]
 }
 
+interface CharacterEntityRef {
+  id: string
+  name: string
+}
+
 /** 视觉锚点整形：模型可能只给部分字段，补齐并编译 anchor */
-export function normalizeVisualCharacters(raw: unknown, names: string[]): VisualCharacter[] {
+export function normalizeVisualCharacters(
+  raw: unknown,
+  names: string[],
+  characters: CharacterEntityRef[] = [],
+): VisualCharacter[] {
   const list = pickArray(raw, "visualCharacters")
   return list
     .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
@@ -183,13 +192,35 @@ export function normalizeVisualCharacters(raw: unknown, names: string[]): Visual
         age: str(item.age), face: str(item.face), hair: str(item.hair),
         marks: str(item.marks), wardrobe: str(item.wardrobe), props: str(item.props),
       }
+      const name = str(item.name, names[index] ?? `角色 ${index + 1}`)
+      // entityId 只认服务端已有的人物身份，模型写什么都不能采信
+      const entityId = characters.find((character) => character.name === name)?.id
       return {
         id: `vc-${index}-${Date.now()}`,
-        name: str(item.name, names[index] ?? `角色 ${index + 1}`),
+        ...(entityId ? { entityId } : {}),
+        lockedTraits: [...DEFAULT_LOCKED_VISUAL_TRAITS],
+        name,
         ...fields,
         anchor: str(item.anchor) || compileAnchorLocal(fields),
       }
     })
+}
+
+/** 旧快照恢复时按角色名回填一次稳定身份；已有 entityId 的绝不覆盖 */
+export function backfillVisualCharacterEntityIds(
+  visuals: VisualCharacter[],
+  characters: CharacterEntityRef[],
+): VisualCharacter[] {
+  const byName = new Map(characters.map((character) => [character.name, character.id]))
+  return visuals.map((visual) => (
+    visual.entityId && visual.lockedTraits
+      ? visual
+      : {
+          ...visual,
+          entityId: visual.entityId ?? byName.get(visual.name),
+          lockedTraits: visual.lockedTraits ?? [...DEFAULT_LOCKED_VISUAL_TRAITS],
+        }
+  ))
 }
 
 // 局部引用，避免与 anchors.ts 形成循环依赖的错觉（这里只是同文件转调）

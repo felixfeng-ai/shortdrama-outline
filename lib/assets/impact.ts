@@ -10,7 +10,7 @@
 // （它们依赖的是上一版）。正确做法是反过来：拿最新一版分镜，看它的父快照里
 // 有没有最新那版定妆；没有，就说明这批分镜是照着旧定妆生成的。
 import type { Shot, VisualCharacter } from "./types.ts"
-import { countShotsMissingAnchors } from "./anchors.ts"
+import { auditLockedTraits, countShotsMissingAnchors, type LockedTraitIssue } from "./anchors.ts"
 
 /** 做对账需要的快照字段（listSnapshots 返回的结构） */
 export interface ProjectSnapshot {
@@ -28,6 +28,10 @@ export interface ShotAudit {
   expired: number
   /** 这批分镜是不是照着旧定妆生成的 */
   outOfSync: boolean
+  /** 有多少镜头缺少禁改项 */
+  lockedTraitShots: number
+  /** 精确到镜头、角色与字段的禁改项明细 */
+  lockedTraitIssues: LockedTraitIssue[]
 }
 
 /**
@@ -40,7 +44,15 @@ export interface ShotAudit {
 export function auditShots(vcSnaps: ProjectSnapshot[], shotsSnaps: ProjectSnapshot[]): ShotAudit {
   const latestVc = vcSnaps[0]
   const latestShots = shotsSnaps[0]
-  if (!latestShots) return { total: 0, expired: 0, outOfSync: false }
+  if (!latestShots) {
+    return {
+      total: 0,
+      expired: 0,
+      outOfSync: false,
+      lockedTraitShots: 0,
+      lockedTraitIssues: [],
+    }
+  }
 
   const shots = Array.isArray(latestShots.payload) ? (latestShots.payload as Shot[]) : []
   const visuals = latestVc && Array.isArray(latestVc.payload)
@@ -49,10 +61,13 @@ export function auditShots(vcSnaps: ProjectSnapshot[], shotsSnaps: ProjectSnapsh
 
   // 父快照里有最新那版定妆 = 这批分镜就是按它生成的，没必要再比对
   const outOfSync = !latestVc || !latestShots.parents.includes(latestVc.id)
+  const lockedTraitIssues = auditLockedTraits(shots, visuals)
 
   return {
     total: shots.length,
     expired: outOfSync ? countShotsMissingAnchors(shots, visuals) : 0,
     outOfSync,
+    lockedTraitShots: new Set(lockedTraitIssues.map((issue) => issue.shot)).size,
+    lockedTraitIssues,
   }
 }

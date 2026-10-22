@@ -109,3 +109,39 @@ test("B1f 视觉锚点：模型给了 anchor 就尊重它", () => {
   const raw = { visualCharacters: [{ name: "张三", anchor: "custom anchor" }] }
   assert.equal(normalizeVisualCharacters(raw, ["张三"])[0].anchor, "custom anchor")
 })
+
+test("B2a 定妆结果携带核心人物的稳定 entityId，不采信模型自报值", () => {
+  const raw = {
+    visualCharacters: [{ name: "张三", entityId: "model-forged-id", anchor: "wearing: 沙色短夹克" }],
+  }
+  const [visual] = normalizeVisualCharacters(
+    raw,
+    ["张三"],
+    [{ id: "character-stable-1", name: "张三" }],
+  )
+  assert.equal(visual.entityId, "character-stable-1")
+})
+
+test("B2b 旧定妆快照按角色名回填 entityId", async () => {
+  const { backfillVisualCharacterEntityIds } = await import("../lib/assets/normalize.ts")
+  const [visual] = backfillVisualCharacterEntityIds(
+    [{ id: "vc-old", name: "张三", age: "", face: "", hair: "", marks: "", wardrobe: "", props: "", anchor: "" }],
+    [{ id: "character-stable-1", name: "张三" }],
+  )
+  assert.equal(visual.entityId, "character-stable-1")
+})
+
+test("B2c 禁改项由系统约定，不采信模型返回的锁定字段", () => {
+  const raw = {
+    visualCharacters: [{
+      name: "张三",
+      lockedTraits: ["wardrobe"],
+      age: "28岁",
+      face: "偏长脸",
+      hair: "黑色短发",
+      marks: "左眉尾浅疤",
+    }],
+  }
+  const [visual] = normalizeVisualCharacters(raw, ["张三"])
+  assert.deepEqual(visual.lockedTraits, ["age", "face", "hair", "marks"])
+})

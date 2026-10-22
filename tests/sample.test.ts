@@ -16,7 +16,7 @@ import { SAMPLE_SHOTS, SAMPLE_VISUALS } from "../lib/sample.ts"
 
 test("S1 载入示例后六个步骤都有内容", async () => {
   __resetDbForTests(":memory:")
-  const res = await postSample()
+  const res = await postSample(new Request("http://localhost/api/sample", { method: "POST" }))
   const payload = await res.json()
   assert.equal(res.status, 200, payload?.error ?? "")
   const projectId = payload.data.project.id as string

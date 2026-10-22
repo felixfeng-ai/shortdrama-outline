@@ -26,6 +26,8 @@ import { readActs, readCharacters, readIdea } from '@/lib/validate'
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
 import { getDbForRequest } from "@/lib/assets/store"
 import { persistIfProject } from "@/lib/assets/persist"
+import { assertProjectAccess } from "@/lib/assets/access"
+import { ownerFromRequest } from "@/lib/session"
 
 export const runtime = 'nodejs'
 // 长集数要分多批写（60 集约 6 批），给足时间
@@ -46,11 +48,13 @@ export async function POST(req: Request) {
   let variant: 'A' | 'B'
   try {
     const body = await req.json().catch(() => null)
+    const db = getDbForRequest()
+    projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
+    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
     idea = readIdea(body?.idea)
     characters = readCharacters(body?.characters, '请先生成核心人物，再生成分集剧情')
     acts = readActs(body?.acts, '请先生成三幕大纲，再生成分集剧情')
     genre = readGenre(body?.genre)
-    projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
     count = readEpisodeCount(body?.count)
     brief = readBrief(body?.brief)
     start = readEpisodeStart(body?.start)

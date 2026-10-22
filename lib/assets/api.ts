@@ -1,9 +1,15 @@
 // 资产链的前端请求封装。
 // 复用 lib/api.ts 的 postJson（统一信封 + 中文错误），不重复造。
 import { patchJson, postJson } from "@/lib/api"
-import type { Shot, VisualCharacter, Scene, VisualPlace } from "@/lib/assets/types"
+import type { ArtifactKind, RefImageMeta, Shot, VisualCharacter, Scene, VisualPlace } from "@/lib/assets/types"
 
-export interface ProjectDto { id: string; title: string; createdAt: number; updatedAt: number }
+export interface ProjectDto {
+  id: string
+  title: string
+  ownerId?: string | null
+  createdAt: number
+  updatedAt: number
+}
 export interface SnapshotDto<T = unknown> {
   id: string; kind: string; version: number; payload: T; parents: string[]; createdAt: number
 }
@@ -33,6 +39,10 @@ export const listSnapshots = <T>(projectId: string, kind: string) =>
   fetch(`/api/snapshots?projectId=${projectId}&kind=${kind}`)
     .then((r) => r.json())
     .then((p) => p.data.snapshots as SnapshotDto<T>[])
+
+/** 手工保存一版产物；画布编辑和完整工作台后续都可复用 */
+export const saveSnapshot = <T>(projectId: string, kind: ArtifactKind, payload: T) =>
+  postJson<{ snapshot: SnapshotDto<T> }>("/api/snapshots", { projectId, kind, payload })
 
 /** 影响范围：改一处之后，哪些下游快照过期了 */
 export const findImpact = (snapshotId: string) =>
@@ -72,7 +82,9 @@ export const registerRefs = (projectId: string, refs: RefInput[]) =>
   postJson<{ refs: unknown[] }>("/api/refs", { projectId, refs })
 
 export const listRefs = (projectId: string) =>
-  fetch(`/api/refs?projectId=${projectId}`).then((r) => r.json()).then((p) => p.data.refs)
+  fetch(`/api/refs?projectId=${projectId}`)
+    .then((r) => r.json())
+    .then((p) => p.data.refs as RefImageMeta[])
 
 export const fetchExportManifest = (projectId: string) =>
   fetch(`/api/export?projectId=${projectId}`).then((r) => r.json()).then((p) => p.data.manifest)

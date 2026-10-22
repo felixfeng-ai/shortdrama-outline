@@ -8,6 +8,8 @@ import type { StepKey } from '../types'
 import type { CreativeBrief } from '../brief'
 import type { JudgmentEntry } from '../judgment-log'
 import { isFlatPacing, pacingHint, pacingSeries } from '../pacing'
+import { reviewEpisodes, reviewShots } from '../project-status'
+import { buildTodoList } from '../todo'
 
 export interface AgentShot {
   shot: number
@@ -185,6 +187,12 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
   return {
     get_project_status: () => {
       const b = state.brief
+      const todos = buildTodoList({
+        completed: state.completed,
+        shots: state.shots,
+        expiredShots: state.expiredShots,
+        hasIdea: state.hasIdea,
+      })
       const briefLine = [b.emotion, b.audience, b.references].filter(Boolean).length > 0 || b.redline
         ? `创作意图：${[b.emotion, b.audience, b.references].filter(Boolean).join(' · ') || '（未填情绪/观众）'}${b.redline ? `；不要变成：${b.redline}` : ''}`
         : ''
@@ -198,6 +206,7 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
         ok: true,
         content: [
           `项目『${state.projectTitle || '未命名'}』：${stepLine}。分镜共 ${state.shots.length} 镜。`,
+          todos.length > 0 ? `待处理：${todos.map((item) => item.text).join('；')}` : '当前没有待处理项。',
           briefLine,
           logLine,
         ].filter(Boolean).join('\n'),
@@ -208,9 +217,8 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
       if (state.shots.length === 0) {
         return { ok: true, content: '还没有分镜，所以没有可审计的镜头。' }
       }
-      const missing = state.shots.filter((s) => s.missingRefFor.length > 0)
-      const names = [...new Set(missing.flatMap((s) => s.missingRefFor))]
-      const rework = state.shots.filter((s) => s.status === 'rework')
+      const review = reviewShots(state.shots, state.expiredShots)
+      const { missing, missingNames: names, rework } = review
       const parts = [`分镜共 ${state.shots.length} 镜`]
       parts.push(
         missing.length > 0
@@ -227,8 +235,8 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
       if (eps.length === 0) {
         return { ok: true, content: '还没有分集，暂时没有可审的内容。' }
       }
-      const empty = eps.filter((e) => !e.hook.trim())
-      const short = eps.filter((e) => e.hook.trim() && e.hook.trim().length < 20)
+      const audit = reviewEpisodes(eps)
+      const { empty, short } = audit
       const series = pacingSeries(eps)
       const parts = [`共 ${eps.length} 集`]
       if (empty.length > 0) {

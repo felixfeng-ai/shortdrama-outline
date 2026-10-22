@@ -26,7 +26,7 @@ const KEYWORD_HINTS = ['快递员', '深夜', '血缘', '职场', '重生']
  * 首屏只放 demo 里那六个标签（短剧 + 漫剧最常用的），
  * 其余题材收在「更多题材」后面——首屏和 demo 保持一致，功能一个不少。
  */
-const FEATURED_GENRES = ['urban', 'costume', 'suspense', 'sweet', 'revenge', 'cultivation']
+const FEATURED_GENRES = ['urban', 'suspense', 'costume']
 
 interface Props {
   idea: string
@@ -65,6 +65,8 @@ export default function IdeaPanel({
   const [brainstorming, setBrainstorming] = useState(false)
   const [candidates, setCandidates] = useState<IdeaCandidate[]>([])
   const [brainstormError, setBrainstormError] = useState<string | null>(null)
+  const [showKeywordHints, setShowKeywordHints] = useState(false)
+  const [toolsOpen, setToolsOpen] = useState(false)
   /** AI 推荐的题材 id：由「联想想法」那一次调用顺带产出，角标只认它 */
   const [recommendedGenres, setRecommendedGenres] = useState<string[]>([])
 
@@ -108,9 +110,20 @@ export default function IdeaPanel({
   const pickGenre = (item: Genre) => onGenreChange(item.id === genre.id ? GENRES[0] : item)
 
   return (
-    <div className="flex min-w-0 flex-col gap-3.5">
+    <div className={`idea-workbench ${toolsOpen ? 'tools-open' : ''}`}>
       {/* ── 大卡：灵感输入 + 题材标签 + 生成 ── */}
       <div className="compose">
+        <div className="story-command-head">
+          <span className="story-command-kicker">STORY COMMAND</span>
+          <button
+            type="button"
+            className="story-tools-toggle"
+            aria-expanded={toolsOpen}
+            onClick={() => setToolsOpen((value) => !value)}
+          >
+            灵感助手
+          </button>
+        </div>
         <label htmlFor="idea" className="sr-only">一句话故事想法</label>
         <div className="relative">
           <textarea
@@ -157,11 +170,8 @@ export default function IdeaPanel({
           </button>
         </div>
 
-        {/* 撑开空白，把生成按钮压到卡片底部中间（和 demo 一致） */}
-        <div className="fill min-h-[7rem]" />
-
         {/* 主操作与清空并排：两者作用于同一件事，不该一上一下各占一行 */}
-        <div className="mt-3.5 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button type="button" onClick={onGenerate} disabled={!canGenerate} className="bmain">
             {/* 按钮说的必须是它真做的事：这里调的是生成核心人物，不是大纲 */}
             {loading ? '正在生成人物…' : '生成 · 核心人物'}
@@ -185,7 +195,8 @@ export default function IdeaPanel({
       </div>
 
       {/* ── 两张小卡：示例想法 / 关键词联想 ── */}
-      <div className="recent">
+      <div className="idea-tools">
+        <p className="idea-tools-title">灵感助手</p>
         <button
           type="button"
           onClick={() => onIdeaChange(SAMPLES[Math.floor(Math.random() * SAMPLES.length)])}
@@ -231,55 +242,55 @@ export default function IdeaPanel({
             {brainstorming ? '…' : '联想'}
           </button>
         </div>
+
+        {!firstRun && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              aria-expanded={showKeywordHints}
+              onClick={() => setShowKeywordHints((value) => !value)}
+              className="story-tools-toggle"
+            >
+              {showKeywordHints ? '收起常用关键词' : '常用关键词'}
+            </button>
+            {showKeywordHints && KEYWORD_HINTS.map((word) => (
+              <button
+                key={word}
+                type="button"
+                onClick={() => setKeywords((k) => (k.trim() ? `${k.trim()}、${word}` : word))}
+                className="rounded-pill border border-dashed border-surface-line-2 px-2.5 py-1.5 text-xs text-ink-500
+                  transition-colors hover:border-accent-300 hover:text-accent-600"
+              >
+                + {word}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── 联想结果：AI 产出的候选，前两条标「AI推荐」 ── */}
-      {candidates.length > 0 && (
-        <ul className="space-y-1.5">
-          {candidates.map((item, index) => (
-            <li key={`${item.title}-${index}`} className="relative">
-              {index < 2 && <span className="tag-ai">AI推荐</span>}
-              <button
-                type="button"
-                onClick={() => onIdeaChange(item.title)}
-                className={`w-full rounded-card px-3.5 py-2.5 text-left transition-colors hover:bg-accent-50/70
-                  ${index < 2 ? 'bg-accent-50/60' : 'bg-surface-soft'}`}
-              >
-                <span className="block text-xs leading-relaxed text-ink-800">{item.title}</span>
-                {item.reason && <span className="mt-0.5 block text-[11px] text-ink-400">{item.reason}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {brainstormError && <p className="text-xs text-accent-700">{brainstormError}</p>}
+      <div className="idea-followup">
+        {/* ── 联想结果：AI 产出的候选，前两条标「AI推荐」 ── */}
+        {candidates.length > 0 && (
+          <ul className="space-y-1.5">
+            {candidates.map((item, index) => (
+              <li key={`${item.title}-${index}`} className="relative">
+                {index < 2 && <span className="tag-ai">AI推荐</span>}
+                <button
+                  type="button"
+                  onClick={() => onIdeaChange(item.title)}
+                  className={`w-full rounded-card px-3.5 py-2.5 text-left transition-colors hover:bg-accent-50/70
+                    ${index < 2 ? 'bg-accent-50/60' : 'bg-surface-soft'}`}
+                >
+                  <span className="block text-xs leading-relaxed text-ink-800">{item.title}</span>
+                  {item.reason && <span className="mt-0.5 block text-[11px] text-ink-400">{item.reason}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {brainstormError && <p className="text-xs text-accent-700">{brainstormError}</p>}
 
-      {/* 关键词提示：点一下追加进关键词框 */}
-      {!firstRun && <div className="flex flex-wrap gap-1.5">
-        {KEYWORD_HINTS.map((word) => (
-          <button
-            key={word}
-            type="button"
-            onClick={() => setKeywords((k) => (k.trim() ? `${k.trim()}、${word}` : word))}
-            className="rounded-pill border border-dashed border-surface-line-2 px-2.5 py-1 text-[11px] text-ink-500
-              transition-colors hover:border-accent-300 hover:text-accent-600"
-          >
-            + {word}
-          </button>
-        ))}
-      </div>}
-
-      {!firstRun && <p className="border-t border-surface-line pt-3 text-xs leading-relaxed text-ink-500">
-        六步工作流：先定人物、搭三幕、拆分集，再定妆、拆场景、出分镜。每一步都能手动修改。
-        <a
-          href="https://github.com/felixfeng-ai/shortdrama-outline"
-          target="_blank"
-          rel="noreferrer"
-          className="ml-1 text-accent-700 underline decoration-accent-300 underline-offset-2 hover:text-accent-800"
-        >
-          代码可自建
-        </a>
-      </p>}
+      </div>
     </div>
   )
 }

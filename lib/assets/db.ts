@@ -35,6 +35,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS projects (
   id         TEXT PRIMARY KEY,
   title      TEXT NOT NULL,
+  owner_id   TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -87,6 +88,11 @@ export function openDb(dbPath: string = defaultDbPath()): DatabaseSync {
   }
   const db = new DatabaseSync(dbPath)
   db.exec(SCHEMA)
+  const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[]
+  if (!projectColumns.some((column) => column.name === "owner_id")) {
+    db.exec("ALTER TABLE projects ADD COLUMN owner_id TEXT")
+  }
+  db.exec("CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id, updated_at)")
   // 额度表也在这里建：它和资产链共用同一个库文件，分开建会导致测试用
   // `:memory:` 时只建了一半的表结构
   ensureQuotaSchema(db)

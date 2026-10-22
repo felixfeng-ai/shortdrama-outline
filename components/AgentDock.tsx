@@ -8,11 +8,11 @@
 //
 // 名字叫「场记」而不是「助手」：场记本来就是剧组里那个知道"拍到哪了、
 // 哪条不行、下一场接哪"的人——它就是干这个的，不是通用聊天框。
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { postJson } from '@/lib/api'
 import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
 import { createToolExecutors, type AgentCard, type AgentState } from '@/lib/agent/tools'
-import type { StepKey } from '@/lib/types'
+import { STEPS, type StepKey } from '@/lib/types'
 
 interface Props {
   /** 页面当前状态的快照（工具只读它） */
@@ -32,6 +32,8 @@ interface Props {
   onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => void
   /** 用户确认「重新生成某一步」后，页面负责触发 */
   onRegenerate: (step: StepKey) => void
+  /** 从画布等入口带入的问题；只预填，不自动发送 */
+  seedPrompt?: { id: number; text: string } | null
 }
 
 /** 一轮里的一个"过程步骤"（查了什么、拿到什么） */
@@ -107,6 +109,7 @@ export default function AgentDock({
   onNewMessage,
   onApplyCard,
   onRegenerate,
+  seedPrompt,
 }: Props) {
   const [lines, setLines] = useState<Line[]>([])
   const [input, setInput] = useState('')
@@ -114,6 +117,17 @@ export default function AgentDock({
   const [degraded, setDegraded] = useState(false)
   const busyRef = useRef(false)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const missingSteps = STEPS.filter((step) => !state.completed[step.key])
+  const missingSummary = missingSteps.length > 0
+    ? `还有 ${missingSteps.length} 个步骤未完成：${missingSteps.slice(0, 2).map((step) => step.short).join('、')}。我可以直接带你过去。`
+    : '六步产物已经齐了。我可以继续帮你审分镜、查返修或整理导出清单。'
+
+  useEffect(() => {
+    if (!seedPrompt) return
+    setInput(seedPrompt.text)
+    window.requestAnimationFrame(() => inputRef.current?.focus())
+  }, [seedPrompt])
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
@@ -277,24 +291,44 @@ export default function AgentDock({
 
           <div ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
             {lines.length === 0 && (
-              <div className="space-y-2.5">
-                <p className="text-xs text-ink-500">它会先查一眼项目，再回答你：</p>
-                {[
+              <div className="agent-welcome">
+                <button
+                  type="button"
+                  className="agent-prompt-bubble"
+                  onClick={() => setInput('现在还有哪些要处理？')}
+                >
+                  现在还有哪些要处理？
+                </button>
+                <div className="agent-answer-bubble">
+                  <span>场记</span>
+                  <p>{missingSummary}</p>
+                </div>
+                <div className="agent-starter-list agent-starter-secondary">
+                  <div className="agent-starter-head">
+                    <span>更多快捷指令</span>
+                    <span>先查项目，再回答</span>
+                  </div>
+                  {[
                   { q: '现在还有哪些要处理？', hint: '读进度与镜头健康度' },
                   { q: '怎么把产物拿到出图平台生成视频？', hint: '查文档，回答带出处' },
                   { q: '帮我把第 1 镜的雨再改大一点', hint: '给一张待确认卡片，你点了才改' },
-                ].map((item) => (
-                  <button
-                    key={item.q}
-                    type="button"
-                    onClick={() => setInput(item.q)}
-                    className="block w-full rounded-card border border-surface-line bg-surface-card px-3 py-2.5 text-left
-                      transition-all duration-150 hover:-translate-y-[1px] hover:border-accent-300 hover:bg-accent-50/50"
-                  >
-                    <span className="block text-xs text-ink-800">{item.q}</span>
-                    <span className="mt-0.5 block text-xs text-ink-400">{item.hint}</span>
-                  </button>
-                ))}
+                  ].slice(1).map((item) => (
+                    <button
+                      key={item.q}
+                      type="button"
+                      onClick={() => setInput(item.q)}
+                      className="agent-starter"
+                    >
+                      <span className="agent-starter-copy">
+                        <span className="agent-starter-q">{item.q}</span>
+                        <span className="agent-starter-hint">{item.hint}</span>
+                      </span>
+                      <svg viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M7 4.5 12.5 10 7 15.5" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -382,6 +416,7 @@ export default function AgentDock({
             onSubmit={(e) => { e.preventDefault(); void send() }}
           >
             <input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="问进度、怎么导出，或让我改某一镜…"

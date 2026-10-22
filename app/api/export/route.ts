@@ -6,9 +6,12 @@ import { NextResponse } from "next/server"
 import { InputError, errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { listRefs } from "@/lib/assets/refs"
-import { listSnapshots, getProject } from "@/lib/assets/repo"
+import { listSnapshots } from "@/lib/assets/repo"
 import { ARTIFACT_KINDS } from "@/lib/assets/types"
 import type { Shot, VisualCharacter, Scene } from "@/lib/assets/types"
+import { PROJECT_PACKAGE_SCHEMA, PROJECT_PACKAGE_SCHEMA_VERSION } from "@/lib/assets/export"
+import { assertProjectAccess } from "@/lib/assets/access"
+import { ownerFromRequest } from "@/lib/session"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -22,8 +25,7 @@ export async function GET(req: Request) {
     if (!projectId) throw new InputError("缺少 projectId")
 
     const db = getDbForRequest()
-    const project = getProject(db, projectId)
-    if (!project) throw new InputError("项目不存在")
+    const project = assertProjectAccess(db, projectId, ownerFromRequest(req))
 
     // 每一类取最新一版
     const latest: Record<string, { version: number; payload: unknown }> = {}
@@ -34,6 +36,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json(ok({
       manifest: {
+        schema: PROJECT_PACKAGE_SCHEMA,
+        schemaVersion: PROJECT_PACKAGE_SCHEMA_VERSION,
         project,
         latest,
         refs: listRefs(db, projectId),   // 只有元数据，图由前端并入

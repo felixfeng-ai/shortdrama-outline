@@ -6,10 +6,17 @@
 //      （否则同一角色在不同镜头里的 prompt 会不一致，锚点就失去意义）
 //   2. 确定性顺序 —— 字段顺序固定，不依赖对象键遍历顺序
 //   3. 空字段跳过 —— 用户没填的项不能编译出 "undefined" 或空括号
-import type { Shot, VisualCharacter, VisualPlace } from "./types.ts"
+import {
+  DEFAULT_LOCKED_VISUAL_TRAITS,
+  VISUAL_TRAIT_KEYS,
+  type Shot,
+  type VisualCharacter,
+  type VisualPlace,
+  type VisualTraitKey,
+} from "./types.ts"
 
 /** 参与编译的字段集合（id/name/anchor 不参与） */
-type AnchorField = "age" | "face" | "hair" | "marks" | "wardrobe" | "props"
+type AnchorField = VisualTraitKey
 
 /** 中文字段的英文标签。顺序即编译顺序，必须稳定 */
 const FIELD_LABELS: { key: AnchorField; label: string }[] = [
@@ -20,6 +27,19 @@ const FIELD_LABELS: { key: AnchorField; label: string }[] = [
   { key: "wardrobe", label: "wearing" },
   { key: "props", label: "carrying" },
 ]
+
+const TRAIT_LABELS: Record<VisualTraitKey, string> = {
+  age: "年龄",
+  face: "脸型五官",
+  hair: "发型",
+  marks: "辨识特征",
+  wardrobe: "服装",
+  props: "道具",
+}
+
+export function visualTraitLabel(key: VisualTraitKey): string {
+  return TRAIT_LABELS[key] ?? key
+}
 
 /**
  * 编译锚点串。
@@ -32,6 +52,41 @@ export function compileAnchor(vc: Pick<VisualCharacter, "age" | "face" | "hair" 
     if (value) parts.push(`${label}: ${value}`)
   }
   return parts.join(", ")
+}
+
+export interface LockedTraitIssue {
+  shot: number
+  character: string
+  traits: VisualTraitKey[]
+}
+
+/** 找出这一镜缺少了角色的哪些禁改项。没有锚点的角色不参与，避免误报。 */
+export function missingLockedTraits(prompt: string, visual: VisualCharacter): VisualTraitKey[] {
+  if (!visual.anchor?.trim()) return []
+  const locked = visual.lockedTraits ?? [...DEFAULT_LOCKED_VISUAL_TRAITS]
+  return locked.filter((key) => {
+    if (!VISUAL_TRAIT_KEYS.includes(key)) return false
+    const value = String(visual[key] ?? "").trim()
+    if (!value) return false
+    const label = FIELD_LABELS.find((field) => field.key === key)?.label
+    return !!label && !prompt.includes(`${label}: ${value}`)
+  })
+}
+
+/** 全片禁改项审计：只返回确实缺项的镜头，供版本提示精确到人与字段。 */
+export function auditLockedTraits(shots: Shot[], visuals: VisualCharacter[]): LockedTraitIssue[] {
+  const byName = new Map(visuals.map((visual) => [visual.name, visual]))
+  const issues: LockedTraitIssue[] = []
+
+  for (const shot of shots) {
+    for (const name of shot.characters ?? []) {
+      const visual = byName.get(name)
+      if (!visual) continue
+      const traits = missingLockedTraits(shot.prompt ?? "", visual)
+      if (traits.length > 0) issues.push({ shot: shot.shot, character: name, traits })
+    }
+  }
+  return issues
 }
 
 // ── 地点锚点 ───────────────────────────────────────────────────

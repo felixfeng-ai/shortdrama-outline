@@ -1,8 +1,11 @@
 ﻿import { test } from "node:test"
 import assert from "node:assert/strict"
+import fs from "node:fs"
 
 import { shotsToCsv, buildStoryboardHtml, buildZip } from "../lib/assets/export.ts"
 import type { Shot } from "../lib/assets/types.ts"
+
+const exportModule = await import("../lib/assets/export.ts")
 
 function shot(over: Partial<Shot> = {}): Shot {
   return {
@@ -101,4 +104,29 @@ test("E1g buildZip 对中文文件名使用 UTF-8 标志位", async () => {
   const ev = new DataView(buf.buffer, buf.byteOffset)
   // 本地文件头偏移 6 处的通用标志位应含 0x0800（UTF-8）
   assert.equal((ev.getUint16(6, true) & 0x0800) !== 0, true)
+})
+
+// ── 项目包契约：让今天导出的包，未来的读取器仍能识别 ─────────────
+
+test("E20 project.json 清单必须带稳定的格式标识与 schema 版本", () => {
+  const buildManifest = exportModule.buildProjectPackageManifest
+  assert.equal(typeof buildManifest, "function", "缺少项目包清单构造器")
+
+  const manifest = buildManifest({
+    project: { id: "p1", title: "测试剧" },
+    exportedAt: 123,
+    story: { idea: "一句话" },
+    assets: { shots: [] },
+    refs: [],
+  })
+
+  assert.equal(manifest.schema, "chengju.project")
+  assert.equal(manifest.schemaVersion, 1)
+  assert.deepEqual(manifest.project, { id: "p1", title: "测试剧" })
+  assert.equal(manifest.exportedAt, 123)
+  const pageSource = fs.readFileSync("app/page.tsx", "utf8")
+  assert.ok(
+    pageSource.includes("buildProjectPackageManifest({"),
+    "实际下载的项目包必须使用共享清单构造器",
+  )
 })

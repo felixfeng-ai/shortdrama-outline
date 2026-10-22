@@ -8,6 +8,7 @@
 //
 // 关键设计：批量更新必须是用户显式点击的动作，绝不隐式回写（SDD D2）。
 import { useState } from 'react'
+import { visualTraitLabel, type LockedTraitIssue } from '@/lib/assets/anchors'
 
 interface Props {
   /** 本版是基于旧上游生成的 */
@@ -17,16 +18,20 @@ interface Props {
   affectedShots: number
   /** 其中提示词已过期的镜头数 */
   expiredShots: number
+  /** 缺少禁改项的镜头数与明细 */
+  lockedTraitShots?: number
+  lockedTraitIssues?: LockedTraitIssue[]
   onRebuild: () => void
   actionLabel: string
 }
 
 export default function VersionBar({
-  stale, staleReason, affectedShots, expiredShots, onRebuild, actionLabel,
+  stale, staleReason, affectedShots, expiredShots,
+  lockedTraitShots = 0, lockedTraitIssues = [], onRebuild, actionLabel,
 }: Props) {
   const [open, setOpen] = useState(false)
 
-  if (!stale && affectedShots === 0 && expiredShots === 0) return null
+  if (!stale && affectedShots === 0 && expiredShots === 0 && lockedTraitShots === 0) return null
 
   return (
     <div className="mb-4 rounded-card border border-accent-200 bg-accent-50/70 px-3.5 py-3">
@@ -51,6 +56,19 @@ export default function VersionBar({
           ) : affectedShots > 0 && (
             <p className="mt-1 text-xs leading-relaxed text-accent-800">
               本次改动影响 <strong>{affectedShots}</strong> 个下游结果，当前提示词没有缺锚点。
+            </p>
+          )}
+
+          {lockedTraitShots > 0 && (
+            <p className="mt-1 text-xs leading-relaxed text-accent-800">
+              有 <strong>{lockedTraitShots}</strong> 个镜头缺少禁改项：
+              {lockedTraitIssues.slice(0, 2).map((issue, index) => (
+                <span key={`${issue.shot}-${issue.character}`}>
+                  {index > 0 ? '；' : ''}
+                  第 {issue.shot} 镜 {issue.character}（{issue.traits.map(visualTraitLabel).join('、')}）
+                </span>
+              ))}
+              {lockedTraitIssues.length > 2 ? `；另 ${lockedTraitIssues.length - 2} 处` : ''}
             </p>
           )}
 

@@ -3,7 +3,8 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 
 import { GET as snapshotsGet } from "../app/api/snapshots/route.ts"
-import { __resetDbForTests } from "../lib/assets/store.ts"
+import { getDbForRequest, __resetDbForTests } from "../lib/assets/store.ts"
+import { createProject } from "../lib/assets/repo.ts"
 import { ARTIFACT_KINDS } from "../lib/assets/types.ts"
 
 // ── K1 每一个快照类型都必须能被接口读出来（这条是回归测试）──
@@ -16,8 +17,9 @@ import { ARTIFACT_KINDS } from "../lib/assets/types.ts"
 
 test("K1 ARTIFACT_KINDS 里每一个 kind 都能通过快照接口读到", async () => {
   __resetDbForTests(":memory:")
+  const project = createProject(getDbForRequest(), "kind 测试")
   for (const kind of ARTIFACT_KINDS) {
-    const res = await snapshotsGet(new Request(`http://localhost/api/snapshots?projectId=p1&kind=${kind}`))
+    const res = await snapshotsGet(new Request(`http://localhost/api/snapshots?projectId=${project.id}&kind=${kind}`))
     const payload = await res.json()
     assert.equal(res.status, 200, `${kind} 被接口拒了（${res.status} ${payload?.error ?? ''}）`)
     assert.equal(payload.success, true, `${kind} 返回的不是成功信封`)

@@ -10,6 +10,8 @@ import { buildScenePrompt } from "@/lib/assets/prompts"
 import { persistIfProject } from "@/lib/assets/persist"
 import { readCharacters, readEpisodes, readIdea } from "@/lib/validate"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { assertProjectAccess } from "@/lib/assets/access"
+import { ownerFromRequest } from "@/lib/session"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -18,14 +20,16 @@ export const maxDuration = 120
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null)
+    const db = getDbForRequest()
+    const projectId = typeof body?.projectId === "string" ? body.projectId : null
+    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
     const idea = readIdea(body?.idea)
     const characters = readCharacters(body?.characters, "请先生成核心人物，再拆场次")
     const episodes = readEpisodes(body?.episodes, "请先生成分集剧情，再拆场次")
-    const projectId = typeof body?.projectId === "string" ? body.projectId : null
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
     const genre = readGenre(body?.genre)
-    chargeQuota(getDbForRequest(), identityFromRequest(req), "scenes")
+    chargeQuota(db, identityFromRequest(req), "scenes")
 
 
     const { system, user } = buildScenePrompt(idea, characters, episodes, genre)
@@ -41,10 +45,10 @@ export async function POST(req: Request) {
     // 它按「地点」去重，生命周期和场次不是一回事
     const places = normalizePlaces(raw)
 
-    persistIfProject(getDbForRequest(), projectId, "scenes", scenes, {
+    persistIfProject(db, projectId, "scenes", scenes, {
       kinds: ["episodes", "characters"],
     })
-    persistIfProject(getDbForRequest(), projectId, "visualPlaces", places, {
+    persistIfProject(db, projectId, "visualPlaces", places, {
       kinds: ["episodes", "characters"],
     })
 

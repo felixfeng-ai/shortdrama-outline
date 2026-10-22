@@ -9,6 +9,8 @@ import EpisodeCountPicker from '@/components/EpisodeCountPicker'
 import IdeaPanel from '@/components/IdeaPanel'
 import StepSection from '@/components/StepSection'
 import StepPills from '@/components/StepPills'
+import SideNav from '@/components/SideNav'
+import SignalOverview from '@/components/SignalOverview'
 import AssistantDock from '@/components/AssistantDock'
 import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
@@ -20,6 +22,7 @@ import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
 import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
 import TodoPanel from '@/components/TodoPanel'
+import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
 import { buildTodoList } from '@/lib/todo'
 import {
   DEFAULT_EPISODE_COUNT,
@@ -31,6 +34,7 @@ import {
 import { EMPTY_BRIEF, briefSignature, isBriefEmpty, readBrief, type CreativeBrief } from '@/lib/brief'
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
 import { EMPTY_LOOK, lookSignature, readLook, type LookBook } from '@/lib/look'
+import { buildProjectStatus } from '@/lib/project-status'
 import AgentDock from '@/components/AgentDock'
 import type { AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
@@ -51,13 +55,17 @@ import {
   generateScenes,
   registerRefs,
   listSnapshots,
+  listRefs,
+  saveSnapshot,
   findImpact,
 } from '@/lib/assets/api'
 import type { Shot, VisualCharacter, VisualPlace, Scene as AssetScene } from '@/lib/assets/types'
+import { groupAttachments } from '@/lib/assets/attachments'
+import { backfillVisualCharacterEntityIds } from '@/lib/assets/normalize'
 import type { ProjectDto } from '@/lib/assets/api'
 import { ARTIFACT_KINDS, type ArtifactKind } from '@/lib/assets/types'
 import type { SnapshotDto } from '@/lib/assets/api'
-import { auditShots } from '@/lib/assets/impact'
+import { auditShots, type ShotAudit } from '@/lib/assets/impact'
 import {
   detectVaultMode,
   loadDirectoryHandle,
@@ -84,6 +92,7 @@ import {
   shotsToCsv,
   shotsToChainingList,
   shotsToWorkList,
+  buildProjectPackageManifest,
   buildZip,
   downloadBlob,
 } from '@/lib/assets/export'
@@ -172,6 +181,16 @@ const STEP_ANCHORS: Record<StepKey, string> = {
   shots: 'step-shots',
 }
 
+const CANVAS_ARTIFACT_KIND: Record<CanvasNodeId, ArtifactKind> = {
+  characters: 'characters',
+  acts: 'acts',
+  episodes: 'episodes',
+  visuals: 'visualCharacters',
+  scenes: 'scenes',
+  places: 'visualPlaces',
+  shots: 'shots',
+}
+
 type VariantSession =
   | { step: 'characters'; a: Character[]; b: Character[] }
   | { step: 'acts'; a: Act[]; b: Act[] }
@@ -219,7 +238,7 @@ export default function Home() {
    */
   const [view, setView] = useState<StepKey>('characters')
   // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
-  const [impact, setImpact] = useState<{ affected: number; expired: number } | null>(null)
+  const [impact, setImpact] = useState<({ affected: number } & ShotAudit) | null>(null)
   const [vaultMode, setVaultMode] = useState<VaultMode>('indexeddb')
   /** 扫到的全部图片；vaultFiles 是「按已移除名单过滤后」的可见列表 */
   const [allVaultFiles, setAllVaultFiles] = useState<VaultFile[]>([])
@@ -230,6 +249,12 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null)
   /** 顶部的轻提示（已停止 / 已恢复上次项目这类「说明性」的话，不是错误） */
   const [notice, setNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
   /** 项目列表：用于「切换 / 重命名 / 删除」 */
   const [projects, setProjects] = useState<ProjectDto[]>([])
   /** 场记是否展开：H 双舱里它就是右舱的第二个 tab */
@@ -238,6 +263,10 @@ export default function Home() {
   const [deckOpen, setDeckOpen] = useState(false)
   /** 停在「产出」tab 时收到的新回答数；切到场记即清零 */
   const [agentUnread, setAgentUnread] = useState(0)
+  /** 项目画布：全局节点视图，关键字段可直接修改 */
+  const [canvasOpen, setCanvasOpen] = useState(false)
+  /** 从画布带入场记的问题：只预填，用户确认后才发送 */
+  const [agentSeed, setAgentSeed] = useState<{ id: number; text: string } | null>(null)
   /** 用户手动点过 tab 之后，不再自动切换 */
   const tabTouched = useRef(false)
   useEffect(() => {
@@ -522,6 +551,209 @@ export default function Home() {
     shots: shots.length > 0,
   }
   const completedCount = Object.values(stepCompleted).filter(Boolean).length
+  const projectStatus = useMemo(() => buildProjectStatus({
+    characters,
+    acts,
+    episodes,
+    visuals,
+    scenes,
+    places,
+    shots,
+    expiredShots: impact?.expired ?? 0,
+    visualsStale: visualsBuiltFrom !== charactersSig,
+  }), [characters, acts, episodes, visuals, scenes, places, shots, impact?.expired, visualsBuiltFrom, charactersSig])
+  const canvasCounts = projectStatus.counts
+  const canvasIssues = projectStatus.issues
+  const missingPlaces = projectStatus.placeGaps
+  const canvasPreviews = useMemo<Partial<Record<CanvasNodeId, CanvasPreview>>>(() => ({
+    characters: {
+      summary: '动机与人物弧光决定角色能不能驱动下游冲突。',
+      items: characters.map((c) => ({
+        id: c.id,
+        title: c.name || '未命名角色',
+        meta: c.identity || '身份待补',
+        note: `动机：${c.motivation || '待补'} · 弧光：${c.arc || '待补'}`,
+        missing: !c.motivation.trim() || !c.arc.trim(),
+        edit: { field: 'motivation', label: '核心动机', value: c.motivation, maxLength: 160, rows: 3 },
+      })),
+    },
+    acts: {
+      summary: '三幕结构决定整部剧的起承转合，情节点越清楚，分集越稳。',
+      items: acts.map((a, index) => ({
+        id: a.id,
+        title: a.title || `第 ${index + 1} 幕`,
+        meta: `${a.beats.length} 个情节点`,
+        note: a.summary || '这一幕的概要待补',
+        missing: !a.summary.trim() || a.beats.length === 0,
+        edit: { field: 'summary', label: '这一幕概要', value: a.summary, maxLength: 400, rows: 4 },
+      })),
+    },
+    episodes: {
+      summary: '每集结尾钩子决定追看，短于 20 字时节点会提示继续补强。',
+      items: episodes.map((e) => ({
+        id: e.id,
+        title: `第 ${e.number} 集 · ${e.title || '未命名'}`,
+        meta: e.hook ? `钩子 ${e.hook.trim().length} 字` : '还没有钩子',
+        note: e.hook || e.synopsis || '这一集的内容待补',
+        missing: !e.hook.trim() || e.hook.trim().length < 20,
+        edit: { field: 'hook', label: '结尾钩子', value: e.hook, maxLength: 160, rows: 3 },
+      })),
+    },
+    visuals: {
+      summary: '定妆锚点会被逐字复用到镜头提示词，决定角色跨镜一致性。',
+      items: visuals.map((v) => ({
+        id: v.id,
+        title: v.name || '未命名角色',
+        meta: v.age || '年龄待补',
+        note: visualsBuiltFrom !== charactersSig
+          ? `人物设定已更新，当前锚点需要复核。${v.anchor || '视觉锚点待补'}`
+          : v.anchor || '视觉锚点待补',
+        missing: visualsBuiltFrom !== charactersSig || !v.anchor.trim(),
+        edit: { field: 'anchor', label: '视觉锚点', value: v.anchor, maxLength: 1200, rows: 4 },
+      })),
+    },
+    scenes: {
+      summary: '场次是分镜的输入单位，地点、时间与人物都要能被下游直接使用。',
+      items: scenes.map((s) => ({
+        id: s.id,
+        title: `第 ${s.number} 场 · ${s.location || '地点待补'}`,
+        meta: `${s.timeOfDay || '时间待补'} · ${s.characters.join('、') || '没有标注角色'}`,
+        note: s.summary || '这场戏的概要待补',
+        missing: !s.location.trim() || !s.summary.trim(),
+        edit: { field: 'summary', label: '场景概要', value: s.summary, maxLength: 400, rows: 4 },
+      })),
+    },
+    shots: {
+      summary: '分镜是本轮交付物，缺参考图的镜头会在节点上显式提醒。',
+      items: shots.map((s) => ({
+        id: s.id,
+        title: `第 ${s.shot} 镜 · ${s.scene || '场景待补'}`,
+        meta: `第 ${s.episode || '?'} 集 · ${s.shotSize} · ${s.camera}`,
+        note: s.missingRefFor.length
+          ? `缺 ${s.missingRefFor.join('、')} 的参考图`
+          : s.status === 'rework'
+            ? '已标记需返修'
+            : s.action || s.dialogue || '画面动作与台词待补',
+        missing: s.missingRefFor.length > 0 || s.status === 'rework',
+        edit: { field: 'action', label: '画面动作', value: s.action, maxLength: 400, rows: 3 },
+      })),
+    },
+    places: {
+      summary: '地点锚点解决同一空间跨镜漂移，一处地点只保留一份描述。',
+      items: places.map((p) => ({
+        id: p.id,
+        title: p.name || '未命名地点',
+        meta: p.lighting || '光线条件待补',
+        note: p.anchor || '地点锚点待补',
+        missing: !p.anchor.trim(),
+        edit: { field: 'anchor', label: '地点锚点', value: p.anchor, maxLength: 1200, rows: 4 },
+      })),
+    },
+  }), [characters, acts, episodes, visuals, visualsBuiltFrom, charactersSig, scenes, shots, places])
+
+  async function handleCanvasEdit(
+    node: CanvasNodeId,
+    itemId: string,
+    field: string,
+    value: string,
+    mode: 'edit' | 'undo',
+  ) {
+    let nextPayload: unknown = null
+    let commit = () => {}
+
+    if (node === 'characters' && field === 'motivation') {
+      const item = characters.find((entry) => entry.id === itemId)
+      if (!item || item.motivation === value) return
+      const next = characters.map((entry) => (entry.id === itemId ? { ...entry, motivation: value } : entry))
+      nextPayload = next
+      commit = () => setCharacters(next)
+    } else if (node === 'acts' && field === 'summary') {
+      const item = acts.find((entry) => entry.id === itemId)
+      if (!item || item.summary === value) return
+      const next = acts.map((entry) => (entry.id === itemId ? { ...entry, summary: value } : entry))
+      nextPayload = next
+      commit = () => setActs(next)
+    } else if (node === 'episodes' && field === 'hook') {
+      const item = episodes.find((entry) => entry.id === itemId)
+      if (!item || item.hook === value) return
+      const next = episodes.map((entry) => (entry.id === itemId ? { ...entry, hook: value } : entry))
+      nextPayload = next
+      commit = () => setEpisodes(next)
+    } else if (node === 'visuals' && field === 'anchor') {
+      const item = visuals.find((entry) => entry.id === itemId)
+      if (!item || item.anchor === value) return
+      const next = visuals.map((entry) => (entry.id === itemId ? { ...entry, anchor: value } : entry))
+      nextPayload = next
+      commit = () => {
+        setVisuals(next)
+        setVisualsBuiltFrom(charactersSig)
+      }
+    } else if (node === 'scenes' && field === 'summary') {
+      const item = scenes.find((entry) => entry.id === itemId)
+      if (!item || item.summary === value) return
+      const next = scenes.map((entry) => (entry.id === itemId ? { ...entry, summary: value } : entry))
+      nextPayload = next
+      commit = () => setScenes(next)
+    } else if (node === 'shots' && field === 'action') {
+      const item = shots.find((entry) => entry.id === itemId)
+      if (!item || item.action === value) return
+      const next = shots.map((entry) => (entry.id === itemId ? { ...entry, action: value } : entry))
+      nextPayload = next
+      commit = () => setShots(next)
+    } else if (node === 'places' && field === 'anchor') {
+      const item = places.find((entry) => entry.id === itemId)
+      if (!item || item.anchor === value) return
+      const next = places.map((entry) => (entry.id === itemId ? { ...entry, anchor: value } : entry))
+      nextPayload = next
+      commit = () => setPlaces(next)
+    }
+
+    if (!nextPayload) return
+    const pid = projectId ?? await ensureProject(idea.trim().slice(0, 20))
+    if (!pid) throw new Error('项目尚未创建，暂时无法保存到项目版本')
+    await saveSnapshot(pid, CANVAS_ARTIFACT_KIND[node], nextPayload)
+    commit()
+    if (node === 'visuals') void refreshImpact(pid)
+    const nodeLabel = node === 'places' ? '地点锚点' : STEPS.find((step) => step.key === node)?.nav ?? node
+    const fieldLabel = field === 'motivation'
+      ? '核心动机'
+      : field === 'hook'
+        ? '结尾钩子'
+        : field === 'action'
+          ? '画面动作'
+          : field === 'summary'
+            ? node === 'acts' ? '幕概要' : '场景概要'
+            : node === 'places' ? '地点锚点' : '角色锚点'
+    recordJudgment(node, mode === 'undo' ? '画布内撤销' : '画布内修改', `${nodeLabel} · ${fieldLabel}`)
+  }
+
+  async function loadCanvasVersions(node: CanvasNodeId) {
+    if (!projectId) return []
+    return listSnapshots<unknown>(projectId, CANVAS_ARTIFACT_KIND[node])
+  }
+
+  async function restoreCanvasVersion(node: CanvasNodeId, payload: unknown) {
+    if (!Array.isArray(payload)) throw new Error('这个版本的内容无法恢复')
+    const pid = projectId ?? await ensureProject(idea.trim().slice(0, 20))
+    if (!pid) throw new Error('项目尚未创建，暂时无法恢复版本')
+
+    await saveSnapshot(pid, CANVAS_ARTIFACT_KIND[node], payload)
+
+    if (node === 'characters') setCharacters(payload as Character[])
+    else if (node === 'acts') setActs(payload as Act[])
+    else if (node === 'episodes') setEpisodes(payload as Episode[])
+    else if (node === 'visuals') {
+      setVisuals(payload as VisualCharacter[])
+      setVisualsBuiltFrom(charactersSig)
+    } else if (node === 'scenes') setScenes(payload as AssetScene[])
+    else if (node === 'places') setPlaces(payload as VisualPlace[])
+    else if (node === 'shots') setShots(payload as Shot[])
+
+    if (node === 'visuals') void refreshImpact(pid)
+    const nodeLabel = node === 'places' ? '地点锚点' : STEPS.find((step) => step.key === node)?.nav ?? node
+    recordJudgment(node, '画布内恢复版本', nodeLabel)
+  }
+
   const firstRun = !hasResult && idea.trim().length === 0
   const todoItems = buildTodoList({
     completed: stepCompleted,
@@ -878,7 +1110,7 @@ export default function Home() {
       const affected = latestVc ? (await findImpact(latestVc.id)).length : 0
       const audit = auditShots(vcSnaps, shotsSnaps)
 
-      setImpact({ affected, expired: audit.expired })
+      setImpact({ affected, ...audit })
     } catch {
       // 影响范围是增强信息，查不到不影响主流程
     }
@@ -1101,17 +1333,24 @@ export default function Home() {
       真发生过一次：visualPlaces 漏在白名单外，Promise.all 整体 400，
       恢复静默失效，用户每次打开都是空工作台。
     */
-    const pairs = await Promise.all(
-      ARTIFACT_KINDS.map(async (kind) => [kind, await listSnapshots<unknown>(pid, kind)] as const),
-    )
+    const [pairs, refs] = await Promise.all([
+      Promise.all(
+        ARTIFACT_KINDS.map(async (kind) => [kind, await listSnapshots<unknown>(pid, kind)] as const),
+      ),
+      listRefs(pid).catch(() => []),
+    ])
     const byKind = Object.fromEntries(pairs) as Record<ArtifactKind, SnapshotDto<unknown>[]>
+    const attachmentGroups = groupAttachments(refs)
     const latestOf = <T,>(kind: ArtifactKind): T | null => (byKind[kind]?.[0]?.payload as T | undefined) ?? null
 
     const payload = latestOf<{ idea?: string; genre?: string }>('idea')
     const nextCharacters = latestOf<Character[]>('characters') ?? []
     const nextActs = latestOf<Act[]>('acts') ?? []
     const nextEpisodes = latestOf<Episode[]>('episodes') ?? []
-    const nextVisuals = latestOf<VisualCharacter[]>('visualCharacters') ?? []
+    const nextVisuals = backfillVisualCharacterEntityIds(
+      latestOf<VisualCharacter[]>('visualCharacters') ?? [],
+      nextCharacters,
+    )
     const nextScenes = latestOf<AssetScene[]>('scenes') ?? []
     const nextPlaces = latestOf<VisualPlace[]>('visualPlaces') ?? []
     const nextShots = latestOf<Shot[]>('shots') ?? []
@@ -1131,6 +1370,8 @@ export default function Home() {
     setScenes(nextScenes)
     setPlaces(nextPlaces)
     setShots(nextShots)
+    setAttached(attachmentGroups.characters)
+    setPlaceAttached(attachmentGroups.places)
 
     // 恢复出来的就是各步最新版本，把「基于哪一版生成」对齐，
     // 否则一进来满屏都是「已过期」，用户会以为项目坏了
@@ -1259,7 +1500,7 @@ export default function Home() {
     const entries: { name: string; data: Uint8Array }[] = []
     const title = idea.trim().slice(0, 20) || "未命名漫剧"
 
-    const manifest = {
+    const manifest = buildProjectPackageManifest({
       project: { id: projectId, title },
       exportedAt: Date.now(),
       story: { idea, characters, acts, episodes },
@@ -1270,7 +1511,7 @@ export default function Home() {
         ...Object.entries(placeAttached).flatMap(([name, keys]) =>
           keys.map((k) => ({ ownerType: "place", ownerId: name, vaultKey: k }))),
       ],
-    }
+    })
 
     entries.push({ name: "project.json", data: enc.encode(JSON.stringify(manifest, null, 2)) })
     entries.push({ name: "prompts.csv", data: enc.encode(shotsToCsv(shots)) })
@@ -1293,6 +1534,7 @@ export default function Home() {
         "成剧 · 项目包",
         "",
         "project.json      全部文本资产 + 角色视觉锚点 + 地点视觉锚点 + 分镜",
+        "                  格式 chengju.project v1；读取器按 schemaVersion 兼容旧包",
         "prompts.csv       逐镜提示词（表格格式，含画面比例）",
         "shotlist.txt      逐镜执行清单（提示词 + 该带的参考图 + 参数），照着做即可",
         "chaining.txt      首尾帧衔接清单（哪一镜的尾帧接哪一镜的首帧）",
@@ -1385,6 +1627,7 @@ export default function Home() {
     setImagePrompts([])
     setScenes([])
     setPlaces([])
+    setAttached({})
     setPlaceAttached({})
     setShots([])
     setActiveShotId(null)
@@ -1511,6 +1754,19 @@ export default function Home() {
     runners[step]()
   }
 
+  /** 画布节点 → 对应步骤 + 场记，问题预先带入但不自动发送 */
+  function askAgentFromCanvas(step: StepKey, label: string) {
+    tabTouched.current = true
+    setCanvasOpen(false)
+    setDeckOpen(true)
+    setAgentOpen(true)
+    goToStep(step)
+    setAgentSeed({
+      id: Date.now(),
+      text: `请检查「${label}」这个节点：当前有哪些问题，下一步应该怎么处理？`,
+    })
+  }
+
   // 过期提示条
   const staleNotice = (text: string) => (
     <div className="mb-4 flex items-start gap-2 rounded-card border border-accent-200 bg-accent-50 px-3.5 py-2.5">
@@ -1550,10 +1806,28 @@ export default function Home() {
           canJump={canJump}
         />
 
+        <button
+          type="button"
+          className="h-canvas"
+          onClick={() => setCanvasOpen(true)}
+          title="查看六步项目画布"
+          aria-label="打开项目画布"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5" cy="6" r="2.2" />
+            <circle cx="19" cy="6" r="2.2" />
+            <circle cx="12" cy="18" r="2.2" />
+            <path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8" />
+          </svg>
+          <span>画布</span>
+        </button>
+
         <span className={`h-run ${anyRunning ? 'busy' : ''}`} aria-live="polite">
           <i aria-hidden="true" />
           {anyRunning ? `生成中 · ${elapsed.toFixed(1)}s` : `${completedCount}/6 已完成`}
         </span>
+
+        <ReleaseNotice />
 
         <ul className="hidden flex-wrap items-center gap-1.5 2xl:flex">
           {['零部署', '图不上传', '一键打包带走'].map((tag) => (
@@ -1577,9 +1851,51 @@ export default function Home() {
         </a>
       </header>
 
+      {canvasOpen && (
+        <ProjectCanvas
+          current={view}
+          completed={stepCompleted}
+          counts={{ ...canvasCounts, placeGaps: missingPlaces }}
+          issues={canvasIssues}
+          previews={canvasPreviews}
+          onEdit={handleCanvasEdit}
+          onLoadVersions={loadCanvasVersions}
+          onRestoreVersion={restoreCanvasVersion}
+          onOpen={(step) => {
+            setCanvasOpen(false)
+            goToStep(step)
+          }}
+          onAskAgent={askAgentFromCanvas}
+          onClose={() => setCanvasOpen(false)}
+        />
+      )}
+
       <div className="h-main">
+        <aside className="signal-rail" aria-label="创作步骤">
+          <span className="signal-rail-logo" aria-hidden="true">V</span>
+          <button
+            type="button"
+            className="signal-rail-canvas"
+            onClick={() => setCanvasOpen(true)}
+            title="打开项目画布"
+            aria-label="打开项目画布"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="5" cy="6" r="2.2" />
+              <circle cx="19" cy="6" r="2.2" />
+              <circle cx="12" cy="18" r="2.2" />
+              <path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8" />
+            </svg>
+          </button>
+          <SideNav
+            current={viewIndex}
+            completed={stepCompleted}
+            onJump={goToStep}
+            canJump={canJump}
+          />
+          <span className="signal-rail-label" aria-hidden="true">FLOW</span>
+        </aside>
         <main className="h-work">
-          <ReleaseNotice />
           {variantSession && (
             <VariantPicker
               stepLabel={
@@ -1633,7 +1949,7 @@ export default function Home() {
               onCancel={() => setVariantSession(null)}
             />
           )}
-          <div className="mb-3.5">
+          <div className="mb-3">
             <ProjectBar
                   projects={projects}
                   currentId={projectId}
@@ -1643,6 +1959,7 @@ export default function Home() {
                   onDelete={(id) => { void handleDeleteProject(id) }}
                   onNew={handleNewProject}
                   onLoadSample={() => { void handleLoadSample() }}
+                  onBackup={() => { void handleExportPackage() }}
                 />
                 {/* 空工作台时给一条最短的上手路径：先看示例长什么样 */}
                 {!hasResult && (
@@ -1668,7 +1985,17 @@ export default function Home() {
               firstRun={firstRun}
             />
 
-          <div className="mt-6 space-y-5">
+            <SignalOverview
+              current={viewIndex}
+              completed={stepCompleted}
+              onJump={goToStep}
+              canJump={canJump}
+              todoCount={todoItems.length}
+              shotDone={shots.filter((shot) => shot.status === 'done').length}
+              shotTotal={shots.length}
+            />
+
+          <div className="mt-5 space-y-4">
             {/*
               项目待办：把散在六个分区里的状态收成一张清单（只读，不写任何东西）。
               某一步一生成完，下一屏不用再翻——该做什么、哪里要修，都在这里。
@@ -1710,20 +2037,6 @@ export default function Home() {
               />
             )}
             </div>
-            )}
-            {/* 轻提示：已恢复上次项目、已停止这一步——都是说明，不是错误 */}
-            {notice && (
-              <div className="flex items-start gap-2 rounded-card border border-surface-line bg-surface-soft px-3.5 py-2.5">
-                <p className="min-w-0 flex-1 text-xs leading-relaxed text-ink-600">{notice}</p>
-                <button
-                  type="button"
-                  onClick={() => setNotice(null)}
-                  aria-label="知道了"
-                  className="shrink-0 rounded-pill px-2 py-0.5 text-[11px] text-ink-400 transition-colors hover:text-ink-700"
-                >
-                  知道了
-                </button>
-              </div>
             )}
             {/* 第一步：人物 */}
             <StepSection
@@ -1890,6 +2203,8 @@ export default function Home() {
                   }
                   affectedShots={impact?.affected ?? 0}
                   expiredShots={impact?.expired ?? 0}
+                  lockedTraitShots={impact?.lockedTraitShots ?? 0}
+                  lockedTraitIssues={impact?.lockedTraitIssues ?? []}
                   onRebuild={generateVisualAnchors}
                   actionLabel="视觉定妆"
                 />
@@ -1965,6 +2280,8 @@ export default function Home() {
                   }
                   affectedShots={impact?.affected ?? 0}
                   expiredShots={impact?.expired ?? 0}
+                  lockedTraitShots={impact?.lockedTraitShots ?? 0}
+                  lockedTraitIssues={impact?.lockedTraitIssues ?? []}
                   onRebuild={generateShotList}
                   actionLabel="生成分镜"
                 />
@@ -2116,6 +2433,13 @@ export default function Home() {
             )}
 
           </div>
+
+          {notice && (
+            <div className="work-toast" role="status" aria-live="polite">
+              <p>{notice}</p>
+              <button type="button" onClick={() => setNotice(null)} aria-label="知道了">知道了</button>
+            </div>
+          )}
         </main>
 
         {/*
@@ -2233,6 +2557,7 @@ export default function Home() {
                 }
                 onApplyCard={applyAgentCard}
                 onRegenerate={regenerateByAgent}
+                seedPrompt={agentSeed}
               />
             </div>
           </div>

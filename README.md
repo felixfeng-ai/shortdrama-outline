@@ -11,7 +11,7 @@
 [![线上体验](https://img.shields.io/badge/🌐_线上体验-chenju.work-2ea44f?style=for-the-badge)](https://chenju.work)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-165_passing-2ea44f?style=for-the-badge)](#测试)
+[![Tests](https://img.shields.io/badge/tests-node%3Atest-2ea44f?style=for-the-badge)](#测试)
 [![图片不上传](https://img.shields.io/badge/图片-永不上传-important?style=for-the-badge)](#三条硬指标)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
 
@@ -253,7 +253,7 @@ npm run dev                  # → http://localhost:3000
 ```
 
 ```bash
-npm test    # 165 条用例，零测试框架依赖
+npm test    # 全量 node:test 用例，零测试框架依赖
 npm run build
 ```
 
@@ -382,7 +382,7 @@ chengju/
 │       ├── persist.ts              # 快照落库共用逻辑（失败不阻断生成）
 │       ├── vault.ts                # 本地图库（目录直连 / IndexedDB 双路径）
 │       └── export.ts               # 打包带走：执行单 / 首尾帧衔接清单 / CSV / 离线 HTML / 手写 ZIP
-├── tests/                          # 18 个用例文件，165 条用例（node:test，零框架依赖）
+├── tests/                          # 全量回归用例（node:test，零框架依赖）
 ├── deploy/
 │   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
 │   └── cicd-deploy.sh              # 服务器端部署脚本：停服 → 构建 → 启动
@@ -468,7 +468,7 @@ interface Episode {
 ## 测试
 
 ```bash
-npm test        # 165 条用例，全部通过
+npm test        # 全量用例，全部通过
 ```
 
 **零测试框架依赖**——用的是 Node 内置的 `node:test`。测试进程里有一个解析钩子
@@ -533,10 +533,10 @@ npm test        # 165 条用例，全部通过
 
 | 方向 | 状态 | 说明 |
 |---|---|---|
-| 本地图库真机回归 | 🔬 验证中 | `fs-access` 目录直连需要真实 Chrome/Edge 授权目录后走一遍，确认缩略图与自动挂图 |
+| 本地图库目录直连 | 🟡 自动化通过 | OPFS 目录句柄已验证扫描、缩略图、中文名自动挂图、刷新恢复、移除/恢复、断开后持久化；真实系统目录授权弹窗仍待人工确认 |
 | 可灵首尾帧衔接清单 | 📋 计划中 | **通用版已上线**（导出包的 `chaining.txt` + 「复制衔接清单」按钮，即梦/可灵都适用）；可灵界面特有的字段还没摸清，不凭猜测做 |
-| 导出包 schema 版本化 | 📋 计划中 | `project.json` 要带 schema 版本，否则字段一改旧包就打不开 |
-| 多项目切换界面 | 📋 计划中 | 接口已就绪（`/api/projects`），界面目前同时只能开一个 |
+| 导出包 schema 版本化 | ✅ 已完成 | `project.json` 带 `schema: chengju.project` 与 `schemaVersion: 1`，未来读取器可按版本兼容旧包 |
+| 多项目切换界面 | ✅ 已完成 | 项目条支持新建、切换、重命名、删除与导出备份；项目按当前浏览器的匿名会话隔离 |
 | 导出 PDF | 📋 待定 | 目前是 Markdown + 离线 HTML + CSV，PDF 要不要做还没定 |
 | LangGraph 重写执行层 | ❌ 不做 | 六步已是可独立重跑的调用，改成图收益不抵复杂度 |
 | 服务端图片存储 | ❌ **永不做** | 违反零上传 |
@@ -637,8 +637,9 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的额度（1 个完整项目 = 13，默认够跑 5 个项目） |
 | `CHENGJU_DAILY_UNITS_GLOBAL` | | `3900` | 全站每天熔断阈值（约 300 个项目/天） |
 | `CHENGJU_TZ` | | `Asia/Shanghai` | 额度按哪个时区切日（服务器在 UTC 时尤其要留意） |
+| `CHENGJU_CLAIM_LEGACY_PROJECTS` | | 关闭 | 升级到匿名会话隔离后，如需把旧版无 owner 项目归给首次访问会话，设为 `1`；localhost 会自动使用稳定开发会话 |
 
-> 最后两项只对**托管版**有意义——自建时是你自己的 key，额度限制形同虚设，
+> 额度相关变量只对**托管版**有意义——自建时是你自己的 key，额度限制形同虚设，
 > 想关掉就把两个值调到很大。
 
 ---
@@ -752,5 +753,7 @@ docker run -p 3000:3000 -e DEEPSEEK_API_KEY=sk-xxx chengju
 **想换模型 / 换成其他厂商**
 改 `.env.local` 里的 `DEEPSEEK_BASE_URL` 和 `DEEPSEEK_MODEL` 即可（需兼容 OpenAI 的 `/chat/completions` 协议）。Prompt 在 `lib/prompts.ts`，可以自由调整。
 
-**刷新页面数据没了**
-设计如此——纯前端状态，没有数据库。需要持久化的话可以接 localStorage 或数据库。
+**刷新页面后项目还在吗？**
+项目内容会保存在当前浏览器的匿名会话与本地 SQLite 快照中，刷新页面、切换项目都能恢复。
+但服务端认的是这个浏览器的 Cookie：换浏览器或设备、清理站点数据后，就看不到原来的项目。
+重要项目请先用项目条里的「导出备份」带走；图片仍只在你自己的本地图库，不会随匿名会话上传。

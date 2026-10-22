@@ -34,8 +34,25 @@ export type ArtifactKind = (typeof ARTIFACT_KINDS)[number]
  * 拆成多个字段而不是一个大字符串，是为了让用户能单改一项（比如只换外套），
  * 并由影响范围查询精确算出「哪些镜头需要更新」。
  */
+export const VISUAL_TRAIT_KEYS = [
+  "age", "face", "hair", "marks", "wardrobe", "props",
+] as const
+export type VisualTraitKey = (typeof VISUAL_TRAIT_KEYS)[number]
+
+/** 身份相关字段默认锁定；服装与道具允许随场景变化 */
+export const DEFAULT_LOCKED_VISUAL_TRAITS: readonly VisualTraitKey[] = [
+  "age", "face", "hair", "marks",
+]
+
 export interface VisualCharacter {
   id: EntityId
+  /**
+   * 对应核心人物的稳定身份。旧快照可能没有；新生成的数据必须写入。
+   * 名称可改，entityId 不跟显示名一起漂移。
+   */
+  entityId?: EntityId
+  /** 跨镜必须保持的禁改项；旧快照缺省时按默认四项处理 */
+  lockedTraits?: VisualTraitKey[]
   /** 关联的叙事角色名（对应 lib/types.ts 的 Character.name） */
   name: string
   age: string        // 年龄，如「28岁」

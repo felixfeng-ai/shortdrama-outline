@@ -65,7 +65,7 @@ export default function AttachReview({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-chip bg-surface px-3 py-2 text-xs">
         <span className="text-ink-600">
           共 <b className="text-ink-900">{total}</b> 张 · 已对上{' '}
-          <b className="text-done-700">{hung}</b> 张
+          <b className="text-accent-700">{hung}</b> 张
         </span>
         {summary && (
           <span className="text-ink-400">
@@ -115,22 +115,22 @@ export default function AttachReview({
 
       {/* AI 兜底入口 —— 只在真的有认不出的图时出现 */}
       {(hasUninformative || unmatched.length > 0) && (
-        <div className="mt-3 rounded-card border border-done-200 bg-done-50/60 px-3 py-2.5">
+        <div className="mt-3 rounded-card border border-accent-200 bg-accent-50/60 px-3 py-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium text-done-800">
+            <p className="text-xs font-medium text-accent-900">
               名字里没有线索？（比如平台的默认时间戳命名：「即梦_19700101.png」这种）
             </p>
             <button
               type="button"
               onClick={onAskAi}
               disabled={busy}
-              className="shrink-0 rounded-chip bg-done-600 px-3 py-1.5 text-xs font-medium text-white
-                transition-colors hover:bg-done-700 disabled:opacity-50"
+              className="shrink-0 rounded-chip bg-accent-600 px-3 py-1.5 text-xs font-medium text-white
+                transition-colors hover:bg-accent-700 disabled:opacity-50"
             >
               {busy ? 'AI 正在认…' : '让 AI 认一下这些图'}
             </button>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-done-700/80">
+          <p className="mt-1 text-[11px] leading-relaxed text-accent-800/80">
             只把<b>文件名</b>发给 AI 判断归属，<b>图片本身不会上传</b>。返回的建议要你逐条确认才生效。
           </p>
         </div>
