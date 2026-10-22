@@ -3,6 +3,7 @@
 // 产品更新入口：不再占用首页内容区，只在顶栏留一个带新消息角标的图标。
 // 发布时间可用 NEXT_PUBLIC_RELEASE_AT 覆盖（ISO 字符串，默认北京时间 10-20 17:00）。
 import { useEffect, useRef, useState } from 'react'
+import SmoothCollapse from './SmoothCollapse'
 
 const RELEASE_AT = Date.parse(
   process.env.NEXT_PUBLIC_RELEASE_AT || '2026-10-20T17:00:00+08:00',
@@ -74,7 +75,7 @@ export default function ReleaseNotice() {
         <span className="release-badge" aria-hidden="true" />
       </button>
 
-      {open && (
+      <SmoothCollapse open={open}>
         <div className="release-popover" role="dialog" aria-label="产品更新">
           <div className="release-popover-head">
             <span className="release-dot" aria-hidden="true" />
@@ -89,7 +90,7 @@ export default function ReleaseNotice() {
             知道了
           </button>
         </div>
-      )}
+      </SmoothCollapse>
     </div>
   )
 }

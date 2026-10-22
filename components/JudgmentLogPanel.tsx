@@ -4,6 +4,7 @@
 // 默认折叠，不抢工作面的位置。
 import { useState } from 'react'
 import type { JudgmentEntry } from '@/lib/judgment-log'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   entries: JudgmentEntry[]
@@ -32,8 +33,9 @@ export default function JudgmentLogPanel({
   const setOpen = onOpenChange ?? setInner
   const [note, setNote] = useState('')
 
-  const body = open ? (
-    <div className={headless ? 'workmeta-panel' : 'jlog-body'}>
+  const body = (
+    <SmoothCollapse open={open}>
+      <div className={headless ? 'workmeta-panel' : 'jlog-body'}>
           {entries.length === 0 ? (
             <p className="jlog-empty">
               换角色、重生成时会自动记一条；也可以手动写一句为什么，之后场记会引用它。
@@ -69,8 +71,9 @@ export default function JudgmentLogPanel({
             />
             <button type="submit" disabled={!note.trim()}>记下</button>
           </form>
-    </div>
-  ) : null
+      </div>
+    </SmoothCollapse>
+  )
 
   if (headless) return body
 

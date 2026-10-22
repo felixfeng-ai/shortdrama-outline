@@ -3,6 +3,7 @@
 // 导演意图卡：4 个字段，可跳过。空着时对生成零影响。
 import { useState } from 'react'
 import { isBriefEmpty, type CreativeBrief } from '@/lib/brief'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   value: CreativeBrief
@@ -26,8 +27,9 @@ export default function BriefCard({ value, onChange, open: controlled, onOpenCha
 
   const set = (patch: Partial<CreativeBrief>) => onChange({ ...value, ...patch })
 
-  const body = open ? (
-    <div className={headless ? 'workmeta-panel' : 'brief-body'}>
+  const body = (
+    <SmoothCollapse open={open}>
+      <div className={headless ? 'workmeta-panel' : 'brief-body'}>
           <div className="brief-row">
             <span className="brief-label">核心情绪</span>
             <div className="brief-chips">
@@ -88,8 +90,9 @@ export default function BriefCard({ value, onChange, open: controlled, onOpenCha
             <span className="brief-hint">可跳过；空着时与原来的生成完全一致</span>
             <button type="button" onClick={() => setOpen(false)}>完成</button>
           </div>
-    </div>
-  ) : null
+      </div>
+    </SmoothCollapse>
+  )
 
   if (headless) return body
 

@@ -137,10 +137,14 @@ export default function ProjectCanvas({
   const closeButton = useRef<HTMLButtonElement | null>(null)
   const inspectorClose = useRef<HTMLButtonElement | null>(null)
   const closeRef = useRef(onClose)
+  const openRef = useRef(onOpen)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const closingRef = useRef(false)
   const selectedRef = useRef<CanvasNodeId | null>(null)
   const editingRef = useRef<string | null>(null)
   const historyOpenRef = useRef(false)
   const [selected, setSelected] = useState<CanvasNodeId | null>(null)
+  const [closing, setClosing] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [lastSaved, setLastSaved] = useState<SavedEdit | null>(null)
@@ -161,6 +165,7 @@ export default function ProjectCanvas({
   const dragRef = useRef<{ pointerId: number; startX: number; startY: number; panX: number; panY: number } | null>(null)
   const interactedRef = useRef(false)
   closeRef.current = onClose
+  openRef.current = onOpen
   selectedRef.current = selected
   editingRef.current = editingItemId
   historyOpenRef.current = historyOpen
@@ -176,6 +181,21 @@ export default function ProjectCanvas({
     [filteredPreviewItems, previewPage],
   )
   const pageDataItems = previewPageData.items
+
+  function requestClose(afterClose?: () => void) {
+    if (closingRef.current) return
+    closingRef.current = true
+    setClosing(true)
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    closeTimerRef.current = setTimeout(() => {
+      if (afterClose) afterClose()
+      else closeRef.current()
+    }, reduced ? 0 : 220)
+  }
+
+  function requestOpenStep(step: StepKey) {
+    requestClose(() => openRef.current(step))
+  }
 
   function fitCanvas() {
     const el = stage.current
@@ -279,6 +299,12 @@ export default function ProjectCanvas({
   }
 
   useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const previousOverflow = document.body.style.overflow
     const background = [...(overlay.current?.parentElement?.children ?? [])]
@@ -301,7 +327,7 @@ export default function ProjectCanvas({
         if (editingRef.current) cancelEdit()
         else if (historyOpenRef.current) setHistoryOpen(false)
         else if (selectedRef.current) clearSelection()
-        else closeRef.current()
+        else requestClose()
         return
       }
       if (e.key !== 'Tab' || !overlay.current) return
@@ -515,7 +541,8 @@ export default function ProjectCanvas({
 
   return (
     <div
-      className={`map-overlay ${selected ? 'has-inspector' : ''}`}
+      className={`map-overlay ${selected ? 'has-inspector' : ''} ${closing ? 'is-closing' : ''}`}
+      data-state={closing ? 'closing' : 'open'}
       ref={overlay}
       role="dialog"
       aria-modal="true"
@@ -533,7 +560,7 @@ export default function ProjectCanvas({
           项目画布
         </b>
         <span id="project-canvas-desc">点节点查看内容与缺口，关键字段可直接修改，完整编辑回到工作台</span>
-        <button ref={closeButton} type="button" onClick={onClose}>
+        <button ref={closeButton} type="button" onClick={() => requestClose()}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m6 6 12 12M18 6 6 18" />
           </svg>
@@ -934,7 +961,7 @@ export default function ProjectCanvas({
                 </svg>
                 问场记这个节点
               </button>
-              <button type="button" className="map-open-step" onClick={() => onOpen(selectedNode.target)}>
+              <button type="button" className="map-open-step" onClick={() => requestOpenStep(selectedNode.target)}>
                 进入「{selectedNode.label}」继续编辑
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5 12h13M13 6l6 6-6 6" />

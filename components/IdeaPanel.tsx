@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { postJson } from '@/lib/api'
+import SmoothCollapse from './SmoothCollapse'
 import {
   GENRES,
   MAX_IDEA_LENGTH,
@@ -195,78 +196,84 @@ export default function IdeaPanel({
       </div>
 
       {/* ── 两张小卡：示例想法 / 关键词联想 ── */}
-      <div className="idea-tools">
-        <p className="idea-tools-title">灵感助手</p>
-        <button
-          type="button"
-          onClick={() => onIdeaChange(SAMPLES[Math.floor(Math.random() * SAMPLES.length)])}
-          title="没灵感？换一条示例想法"
-          className="mini text-left"
-        >
-          <span className="mtxt">
-            <p>{SAMPLES[0]}</p>
-            <span className="ruler" />
-          </span>
-          <i className="mico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4.4" />
-              <path d="M12 8.2a2.7 2.7 0 0 1 1.7 4.8c-.6.5-1 .9-1 1.6v.3" />
-              <path d="M12 17.4h.01" />
-            </svg>
-          </i>
-        </button>
-
-        <div className="mini">
-          <span className="mtxt">
-            <input
-              type="text"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); void runBrainstorm() }
-              }}
-              maxLength={MAX_KEYWORD_LENGTH * 3}
-              placeholder="只有关键词？比如：快递员、钥匙"
-              aria-label="联想想法的关键词"
-              className="w-full border-0 bg-transparent text-[14.5px] text-ink-800 placeholder:text-ink-400 focus:outline-none"
-            />
-            <span className="ruler" />
-          </span>
+      <SmoothCollapse open={toolsOpen} className="story-tools-collapse">
+        <div className="idea-tools">
+          <p className="idea-tools-title">灵感助手</p>
           <button
             type="button"
-            onClick={() => void runBrainstorm()}
-            disabled={!keywords.trim() || brainstorming}
-            title="让 AI 把关键词补成完整想法"
-            className="mico text-[11px] font-medium text-accent-700 disabled:opacity-50"
+            onClick={() => onIdeaChange(SAMPLES[Math.floor(Math.random() * SAMPLES.length)])}
+            title="没灵感？换一条示例想法"
+            className="mini text-left"
           >
-            {brainstorming ? '…' : '联想'}
+            <span className="mtxt">
+              <p>{SAMPLES[0]}</p>
+              <span className="ruler" />
+            </span>
+            <i className="mico">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4.4" />
+                <path d="M12 8.2a2.7 2.7 0 0 1 1.7 4.8c-.6.5-1 .9-1 1.6v.3" />
+                <path d="M12 17.4h.01" />
+              </svg>
+            </i>
           </button>
-        </div>
 
-        {!firstRun && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="mini">
+            <span className="mtxt">
+              <input
+                type="text"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); void runBrainstorm() }
+                }}
+                maxLength={MAX_KEYWORD_LENGTH * 3}
+                placeholder="只有关键词？比如：快递员、钥匙"
+                aria-label="联想想法的关键词"
+                className="w-full border-0 bg-transparent text-[14.5px] text-ink-800 placeholder:text-ink-400 focus:outline-none"
+              />
+              <span className="ruler" />
+            </span>
             <button
               type="button"
-              aria-expanded={showKeywordHints}
-              onClick={() => setShowKeywordHints((value) => !value)}
-              className="story-tools-toggle"
+              onClick={() => void runBrainstorm()}
+              disabled={!keywords.trim() || brainstorming}
+              title="让 AI 把关键词补成完整想法"
+              className="mico text-[11px] font-medium text-accent-700 disabled:opacity-50"
             >
-              {showKeywordHints ? '收起常用关键词' : '常用关键词'}
+              {brainstorming ? '…' : '联想'}
             </button>
-            {showKeywordHints && KEYWORD_HINTS.map((word) => (
-              <button
-                key={word}
-                type="button"
-                onClick={() => setKeywords((k) => (k.trim() ? `${k.trim()}、${word}` : word))}
-                className="rounded-pill border border-dashed border-surface-line-2 px-2.5 py-1.5 text-xs text-ink-500
-                  transition-colors hover:border-accent-300 hover:text-accent-600"
-              >
-                + {word}
-              </button>
-            ))}
           </div>
-        )}
-      </div>
+
+          {!firstRun && (
+            <div>
+              <button
+                type="button"
+                aria-expanded={showKeywordHints}
+                onClick={() => setShowKeywordHints((value) => !value)}
+                className="story-tools-toggle"
+              >
+                {showKeywordHints ? '收起常用关键词' : '常用关键词'}
+              </button>
+              <SmoothCollapse open={showKeywordHints}>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {KEYWORD_HINTS.map((word) => (
+                    <button
+                      key={word}
+                      type="button"
+                      onClick={() => setKeywords((k) => (k.trim() ? `${k.trim()}、${word}` : word))}
+                      className="rounded-pill border border-dashed border-surface-line-2 px-2.5 py-1.5 text-xs text-ink-500
+                        transition-colors hover:border-accent-300 hover:text-accent-600"
+                    >
+                      + {word}
+                    </button>
+                  ))}
+                </div>
+              </SmoothCollapse>
+            </div>
+          )}
+        </div>
+      </SmoothCollapse>
 
       <div className="idea-followup">
         {/* ── 联想结果：AI 产出的候选，前两条标「AI推荐」 ── */}

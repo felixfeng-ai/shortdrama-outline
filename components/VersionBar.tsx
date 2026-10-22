@@ -9,6 +9,7 @@
 // 关键设计：批量更新必须是用户显式点击的动作，绝不隐式回写（SDD D2）。
 import { useState } from 'react'
 import { visualTraitLabel, type LockedTraitIssue } from '@/lib/assets/anchors'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   /** 本版是基于旧上游生成的 */
@@ -94,12 +95,12 @@ export default function VersionBar({
             )}
           </div>
 
-          {open && (
+          <SmoothCollapse open={open}>
             <p className="mt-2 rounded-chip bg-surface-card/70 px-2.5 py-2 text-xs text-accent-900">
               批量更新是显式操作：点击后才会重算受影响的提示词，
               并产生一个新的版本（旧版本仍可回溯）。
             </p>
-          )}
+          </SmoothCollapse>
         </div>
       </div>
     </div>

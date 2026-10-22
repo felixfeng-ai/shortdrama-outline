@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import AutoTextarea from './AutoTextarea'
 import CopyButton from './CopyButton'
 import RefImagePicker from './RefImagePicker'
+import SmoothCollapse from './SmoothCollapse'
 import { visualTraitLabel } from '@/lib/assets/anchors'
 import { DEFAULT_LOCKED_VISUAL_TRAITS, type VisualCharacter } from '@/lib/assets/types'
 import { getPreviewUrl, type VaultFile } from '@/lib/assets/vault'
@@ -146,7 +147,7 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
         />
       </div>
 
-      {open && (
+      <SmoothCollapse open={open}>
         <div className="mt-2 rounded-chip bg-surface-card/80 px-2.5 py-2 text-[11px] leading-relaxed text-ink-600">
           <p className="font-medium text-ink-700">出图之后</p>
           <p className="mt-1">
@@ -156,7 +157,7 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
             。存文件名建议用角色名，放到以角色名命名的文件夹里，本工具扫描时会自动挂到对应角色上。
           </p>
         </div>
-      )}
+      </SmoothCollapse>
     </div>
   )
 }

@@ -2009,33 +2009,27 @@ export default function Home() {
               active={metaPanel}
               onToggle={(panel) => setMetaPanel(metaPanel === panel ? null : panel)}
             />
-            {metaPanel === 'brief' && (
-              <BriefCard
-                headless
-                open
-                value={brief}
-                onChange={setBrief}
-                onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
-              />
-            )}
-            {metaPanel === 'todo' && (
-              <TodoPanel
-                headless
-                open
-                items={todoItems}
-                onGo={goToStep}
-                onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
-              />
-            )}
-            {metaPanel === 'log' && (
-              <JudgmentLogPanel
-                headless
-                open
-                entries={judgments}
-                onAdd={(reason) => recordJudgment('manual', '手记', reason)}
-                onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
-              />
-            )}
+            <BriefCard
+              headless
+              open={metaPanel === 'brief'}
+              value={brief}
+              onChange={setBrief}
+              onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
+            />
+            <TodoPanel
+              headless
+              open={metaPanel === 'todo'}
+              items={todoItems}
+              onGo={goToStep}
+              onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
+            />
+            <JudgmentLogPanel
+              headless
+              open={metaPanel === 'log'}
+              entries={judgments}
+              onAdd={(reason) => recordJudgment('manual', '手记', reason)}
+              onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
+            />
             </div>
             )}
             {/* 第一步：人物 */}
@@ -2557,6 +2551,10 @@ export default function Home() {
                 }
                 onApplyCard={applyAgentCard}
                 onRegenerate={regenerateByAgent}
+                onOpenStep={(step) => {
+                  goToStep(step)
+                  if (window.matchMedia('(max-width: 920px)').matches) setDeckOpen(false)
+                }}
                 seedPrompt={agentSeed}
               />
             </div>

@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import type { TodoItem } from '@/lib/todo'
 import type { StepKey } from '@/lib/types'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   items: TodoItem[]
@@ -26,8 +27,9 @@ export default function TodoPanel({ items, onGo, open: controlled, onOpenChange,
   if (items.length === 0) return null
 
   const fixes = items.filter((i) => i.kind === 'fix').length
-  const list = open ? (
-    <ul className={headless ? 'workmeta-list' : 'mt-2.5 space-y-2 border-t border-surface-line pt-2.5'}>
+  const list = (
+    <SmoothCollapse open={open}>
+      <ul className={headless ? 'workmeta-list' : 'mt-2.5 space-y-2 border-t border-surface-line pt-2.5'}>
       {items.map((item, i) => (
         <li key={item.id} className="flex items-start gap-2">
           <span
@@ -47,8 +49,9 @@ export default function TodoPanel({ items, onGo, open: controlled, onOpenChange,
           </button>
         </li>
       ))}
-    </ul>
-  ) : null
+      </ul>
+    </SmoothCollapse>
+  )
 
   if (headless) return list
 

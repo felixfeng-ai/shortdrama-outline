@@ -4,8 +4,9 @@
 //
 // 为什么需要它：以前整站只认「最近那个项目」，用户没法回到上一部戏，
 // 也没法把一个刚跑完的项目改名——这两件事是「多用几次」与「只用一次」的分界。
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ProjectDto } from '@/lib/assets/api'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   projects: ProjectDto[]
@@ -46,6 +47,11 @@ export default function ProjectBar({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const nameInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (editing) requestAnimationFrame(() => nameInputRef.current?.focus())
+  }, [editing])
 
   const current = projects.find((p) => p.id === currentId) ?? null
   const title = current?.title ?? (hasContent ? '未保存的新项目' : '还没有项目')
@@ -107,10 +113,10 @@ export default function ProjectBar({
         </button>
       </div>
 
-      {editing && (
+      <SmoothCollapse open={editing}>
         <div className="mt-2 flex gap-2">
           <input
-            autoFocus
+            ref={nameInputRef}
             value={draft}
             maxLength={100}
             onChange={(e) => setDraft(e.target.value)}
@@ -132,9 +138,9 @@ export default function ProjectBar({
             保存
           </button>
         </div>
-      )}
+      </SmoothCollapse>
 
-      {open && (
+      <SmoothCollapse open={open}>
         <div className="mt-2.5 border-t border-surface-line pt-2.5">
           {projects.length === 0 ? (
             <p className="px-1 py-1 text-[11px] text-ink-400">还没有项目。写下想法、点生成，就会自动建一个。</p>
@@ -206,7 +212,7 @@ export default function ProjectBar({
             载入示例项目（六步都有内容，不花额度）
           </button>
         </div>
-      )}
+      </SmoothCollapse>
     </div>
   )
 }

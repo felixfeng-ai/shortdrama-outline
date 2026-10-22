@@ -4,6 +4,7 @@
 // 与角色锚点互补：锚点管脸不换，这里管味道不散。
 import { useState } from 'react'
 import { isLookEmpty, type LookBook } from '@/lib/look'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   value: LookBook
@@ -36,7 +37,7 @@ export default function LookBookCard({ value, onChange }: Props) {
         <span className="brief-toggle">{open ? '收起' : filled ? '编辑' : '填写'}</span>
       </button>
 
-      {open && (
+      <SmoothCollapse open={open}>
         <div className="brief-body">
           {FIELDS.map((f) => (
             <div className="brief-row" key={f.key}>
@@ -55,7 +56,7 @@ export default function LookBookCard({ value, onChange }: Props) {
             <button type="button" onClick={() => setOpen(false)}>完成</button>
           </div>
         </div>
-      )}
+      </SmoothCollapse>
     </div>
   )
 }

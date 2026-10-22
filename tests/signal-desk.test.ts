@@ -13,6 +13,24 @@ const stepPillsSrc = fs.readFileSync("components/StepPills.tsx", "utf8")
 const overviewSrc = fs.existsSync("components/SignalOverview.tsx")
   ? fs.readFileSync("components/SignalOverview.tsx", "utf8")
   : ""
+const collapseSrc = fs.existsSync("components/SmoothCollapse.tsx")
+  ? fs.readFileSync("components/SmoothCollapse.tsx", "utf8")
+  : ""
+const briefSrc = fs.readFileSync("components/BriefCard.tsx", "utf8")
+const todoSrc = fs.readFileSync("components/TodoPanel.tsx", "utf8")
+const judgmentSrc = fs.readFileSync("components/JudgmentLogPanel.tsx", "utf8")
+const lookSrc = fs.readFileSync("components/LookBookCard.tsx", "utf8")
+const releaseSrc = fs.readFileSync("components/ReleaseNotice.tsx", "utf8")
+const actSrc = fs.readFileSync("components/ActList.tsx", "utf8")
+const shotSrc = fs.readFileSync("components/ShotCard.tsx", "utf8")
+const versionSrc = fs.readFileSync("components/VersionBar.tsx", "utf8")
+const streamingSrc = fs.existsSync("components/StreamingText.tsx")
+  ? fs.readFileSync("components/StreamingText.tsx", "utf8")
+  : ""
+const projectCanvasSrc = fs.readFileSync("components/ProjectCanvas.tsx", "utf8")
+const richTextSrc = fs.existsSync("components/AgentRichText.tsx")
+  ? fs.readFileSync("components/AgentRichText.tsx", "utf8")
+  : ""
 
 test("SDA1 Signal Desk 主题挂在根节点，不改业务组件 API", () => {
   assert.ok(layoutSrc.includes('className="signal-desk"'), "根节点缺少 signal-desk 类")
@@ -133,5 +151,53 @@ test("SDA15 顶栏额度、画布与完成状态必须作为一组靠最右", ()
   assert.ok(
     css.includes(".signal-desk .h-canvas { margin-left: auto; }"),
     "中等宽度和手机端没有右侧操作组的自动推手",
+  )
+})
+
+test("SDA16 高频展开动作必须共用可中断的柔和折叠容器", () => {
+  assert.ok(collapseSrc.includes("smooth-collapse"), "缺少共享折叠容器")
+  assert.ok(collapseSrc.includes("inert"), "折叠隐藏内容没有从键盘焦点中移除")
+  for (const [name, source] of [
+    ["项目菜单", projectSrc],
+    ["灵感助手", ideaSrc],
+    ["更新公告", releaseSrc],
+    ["创作意图", briefSrc],
+    ["待办", todoSrc],
+    ["判断日志", judgmentSrc],
+    ["视觉宪法", lookSrc],
+    ["三幕", actSrc],
+    ["分镜", shotSrc],
+    ["影响明细", versionSrc],
+    ["场记过程", agentSrc],
+  ]) {
+    assert.ok(source.includes("SmoothCollapse"), `${name}仍未改用柔和折叠`)
+  }
+  assert.ok(css.includes(".smooth-collapse"), "折叠容器缺少主题过渡样式")
+})
+
+test("SDA17 AI 场记输出必须有等待态、渐进落字和分段入场", () => {
+  assert.ok(streamingSrc.includes("StreamingText"), "缺少流式文本组件")
+  assert.ok(streamingSrc.includes("setTimeout"), "流式文本没有渐进更新机制")
+  assert.ok(agentSrc.includes("<StreamingText"), "场记回答仍是整块突然出现")
+  assert.ok(agentSrc.includes("agent-thinking"), "等待模型返回时没有连续反馈")
+  assert.ok(css.includes(".agent-stream-caret"), "流式回答缺少光标反馈")
+  assert.ok(css.includes("@keyframes agent-dot"), "等待态缺少呼吸点动画")
+})
+
+test("SDA18 画布进入和返回工作台必须都有平滑过渡", () => {
+  assert.ok(projectCanvasSrc.includes("requestClose"), "画布关闭仍直接卸载")
+  assert.ok(projectCanvasSrc.includes("is-closing"), "画布缺少退出状态")
+  assert.ok(css.includes(".map-overlay.is-closing"), "画布退出过渡样式缺失")
+  assert.ok(css.includes("@starting-style"), "画布首次进入缺少起始样式")
+})
+
+test("SDA19 场记正文必须字号协调，步骤和文档出处必须可点击跳转", () => {
+  assert.ok(richTextSrc.includes("agent-inline-jump"), "步骤引用没有可点击跳转")
+  assert.ok(richTextSrc.includes("agent-doc-link"), "文档出处没有可点击链接")
+  assert.ok(agentSrc.includes("onOpenStep"), "场记没有接入步骤跳转回调")
+  assert.ok(pageSrc.includes("onOpenStep"), "页面没有向场记传入步骤跳转")
+  assert.ok(
+    css.includes(".agent-stream-text") && css.includes("font-size: 11.5px"),
+    "场记正文仍继承过大的基础字号",
   )
 })

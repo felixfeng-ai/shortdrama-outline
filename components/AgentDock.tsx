@@ -13,6 +13,9 @@ import { postJson } from '@/lib/api'
 import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
 import { createToolExecutors, type AgentCard, type AgentState } from '@/lib/agent/tools'
 import { STEPS, type StepKey } from '@/lib/types'
+import SmoothCollapse from './SmoothCollapse'
+import StreamingText from './StreamingText'
+import AgentRichText from './AgentRichText'
 
 interface Props {
   /** 页面当前状态的快照（工具只读它） */
@@ -32,6 +35,7 @@ interface Props {
   onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => void
   /** 用户确认「重新生成某一步」后，页面负责触发 */
   onRegenerate: (step: StepKey) => void
+  onOpenStep?: (step: StepKey) => void
   /** 从画布等入口带入的问题；只预填，不自动发送 */
   seedPrompt?: { id: number; text: string } | null
 }
@@ -75,7 +79,7 @@ function ProcessTrail({ steps }: { steps: ProcessStep[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   return (
     // 工具轨迹走等宽缩进（├ └），不用左侧竖线——竖线是装饰，缩进才是结构
-    <div className="trail">
+    <div className="trail agent-line-in">
       {steps.map((step, i) => {
         const last = i === steps.length - 1
         return (
@@ -90,9 +94,9 @@ function ProcessTrail({ steps }: { steps: ProcessStep[] }) {
               <span className="trail-label">{step.label}</span>
               {step.detail && <span className="trail-more">{openIndex === i ? '−' : '+'}</span>}
             </button>
-            {openIndex === i && step.detail && (
+            <SmoothCollapse open={openIndex === i && Boolean(step.detail)}>
               <p className="trail-detail">{step.detail}</p>
-            )}
+            </SmoothCollapse>
           </div>
         )
       })}
@@ -109,6 +113,7 @@ export default function AgentDock({
   onNewMessage,
   onApplyCard,
   onRegenerate,
+  onOpenStep,
   seedPrompt,
 }: Props) {
   const [lines, setLines] = useState<Line[]>([])
@@ -345,17 +350,12 @@ export default function AgentDock({
                 return (
                   <div key={i} className="msg">
                     <span className="who gold">场记</span>
-                    {/* 分段渲染：模型爱用空行分段，整块 pre-wrap 出来会挤成一坨 */}
-                    <div className="msg-body">
-                      {line.text.split(/\n{2,}/).map((para, j) => (
-                        <p key={j}>
-                          {para.split('\n').map((row, k) => (
-                            <span key={k} className="block">
-                              {row}
-                            </span>
-                          ))}
-                        </p>
-                      ))}
+                    <div className="msg-body agent-stream-body">
+                      <StreamingText
+                        text={line.text}
+                        onProgress={scrollToEnd}
+                        render={(visibleText) => <AgentRichText text={visibleText} onOpenStep={onOpenStep} />}
+                      />
                     </div>
                   </div>
                 )
@@ -366,14 +366,14 @@ export default function AgentDock({
               if (line.role === 'note') {
                 return (
                   // 引用说明用缩进表达从属，不用左侧竖线（P-38 禁止卡片/列表项左侧竖线装饰）
-                  <p key={i} className="msg-note">
+                  <p key={i} className="msg-note agent-line-in">
                     {line.text}
                   </p>
                 )
               }
               // 待确认卡片：用户点了才真正改
               return (
-                <div key={i} className="prop">
+                <div key={i} className="prop agent-line-in">
                   <p className="prop-h">
                     {line.card.kind === 'shot-edit' ? `待确认：第 ${line.card.shot} 镜 · ${line.card.summary}` : `待确认：重新生成「${line.card.stepLabel}」`}
                   </p>
@@ -403,6 +403,14 @@ export default function AgentDock({
                 </div>
               )
             })}
+            {busy && (
+              <div className="agent-thinking" role="status" aria-live="polite">
+                <span>场记正在核对项目</span>
+                <span className="agent-thinking-dots" aria-hidden="true">
+                  <i /><i /><i />
+                </span>
+              </div>
+            )}
           </div>
 
           {degraded && (

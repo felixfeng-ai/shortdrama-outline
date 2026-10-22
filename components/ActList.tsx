@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import AutoTextarea from './AutoTextarea'
 import { ACT_META, type Act } from '@/lib/types'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   acts: Act[]
@@ -57,39 +58,26 @@ export default function ActList({ acts, onChange }: Props) {
         const meta = ACT_META[act.key] ?? ACT_META.setup
         const expanded = open[act.id] ?? index === 0
 
-        // 收起来的幕：与 demo 一样就是一张小卡，点开才进编辑
-        if (!expanded) {
-          return (
-            <button
-              key={act.id}
-              type="button"
-              onClick={() => setOpen((o) => ({ ...o, [act.id]: true }))}
-              title={`展开${meta.label}`}
-              className="actmini w-full"
-            >
-              {meta.label}
-            </button>
-          )
-        }
-
         return (
           <article
             key={act.id}
-            className={`actcard ledger-row ${ACCENT[act.key] ?? ACCENT.setup}`}
+            className={`actcard ledger-row act-shell ${expanded ? 'is-expanded' : 'is-collapsed'} ${ACCENT[act.key] ?? ACCENT.setup}`}
           >
-            <div className="flex items-start justify-between gap-3">
+            <button
+              type="button"
+              className="act-shell-head"
+              aria-expanded={expanded}
+              aria-disabled={index === 0}
+              onClick={() => index > 0 && setOpen((o) => ({ ...o, [act.id]: !expanded }))}
+            >
               <h3>{meta.label}</h3>
               {index > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setOpen((o) => ({ ...o, [act.id]: false }))}
-                  className="shrink-0 rounded-pill px-2.5 py-1 text-[11px] text-ink-400 transition-colors hover:text-ink-700"
-                >
-                  收起
-                </button>
+                <span className="act-shell-toggle">{expanded ? '收起' : '展开'}</span>
               )}
-            </div>
+            </button>
 
+            <SmoothCollapse open={expanded}>
+            <div className="act-shell-body">
             {/* 三幕进度轨：与 demo 同一套（圆点 + 铺垫→冲突→结局 + 细轨 + 收束点） */}
             <div className="steps">
               <span aria-hidden="true" className="dot" />
@@ -153,6 +141,8 @@ export default function ActList({ acts, onChange }: Props) {
                 + 添加情节点
               </button>
             </div>
+            </div>
+            </SmoothCollapse>
           </article>
         )
       })}

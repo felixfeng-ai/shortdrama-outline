@@ -12,6 +12,7 @@ import { useState } from 'react'
 import CopyButton from './CopyButton'
 import { shotToWorkOrder } from '@/lib/assets/export'
 import { CAMERA_MOVES, SHOT_DURATIONS, SHOT_SIZES, isSupportedDuration, type Shot, type ShotStatus } from '@/lib/assets/types'
+import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
   shot: Shot
@@ -114,7 +115,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
         </button>
       </div>
 
-      {open && (
+      <SmoothCollapse open={open} className="shot-card-reveal">
       <div className="mt-3 min-w-0 space-y-2 pl-0 sm:pl-10">
         {/* B6：本镜参考图标注 —— 双人同框不一致的主要防线 */}
         <div className={`flex min-w-0 flex-wrap items-center gap-1.5 break-words rounded-chip border px-3 py-2 text-xs
@@ -296,7 +297,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
           />
         </div>
       </div>
-      )}
+      </SmoothCollapse>
     </article>
   )
 }
