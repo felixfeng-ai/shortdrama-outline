@@ -72,9 +72,46 @@ CREATE TABLE IF NOT EXISTS ref_images (
   created_at INTEGER NOT NULL
 );
 
+-- 云端生成任务：先记账，再请求 Provider。Key 不落库，只保存非敏感请求元数据。
+CREATE TABLE IF NOT EXISTS generation_tasks (
+  id           TEXT PRIMARY KEY,
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  target_type  TEXT NOT NULL,
+  target_id    TEXT NOT NULL,
+  provider_id  TEXT NOT NULL,
+  model        TEXT NOT NULL,
+  prompt       TEXT NOT NULL,
+  prompt_hash  TEXT NOT NULL,
+  status       TEXT NOT NULL,
+  error        TEXT,
+  asset_id     TEXT,
+  created_at   INTEGER NOT NULL,
+  started_at   INTEGER,
+  finished_at  INTEGER
+);
+
+-- 云端生成结果：像素落在数据目录，SQLite 只保存相对位置与元数据。
+CREATE TABLE IF NOT EXISTS generated_assets (
+  id           TEXT PRIMARY KEY,
+  task_id      TEXT NOT NULL REFERENCES generation_tasks(id) ON DELETE CASCADE,
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  target_type  TEXT NOT NULL,
+  target_id    TEXT NOT NULL,
+  storage_key  TEXT NOT NULL,
+  mime         TEXT NOT NULL,
+  bytes        INTEGER NOT NULL,
+  provider_id  TEXT NOT NULL,
+  model        TEXT NOT NULL,
+  prompt       TEXT NOT NULL,
+  selected_at  INTEGER,
+  created_at   INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_snapshots_project_kind ON snapshots(project_id, kind);
 CREATE INDEX IF NOT EXISTS idx_refs_project ON ref_images(project_id, owner_type);
 CREATE INDEX IF NOT EXISTS idx_lineage_to ON lineage(to_snapshot_id);
+CREATE INDEX IF NOT EXISTS idx_generation_tasks_project ON generation_tasks(project_id, target_type, target_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(project_id, target_type, target_id, created_at);
 `
 
 /**

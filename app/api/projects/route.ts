@@ -5,6 +5,7 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { claimLegacyProjects, createProject, deleteProject, listProjects, renameProject } from "@/lib/assets/repo"
 import { ownerFromRequest } from "@/lib/session"
 import { assertProjectAccess } from "@/lib/assets/access"
+import { removeGeneratedProjectFiles } from "@/lib/generation/files"
 
 export const runtime = "nodejs"
 // 这些路由依赖请求参数与数据库，不能静态预渲染
@@ -77,6 +78,12 @@ export async function DELETE(req: Request) {
     assertProjectAccess(db, id, ownerId)
     const removed = deleteProject(db, id, ownerId)
     if (!removed) throw new InputError('项目没有删除，请重试')
+    try {
+      removeGeneratedProjectFiles(id)
+    } catch (error) {
+      // 数据库已级联清理；文件清理失败只记日志，避免把成功删除误报成失败。
+      console.error("[generation] 项目关键帧目录清理失败", error)
+    }
     return NextResponse.json(ok({ id }))
   } catch (error) {
     const { body, status } = errorResponse(error)

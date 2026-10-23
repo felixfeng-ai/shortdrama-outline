@@ -13,6 +13,7 @@ export async function GET() {
   const checks: Record<string, boolean> = {
     // 模型 Key 缺失时应用能启动，但所有生成都会失败——这属于「不健康」
     modelKey: !!process.env.DEEPSEEK_API_KEY,
+    imageKey: !!process.env.ALIYUN_DASHSCOPE_API_KEY,
     db: false,
   }
 

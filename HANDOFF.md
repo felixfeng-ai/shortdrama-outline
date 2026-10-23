@@ -8,7 +8,18 @@
 
 ## 当前状态（2026-10-22）
 
-**A · Signal Desk 舒适版已落地，本地跑通，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
+**云端关键帧 P0 已在本地实现，待浏览器验收，不直接推送。**
+
+- 角色视觉定妆卡与分镜卡新增 `KeyframePanel`：生成定妆图 / 首帧、运行态、历史版本回选。
+- 图像服务改为平台托管通义万相，前端不出现 Provider、模型或 API Key；服务端使用 `ALIYUN_DASHSCOPE_API_KEY` 与 `ALIYUN_IMAGE_MODEL`。
+- 新增 `generation_tasks` / `generated_assets` 两张 SQLite 表。任务按 queued → running → succeeded / failed 记账，关键帧按项目与目标隔离。
+- 生成结果落在 `CHENGJU_DATA_DIR/generated/<projectId>/`，本地参考图仍不随请求上传；删除项目会连生成目录一起清理。
+- 新增 `GET/POST/PATCH /api/generations` 与 `GET /api/generated-assets/:id`；私有读取继续校验匿名会话 owner。
+- 关键帧卡支持单独下载；“打包带走”会把当前采用的关键帧写入 `keyframes/`，历史版本元数据保留在 `project.json`，不重复打包历史像素。
+- 视觉一致性基线已完成：Look Book 的色调、光线、镜头语言与禁区会注入所有关键帧请求；同一项目使用稳定通义 seed。关键帧卡显示“视觉宪法已带入/未填写”状态。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)。
+
+**A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
 - **设计参数**：视觉冒险度 6 / 动效强度 6 / 信息密度 5。哑光石墨主画布、低饱和鼠尾草绿主操作、柔和冷蓝运行态、深橙警告态。
 - **骨架**：桌面为 60px 图标 + 短文案轨道 + 主工作区 + 360–400px 右侧 AI 产出舱；顶栏保持固定，主内容独立滚动。
@@ -24,10 +35,12 @@
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：全量测试 `359/359`；`npx tsc --noEmit` 通过；生产构建通过。
+- **验证**：全量测试 `394/394`；`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 逻辑覆盖率 `94.61%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用。
-- **本地预览**：`http://localhost:3199/?theme=neutral`。用户确认前不要推送。
+- **本地预览**：`http://localhost:3200/?theme=neutral`。用户确认前不要推送。
+- **真实通义验证**：用户提供的可用 Key 已写入服务端 `.env.local`；真实生成成功，任务为 `succeeded`，输出 PNG 为 720×1280，约 1.06MB，已落库并成为当前采用关键帧。
+- **执行顺序调整**：图生视频成本较高，放到最后；先完成视觉一致性、任务管理和低成本音频/协作基础。
 
 ---
 

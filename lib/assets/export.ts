@@ -21,6 +21,7 @@ export interface ProjectPackageManifest<
   TStory = unknown,
   TAssets = unknown,
   TRef = unknown,
+  TKeyframe = unknown,
 > {
   schema: typeof PROJECT_PACKAGE_SCHEMA
   schemaVersion: typeof PROJECT_PACKAGE_SCHEMA_VERSION
@@ -29,6 +30,7 @@ export interface ProjectPackageManifest<
   story: TStory
   assets: TAssets
   refs: TRef[]
+  keyframes: TKeyframe[]
 }
 
 export function buildProjectPackageManifest<
@@ -36,17 +38,24 @@ export function buildProjectPackageManifest<
   TStory,
   TAssets,
   TRef,
+  TKeyframe = unknown,
 >(input: {
   project: TProject
   exportedAt: number
   story: TStory
   assets: TAssets
   refs: TRef[]
-}): ProjectPackageManifest<TProject, TStory, TAssets, TRef> {
+  keyframes?: TKeyframe[]
+}): ProjectPackageManifest<TProject, TStory, TAssets, TRef, TKeyframe> {
   return {
     schema: PROJECT_PACKAGE_SCHEMA,
     schemaVersion: PROJECT_PACKAGE_SCHEMA_VERSION,
-    ...input,
+    project: input.project,
+    exportedAt: input.exportedAt,
+    story: input.story,
+    assets: input.assets,
+    refs: input.refs,
+    keyframes: input.keyframes ?? [],
   }
 }
 

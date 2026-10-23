@@ -13,6 +13,8 @@ import CopyButton from './CopyButton'
 import { shotToWorkOrder } from '@/lib/assets/export'
 import { CAMERA_MOVES, SHOT_DURATIONS, SHOT_SIZES, isSupportedDuration, type Shot, type ShotStatus } from '@/lib/assets/types'
 import SmoothCollapse from './SmoothCollapse'
+import KeyframePanel from './KeyframePanel'
+import type { LookBook } from '@/lib/look'
 
 interface Props {
   shot: Shot
@@ -23,6 +25,9 @@ interface Props {
   active?: boolean
   /** 点到这张卡就把放映厅切到这一镜 */
   onSelect?: (id: string) => void
+  projectId: string | null
+  onEnsureProject: () => Promise<string | null>
+  look: LookBook
 }
 
 const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
@@ -31,7 +36,10 @@ const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
   rework: { label: '需返修', cls: 'bg-accent-100 text-accent-800' },
 }
 
-export default function ShotCard({ shot, index, onUpdate, onRemove, active = false, onSelect }: Props) {
+export default function ShotCard({
+  shot, index, onUpdate, onRemove, active = false, onSelect,
+  projectId, onEnsureProject, look,
+}: Props) {
   const missing = shot.missingRefFor ?? []
   const [open, setOpen] = useState(false)
 
@@ -148,6 +156,19 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
             </button>
           )}
         </div>
+
+        {open && (
+          <KeyframePanel
+            projectId={projectId}
+            onEnsureProject={onEnsureProject}
+            targetType="shot"
+            targetId={shot.entityId}
+            prompt={shot.prompt || shot.action || shot.scene}
+            aspect={shot.params.ratio === '16:9' ? 'landscape' : 'vertical'}
+            actionLabel="生成首帧"
+            look={look}
+          />
+        )}
 
         {/* 出场角色 */}
         <div className="flex min-w-0 gap-2">
@@ -296,6 +317,7 @@ export default function ShotCard({ shot, index, onUpdate, onRemove, active = fal
             className="wrap-anywhere min-w-0 font-mono text-xs leading-relaxed text-ink-100"
           />
         </div>
+
       </div>
       </SmoothCollapse>
     </article>

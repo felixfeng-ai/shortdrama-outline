@@ -12,7 +12,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tests](https://img.shields.io/badge/tests-node%3Atest-2ea44f?style=for-the-badge)](#测试)
-[![图片不上传](https://img.shields.io/badge/图片-永不上传-important?style=for-the-badge)](#三条硬指标)
+[![参考图不上传](https://img.shields.io/badge/本地参考图-不上传-important?style=for-the-badge)](#三条硬指标)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
 
 </div>
@@ -32,7 +32,8 @@
 </div>
 
 后三步产出的**不是剧本，是资产**：角色视觉锚点、每场戏的时空、每个镜头的英文提示词。
-角色参考图始终存在你自己的硬盘上——**本工具不上传、不托管任何图片**。
+角色参考图始终存在你自己的硬盘上，**不会上传给成剧图像服务**。
+用户点击生成关键帧时，平台服务端使用通义万相新生成图片，并只把生成结果存进当前项目的数据目录。
 
 ## 三条硬指标
 
@@ -41,8 +42,8 @@
 | | 指标 | 具体到什么程度 | 怎么验 |
 |---|---|---|---|
 | 🚀 | **零部署** | 从打开 [chenju.work](https://chenju.work) 到拿到第 1 个镜头，**不需要安装任何东西**——不要 Docker、不要注册、不要本机跑服务 | 打开即用，全程只需一个浏览器 |
-| 🔒 | **零上传** | 图片**从不经过服务端**。服务端只存 `vaultKey`（图在你硬盘上的路径）+ `fileHash`（校验指纹），不存像素 | `/api/refs` 收到带 `data`/`base64`/`file`/`image` 字段的请求会**直接 400 拒绝** |
-| 📦 | **零锁定** | 全部资产可一键导出为自包含 zip（含离线分镜表），换工具不用重建 | 「打包带走」按钮，图片一并并入 zip |
+| 🔒 | **参考图零上传** | 本地参考图**从不经过服务端**。服务端只存 `vaultKey`（图在你硬盘上的路径）+ `fileHash`（校验指纹），不存这些图的像素 | `/api/refs` 收到带 `data`/`base64`/`file`/`image` 字段的请求会**直接 400 拒绝** |
+| 📦 | **零锁定** | 全部资产可一键导出为自包含 zip（含离线分镜表），换工具不用重建 | 「打包带走」按钮会并入本地参考图与当前采用的云端关键帧；历史关键帧保留元数据 |
 
 > 为什么把「零部署」放在第一位：同类开源方案（Jellyfish 等）能力更强，但要走
 > Docker + MySQL + Redis，**得先会运维才能开始写剧本**。编剧不该为了用工具先变成工程师。
@@ -130,7 +131,8 @@
 
 | 不做 | 为什么 |
 |---|---|
-| **不做图像 / 视频生成** | 一旦接生成，图就必须上云，「零上传」当场失效。我们只产出提示词，出图交给即梦/可灵 |
+| **不做视频生成 / 一键成片** | 图生视频涉及更高成本、长任务和新的隐私边界；P0 只做到可确认的角色定妆图与镜头首帧 |
+| **不把模型部署成本转嫁给编剧** | 关键帧默认由平台通义万相服务生成；用户不需要理解 Provider、模型或 API Key |
 | **不做全自动成片** | 那是 [huobao-drama](https://github.com/chatfire-AI/huobao-drama) 的赛道。人在环里才有判断权 |
 | **不做用户系统 / 协作** | 上来就要注册的东西，和「打开即用」冲突 |
 | **不做重部署分发** | 不提供 Docker 镜像——那是 Jellyfish 已经做好的事，我们只提供网页 |
@@ -175,7 +177,7 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 
 放弃是为了守住「轻」：
 
-- ❌ **不做视频生成**——一旦接生成，图就必须上云，零上传的承诺当场失效
+- ❌ **不做视频生成**——关键帧 P0 先验证一致性、回选与任务状态，图生视频留到下一阶段
 - ❌ **不做大纲之外的创作辅助**（角色库、协作、用户系统）
 - ❌ **不做重部署形态**（不做 Docker 分发、不做服务端存储）
 - ❌ **不再加功能**——能力清单已经和 Jellyfish 差不多了，再往上加是拿「轻」去换「全」，必输
@@ -264,6 +266,8 @@ npm run build
 | `DEEPSEEK_API_KEY` | 是 | — | DeepSeek API Key，在 https://platform.deepseek.com/api_keys 申请 |
 | `DEEPSEEK_BASE_URL` | | `https://api.deepseek.com/v1` | 兼容 OpenAI 协议的服务地址 |
 | `DEEPSEEK_MODEL` | | `deepseek-chat` | 模型名 |
+| `ALIYUN_DASHSCOPE_API_KEY` | 是 | — | 阿里云百炼 Key，仅服务端使用，编剧端无感知 |
+| `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相文生图模型 |
 
 > `.env.local` 已在 `.gitignore` 中，不会被提交。密钥只在服务端使用，前端拿不到。
 
@@ -276,7 +280,8 @@ npm run build
 | ⚛️ | 前端 | Next.js 14 App Router + Tailwind CSS 3 | 纯手写样式，**没有引入任何 UI 组件库** |
 | 🔌 | 后端 | Next.js API Routes | 全栈一体，不用单独起服务 |
 | 🧠 | 模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容协议。人物/三幕/定妆/场次一次性返回；**分集与分镜走 SSE 流式**，边生成边渲染 |
-| 🗄️ | 存储 | SQLite 单文件（`node:sqlite`） | 只存文本与引用：项目 / 快照 / 血缘 / 图台账。库文件放仓库外，避开构建覆盖。**不存任何图片** |
+| 🎨 | 图像 | 阿里云通义万相 | 服务端托管 `ALIYUN_DASHSCOPE_API_KEY`；默认使用 `wanx2.1-t2i-turbo`，只生成角色定妆图与镜头首帧 |
+| 🗄️ | 存储 | SQLite + 私有数据目录 | SQLite 存项目、快照、图台账和关键帧元数据；本地参考图像素不进入服务端，云端生成的关键帧写入 `data/generated` |
 | 📦 | 依赖 | **0 个第三方运行时依赖** | ZIP 打包手写、测试用 `node:test`、本地库用 `node:sqlite` |
 
 > 依赖只有 Next / React / Tailwind（都是框架本身）。功能层没有拉任何 npm 包——
@@ -418,6 +423,10 @@ chengju/
 | GET | `/api/impact` | `?snapshotId=` | `{ affected: Snapshot[] }`（含多层下游） |
 | GET | `/api/refs` | `?projectId=` | `{ refs: RefImageMeta[] }` |
 | POST | `/api/refs` | `{ projectId, refs: [{ vaultKey, fileHash, ownerType, ownerId, ... }] }` | `{ refs, saved }`；**带二进制字段直接 400** |
+| GET | `/api/generations` | `?projectId=&targetType=&targetId=` | `{ tasks, assets }`；只返回当前匿名会话可访问项目 |
+| POST | `/api/generations` | `{ projectId, targetType, targetId, prompt, aspect }` | `{ task, asset }`；服务端默认调用通义万相，不接受浏览器密钥或模型配置 |
+| PATCH | `/api/generations` | `{ projectId, assetId }` | `{ asset }`；在历史关键帧里回选一版 |
+| GET | `/api/generated-assets/:id` | — | 私有图片响应；校验项目归属后返回 PNG/JPEG/WebP |
 | GET | `/api/export` | `?projectId=` | `{ manifest: { project, latest, refs, exportedAt } }` |
 
 `mode` 为 `'single'` 时只生成 1 个角色（用于「换一个」和「添加角色」），此时需要传 `existing` 作为已有阵容，让模型避开功能重复。
@@ -533,13 +542,16 @@ npm test        # 全量用例，全部通过
 
 | 方向 | 状态 | 说明 |
 |---|---|---|
+| 角色定妆图 / 镜头首帧 P0 | ✅ 已完成 | 平台托管通义万相；生成任务入库、关键帧历史、采用状态、会话隔离，删除项目时清理文件 |
+| 本地参考图零上传 | ✅ 保持 | 生成请求只发送文本提示词，不发送本地参考图、图片路径或二进制 |
 | 本地图库目录直连 | 🟡 自动化通过 | OPFS 目录句柄已验证扫描、缩略图、中文名自动挂图、刷新恢复、移除/恢复、断开后持久化；真实系统目录授权弹窗仍待人工确认 |
 | 可灵首尾帧衔接清单 | 📋 计划中 | **通用版已上线**（导出包的 `chaining.txt` + 「复制衔接清单」按钮，即梦/可灵都适用）；可灵界面特有的字段还没摸清，不凭猜测做 |
 | 导出包 schema 版本化 | ✅ 已完成 | `project.json` 带 `schema: chengju.project` 与 `schemaVersion: 1`，未来读取器可按版本兼容旧包 |
 | 多项目切换界面 | ✅ 已完成 | 项目条支持新建、切换、重命名、删除与导出备份；项目按当前浏览器的匿名会话隔离 |
 | 导出 PDF | 📋 待定 | 目前是 Markdown + 离线 HTML + CSV，PDF 要不要做还没定 |
 | LangGraph 重写执行层 | ❌ 不做 | 六步已是可独立重跑的调用，改成图收益不抵复杂度 |
-| 服务端图片存储 | ❌ **永不做** | 违反零上传 |
+| 本地参考图服务端存储 | ❌ **永不做** | 违反参考图零上传 |
+| 云端关键帧存储 | ✅ **只存生成结果** | 用户主动触发通义万相生成后，新图片存入 `CHENGJU_DATA_DIR/generated`；本地参考图仍不进服务端 |
 
 > 「不做」和「永不做」是认真的。这个项目的生存空间在于**窄**，
 > 每加一块都是拿「轻」去换「全」，而「全」已经有人做得更好了（见[竞争格局](#竞争格局为什么这件事还值得做)）。
@@ -552,7 +564,7 @@ npm test        # 全量用例，全部通过
 
 不是随手挑的，和两条硬指标直接相关：
 
-**「图片不上传」这个承诺，只有代码可审计才有意义。** 服务端不碰像素这件事，
+**「本地参考图不上传」这个承诺，只有代码可审计才有意义。** 服务端不接收参考图像素这件事，
 闭源时用户只能选择相信我们；开源后可以直接读 `lib/assets/vault.ts` 和
 `app/api/refs/route.ts`，自己确认没有接收图片的通道。
 
@@ -633,7 +645,10 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `DEEPSEEK_API_KEY` | ✅ | — | 模型密钥，自建时用你自己的 |
 | `DEEPSEEK_BASE_URL` | | `https://api.deepseek.com/v1` | 兼容 OpenAI 协议的服务地址 |
 | `DEEPSEEK_MODEL` | | `deepseek-chat` | 模型名 |
+| `ALIYUN_DASHSCOPE_API_KEY` | ✅ | — | 通义万相服务端密钥；浏览器不接触 |
+| `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相模型名 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
+| `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录；仅用户主动生成后写入 |
 | `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的额度（1 个完整项目 = 13，默认够跑 5 个项目） |
 | `CHENGJU_DAILY_UNITS_GLOBAL` | | `3900` | 全站每天熔断阈值（约 300 个项目/天） |
 | `CHENGJU_TZ` | | `Asia/Shanghai` | 额度按哪个时区切日（服务器在 UTC 时尤其要留意） |

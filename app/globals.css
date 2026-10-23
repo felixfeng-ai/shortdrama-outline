@@ -665,6 +665,67 @@
   .signal-desk .signal-rail { display: none; }
 }
 
+/* Keyframe assets: generated media stays inside the existing ledger rhythm. */
+.keyframe-panel {
+  padding-top: 10px;
+  border-top: 1px solid var(--signal-line);
+}
+.keyframe-settings {
+  max-width: 560px;
+}
+.keyframe-preview {
+  max-height: 180px;
+}
+.keyframe-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.keyframe-generate {
+  min-height: 34px;
+}
+.keyframe-history {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(142, 183, 231, .32) transparent;
+}
+.keyframe-history-item {
+  aspect-ratio: 9 / 16;
+}
+.keyframe-history-item:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 2px;
+}
+.signal-desk .keyframe-panel {
+  border-top-color: var(--signal-line);
+}
+.signal-desk .keyframe-preview {
+  border-color: var(--signal-line);
+  background: var(--signal-raised);
+}
+
+@media (max-width: 720px) {
+  .keyframe-generate {
+    width: 100%;
+    min-height: 44px;
+  }
+  .keyframe-preview {
+    max-height: 230px;
+  }
+  .keyframe-settings {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keyframe-panel,
+  .keyframe-generate,
+  .keyframe-history-item {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 .act-shell {
   padding: 0 !important;
   overflow: hidden;

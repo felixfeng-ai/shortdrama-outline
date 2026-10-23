@@ -98,6 +98,11 @@ import {
 } from '@/lib/assets/export'
 import { postJson, postSse, isAbortError } from '@/lib/api'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
+import { fetchProjectGenerationAssets } from '@/lib/generation/client'
+import {
+  keyframeExportName,
+  keyframeManifestEntry,
+} from '@/lib/generation/export'
 import {
   MIN_IDEA_LENGTH,
   GENRES,
@@ -1499,6 +1504,10 @@ export default function Home() {
     const enc = new TextEncoder()
     const entries: { name: string; data: Uint8Array }[] = []
     const title = idea.trim().slice(0, 20) || "未命名漫剧"
+    const keyframeState = projectId
+      ? await fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] }))
+      : { tasks: [], assets: [] }
+    const keyframes = keyframeState.assets
 
     const manifest = buildProjectPackageManifest({
       project: { id: projectId, title },
@@ -1511,6 +1520,7 @@ export default function Home() {
         ...Object.entries(placeAttached).flatMap(([name, keys]) =>
           keys.map((k) => ({ ownerType: "place", ownerId: name, vaultKey: k }))),
       ],
+      keyframes: keyframes.map(keyframeManifestEntry),
     })
 
     entries.push({ name: "project.json", data: enc.encode(JSON.stringify(manifest, null, 2)) })
@@ -1539,15 +1549,30 @@ export default function Home() {
         "shotlist.txt      逐镜执行清单（提示词 + 该带的参考图 + 参数），照着做即可",
         "chaining.txt      首尾帧衔接清单（哪一镜的尾帧接哪一镜的首帧）",
         "storyboard.html   离线可看的分镜表（双击用浏览器打开）",
+        "keyframes/        已采用的云端关键帧（按角色 / 镜头分类）",
         "characters/       角色参考图（若从本地图库成功并入）",
         "places/           场景参考图（按地点名分目录）",
         "",
         "台词在 prompts.csv 与 shotlist.txt 里，是给配音和字幕用的文本；",
         "本工具不生成音频，配音在剪映或即梦那边做。",
         "",
-        "说明：图片始终保存在你自己的机器上，本工具不上传、不托管任何图片。",
+        "说明：本地参考图不会上传；keyframes/ 只包含你主动云端生成并采用的图片。",
       ].join("\n")),
     })
+
+    // 云端生成结果按当前采用版本并入；历史版本只保留 project.json 元数据。
+    for (const asset of keyframes.filter((item) => item.selectedAt)) {
+      try {
+        const response = await fetch(asset.downloadUrl)
+        if (!response.ok) continue
+        entries.push({
+          name: `keyframes/${asset.targetType}/${keyframeExportName(asset)}`,
+          data: new Uint8Array(await response.arrayBuffer()),
+        })
+      } catch {
+        // 单张关键帧下载失败不阻断文本与本地参考图交付
+      }
+    }
 
     // 把本地图库里的角色图并入包（从本地读，不经服务端）
     for (const [name, keys] of Object.entries(attached)) {
@@ -2211,6 +2236,9 @@ export default function Home() {
                 attached={attached}
                 onAttach={attachImage}
                 onDetach={detachImage}
+                projectId={projectId}
+                onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
+                look={look}
               />
             </StepSection>
 
@@ -2305,6 +2333,9 @@ export default function Home() {
                 onChange={setShots}
                 activeShotId={activeShot?.id ?? null}
                 onSelect={setActiveShotId}
+                projectId={projectId}
+                onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
+                look={look}
               />
             </StepSection>
 

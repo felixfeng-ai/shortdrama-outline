@@ -2,6 +2,7 @@
 
 import ShotCard from './ShotCard'
 import type { Shot } from '@/lib/assets/types'
+import type { LookBook } from '@/lib/look'
 
 interface Props {
   shots: Shot[]
@@ -10,9 +11,14 @@ interface Props {
   activeShotId?: string | null
   /** 点某张镜卡 → 切换放映厅 */
   onSelect?: (id: string) => void
+  projectId: string | null
+  onEnsureProject: () => Promise<string | null>
+  look: LookBook
 }
 
-export default function ShotList({ shots, onChange, activeShotId = null, onSelect }: Props) {
+export default function ShotList({
+  shots, onChange, activeShotId = null, onSelect, projectId, onEnsureProject, look,
+}: Props) {
   const update = (id: string, patch: Partial<Shot>) =>
     onChange(shots.map((s) => (s.id === id ? { ...s, ...patch } : s)))
 
@@ -31,6 +37,9 @@ export default function ShotList({ shots, onChange, activeShotId = null, onSelec
           onRemove={remove}
           active={shot.id === activeShotId}
           onSelect={onSelect}
+          projectId={projectId}
+          onEnsureProject={onEnsureProject}
+          look={look}
         />
       ))}
     </div>

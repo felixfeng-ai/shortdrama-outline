@@ -9,6 +9,9 @@ import AutoTextarea from './AutoTextarea'
 import CopyButton from './CopyButton'
 import RefImagePicker from './RefImagePicker'
 import SmoothCollapse from './SmoothCollapse'
+import KeyframePanel from './KeyframePanel'
+import { buildCharacterKeyframePrompt } from '@/lib/generation/prompt'
+import type { LookBook } from '@/lib/look'
 import { visualTraitLabel } from '@/lib/assets/anchors'
 import { DEFAULT_LOCKED_VISUAL_TRAITS, type VisualCharacter } from '@/lib/assets/types'
 import { getPreviewUrl, type VaultFile } from '@/lib/assets/vault'
@@ -26,6 +29,9 @@ interface Props {
   onAttach: (characterName: string, file: VaultFile) => void
   /** 摘掉一张已挂的图（挂错了要能撤回） */
   onDetach?: (characterName: string, key: string) => void
+  projectId: string | null
+  onEnsureProject: () => Promise<string | null>
+  look: LookBook
 }
 
 const FIELDS: { key: keyof VisualCharacter; label: string; hint: string }[] = [
@@ -226,6 +232,7 @@ function AttachedPreviews({
 
 export default function VisualAnchorPanel({
   visuals, onChange, imagePrompts, vaultFiles, attached, onAttach, onDetach,
+  projectId, onEnsureProject, look,
 }: Props) {
   const [openPicker, setOpenPicker] = useState<string | null>(null)
   // 被镜头卡「去挂图」点名的角色：滚动过去并高亮，同时把挂图面板直接展开
@@ -314,6 +321,17 @@ export default function VisualAnchorPanel({
               ))}
               <span className="text-ink-400">服装、道具可随场景调整</span>
             </div>
+
+            <KeyframePanel
+              projectId={projectId}
+              onEnsureProject={onEnsureProject}
+              targetType="character"
+              targetId={vc.entityId ?? vc.id}
+              prompt={prompt?.en || buildCharacterKeyframePrompt(vc)}
+              aspect="portrait"
+              actionLabel="生成定妆图"
+              look={look}
+            />
 
             <dl className="space-y-2">
               {FIELDS.map(({ key, label, hint }) => (
