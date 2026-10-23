@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import SmoothCollapse from './SmoothCollapse'
 import {
@@ -12,6 +12,7 @@ import { keyframeExportName } from '@/lib/generation/export'
 import { publicGenerationError, type ImageAspect } from '@/lib/generation/model'
 import type { GeneratedAsset, GenerationTargetType, GenerationTask } from '@/lib/generation/types'
 import { isLookEmpty, type LookBook } from '@/lib/look'
+import { isAbortError } from '@/lib/api'
 
 interface Props {
   projectId: string | null
@@ -39,12 +40,16 @@ export default function KeyframePanel({
   const [historyOpen, setHistoryOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [selectingId, setSelectingId] = useState<string | null>(null)
+  const [referenceCount, setReferenceCount] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     if (!projectId) {
       setAssets([])
       setLastTask(null)
+      setReferenceCount(null)
       return
     }
     let cancelled = false
@@ -60,6 +65,8 @@ export default function KeyframePanel({
     return () => { cancelled = true }
   }, [projectId, targetId, targetType])
 
+  useEffect(() => () => abortRef.current?.abort(), [])
+
   const selected = useMemo(
     () => assets.find((asset) => asset.selectedAt) ?? assets[0] ?? null,
     [assets],
@@ -67,15 +74,21 @@ export default function KeyframePanel({
 
   async function handleGenerate() {
     setError(null)
+    setNotice(null)
+    setReferenceCount(null)
     if (!prompt.trim()) {
       setError('这一项还没有可用的图像提示词')
       return
     }
 
+    const controller = new AbortController()
+    abortRef.current = controller
+    let activeProjectId = projectId
     setGenerating(true)
     try {
       const pid = projectId ?? await onEnsureProject()
       if (!pid) throw new Error('项目还没有保存成功，请重试')
+      activeProjectId = pid
       const result = await generateKeyframe({
         projectId: pid,
         targetType,
@@ -83,15 +96,36 @@ export default function KeyframePanel({
         prompt: prompt.trim(),
         aspect,
         look,
-      })
+      }, controller.signal)
       setAssets((prev) => [result.asset, ...prev.filter((item) => item.id !== result.asset.id)])
       setLastTask(result.task)
+      setReferenceCount(result.referenceCount)
       if (assets.length > 0) setHistoryOpen(true)
+      window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
     } catch (cause) {
+      if (isAbortError(cause)) {
+        setNotice('已停止等待。通义侧任务可能仍会完成，但不会写入当前项目。')
+        if (activeProjectId) {
+          setTimeout(() => {
+            fetchGenerationState(activeProjectId!, targetType, targetId)
+              .then((state) => {
+                setLastTask(state.tasks[0] ?? null)
+                window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
+              })
+              .catch(() => {})
+          }, 250)
+        }
+        return
+      }
       setError(cause instanceof Error ? cause.message : '关键帧生成失败，请重试')
     } finally {
+      if (abortRef.current === controller) abortRef.current = null
       setGenerating(false)
     }
+  }
+
+  function handleStop() {
+    abortRef.current?.abort()
   }
 
   async function handleSelect(asset: GeneratedAsset) {
@@ -104,6 +138,7 @@ export default function KeyframePanel({
         ...item,
         selectedAt: item.id === next.id ? next.selectedAt : null,
       })))
+      window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '关键帧采用失败')
     } finally {
@@ -128,23 +163,34 @@ export default function KeyframePanel({
             <span className="rounded-pill bg-done-100 px-2 py-0.5 text-[9px] font-semibold text-done-800">通义万相</span>
           </div>
           <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">
-            由平台默认生成；只发送当前提示词，本地参考图不会上传。
+            由平台默认生成；会带入当前项目已采用的关键帧作一致性参考，本地参考图不会上传。
           </p>
           <p className={`mt-1 text-[10px] ${isLookEmpty(look) ? 'text-accent-700' : 'text-done-700'}`}>
             {isLookEmpty(look)
               ? '视觉宪法未填写 · 跨角色风格可能漂移'
               : `视觉宪法已带入 · ${[look?.palette, look?.light].filter(Boolean).join(' / ') || '已锁定'}`}
           </p>
+          {referenceCount !== null && (
+            <p className="mt-1 text-[10px] text-ink-400">
+              {referenceCount > 0
+                ? `本次已带入 ${referenceCount} 张项目关键帧`
+                : '本次没有可用项目关键帧，已按文字生成'}
+            </p>
+          )}
         </div>
         <button
           type="button"
-          onClick={() => void handleGenerate()}
-          disabled={generating || !prompt.trim()}
+          onClick={() => void (generating ? handleStop() : handleGenerate())}
+          disabled={!generating && !prompt.trim()}
           className="keyframe-generate rounded-chip border border-done-300 bg-done-50 px-2.5 py-1.5 text-[11px]
             font-semibold text-done-900 transition-colors hover:border-done-500 hover:bg-done-100
             disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {generating ? '云端生成中…' : selected ? `重${actionLabel}` : actionLabel}
+          {generating
+            ? '停止生成'
+            : lastTask?.status === 'failed' && !selected
+              ? '重试生成'
+              : selected ? `重${actionLabel}` : actionLabel}
         </button>
       </div>
 
@@ -218,9 +264,19 @@ export default function KeyframePanel({
           {error}
         </p>
       )}
+      {notice && (
+        <p role="status" className="mt-2 rounded-chip bg-surface-soft px-2.5 py-1.5 text-[10.5px] leading-relaxed text-ink-500">
+          {notice}
+        </p>
+      )}
       {!error && lastTask?.status === 'failed' && lastTask.error && (
         <p role="status" className="mt-2 text-[10px] leading-relaxed text-accent-700">
           上次生成失败：{publicGenerationError(lastTask.error)}
+        </p>
+      )}
+      {!error && lastTask?.status === 'canceled' && (
+        <p role="status" className="mt-2 text-[10px] leading-relaxed text-ink-400">
+          上次任务已停止等待
         </p>
       )}
     </section>

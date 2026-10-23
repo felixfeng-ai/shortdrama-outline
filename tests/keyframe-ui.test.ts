@@ -44,15 +44,17 @@ test("G1 普通编剧不需要 Provider、模型或 API Key", () => {
 
 test("G6 隐私边界在关键帧卡上可见", () => {
   assert.ok(keyframe.includes("本地参考图不会上传"), "没有说明本地参考图不上传")
-  assert.ok(keyframe.includes("云端生成"), "没有标出云端生成边界")
+  assert.ok(keyframe.includes("由平台默认生成"), "没有标出平台生成边界")
   assert.ok(client.includes("/api/generations"), "没有走统一生成接口")
 })
 
-test("G3 历史资产可预览、回选并有运行中禁用态", () => {
+test("G3 历史资产可预览、回选，运行中可停止而非重复提交", () => {
   assert.ok(keyframe.includes("selectedAt"), "没有采用状态")
   assert.ok(keyframe.includes("history"), "没有历史版本入口")
   assert.ok(keyframe.includes("generating"), "没有本地运行状态")
-  assert.ok(keyframe.includes("disabled={generating"), "运行中没有禁用重复提交")
+  assert.ok(keyframe.includes("停止生成"), "运行中不能停止生成")
+  assert.ok(keyframe.includes("AbortController"), "运行中没有请求中断能力")
+  assert.ok(keyframe.includes("disabled={!generating && !prompt.trim()}"), "非运行状态仍允许空提交")
   assert.ok(keyframe.includes("/api/generated-assets/"), "没有关键帧预览地址")
 })
 

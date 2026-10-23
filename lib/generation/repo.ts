@@ -156,6 +156,19 @@ export function failGenerationTask(db: DatabaseSync, id: string, error: string):
   return task
 }
 
+export function cancelGenerationTask(
+  db: DatabaseSync,
+  id: string,
+  reason = "已停止等待",
+): GenerationTask {
+  db.prepare(
+    "UPDATE generation_tasks SET status = 'canceled', error = ?, finished_at = ? WHERE id = ? AND status IN ('queued', 'running')",
+  ).run(reason.trim().slice(0, 300), Date.now(), id)
+  const task = getGenerationTask(db, id)
+  if (!task) throw new Error("生成任务不存在")
+  return task
+}
+
 export function listGenerationTasks(
   db: DatabaseSync,
   projectId: string,

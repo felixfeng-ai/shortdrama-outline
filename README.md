@@ -86,6 +86,7 @@
 - [稳健性设计](#稳健性设计)
 - [AI 编程怎么参与开发](#ai-编程怎么参与开发)
 - [路线图](#路线图)
+- [App 产品方向](APP.md)
 - [许可证与自建](#许可证与自建)
 - [部署](#部署)
 - [常见问题](#常见问题)
@@ -268,6 +269,7 @@ npm run build
 | `DEEPSEEK_MODEL` | | `deepseek-chat` | 模型名 |
 | `ALIYUN_DASHSCOPE_API_KEY` | 是 | — | 阿里云百炼 Key，仅服务端使用，编剧端无感知 |
 | `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相文生图模型 |
+| `ALIYUN_IMAGE_EDIT_MODEL` | | `qwen-image-2.0-pro` | 带项目关键帧参考时的通义多图编辑模型 |
 
 > `.env.local` 已在 `.gitignore` 中，不会被提交。密钥只在服务端使用，前端拿不到。
 
@@ -280,7 +282,7 @@ npm run build
 | ⚛️ | 前端 | Next.js 14 App Router + Tailwind CSS 3 | 纯手写样式，**没有引入任何 UI 组件库** |
 | 🔌 | 后端 | Next.js API Routes | 全栈一体，不用单独起服务 |
 | 🧠 | 模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容协议。人物/三幕/定妆/场次一次性返回；**分集与分镜走 SSE 流式**，边生成边渲染 |
-| 🎨 | 图像 | 阿里云通义万相 | 服务端托管 `ALIYUN_DASHSCOPE_API_KEY`；默认使用 `wanx2.1-t2i-turbo`，只生成角色定妆图与镜头首帧 |
+| 🎨 | 图像 | 阿里云通义万相 | 服务端托管 `ALIYUN_DASHSCOPE_API_KEY`；文生图用 `wanx2.1-t2i-turbo`，带项目已采用关键帧时改用 `qwen-image-2.0-pro` 多图参考 |
 | 🗄️ | 存储 | SQLite + 私有数据目录 | SQLite 存项目、快照、图台账和关键帧元数据；本地参考图像素不进入服务端，云端生成的关键帧写入 `data/generated` |
 | 📦 | 依赖 | **0 个第三方运行时依赖** | ZIP 打包手写、测试用 `node:test`、本地库用 `node:sqlite` |
 
@@ -424,7 +426,7 @@ chengju/
 | GET | `/api/refs` | `?projectId=` | `{ refs: RefImageMeta[] }` |
 | POST | `/api/refs` | `{ projectId, refs: [{ vaultKey, fileHash, ownerType, ownerId, ... }] }` | `{ refs, saved }`；**带二进制字段直接 400** |
 | GET | `/api/generations` | `?projectId=&targetType=&targetId=` | `{ tasks, assets }`；只返回当前匿名会话可访问项目 |
-| POST | `/api/generations` | `{ projectId, targetType, targetId, prompt, aspect }` | `{ task, asset }`；服务端默认调用通义万相，不接受浏览器密钥或模型配置 |
+| POST | `/api/generations` | `{ projectId, targetType, targetId, prompt, aspect }` | `{ task, asset, referenceCount }`；服务端自动选择项目已采用关键帧，不接受浏览器密钥或模型配置 |
 | PATCH | `/api/generations` | `{ projectId, assetId }` | `{ asset }`；在历史关键帧里回选一版 |
 | GET | `/api/generated-assets/:id` | — | 私有图片响应；校验项目归属后返回 PNG/JPEG/WebP |
 | GET | `/api/export` | `?projectId=` | `{ manifest: { project, latest, refs, exportedAt } }` |
@@ -543,7 +545,10 @@ npm test        # 全量用例，全部通过
 | 方向 | 状态 | 说明 |
 |---|---|---|
 | 角色定妆图 / 镜头首帧 P0 | ✅ 已完成 | 平台托管通义万相；生成任务入库、关键帧历史、采用状态、会话隔离，删除项目时清理文件 |
-| 本地参考图零上传 | ✅ 保持 | 生成请求只发送文本提示词，不发送本地参考图、图片路径或二进制 |
+| 关键帧任务控制 | ✅ 已完成 | 支持停止等待、取消状态和失败重试；取消不会写入关键帧资产 |
+| 项目生成任务中心 | ✅ 已完成 | 汇总等待、运行、成功、失败与取消任务；支持目标去重、单条重试和确认后串行批量重试 |
+| PWA 安装基础 | ✅ 已完成 | Manifest、Service Worker、离线兜底、条件安装入口和六步深链快捷方式；不缓存 API、个人图片或生成资产 |
+| 本地参考图零上传 | ✅ 保持 | 本地图库原图、路径和二进制不上传；仅使用平台已生成且当前项目已采用的关键帧做一致性参考 |
 | 本地图库目录直连 | 🟡 自动化通过 | OPFS 目录句柄已验证扫描、缩略图、中文名自动挂图、刷新恢复、移除/恢复、断开后持久化；真实系统目录授权弹窗仍待人工确认 |
 | 可灵首尾帧衔接清单 | 📋 计划中 | **通用版已上线**（导出包的 `chaining.txt` + 「复制衔接清单」按钮，即梦/可灵都适用）；可灵界面特有的字段还没摸清，不凭猜测做 |
 | 导出包 schema 版本化 | ✅ 已完成 | `project.json` 带 `schema: chengju.project` 与 `schemaVersion: 1`，未来读取器可按版本兼容旧包 |
@@ -564,7 +569,7 @@ npm test        # 全量用例，全部通过
 
 不是随手挑的，和两条硬指标直接相关：
 
-**「本地参考图不上传」这个承诺，只有代码可审计才有意义。** 服务端不接收参考图像素这件事，
+**「本地参考图不上传」这个承诺，只有代码可审计才有意义。** 服务端不接收本地图库参考图像素这件事，
 闭源时用户只能选择相信我们；开源后可以直接读 `lib/assets/vault.ts` 和
 `app/api/refs/route.ts`，自己确认没有接收图片的通道。
 
@@ -647,6 +652,7 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `DEEPSEEK_MODEL` | | `deepseek-chat` | 模型名 |
 | `ALIYUN_DASHSCOPE_API_KEY` | ✅ | — | 通义万相服务端密钥；浏览器不接触 |
 | `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相模型名 |
+| `ALIYUN_IMAGE_EDIT_MODEL` | | `qwen-image-2.0-pro` | 带项目关键帧参考时使用的多图编辑模型 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录；仅用户主动生成后写入 |
 | `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的额度（1 个完整项目 = 13，默认够跑 5 个项目） |

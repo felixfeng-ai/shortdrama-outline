@@ -2,11 +2,13 @@
 
 > 本文件用于 Codex 新会话无缝接续工作。请先完整读取本文件，再结合 `git status` 和项目代码确认状态后继续。
 
+App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见 [APP.md](APP.md)。
+
 ## 项目
 - 路径：`D:\Project\drama-outline`
 - 类型：Next.js 短剧大纲创作工具（App Router + Tailwind），面向竖屏短剧与漫剧
 
-## 当前状态（2026-10-22）
+## 当前状态（2026-10-23）
 
 **云端关键帧 P0 已在本地实现，待浏览器验收，不直接推送。**
 
@@ -17,7 +19,14 @@
 - 新增 `GET/POST/PATCH /api/generations` 与 `GET /api/generated-assets/:id`；私有读取继续校验匿名会话 owner。
 - 关键帧卡支持单独下载；“打包带走”会把当前采用的关键帧写入 `keyframes/`，历史版本元数据保留在 `project.json`，不重复打包历史像素。
 - 视觉一致性基线已完成：Look Book 的色调、光线、镜头语言与禁区会注入所有关键帧请求；同一项目使用稳定通义 seed。关键帧卡显示“视觉宪法已带入/未填写”状态。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)。
+- 生成一致性参考已接入：镜头按出场顺序带入当前项目已采用的角色关键帧；角色重生成优先带自己的身份图，其他角色图只作风格参考。单次最多 3 张，缺失文件自动跳过；只有平台生成且已采用的图会进入参考，本地图库原图仍不上传。
+- 带参考图时使用 `qwen-image-2.0-pro` 多图编辑接口，无参考图仍用 `wanx2.1-t2i-turbo` 文生图。可通过 `ALIYUN_IMAGE_EDIT_MODEL` 覆盖编辑模型。
+- 关键帧任务支持停止等待、取消状态和失败重试；取消不会创建资产，界面会明确说明通义远端任务可能仍完成。
+- 新增项目级生成任务中心：默认收起，汇总等待/运行/成功/失败/取消；最新失败或取消任务可单条重试，多项需确认后串行批量重试。
+- PWA 基础已落地：Manifest、Service Worker、离线页、静态缓存和条件安装按钮；API 与生成资产明确绕过缓存。
+- 六步支持 URL 深链：`?step=visuals` 可刷新恢复，步骤切换写入历史并支持前进后退；Manifest 提供人物、定妆、分镜快捷方式。
+- 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md) 与 [specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -35,7 +44,7 @@
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：全量测试 `394/394`；`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 逻辑覆盖率 `94.61%`。
+- **验证**：全量测试 `418/418`；`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `95.79%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用。
 - **本地预览**：`http://localhost:3200/?theme=neutral`。用户确认前不要推送。

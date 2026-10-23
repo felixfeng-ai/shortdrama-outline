@@ -4,15 +4,22 @@ export type ImageAspect = "portrait" | "vertical" | "landscape" | "square"
 
 export const ALIYUN_IMAGE_BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
 export const ALIYUN_IMAGE_DEFAULT_MODEL = "wanx2.1-t2i-turbo"
+export const ALIYUN_IMAGE_EDIT_DEFAULT_MODEL = "qwen-image-2.0-pro"
 
 export interface AliyunImageConfig {
   apiKey: string
   model: string
+  editModel: string
 }
 
 export interface AliyunImageRequest {
   url: string
   body: Record<string, unknown>
+}
+
+export interface AliyunReferenceImage {
+  bytes: Uint8Array
+  mime: string
 }
 
 export function resolveImageAspect(value: unknown): ImageAspect {
@@ -28,6 +35,7 @@ export function getAliyunImageConfig(
   return {
     apiKey,
     model: env.ALIYUN_IMAGE_MODEL?.trim() || ALIYUN_IMAGE_DEFAULT_MODEL,
+    editModel: env.ALIYUN_IMAGE_EDIT_MODEL?.trim() || ALIYUN_IMAGE_EDIT_DEFAULT_MODEL,
   }
 }
 
@@ -63,6 +71,82 @@ export function buildAliyunImageRequest(input: {
       },
     },
   }
+}
+
+export function buildAliyunImageEditRequest(input: {
+  prompt: string
+  model: string
+  aspect?: unknown
+  seed?: number
+  images: AliyunReferenceImage[]
+}): AliyunImageRequest {
+  const prompt = input.prompt.trim()
+  if (!prompt) throw new InputError("缺少图像提示词")
+  if (prompt.length > 2100) throw new InputError("图像提示词过长，请控制在 2100 字以内")
+  if (input.images.length < 1) throw new InputError("缺少参考图")
+  if (input.images.length > 3) throw new InputError("参考图最多 3 张")
+  const model = input.model.trim()
+  if (!model) throw new InputError("平台图像模型未配置")
+
+  const sizes: Record<ImageAspect, string> = {
+    portrait: "720*1280",
+    vertical: "720*1280",
+    landscape: "1280*720",
+    square: "1024*1024",
+  }
+  const content: Array<Record<string, string>> = input.images.map((image) => {
+    if (!["image/png", "image/jpeg", "image/webp"].includes(image.mime)) {
+      throw new InputError("参考图格式不支持")
+    }
+    if (image.bytes.length === 0) throw new InputError("参考图内容为空")
+    if (image.bytes.length > 15 * 1024 * 1024) throw new InputError("参考图不能超过 15MB")
+    let binary = ""
+    for (let offset = 0; offset < image.bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...image.bytes.subarray(offset, offset + 0x8000))
+    }
+    return { image: `data:${image.mime};base64,${btoa(binary)}` }
+  })
+  content.push({ text: prompt })
+
+  return {
+    url: `${ALIYUN_IMAGE_BASE_URL}/services/aigc/multimodal-generation/generation`,
+    body: {
+      model,
+      input: {
+        messages: [{ role: "user", content }],
+      },
+      parameters: {
+        n: 1,
+        negative_prompt: " ",
+        prompt_extend: false,
+        watermark: false,
+        size: sizes[resolveImageAspect(input.aspect)],
+      },
+    },
+  }
+}
+
+export function parseAliyunImageEditResult(payload: unknown): string {
+  const output = payload && typeof payload === "object"
+    ? (payload as Record<string, unknown>).output
+    : null
+  const choices = output && typeof output === "object"
+    ? (output as Record<string, unknown>).choices
+    : null
+  const firstChoice = Array.isArray(choices) && choices[0] && typeof choices[0] === "object"
+    ? choices[0] as Record<string, unknown>
+    : {}
+  const message = firstChoice.message && typeof firstChoice.message === "object"
+    ? firstChoice.message as Record<string, unknown>
+    : {}
+  const content = Array.isArray(message.content) ? message.content : []
+  for (const item of content) {
+    const image = item && typeof item === "object"
+      ? (item as Record<string, unknown>).image
+      : null
+    if (typeof image === "string" && image.trim()) return image.trim()
+  }
+  throw new Error("閫氫箟涓囩浉娌℃湁杩斿洖鍥剧墖鍦板潃")
 }
 
 export function projectImageSeed(projectId: string): number {

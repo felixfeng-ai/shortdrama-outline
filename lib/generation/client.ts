@@ -3,6 +3,12 @@ import type { ImageAspect } from "./model.ts"
 import type { LookBook } from "../look.ts"
 import type { GeneratedAsset, GenerationTask, GenerationTargetType } from "./types.ts"
 
+export interface KeyframeGenerationResult {
+  task: GenerationTask
+  asset: GeneratedAsset
+  referenceCount: number
+}
+
 export async function generateKeyframe(input: {
   projectId: string
   targetType: GenerationTargetType
@@ -10,8 +16,8 @@ export async function generateKeyframe(input: {
   prompt: string
   aspect: ImageAspect
   look?: LookBook
-}): Promise<{ task: GenerationTask; asset: GeneratedAsset }> {
-  return postJson("/api/generations", input)
+}, signal?: AbortSignal): Promise<KeyframeGenerationResult> {
+  return postJson<KeyframeGenerationResult>("/api/generations", input, signal)
 }
 
 export async function fetchGenerationState(

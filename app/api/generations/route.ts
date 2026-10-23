@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { InputError, errorResponse, ok } from "@/lib/api"
+import { InputError, errorResponse, isAbortError, ok } from "@/lib/api"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { getDbForRequest } from "@/lib/assets/store"
 import { latestSnapshot } from "@/lib/assets/repo"
@@ -8,6 +8,7 @@ import { ownerFromRequest } from "@/lib/session"
 import { readLook } from "@/lib/look"
 import {
   completeGenerationTask,
+  cancelGenerationTask,
   createGenerationTask,
   failGenerationTask,
   listGeneratedAssets,
@@ -17,14 +18,23 @@ import {
   selectGeneratedAsset,
   type GenerationTargetType,
 } from "@/lib/generation/repo"
-import { writeGeneratedImage } from "@/lib/generation/files"
-import { getAliyunImageConfig, projectImageSeed } from "@/lib/generation/model"
+import { readGeneratedImage, writeGeneratedImage } from "@/lib/generation/files"
+import {
+  getAliyunImageConfig,
+  projectImageSeed,
+  type AliyunReferenceImage,
+} from "@/lib/generation/model"
 import { withImageStyle } from "@/lib/generation/prompt"
+import {
+  selectGenerationReferenceCandidates,
+  withGenerationReferenceInstructions,
+  type GenerationReferenceCandidate,
+} from "@/lib/generation/references"
 import { runImageGeneration } from "@/lib/generation/service"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
-export const maxDuration = 180
+export const maxDuration = 300
 
 function targetType(value: unknown): GenerationTargetType {
   if (value === "character" || value === "shot") return value
@@ -57,6 +67,34 @@ function httpError(message: string, status: number): Error {
   const error = new Error(message) as Error & { status: number }
   error.status = status
   return error
+}
+
+function loadReferenceImages(
+  db: ReturnType<typeof getDbForRequest>,
+  projectId: string,
+  type: GenerationTargetType,
+  targetId: string,
+): { candidates: GenerationReferenceCandidate[]; images: AliyunReferenceImage[] } {
+  const selected = selectGenerationReferenceCandidates({
+    targetType: type,
+    targetId,
+    shots: latestSnapshot(db, projectId, "shots")?.payload ?? [],
+    visualCharacters: latestSnapshot(db, projectId, "visualCharacters")?.payload ?? [],
+    assets: listGeneratedAssets(db, projectId, "character"),
+  })
+  const candidates: GenerationReferenceCandidate[] = []
+  const images: AliyunReferenceImage[] = []
+  for (const candidate of selected) {
+    try {
+      const bytes = readGeneratedImage(candidate.asset.storageKey)
+      if (bytes.length > 10 * 1024 * 1024) continue
+      candidates.push(candidate)
+      images.push({ bytes, mime: candidate.asset.mime })
+    } catch {
+      // A missing historical file should not block a fresh generation.
+    }
+  }
+  return { candidates, images }
 }
 
 export async function GET(req: Request) {
@@ -110,7 +148,6 @@ export async function POST(req: Request) {
     const targetId = requiredString(body?.targetId, "缺少生成目标 id")
     const prompt = requiredString(body?.prompt, "缺少图像提示词")
     const look = readLook(body?.look)
-    const effectivePrompt = withImageStyle(prompt, look)
     const imageConfig = getAliyunImageConfig()
     const seed = projectImageSeed(projectId)
 
@@ -118,13 +155,21 @@ export async function POST(req: Request) {
     if (!hasTarget(db, projectId, type, targetId)) {
       throw new InputError("当前角色或镜头还没有保存到项目，请先生成对应步骤")
     }
+    const references = loadReferenceImages(db, projectId, type, targetId)
+    const generationModel = references.images.length > 0
+      ? imageConfig.editModel
+      : imageConfig.model
+    const effectivePrompt = withGenerationReferenceInstructions(
+      withImageStyle(prompt, look),
+      references.candidates,
+    )
 
     const task = createGenerationTask(db, {
       projectId,
       targetType: type,
       targetId,
       providerId: "aliyun",
-      model: imageConfig.model,
+      model: generationModel,
       prompt: effectivePrompt,
     })
     taskId = task.id
@@ -134,6 +179,8 @@ export async function POST(req: Request) {
       prompt: effectivePrompt,
       aspect: body?.aspect,
       seed,
+      referenceImages: references.images.length > 0 ? references.images : undefined,
+      signal: req.signal,
     })
     const file = writeGeneratedImage(projectId, task.id, image.bytes, image.mime)
     const asset = saveGeneratedAsset(db, {
@@ -145,16 +192,29 @@ export async function POST(req: Request) {
       mime: image.mime,
       bytes: file.bytes,
       providerId: "aliyun",
-      model: imageConfig.model,
+      model: generationModel,
       prompt: effectivePrompt,
     })
     selectGeneratedAsset(db, projectId, asset.id)
     const completed = completeGenerationTask(db, task.id, asset.id)
-    return NextResponse.json(ok({ task: completed, asset: selectGeneratedAsset(db, projectId, asset.id) }))
+    return NextResponse.json(ok({
+      task: completed,
+      asset: selectGeneratedAsset(db, projectId, asset.id),
+      referenceCount: references.images.length,
+    }))
   } catch (error) {
     const message = error instanceof Error ? error.message : "生成失败，请重试"
     if (taskId) {
-      try { failGenerationTask(db, taskId, message) } catch { /* 已有终态时忽略 */ }
+      try {
+        if (req.signal.aborted || isAbortError(error)) {
+          cancelGenerationTask(db, taskId, "已停止等待")
+        } else {
+          failGenerationTask(db, taskId, message)
+        }
+      } catch { /* 已有终态时忽略 */ }
+    }
+    if (req.signal.aborted || isAbortError(error)) {
+      return NextResponse.json({ success: false, data: null, error: "已停止等待" }, { status: 499 })
     }
     if (error instanceof InputError || (error instanceof Error && "status" in error)) {
       const { body, status } = errorResponse(error)

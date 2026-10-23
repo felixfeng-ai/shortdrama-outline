@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { THEME_BOOTSTRAP } from '@/lib/theme'
@@ -58,6 +58,19 @@ export const metadata: Metadata = {
     images: ['/og.png'],
   },
   manifest: '/manifest.webmanifest',
+  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: '成剧',
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#13171A',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

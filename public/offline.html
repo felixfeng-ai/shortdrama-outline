@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#13171A">
+  <title>成剧 · 离线</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    * { box-sizing: border-box; }
+    body {
+      display: grid;
+      min-height: 100dvh;
+      margin: 0;
+      place-items: center;
+      padding: 24px;
+      background: #13171a;
+      color: #dfe4e2;
+    }
+    main { width: min(440px, 100%); }
+    .mark { color: #c4d98a; font: 600 13px/1 ui-monospace, monospace; letter-spacing: .08em; }
+    h1 { margin: 20px 0 10px; font-size: clamp(28px, 7vw, 44px); line-height: 1.05; letter-spacing: 0; }
+    p { margin: 0; color: #8b969d; font-size: 14px; line-height: 1.7; }
+    a {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      margin-top: 24px;
+      padding: 0 16px;
+      border: 1px solid rgba(196, 217, 138, .38);
+      border-radius: 6px;
+      color: #c4d98a;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    a:focus-visible { outline: 2px solid #8eb7e7; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">VEYAFRAME / OFFLINE</div>
+    <h1>现在需要联网</h1>
+    <p>项目内容仍保存着。恢复网络后重试，即可继续查看和编辑。</p>
+    <a href="/">重新连接</a>
+  </main>
+</body>
+</html>

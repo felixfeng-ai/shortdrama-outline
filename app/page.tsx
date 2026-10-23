@@ -14,6 +14,8 @@ import SignalOverview from '@/components/SignalOverview'
 import AssistantDock from '@/components/AssistantDock'
 import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
+import GenerationTaskPanel from '@/components/GenerationTaskPanel'
+import PwaInstallButton from '@/components/PwaInstallButton'
 import ReleaseNotice from '@/components/ReleaseNotice'
 import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
@@ -97,6 +99,7 @@ import {
   downloadBlob,
 } from '@/lib/assets/export'
 import { postJson, postSse, isAbortError } from '@/lib/api'
+import { readStepQuery, withStepQuery } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import {
@@ -242,6 +245,14 @@ export default function Home() {
    * 点左栏（或窄屏步骤条）切换。生成状态都在这之外，切换不会打断正在跑的任务。
    */
   const [view, setView] = useState<StepKey>('characters')
+  useEffect(() => {
+    const syncStepFromUrl = () => {
+      setView(readStepQuery(window.location.search) ?? 'characters')
+    }
+    syncStepFromUrl()
+    window.addEventListener('popstate', syncStepFromUrl)
+    return () => window.removeEventListener('popstate', syncStepFromUrl)
+  }, [])
   // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
   const [impact, setImpact] = useState<({ affected: number } & ShotAudit) | null>(null)
   const [vaultMode, setVaultMode] = useState<VaultMode>('indexeddb')
@@ -775,6 +786,10 @@ export default function Home() {
 
   /** 点左栏/窄屏步骤条：切到那一步，并把页面滚回顶部 */
   const goToStep = (key: StepKey) => {
+    if (key !== view) {
+      const search = withStepQuery(window.location.search, key)
+      window.history.pushState({ step: key }, '', `${window.location.pathname}${search}${window.location.hash}`)
+    }
     setView(key)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -1852,6 +1867,8 @@ export default function Home() {
           {anyRunning ? `生成中 · ${elapsed.toFixed(1)}s` : `${completedCount}/6 已完成`}
         </span>
 
+        <PwaInstallButton />
+
         <ReleaseNotice />
 
         <ul className="hidden flex-wrap items-center gap-1.5 2xl:flex">
@@ -1997,6 +2014,14 @@ export default function Home() {
                     第一次来？载入示例项目看看六步的样子
                   </button>
                 )}
+                <div className="mt-2">
+                  <GenerationTaskPanel
+                    projectId={projectId}
+                    visuals={visuals}
+                    shots={shots}
+                    look={look}
+                  />
+                </div>
               </div>
               <IdeaPanel
               idea={idea}

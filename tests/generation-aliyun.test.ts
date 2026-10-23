@@ -17,9 +17,11 @@ test("G1.1 平台只从服务端环境读取通义万相配置", () => {
   const config = getAliyunImageConfig({
     ALIYUN_DASHSCOPE_API_KEY: "server-secret",
     ALIYUN_IMAGE_MODEL: "wanx2.1-t2i-turbo",
+    ALIYUN_IMAGE_EDIT_MODEL: "qwen-image-2.0-pro",
   })
   assert.equal(config.apiKey, "server-secret")
   assert.equal(config.model, "wanx2.1-t2i-turbo")
+  assert.equal(config.editModel, "qwen-image-2.0-pro")
   assert.throws(() => getAliyunImageConfig({}), /平台图像服务未配置/)
 })
 

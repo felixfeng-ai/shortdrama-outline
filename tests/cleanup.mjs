@@ -22,7 +22,14 @@ function resolveDataDir() {
 function cleanup() {
   const tmp = path.join(resolveDataDir(), "tmp")
   try {
-    if (fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true })
+    if (!fs.existsSync(tmp)) return
+
+    const generated = path.join(tmp, `generated-${process.pid}`)
+    const configuredGenerated = process.env.CHENGJU_GENERATED_DIR?.trim()
+    if (configuredGenerated && path.resolve(configuredGenerated) === path.resolve(generated)) {
+      fs.rmSync(generated, { recursive: true, force: true })
+    }
+
   } catch {
     // 清理失败不该影响测试结论
   }
