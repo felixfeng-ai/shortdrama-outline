@@ -6,6 +6,7 @@ import type { LookBook } from '@/lib/look'
 
 interface Props {
   shots: Shot[]
+  progress?: string | null
   onChange: (next: Shot[]) => void
   /** 放映厅当前选中的那一镜 */
   activeShotId?: string | null
@@ -17,7 +18,7 @@ interface Props {
 }
 
 export default function ShotList({
-  shots, onChange, activeShotId = null, onSelect, projectId, onEnsureProject, look,
+  shots, progress, onChange, activeShotId = null, onSelect, projectId, onEnsureProject, look,
 }: Props) {
   const update = (id: string, patch: Partial<Shot>) =>
     onChange(shots.map((s) => (s.id === id ? { ...s, ...patch } : s)))
@@ -28,6 +29,11 @@ export default function ShotList({
 
   return (
     <div className="space-y-3">
+      {progress && (
+        <p role="status" className="rounded-chip border border-info-200 bg-info-50 px-3 py-2 text-[11px] text-info-800">
+          {progress}
+        </p>
+      )}
       {shots.map((shot, i) => (
         <ShotCard
           key={shot.id}

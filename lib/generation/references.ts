@@ -93,6 +93,7 @@ export function withGenerationReferenceInstructions(
   candidates: GenerationReferenceCandidate[],
 ): string {
   if (candidates.length === 0) return prompt
+  if (prompt.includes("PROJECT KEYFRAME REFERENCES（")) return prompt.trimEnd()
   const instructions = candidates.map((candidate, index) => {
     if (candidate.role === "identity") {
       return `图${index + 1}：「${candidate.label}」已采用定妆图，身份参考；保持脸型、五官、发型与固定服装特征，不要换人。`

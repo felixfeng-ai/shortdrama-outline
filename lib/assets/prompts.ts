@@ -149,6 +149,11 @@ export function buildShotPrompt(
   genre?: Genre,
   brief?: CreativeBrief,
   look?: LookBook,
+  batch?: {
+    sceneStart: number
+    sceneTotal: number
+    previous?: string
+  },
 ) {
   const roster = visuals
     .map((v) => `- ${v.name}：${v.anchor || "（未设定视觉锚点）"}`)
@@ -162,9 +167,19 @@ export function buildShotPrompt(
     ? "\n三幕结构参考：\n" + acts.map((a) => `【${a.title}】${a.summary}`).join("\n") + "\n"
     : ""
 
+  const sceneEnd = batch ? batch.sceneStart + scenes.length - 1 : 0
+  const batchBlock = batch
+    ? `
+## 分批任务（必须遵守）
+- 本批只拆第 ${batch.sceneStart}-${sceneEnd} 场，全片共 ${batch.sceneTotal} 场。
+- 只输出本批场次对应的镜头，不要补写前批或后批。
+- 必须承接前批最后一个镜头的动作状态，不要重复已经拍过的画面。
+`
+    : ""
   const system = `${ROLE}
 
 你的任务：把场次拆成镜头，并为每个镜头写一条可直接用于图像/视频生成的英文提示词。
+${batchBlock}
 
 ## 数量要求（最容易做少的地方）
 - **每一场戏必须拆出 2-5 个镜头**，一场戏只给一个镜头是错的
@@ -218,11 +233,18 @@ export function buildShotPrompt(
 }
 注意：shots 按剧情顺序排列，shot 编号由系统生成，你不需要输出。${JSON_RULE}${genreClause(genre)}`
 
+  const previousBlock = batch?.previous?.trim()
+    ? `
+前批已生成镜头的末尾摘要（只用于承接，不要重复）：
+${batch.previous.trim()}
+`
+    : ""
   const user = `故事想法：${idea}
 
 出场角色（外貌由系统统一注入，你只需要知道谁在场，不要在 prompt 里复述）：
 ${roster}
 ${structure}
+${previousBlock}
 场次：
 ${sceneList}
 

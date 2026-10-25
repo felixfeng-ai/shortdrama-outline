@@ -71,6 +71,9 @@ export default function KeyframePanel({
     () => assets.find((asset) => asset.selectedAt) ?? assets[0] ?? null,
     [assets],
   )
+  const pendingTask = lastTask?.status === 'queued' || lastTask?.status === 'running'
+    ? lastTask
+    : null
 
   async function handleGenerate() {
     setError(null)
@@ -177,17 +180,24 @@ export default function KeyframePanel({
                 : '本次没有可用项目关键帧，已按文字生成'}
             </p>
           )}
+          {pendingTask && !generating && (
+            <p role="status" className="mt-1 text-[10px] text-info-700">
+              任务可能仍在运行；刷新后若超过安全时限，系统会标记失败并允许重试。
+            </p>
+          )}
         </div>
         <button
           type="button"
           onClick={() => void (generating ? handleStop() : handleGenerate())}
-          disabled={!generating && !prompt.trim()}
+          disabled={(!generating && !prompt.trim()) || Boolean(pendingTask && !generating)}
           className="keyframe-generate rounded-chip border border-done-300 bg-done-50 px-2.5 py-1.5 text-[11px]
             font-semibold text-done-900 transition-colors hover:border-done-500 hover:bg-done-100
             disabled:cursor-not-allowed disabled:opacity-45"
         >
           {generating
             ? '停止生成'
+            : pendingTask
+              ? '任务可能仍在运行'
             : lastTask?.status === 'failed' && !selected
               ? '重试生成'
               : selected ? `重${actionLabel}` : actionLabel}

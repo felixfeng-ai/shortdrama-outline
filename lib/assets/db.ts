@@ -107,11 +107,24 @@ CREATE TABLE IF NOT EXISTS generated_assets (
   created_at   INTEGER NOT NULL
 );
 
+-- Web Push 设备订阅：endpoint 是浏览器推送服务地址，密钥只用于服务端加密推送。
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id           TEXT PRIMARY KEY,
+  owner_id     TEXT NOT NULL,
+  endpoint     TEXT NOT NULL,
+  p256dh       TEXT NOT NULL,
+  auth         TEXT NOT NULL,
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  UNIQUE (owner_id, endpoint)
+);
+
 CREATE INDEX IF NOT EXISTS idx_snapshots_project_kind ON snapshots(project_id, kind);
 CREATE INDEX IF NOT EXISTS idx_refs_project ON ref_images(project_id, owner_type);
 CREATE INDEX IF NOT EXISTS idx_lineage_to ON lineage(to_snapshot_id);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_project ON generation_tasks(project_id, target_type, target_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(project_id, target_type, target_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_owner ON push_subscriptions(owner_id);
 `
 
 /**

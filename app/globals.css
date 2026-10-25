@@ -718,6 +718,14 @@
   border-color: color-mix(in srgb, var(--signal-acid) 45%, var(--signal-line));
   background: rgba(196, 217, 138, .1);
 }
+.signal-desk .h-push.is-on {
+  border-color: color-mix(in srgb, var(--signal-acid) 55%, var(--signal-line));
+  background: rgba(196, 217, 138, .14);
+}
+.signal-desk .h-push:disabled {
+  cursor: default;
+  opacity: .58;
+}
 .signal-desk .h-install svg {
   width: 14px;
   height: 14px;

@@ -22,6 +22,9 @@ interface Props {
   onLoadSample: () => void
   /** 匿名会话项目只能靠导出带走，项目条常驻备份入口 */
   onBackup: () => void
+  onExportMarkdown: () => void
+  onCopyAll: () => void
+  copied: boolean
 }
 
 function when(ts: number): string {
@@ -42,11 +45,15 @@ export default function ProjectBar({
   onNew,
   onLoadSample,
   onBackup,
+  onExportMarkdown,
+  onCopyAll,
+  copied,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
   const nameInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -105,13 +112,43 @@ export default function ProjectBar({
         <button
           type="button"
           disabled={!hasContent}
-          onClick={onBackup}
+          onClick={() => setExportOpen((value) => !value)}
+          aria-expanded={exportOpen}
           className="project-backup rounded-chip border border-surface-line px-2.5 py-1.5 text-xs text-ink-600 sm:ml-auto
             transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          导出备份
+          导出
         </button>
       </div>
+
+      <SmoothCollapse open={exportOpen}>
+        <div className="project-export-menu mt-2 flex flex-wrap gap-2 border-t border-surface-line pt-2">
+          <button
+            type="button"
+            onClick={() => { setExportOpen(false); onBackup() }}
+            className="min-h-11 flex-1 rounded-chip bg-accent-700 px-3 py-1.5 text-[11px] font-medium text-white
+              transition-colors hover:bg-accent-800"
+          >
+            导出项目包
+          </button>
+          <button
+            type="button"
+            onClick={() => { setExportOpen(false); onExportMarkdown() }}
+            className="min-h-11 flex-1 rounded-chip border border-surface-line px-3 py-1.5 text-[11px] font-medium text-ink-700
+              transition-colors hover:border-accent-300 hover:text-accent-700"
+          >
+            导出 Markdown
+          </button>
+          <button
+            type="button"
+            onClick={() => { setExportOpen(false); onCopyAll() }}
+            className="min-h-11 flex-1 rounded-chip border border-surface-line px-3 py-1.5 text-[11px] font-medium text-ink-700
+              transition-colors hover:border-accent-300 hover:text-accent-700"
+          >
+            {copied ? '已复制大纲' : '复制全部大纲'}
+          </button>
+        </div>
+      </SmoothCollapse>
 
       <SmoothCollapse open={editing}>
         <div className="mt-2 flex gap-2">

@@ -18,18 +18,23 @@ import { buildShotPrompt } from "@/lib/assets/prompts"
 import { readBrief } from "@/lib/brief"
 import { readLook } from "@/lib/look"
 import { buildPlaceRefMap, buildRefMap } from "@/lib/assets/refs"
-import type { VisualCharacter } from "@/lib/assets/types"
+import type { Scene, Shot, VisualCharacter } from "@/lib/assets/types"
 import { extractCompleteItems } from "@/lib/partial-json"
 import { readActs, readCharacters, readIdea } from "@/lib/validate"
 import { chargeQuota, identityFromRequest } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { ownerFromRequest } from "@/lib/session"
+import {
+  planShotBatches,
+  shotBatchLabel,
+  shotTokenBudget,
+} from "@/lib/shots"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 // 分镜是六步里输出最大的一步：全片镜头数 ≈ 场次数 × 2~5，
 // 40 场就是 80-200 镜。实测 61 镜约 12k token / 57s，留一倍余量。
-export const maxDuration = 300
+export const maxDuration = 600
 
 function readScenes(value: unknown): unknown[] {
   if (!Array.isArray(value) || value.length === 0) {
@@ -85,7 +90,8 @@ export async function POST(req: Request) {
     return NextResponse.json(body, { status })
   }
 
-  const { system, user } = buildShotPrompt(idea, scenes as never, visuals, acts, genre, brief, look)
+  const sceneRows = scenes as Scene[]
+  const batches = planShotBatches(sceneRows.length)
   const encoder = new TextEncoder()
   // 一次生成固定一个 stamp：同一镜在多次推送里 id 保持不变，React 才不会重挂卡片
   const stamp = Date.now()
@@ -109,28 +115,71 @@ export async function POST(req: Request) {
       }
 
       try {
-        let buffer = ""
-        let emitted = 0
+        const finalShots: Shot[] = []
+        for (const batch of batches) {
+          const batchScenes = sceneRows.slice(batch.sceneStart - 1, batch.sceneEnd)
+          const previous = finalShots
+            .slice(-4)
+            .map((shot) => `第 ${shot.shot} 镜：${shot.scene} · ${shot.action}`)
+            .join("\n")
+          const { system, user } = buildShotPrompt(
+            idea,
+            batchScenes,
+            visuals,
+            acts,
+            genre,
+            brief,
+            look,
+            {
+              sceneStart: batch.sceneStart,
+              sceneTotal: sceneRows.length,
+              previous,
+            },
+          )
+          send("progress", {
+            batch: batch.index,
+            batchCount: batches.length,
+            sceneStart: batch.sceneStart,
+            sceneEnd: batch.sceneEnd,
+            label: shotBatchLabel(batch, sceneRows.length),
+          })
 
-        for await (const delta of streamChat(system, user, {
-          temperature: 0.85,
-          // 原来 8000 会在场次正常（40 场）时把 JSON 拦腰截断（finish_reason: length），
-          // 表现为「AI 返回的内容不是合法 JSON」——不是模型的问题，是我们的输出预算太小
-          maxTokens: 24000,
-          signal: req.signal,
-        })) {
-          buffer += delta
+          let buffer = ""
+          let emitted = 0
+          for await (const delta of streamChat(system, user, {
+            temperature: 0.85,
+            maxTokens: shotTokenBudget(batchScenes.length),
+            signal: req.signal,
+          })) {
+            buffer += delta
+            const { items } = extractCompleteItems(buffer, "shots")
+            if (items.length <= emitted) continue
+            emitted = items.length
+            const partial = normalizeShots({
+              raw: { shots: items },
+              visuals,
+              refMap,
+              placeMap,
+              placeRefMap,
+              stamp,
+              offset: finalShots.length,
+            })
+            send("shots", { shots: [...finalShots, ...partial] })
+          }
 
-          const { items } = extractCompleteItems(buffer, "shots")
-          if (items.length <= emitted) continue
-          emitted = items.length
-
-          // 每次推全量：normalizeShots 按下标定镜号，只推增量会导致每批从第 1 镜重新编号
-          send("shots", { shots: normalizeShots({ raw: { shots: items }, visuals, refMap, placeMap, placeRefMap, stamp }) })
+          const batchShots = normalizeShots({
+            raw: parseJson<unknown>(buffer),
+            visuals,
+            refMap,
+            placeMap,
+            placeRefMap,
+            stamp,
+            offset: finalShots.length,
+          })
+          finalShots.push(...batchShots)
+          send("shots", { shots: finalShots })
         }
 
-        // 流结束，用完整缓冲区整体解析一次兜底，保证与一次性调用结果一致
-        const finalShots = normalizeShots({ raw: parseJson<unknown>(buffer), visuals, refMap, placeMap, placeRefMap, stamp })
         persistIfProject(getDbForRequest(), projectId, "shots", finalShots, {
           kinds: ["scenes", "visualCharacters"],
         })

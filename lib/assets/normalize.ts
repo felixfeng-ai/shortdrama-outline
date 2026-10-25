@@ -23,6 +23,8 @@ interface NormalizeShotsInput {
   placeRefMap?: Map<string, string[]>
   /** 一次生成只取一次，保证流式过程中 id 稳定（否则 React 会把卡片全部重挂） */
   stamp?: number
+  /** 分批生成时把本批下标接到全片镜号后面 */
+  offset?: number
 }
 
 function pickArray(raw: unknown, key: string): unknown[] {
@@ -39,7 +41,7 @@ function str(v: unknown, fallback = ""): string {
 }
 
 export function normalizeShots({
-  raw, visuals, refMap, placeMap, placeRefMap, stamp = Date.now(),
+  raw, visuals, refMap, placeMap, placeRefMap, stamp = Date.now(), offset = 0,
 }: NormalizeShotsInput): Shot[] {
   const list = pickArray(raw, "shots")
   const byName = new Map(visuals.map((v) => [v.name, v]))
@@ -47,6 +49,7 @@ export function normalizeShots({
   const shots = list
     .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
     .map((item, index) => {
+      const globalIndex = Math.max(0, Math.floor(offset)) + index
       const characters = (Array.isArray(item.characters) ? item.characters : [])
         .map((c) => str(c))
         .filter(Boolean)
@@ -94,9 +97,9 @@ export function normalizeShots({
       }
 
       return {
-        id: `shot-${index}-${stamp}`,
-        entityId: `shot-e-${index}`,
-        shot: index + 1,          // 镜号以数组下标为准，不信任模型写的值
+        id: `shot-${globalIndex}-${stamp}`,
+        entityId: `shot-e-${globalIndex}`,
+        shot: globalIndex + 1,          // 镜号以全局数组下标为准，不信任模型写的值
         // 集号照收，但只认 1 以上的整数：模型写了「第三集」这种就直接标成未知（0），
         // 宁可界面上不显示，也不能把第 7 集悄悄显示成第 1 集
         episode: Number.isFinite(Number(item.episode)) && Number(item.episode) >= 1

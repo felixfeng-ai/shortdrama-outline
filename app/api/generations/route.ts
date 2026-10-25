@@ -14,6 +14,7 @@ import {
   listGeneratedAssets,
   listGenerationTasks,
   markGenerationTaskRunning,
+  reconcileStaleGenerationTasks,
   saveGeneratedAsset,
   selectGeneratedAsset,
   type GenerationTargetType,
@@ -31,6 +32,7 @@ import {
   type GenerationReferenceCandidate,
 } from "@/lib/generation/references"
 import { runImageGeneration } from "@/lib/generation/service"
+import { notifyGenerationFinished } from "@/lib/push/service"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -97,6 +99,23 @@ function loadReferenceImages(
   return { candidates, images }
 }
 
+async function notifyGeneration(
+  db: ReturnType<typeof getDbForRequest>,
+  ownerId: string,
+  input: {
+    taskId: string
+    targetType: GenerationTargetType
+    status: "succeeded" | "failed"
+    error?: string
+  },
+): Promise<void> {
+  const send = notifyGenerationFinished(db, ownerId, input).catch(() => undefined)
+  await Promise.race([
+    send,
+    new Promise<void>((resolve) => setTimeout(resolve, 2_000)),
+  ])
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
@@ -104,6 +123,7 @@ export async function GET(req: Request) {
     const db = getDbForRequest()
     const ownerId = ownerFromRequest(req)
     assertProjectAccess(db, projectId, ownerId)
+    reconcileStaleGenerationTasks(db, projectId)
 
     const rawType = url.searchParams.get("targetType")
     const rawId = url.searchParams.get("targetId")
@@ -140,7 +160,12 @@ export async function PATCH(req: Request) {
 
 export async function POST(req: Request) {
   let taskId: string | null = null
+  let notification: {
+    taskId: string
+    targetType: GenerationTargetType
+  } | null = null
   const db = getDbForRequest()
+  const ownerId = ownerFromRequest(req)
   try {
     const body = await req.json().catch(() => null)
     const projectId = requiredString(body?.projectId, "缺少 projectId")
@@ -151,7 +176,7 @@ export async function POST(req: Request) {
     const imageConfig = getAliyunImageConfig()
     const seed = projectImageSeed(projectId)
 
-    assertProjectAccess(db, projectId, ownerFromRequest(req))
+    assertProjectAccess(db, projectId, ownerId)
     if (!hasTarget(db, projectId, type, targetId)) {
       throw new InputError("当前角色或镜头还没有保存到项目，请先生成对应步骤")
     }
@@ -173,6 +198,7 @@ export async function POST(req: Request) {
       prompt: effectivePrompt,
     })
     taskId = task.id
+    notification = { taskId: task.id, targetType: type }
     markGenerationTaskRunning(db, task.id)
 
     const image = await runImageGeneration({
@@ -197,6 +223,10 @@ export async function POST(req: Request) {
     })
     selectGeneratedAsset(db, projectId, asset.id)
     const completed = completeGenerationTask(db, task.id, asset.id)
+    await notifyGeneration(db, ownerId, {
+      ...notification,
+      status: "succeeded",
+    })
     return NextResponse.json(ok({
       task: completed,
       asset: selectGeneratedAsset(db, projectId, asset.id),
@@ -210,6 +240,13 @@ export async function POST(req: Request) {
           cancelGenerationTask(db, taskId, "已停止等待")
         } else {
           failGenerationTask(db, taskId, message)
+          if (notification) {
+            await notifyGeneration(db, ownerId, {
+              ...notification,
+              status: "failed",
+              error: message,
+            })
+          }
         }
       } catch { /* 已有终态时忽略 */ }
     }

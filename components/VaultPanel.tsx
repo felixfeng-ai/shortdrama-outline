@@ -22,6 +22,9 @@ interface Props {
   /** 目录直连 = 断开文件夹；IndexedDB = 真的清空 */
   onClear: () => void
   className?: string
+  /** Non-asset steps only show a compact status row. */
+  compact?: boolean
+  onManage?: () => void
 }
 
 export default function VaultPanel({
@@ -35,6 +38,8 @@ export default function VaultPanel({
   onRestore,
   onClear,
   className = '',
+  compact = false,
+  onManage,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
@@ -52,8 +57,58 @@ export default function VaultPanel({
     }
   }
 
+  if (compact) {
+    const primaryLabel = mode === 'fs-access'
+      ? files.length > 0 ? '重新扫描' : '选择素材文件夹'
+      : '添加图片'
+    return (
+      <div className="vault-panel vault-panel-compact surface flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
+        <span className="shrink-0 text-[11px] font-semibold text-ink-700">本地图库</span>
+        <span className="rounded-chip bg-done-100 px-1.5 py-0.5 text-[9.5px] font-semibold text-done-700">
+          图不上传
+        </span>
+        <p className="min-w-[10rem] flex-1 text-[11px] text-ink-500">
+          {files.length} 张图片 · {mode === 'fs-access' ? '目录直连' : '浏览器本地存储'}
+        </p>
+        {onManage && (
+          <button
+            type="button"
+            onClick={onManage}
+            className="min-h-10 shrink-0 rounded-pill border border-surface-line px-2.5 py-1 text-[11px] text-ink-600
+              transition-colors hover:border-accent-300 hover:text-accent-700"
+          >
+            管理素材
+          </button>
+        )}
+        {mode === 'indexeddb' && (
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+        )}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            if (mode === 'indexeddb') inputRef.current?.click()
+            else if (files.length > 0) onReload()
+            else onPickDirectory()
+          }}
+          className="min-h-10 shrink-0 rounded-pill bg-accent-700 px-2.5 py-1 text-[11px] font-medium text-white
+            transition-colors hover:bg-accent-800 disabled:opacity-50"
+        >
+          {busy ? '处理中…' : primaryLabel}
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <div className={`rounded-card border border-surface-line bg-surface-card p-4 shadow-surface ${className}`}>
+    <div className={`vault-panel vault-panel-full rounded-card border border-surface-line bg-surface-card p-4 shadow-surface ${className}`}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-ink-900">本地图库</h3>
         <span className="rounded-chip bg-done-100 px-1.5 py-0.5 text-[10px] font-semibold text-done-700">

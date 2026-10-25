@@ -185,6 +185,33 @@ export function listGenerationTasks(
   return (rows as TaskRow[]).map(toTask)
 }
 
+export function reconcileStaleGenerationTasks(
+  db: DatabaseSync,
+  projectId: string,
+  now = Date.now(),
+  staleAfterMs = 10 * 60 * 1000,
+): number {
+  const cutoff = now - Math.max(1, Math.floor(staleAfterMs))
+  const result = db.prepare(
+    `UPDATE generation_tasks
+     SET status = 'failed',
+         error = ?,
+         finished_at = ?
+     WHERE project_id = ?
+       AND (
+         (status = 'queued' AND created_at < ?)
+         OR (status = 'running' AND COALESCE(started_at, created_at) < ?)
+       )`,
+  ).run(
+    "上次生成等待已中断，可重试。通义侧远端任务可能仍会完成，但不会写入当前项目。",
+    now,
+    projectId,
+    cutoff,
+    cutoff,
+  )
+  return Number(result.changes)
+}
+
 export function saveGeneratedAsset(
   db: DatabaseSync,
   input: {

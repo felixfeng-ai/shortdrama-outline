@@ -16,6 +16,7 @@ import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
 import GenerationTaskPanel from '@/components/GenerationTaskPanel'
 import PwaInstallButton from '@/components/PwaInstallButton'
+import PushNotificationButton from '@/components/PushNotificationButton'
 import ReleaseNotice from '@/components/ReleaseNotice'
 import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
@@ -238,6 +239,7 @@ export default function Home() {
    */
   const [places, setPlaces] = useState<VisualPlace[]>([])
   const [shots, setShots] = useState<Shot[]>([])
+  const [shotProgress, setShotProgress] = useState<string | null>(null)
   /** 放映厅当前选中的那一镜：默认第一镜，点某张镜卡即切换 */
   const [activeShotId, setActiveShotId] = useState<string | null>(null)
   /**
@@ -771,6 +773,11 @@ export default function Home() {
   }
 
   const firstRun = !hasResult && idea.trim().length === 0
+  const shotMissingRefs = useMemo(
+    () => Array.from(new Set(shots.flatMap((shot) => shot.missingRefFor))).filter(Boolean),
+    [shots],
+  )
+
   const todoItems = buildTodoList({
     completed: stepCompleted,
     shots,
@@ -1473,6 +1480,7 @@ export default function Home() {
     setStatus((st) => ({ ...st, shots: "streaming" }))
     setErrors((e) => ({ ...e, shots: null }))
     setShots([])
+    setShotProgress(null)
 
     const builtFrom = `${charactersSig}|${JSON.stringify(scenes)}|${briefSig}|${lookSig}`
 
@@ -1484,10 +1492,16 @@ export default function Home() {
           { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts, brief, look },
           (event, data) => {
             if (isCleared(epoch)) return
+            if (event === "progress") {
+              const progress = data as { label?: string }
+              if (progress.label) setShotProgress(progress.label)
+              return
+            }
             const payload = data as { shots?: Shot[] }
             if ((event === "shots" || event === "done") && payload.shots) {
               setShots(payload.shots.map((s) => applyLocalRefs(s, visuals, attached, placeAttached)))
             }
+            if (event === "done") setShotProgress(null)
           },
           controller.signal,
         )
@@ -1509,6 +1523,7 @@ export default function Home() {
         setErrors((e) => ({ ...e, shots: message }))
         setStatus((st) => ({ ...st, shots: "error" }))
       } finally {
+        setShotProgress(null)
         if (abortRef.current === controller) abortRef.current = null
       }
     })()
@@ -1868,6 +1883,7 @@ export default function Home() {
         </span>
 
         <PwaInstallButton />
+        <PushNotificationButton />
 
         <ReleaseNotice />
 
@@ -2002,6 +2018,9 @@ export default function Home() {
                   onNew={handleNewProject}
                   onLoadSample={() => { void handleLoadSample() }}
                   onBackup={() => { void handleExportPackage() }}
+                  onExportMarkdown={handleExport}
+                  onCopyAll={() => { void handleCopyAll() }}
+                  copied={copied}
                 />
                 {/* 空工作台时给一条最短的上手路径：先看示例长什么样 */}
                 {!hasResult && (
@@ -2024,6 +2043,7 @@ export default function Home() {
                 </div>
               </div>
               <IdeaPanel
+              key={view === 'characters' ? 'characters' : view}
               idea={idea}
               onIdeaChange={setIdea}
               genre={genre}
@@ -2033,6 +2053,8 @@ export default function Home() {
               loading={status.characters === 'loading'}
               hasResult={hasResult}
               firstRun={firstRun}
+              compact={view !== 'characters'}
+              allowGenerate={view === 'characters'}
             />
 
             <SignalOverview
@@ -2355,6 +2377,7 @@ export default function Home() {
               )}
               <ShotList
                 shots={shots}
+                progress={shotProgress}
                 onChange={setShots}
                 activeShotId={activeShot?.id ?? null}
                 onSelect={setActiveShotId}
@@ -2381,67 +2404,51 @@ export default function Home() {
               />
             )}
 
-            {/* 本地图库（永远可见：用户需要知道图在哪儿） */}
-            <VaultPanel
-              mode={vaultMode}
-              files={vaultFiles}
-              onPickDirectory={handlePickDirectory}
-              onReload={handleReloadVault}
-              onAdd={(added) => setAllVaultFiles((prev) => [...prev, ...added])}
-              onIgnore={handleIgnoreVaultFile}
-              ignoredCount={ignoredKeys.length}
-              onRestore={handleRestoreVaultFiles}
-              onClear={handleClearVault}
-            />
-
-            {/* 打包带走 */}
-            {hasResult && (
-              <div className="rounded-card border border-ink-200 bg-surface-card p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-ink-900">打包带走</p>
-                    <p className="text-xs text-ink-500">
-                      导出 project.json + prompts.csv + 离线分镜表（图不动、不上传）
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleExportPackage}
-                    className="rounded-card bg-accent-700 px-4 py-2.5 text-sm font-medium text-white
-                      transition-colors hover:bg-accent-800"
-                  >
-                    导出项目包
-                  </button>
-                </div>
-              </div>
+            {(view === 'visuals' || view === 'scenes') && (
+              <VaultPanel
+                mode={vaultMode}
+                files={vaultFiles}
+                onPickDirectory={handlePickDirectory}
+                onReload={handleReloadVault}
+                onAdd={(added) => setAllVaultFiles((prev) => [...prev, ...added])}
+                onIgnore={handleIgnoreVaultFile}
+                ignoredCount={ignoredKeys.length}
+                onRestore={handleRestoreVaultFiles}
+                onClear={handleClearVault}
+              />
             )}
 
-            {/* 底部导出 */}
-            {hasResult && (
-              <div className="flex flex-col gap-3 rounded-card border border-ink-200 bg-surface-card p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-ink-500">
-                  已生成 {characters.length} 个角色 · {acts.length} 幕 · {episodes.length} 集
+            {view === 'characters' && (
+              <VaultPanel
+                compact
+                mode={vaultMode}
+                files={vaultFiles}
+                onPickDirectory={handlePickDirectory}
+                onReload={handleReloadVault}
+                onAdd={(added) => setAllVaultFiles((prev) => [...prev, ...added])}
+                onIgnore={handleIgnoreVaultFile}
+                ignoredCount={ignoredKeys.length}
+                onRestore={handleRestoreVaultFiles}
+                onClear={handleClearVault}
+                onManage={() => goToStep('visuals')}
+              />
+            )}
+
+            {view === 'shots' && shotMissingRefs.length > 0 && (
+              <div className="shot-asset-gap surface flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
+                <span className="shrink-0 text-[11px] font-semibold text-accent-800">素材缺口</span>
+                <p className="min-w-[12rem] flex-1 text-[11px] leading-relaxed text-ink-500">
+                  缺少 {shotMissingRefs.length} 个角色参考图：{shotMissingRefs.slice(0, 3).join('、')}
+                  {shotMissingRefs.length > 3 ? ` 等 ${shotMissingRefs.length} 人` : ''}
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCopyAll}
-                    className="flex-1 rounded-card bg-ink-900 px-4 py-2.5 text-sm font-medium text-white
-                      transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2
-                      focus-visible:ring-ink-400 sm:flex-none"
-                  >
-                    {copied ? '已复制 ✓' : '复制全部大纲'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExport}
-                    className="flex-1 rounded-card border border-ink-200 px-4 py-2.5 text-sm font-medium text-ink-700
-                      transition-colors hover:border-ink-300 hover:bg-ink-50 focus-visible:outline-none
-                      focus-visible:ring-2 focus-visible:ring-ink-300 sm:flex-none"
-                  >
-                    导出 .md
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => goToStep('visuals')}
+                  className="min-h-10 shrink-0 rounded-pill bg-accent-700 px-2.5 py-1 text-[11px] font-medium text-white
+                    transition-colors hover:bg-accent-800"
+                >
+                  去定妆补图
+                </button>
               </div>
             )}
 

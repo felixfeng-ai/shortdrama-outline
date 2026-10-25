@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { postJson } from '@/lib/api'
 import SmoothCollapse from './SmoothCollapse'
 import {
@@ -41,6 +41,10 @@ interface Props {
   hasResult: boolean
   /** 首访：还没写想法、也没有结果时，隐藏说明与关键词提示，只留主线 */
   firstRun?: boolean
+  /** Other steps show a compact project-source summary. */
+  compact?: boolean
+  /** Only the characters step can trigger character generation here. */
+  allowGenerate?: boolean
 }
 
 /**
@@ -58,6 +62,8 @@ export default function IdeaPanel({
   loading,
   hasResult,
   firstRun = false,
+  compact = false,
+  allowGenerate = true,
 }: Props) {
   // 与接口的校验口径一致，避免「按钮能点但请求必被拒」
   const canGenerate = idea.trim().length >= MIN_IDEA_LENGTH && !loading
@@ -70,6 +76,11 @@ export default function IdeaPanel({
   const [toolsOpen, setToolsOpen] = useState(false)
   /** AI 推荐的题材 id：由「联想想法」那一次调用顺带产出，角标只认它 */
   const [recommendedGenres, setRecommendedGenres] = useState<string[]>([])
+  const [expanded, setExpanded] = useState(!compact)
+
+  useEffect(() => {
+    if (compact) setExpanded(false)
+  }, [compact])
 
   const runBrainstorm = async () => {
     const input = keywords.trim()
@@ -110,20 +121,55 @@ export default function IdeaPanel({
   const genreChips = genresExpanded ? [...featured, ...restGenres] : featured
   const pickGenre = (item: Genre) => onGenreChange(item.id === genre.id ? GENRES[0] : item)
 
+  if (compact && !expanded) {
+    return (
+      <section className="project-source-strip surface flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
+        <span className="shrink-0 font-mono text-[9px] font-semibold tracking-wide text-done-700">
+          PROJECT SOURCE
+        </span>
+        <p className="min-w-[12rem] flex-1 truncate text-sm text-ink-700" title={idea.trim()}>
+          {idea.trim() || "还没有写下项目源想法"}
+        </p>
+        <span className="shrink-0 rounded-pill bg-surface-soft px-2 py-1 text-[10px] text-ink-500">
+          {genre.label}
+        </span>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="min-h-10 shrink-0 rounded-pill border border-surface-line px-2.5 py-1 text-[11px] font-medium text-ink-600
+            transition-colors hover:border-accent-300 hover:text-accent-700"
+        >
+          编辑想法
+        </button>
+      </section>
+    )
+  }
+
   return (
     <div className={`idea-workbench ${toolsOpen ? 'tools-open' : ''}`}>
       {/* ── 大卡：灵感输入 + 题材标签 + 生成 ── */}
       <div className="compose">
         <div className="story-command-head">
           <span className="story-command-kicker">STORY COMMAND</span>
-          <button
-            type="button"
-            className="story-tools-toggle"
-            aria-expanded={toolsOpen}
-            onClick={() => setToolsOpen((value) => !value)}
-          >
-            灵感助手
-          </button>
+          <span className="flex items-center gap-2">
+            <button
+              type="button"
+              className="story-tools-toggle"
+              aria-expanded={toolsOpen}
+              onClick={() => setToolsOpen((value) => !value)}
+            >
+              灵感助手
+            </button>
+            {compact && (
+              <button
+                type="button"
+                className="story-tools-toggle"
+                onClick={() => setExpanded(false)}
+              >
+                收起
+              </button>
+            )}
+          </span>
         </div>
         <label htmlFor="idea" className="sr-only">一句话故事想法</label>
         <div className="relative">
@@ -171,28 +217,36 @@ export default function IdeaPanel({
           </button>
         </div>
 
+        {compact && (
+          <p className="mt-2 rounded-chip bg-accent-50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-accent-800">
+            修改项目源想法后，下游内容可能需要重跑。
+          </p>
+        )}
+
         {/* 主操作与清空并排：两者作用于同一件事，不该一上一下各占一行 */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={onGenerate} disabled={!canGenerate} className="bmain">
+        {allowGenerate && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" onClick={onGenerate} disabled={!canGenerate} className="bmain">
             {/* 按钮说的必须是它真做的事：这里调的是生成核心人物，不是大纲 */}
             {loading ? '正在生成人物…' : '生成 · 核心人物'}
             <svg className="glowstar" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 1.6c.8 5.4 4 8.6 9.4 9.4-5.4.8-8.6 4-9.4 9.4-.8-5.4-4-8.6-9.4-9.4 5.4-.8 8.6-4 9.4-9.4z" />
             </svg>
-          </button>
-
-          {hasResult && (
-            <button
-              type="button"
-              onClick={onReset}
-              disabled={loading}
-              className="h-10 rounded-card border border-surface-line px-4 text-sm text-ink-600
-                transition-colors hover:border-accent-300 hover:text-accent-700 disabled:opacity-50"
-            >
-              清空重来
             </button>
-          )}
-        </div>
+
+            {hasResult && (
+              <button
+                type="button"
+                onClick={onReset}
+                disabled={loading}
+                className="h-10 rounded-card border border-surface-line px-4 text-sm text-ink-600
+                  transition-colors hover:border-accent-300 hover:text-accent-700 disabled:opacity-50"
+              >
+                清空重来
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── 两张小卡：示例想法 / 关键词联想 ── */}

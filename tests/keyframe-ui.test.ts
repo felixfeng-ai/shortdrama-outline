@@ -54,7 +54,8 @@ test("G3 历史资产可预览、回选，运行中可停止而非重复提交",
   assert.ok(keyframe.includes("generating"), "没有本地运行状态")
   assert.ok(keyframe.includes("停止生成"), "运行中不能停止生成")
   assert.ok(keyframe.includes("AbortController"), "运行中没有请求中断能力")
-  assert.ok(keyframe.includes("disabled={!generating && !prompt.trim()}"), "非运行状态仍允许空提交")
+  assert.ok(keyframe.includes("!prompt.trim()"), "非运行状态仍允许空提交")
+  assert.ok(keyframe.includes("Boolean(pendingTask && !generating)"), "已有未结束任务时仍允许重复提交")
   assert.ok(keyframe.includes("/api/generated-assets/"), "没有关键帧预览地址")
 })
 

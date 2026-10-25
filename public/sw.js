@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chengju-shell-v1'
+const CACHE_NAME = 'chengju-shell-v2'
 const SHELL = ['/offline.html', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', (event) => {
@@ -58,4 +58,43 @@ self.addEventListener('fetch', (event) => {
       }),
     )
   }
+})
+
+self.addEventListener('push', (event) => {
+  let payload = {
+    title: '成剧任务有新进展',
+    body: '打开成剧查看最新生成结果。',
+    url: '/',
+    tag: 'generation-update',
+  }
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() }
+  } catch {
+    // 非 JSON 推送仍展示安全兜底文案。
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      tag: payload.tag,
+      data: { url: payload.url },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = event.notification.data.url
+  const target = new URL(targetUrl || '/', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const existing = clients.find((client) => new URL(client.url).origin === self.location.origin)
+      if (existing) {
+        await existing.navigate(target)
+        return existing.focus()
+      }
+      return self.clients.openWindow(target)
+    }),
+  )
 })

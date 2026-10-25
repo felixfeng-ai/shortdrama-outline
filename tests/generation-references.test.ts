@@ -2,7 +2,10 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { buildAliyunImageEditRequest } from "../lib/generation/model.ts"
-import { selectGenerationReferenceCandidates } from "../lib/generation/references.ts"
+import {
+  selectGenerationReferenceCandidates,
+  withGenerationReferenceInstructions,
+} from "../lib/generation/references.ts"
 import { runImageGeneration } from "../lib/generation/service.ts"
 import type { GeneratedAsset } from "../lib/generation/types.ts"
 
@@ -180,4 +183,16 @@ test("通义多图编辑走同步请求，解析图片地址并下载结果", as
   assert.equal(calls[0], "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation")
   const sent = requestBody as unknown as Record<string, unknown>
   assert.equal(sent.model, "qwen-image-2.0-pro")
+})
+
+test("任务重试重复传入已拼好的提示词时，不重复追加参考图说明", () => {
+  const candidate = {
+    asset: asset("asset-retry", "char-retry"),
+    label: "林远",
+    role: "identity" as const,
+  }
+  const once = withGenerationReferenceInstructions("first frame", [candidate])
+  const twice = withGenerationReferenceInstructions(once, [candidate])
+  assert.equal(twice, once)
+  assert.equal((twice.match(/PROJECT KEYFRAME REFERENCES/g) ?? []).length, 1)
 })
