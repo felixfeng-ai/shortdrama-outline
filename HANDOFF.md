@@ -27,7 +27,8 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 工作台信息层级已收敛：Story Command 只在核心人物步骤完整展开，其他步骤折叠为项目源摘要；本地图库只在定妆/场景完整展示，分镜只显示缺图提示；项目包、Markdown、复制大纲统一收进项目条导出菜单。
 - 长剧集断点续跑已接入：分集和分镜各自按项目保存 checkpoint，每完成一批更新输入签名、游标、已生成内容和稳定 stamp；失败/取消后前端自动带续跑标记，输入变化则旧断点失效，成功完成自动清理。
 - 通义多图参考已完成真实验证：使用内存生成的 512×512 PNG 调用 `qwen-image-2.0-pro`，返回 PNG 约 1.16MB，耗时约 13 秒；未读取本地图片，也未把测试产物写入项目。
-- 正式账号第一阶段已落地：手机号 6 位验证码登录、30 天会话、Web HttpOnly Cookie、App Bearer Token、退出撤销会话；验证码与会话 token 都只存哈希。
+- 正式账号第二阶段已落地：手机号 6 位验证码登录、Web HttpOnly refresh session、App 15 分钟 access token、30 天 refresh token、退出撤销会话；验证码、refresh token 与 access session 都做哈希或签名校验。
+- 账号页新增活跃设备列表，可查看设备类型、最后活跃时间并单独退出其他设备；撤销后对应 access 与 refresh token 同时失效。
 - 首次登录只认领当前 `chengju_sid` 对应的匿名项目与 Push 订阅，不迁移其他匿名会话；项目、快照、资产、生成任务、额度、Agent、导出等接口已统一优先解析登录用户。
 - 登录入口已从遮挡工作台的 modal 改为独立 `/login` 页面；支持手机号/验证码两步、60 秒重发倒计时、内联错误、登录后安全返回原步骤，以及已登录账号与退出状态。
 - 本地联调验证码使用双开关：请求必须来自 localhost/127.0.0.1，且 `AUTH_ALLOW_DEV_CODE=1`；本地 `.env.local` 已写入随机 `AUTH_SECRET`。生产域名即使误开也不会返回开发验证码。
@@ -38,7 +39,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md) 与 [specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md) 与 [specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -56,10 +57,10 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `467/467`；其中 16 项成本实验不随本次提交，当前提交范围为 `451/451`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
+- **验证**：当前工作区全量测试 `471/471`；其中 16 项成本实验不随本次提交，当前提交范围为 `455/455`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
-- **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；当前项目深链改动仍在本地等待验收。
+- **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；项目深链已推送 `bbd6df5`；当前会话轮换与设备管理仍在本地等待验收。
 - **本地预览**：`http://localhost:3200/?theme=neutral`。
 - **真实通义验证**：用户提供的可用 Key 已写入服务端 `.env.local`；真实生成成功，任务为 `succeeded`，输出 PNG 为 720×1280，约 1.06MB，已落库并成为当前采用关键帧。
 - **Web Push 剩余验收**：headless Chrome 处于临时上下文，不支持真实 Push API 订阅；按钮错误态已兜底。仍需在普通 Chrome 窗口中人工点击授权，完成一次真实浏览器订阅与测试通知。

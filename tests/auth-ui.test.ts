@@ -23,6 +23,9 @@ test("独立登录页包含返回、表单、倒计时和错误恢复", () => {
   assert.ok(panel.includes('aria-live="polite"'))
   assert.ok(panel.includes("window.location.assign"))
   assert.ok(panel.includes("退出登录"))
+  assert.ok(panel.includes("活跃设备"))
+  assert.ok(panel.includes("fetchAuthSessions"))
+  assert.ok(panel.includes("revokeAuthSession"))
 })
 
 test("登录后返回路径只允许站内地址", () => {

@@ -3,7 +3,11 @@ import { NextResponse } from "next/server"
 import { errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { AUTH_COOKIE } from "@/lib/auth/request"
-import { claimAnonymousProjects, verifyLoginCode } from "@/lib/auth/service"
+import {
+  claimAnonymousProjects,
+  createAccessToken,
+  verifyLoginCode,
+} from "@/lib/auth/service"
 import { ownerFromRequest } from "@/lib/session"
 
 export const runtime = "nodejs"
@@ -12,20 +16,32 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null)
     const db = getDbForRequest()
+    const isApp = body?.client === "app"
+      || req.headers.get("x-chengju-client") === "app"
     const session = verifyLoginCode(
       db,
       String(body?.phone ?? ""),
       String(body?.code ?? ""),
-      { secret: process.env.AUTH_SECRET },
+      {
+        secret: process.env.AUTH_SECRET,
+        client: isApp ? "app" : "web",
+        deviceName: String(body?.deviceName ?? req.headers.get("x-chengju-device") ?? ""),
+        userAgent: req.headers.get("user-agent") ?? "",
+      },
     )
     const claimed = claimAnonymousProjects(db, ownerFromRequest(req), session.user.id)
-    const isApp = body?.client === "app"
-      || req.headers.get("x-chengju-client") === "app"
+    const access = isApp
+      ? createAccessToken(session.token, session.user, { secret: process.env.AUTH_SECRET })
+      : null
     const response = NextResponse.json(ok({
       user: session.user,
       expiresAt: session.expiresAt,
       claimed,
-      ...(isApp ? { accessToken: session.token } : {}),
+      ...(access ? {
+        accessToken: access.token,
+        accessExpiresAt: access.expiresAt,
+        refreshToken: session.token,
+      } : {}),
     }))
     response.cookies.set(AUTH_COOKIE, session.token, {
       httpOnly: true,

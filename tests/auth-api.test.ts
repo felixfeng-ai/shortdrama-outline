@@ -1,13 +1,17 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 
 import { POST as requestCode } from "../app/api/auth/request-code/route.ts"
 import { POST as verifyCode } from "../app/api/auth/verify-code/route.ts"
 import { GET as getSession } from "../app/api/auth/session/route.ts"
 import { POST as logout } from "../app/api/auth/logout/route.ts"
+import { POST as refreshAccess } from "../app/api/auth/refresh/route.ts"
+import { DELETE as revokeDevice, GET as listSessions } from "../app/api/auth/sessions/route.ts"
 import { __resetDbForTests, getDbForRequest } from "../lib/assets/store.ts"
 import { createProject } from "../lib/assets/repo.ts"
 import { resolveProjectOwner, AUTH_COOKIE } from "../lib/auth/request.ts"
+import { userFromSessionToken } from "../lib/auth/service.ts"
 
 const anonymousOwner = `anon_${"a".repeat(48)}`
 process.env.AUTH_ALLOW_DEV_CODE = "1"
@@ -103,16 +107,80 @@ test("App 客户端验证后拿到 Bearer Token，并可通过 session 接口恢
     const code = (await requested.json()).data.devCode
     const verified = await verifyCode(request("/api/auth/verify-code", {
       method: "POST",
-      body: JSON.stringify({ phone: "13900139000", code, client: "app" }),
+      body: JSON.stringify({ phone: "13900139000", code, client: "app", deviceName: "iPhone 16" }),
     }))
     const payload = await verified.json()
-    assert.match(payload.data.accessToken, /^[A-Za-z0-9_-]{40,}$/)
+    assert.match(payload.data.accessToken, /^cj1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
+    assert.match(payload.data.refreshToken, /^[A-Za-z0-9_-]{40,}$/)
+    assert.ok(payload.data.accessExpiresAt < payload.data.expiresAt)
 
     const session = await getSession(new Request("http://localhost/api/auth/session", {
       headers: { authorization: `Bearer ${payload.data.accessToken}` },
     }))
     const sessionPayload = await session.json()
     assert.equal(sessionPayload.data.user.id, payload.data.user.id)
+    const refreshAsBearer = await getSession(new Request("http://localhost/api/auth/session", {
+      headers: { authorization: `Bearer ${payload.data.refreshToken}` },
+    }))
+    assert.equal((await refreshAsBearer.json()).data.user, null)
+
+    const refreshed = await refreshAccess(new Request("http://localhost/api/auth/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refreshToken: payload.data.refreshToken }),
+    }))
+    const refreshedPayload = await refreshed.json()
+    assert.equal(refreshed.status, 200)
+    assert.match(refreshedPayload.data.accessToken, /^cj1\./)
+  } finally {
+    delete process.env.AUTH_SECRET
+  }
+})
+
+test("账号会话列表按用户隔离，并可退出其他设备", async () => {
+  __resetDbForTests(":memory:")
+  process.env.AUTH_SECRET = "auth-api-test-secret"
+  try {
+    const requested = await requestCode(request("/api/auth/request-code", {
+      method: "POST",
+      body: JSON.stringify({ phone: "13600136000" }),
+    }))
+    const code = (await requested.json()).data.devCode
+    const verified = await verifyCode(request("/api/auth/verify-code", {
+      method: "POST",
+      body: JSON.stringify({
+        phone: "13600136000",
+        code,
+        client: "app",
+        deviceName: "iPhone 16",
+      }),
+    }))
+    const payload = await verified.json()
+    const userId = payload.data.user.id as string
+    const otherRefresh = "second-device-refresh-token"
+    const otherSessionId = createHash("sha256").update(otherRefresh).digest("hex")
+    getDbForRequest().prepare(
+      `INSERT INTO auth_sessions
+        (id, user_id, client_type, device_name, user_agent, created_at, expires_at, last_seen_at, revoked_at)
+       VALUES (?, ?, 'web', 'Mac Chrome', 'Chrome', ?, ?, ?, NULL)`,
+    ).run(otherSessionId, userId, Date.now(), Date.now() + 86_400_000, Date.now())
+    const authHeader = { authorization: `Bearer ${payload.data.accessToken}` }
+
+    const listed = await listSessions(new Request("http://localhost/api/auth/sessions", {
+      headers: authHeader,
+    }))
+    const sessions = (await listed.json()).data.sessions
+    assert.equal(listed.status, 200)
+    assert.equal(sessions.length, 2)
+    assert.equal(sessions.find((item: { current: boolean }) => item.current).deviceName, "iPhone 16")
+
+    const revoked = await revokeDevice(request("/api/auth/sessions", {
+      method: "DELETE",
+      headers: authHeader,
+      body: JSON.stringify({ sessionId: otherSessionId }),
+    }))
+    assert.equal(revoked.status, 200)
+    assert.equal(userFromSessionToken(getDbForRequest(), otherRefresh), null)
   } finally {
     delete process.env.AUTH_SECRET
   }

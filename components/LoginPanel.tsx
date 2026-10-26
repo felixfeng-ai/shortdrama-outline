@@ -3,10 +3,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
 import {
+  fetchAuthSessions,
   fetchAuthSession,
   logoutAuth,
+  revokeAuthSession,
   requestAuthCode,
   verifyAuthCode,
+  type AuthSessionDto,
   type AuthUserDto,
 } from '@/lib/auth/client'
 import { safeReturnPath } from '@/lib/auth/return-to'
@@ -16,6 +19,14 @@ type LoginStep = 'phone' | 'code'
 function validPhone(value: string): boolean {
   const digits = value.trim().replaceAll(' ', '').replaceAll('-', '').replace(/^\+86/, '')
   return /^1[3-9]\d{9}$/.test(digits)
+}
+
+function sessionSeen(timestamp: number): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000))
+  if (minutes < 1) return '刚刚活跃'
+  if (minutes < 60) return `${minutes} 分钟前活跃`
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} 小时前活跃`
+  return new Date(timestamp).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
 }
 
 export default function LoginPanel() {
@@ -28,6 +39,10 @@ export default function LoginPanel() {
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
   const [returnTo, setReturnTo] = useState('/')
+  const [sessions, setSessions] = useState<AuthSessionDto[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionBusyId, setSessionBusyId] = useState('')
+  const [sessionMessage, setSessionMessage] = useState('')
 
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get('next')
@@ -44,6 +59,27 @@ export default function LoginPanel() {
     }, 1000)
     return () => window.clearInterval(timer)
   }, [cooldown])
+
+  useEffect(() => {
+    if (!user) {
+      setSessions([])
+      setSessionsLoading(false)
+      return
+    }
+    let cancelled = false
+    setSessionsLoading(true)
+    fetchAuthSessions()
+      .then((data) => {
+        if (!cancelled) setSessions(data.sessions)
+      })
+      .catch(() => {
+        if (!cancelled) setSessions([])
+      })
+      .finally(() => {
+        if (!cancelled) setSessionsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [user])
 
   async function requestCode() {
     if (busy || cooldown > 0) return
@@ -105,11 +141,28 @@ export default function LoginPanel() {
     try {
       await logoutAuth()
       setUser(null)
+      setSessions([])
+      setSessionsLoading(false)
       editPhone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '退出失败，请稍后再试。')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function revokeDevice(sessionId: string) {
+    if (sessionBusyId) return
+    setSessionBusyId(sessionId)
+    setSessionMessage('')
+    try {
+      await revokeAuthSession(sessionId)
+      setSessions((items) => items.filter((item) => item.id !== sessionId))
+      setSessionMessage('该设备已退出登录。')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '退出设备失败，请稍后再试。')
+    } finally {
+      setSessionBusyId('')
     }
   }
 
@@ -165,6 +218,42 @@ export default function LoginPanel() {
                   <dd>已登录</dd>
                 </div>
               </dl>
+              <div className="auth-sessions">
+                <div className="auth-sessions-head">
+                  <span>活跃设备</span>
+                  <span>{sessions.length}</span>
+                </div>
+                {sessionsLoading ? (
+                  <p className="auth-sessions-empty">正在读取设备会话…</p>
+                ) : sessions.length === 0 ? (
+                  <p className="auth-sessions-empty">暂无活跃设备。</p>
+                ) : (
+                  <ul>
+                    {sessions.map((session) => (
+                      <li key={session.id}>
+                        <span className="auth-session-mark" aria-hidden="true" />
+                        <span className="auth-session-copy">
+                          <b>{session.deviceName}</b>
+                          <small>
+                            {session.current ? '当前设备 · ' : ''}
+                            {sessionSeen(session.lastSeenAt)}
+                          </small>
+                        </span>
+                        {!session.current && (
+                          <button
+                            type="button"
+                            disabled={Boolean(sessionBusyId)}
+                            onClick={() => void revokeDevice(session.id)}
+                          >
+                            {sessionBusyId === session.id ? '退出中…' : '退出'}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="auth-session-status" aria-live="polite">{sessionMessage}</p>
+              </div>
               {error && <p className="auth-alert" role="alert">{error}</p>}
               <button className="auth-secondary auth-logout" type="button" disabled={busy} onClick={() => void logout()}>
                 {busy ? '正在退出…' : '退出登录'}

@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS login_codes (
 CREATE TABLE IF NOT EXISTS auth_sessions (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_type   TEXT NOT NULL DEFAULT 'web',
+  device_name   TEXT NOT NULL DEFAULT '',
+  user_agent    TEXT NOT NULL DEFAULT '',
   created_at    INTEGER NOT NULL,
   expires_at    INTEGER NOT NULL,
   last_seen_at  INTEGER NOT NULL,
@@ -181,6 +184,16 @@ export function openDb(dbPath: string = defaultDbPath()): DatabaseSync {
   const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[]
   if (!projectColumns.some((column) => column.name === "owner_id")) {
     db.exec("ALTER TABLE projects ADD COLUMN owner_id TEXT")
+  }
+  const authSessionColumns = db.prepare("PRAGMA table_info(auth_sessions)").all() as { name: string }[]
+  if (!authSessionColumns.some((column) => column.name === "client_type")) {
+    db.exec("ALTER TABLE auth_sessions ADD COLUMN client_type TEXT NOT NULL DEFAULT 'web'")
+  }
+  if (!authSessionColumns.some((column) => column.name === "device_name")) {
+    db.exec("ALTER TABLE auth_sessions ADD COLUMN device_name TEXT NOT NULL DEFAULT ''")
+  }
+  if (!authSessionColumns.some((column) => column.name === "user_agent")) {
+    db.exec("ALTER TABLE auth_sessions ADD COLUMN user_agent TEXT NOT NULL DEFAULT ''")
   }
   db.exec("CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id, updated_at)")
   // 额度表也在这里建：它和资产链共用同一个库文件，分开建会导致测试用

@@ -303,7 +303,7 @@ npm run build
 | 🧠 | 文本模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容协议；结构化 JSON、SSE 流式、function calling |
 | 🎨 | 图像模型 | 阿里云通义万相 | 服务端托管密钥；文生图与多图参考编辑，浏览器不接触模型密钥 |
 | 🗄️ | 存储 | SQLite + 私有数据目录 | 项目、快照、血缘、图台账、账号、生成任务、关键帧、推送订阅、额度与生成检查点 |
-| 🔐 | 账号 | 手机号验证码 + HttpOnly Cookie / Bearer Token | Web 与 App 共用同一账号和项目归属；未登录仍可用匿名会话 |
+| 🔐 | 账号 | 手机号验证码 + HttpOnly Refresh Session + 15 分钟 Access Token | Web 与 App 共用同一账号和项目归属；App 用短期 Bearer 访问、用 30 天 refresh token 换新 |
 | 📲 | PWA / 通知 | Manifest、Service Worker、Web Push、VAPID | 可安装、离线兜底、关键帧完成通知；不缓存 API 和个人图片 |
 | 📦 | 依赖 | 框架依赖 + `dotenv`、`web-push` | 功能层没有引入 UI 组件库、ORM、状态库或测试框架；ZIP 打包手写 |
 
@@ -499,9 +499,12 @@ chengju/
 | 方法 | 路径 | 请求体 | 返回 |
 |------|------|--------|------|
 | POST | `/api/auth/request-code` | `{ phone }` | 发送登录验证码；仅本机开发且显式开启时返回 `devCode` |
-| POST | `/api/auth/verify-code` | `{ phone, code, client? }` | Web 设置 HttpOnly Cookie；App 传 `client: "app"` 时返回 Bearer Token |
+| POST | `/api/auth/verify-code` | `{ phone, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 15 分钟 `accessToken` 与 30 天 `refreshToken` |
 | GET | `/api/auth/session` | — | `{ user }`；未登录为 `null` |
 | POST | `/api/auth/logout` | — | 撤销当前会话并清除 Cookie |
+| POST | `/api/auth/refresh` | `{ refreshToken }` | App 用 refresh session 换取新的短期 access token |
+| GET | `/api/auth/sessions` | — | 按最后活跃时间返回当前账号的设备会话 |
+| DELETE | `/api/auth/sessions` | `{ sessionId }` | 撤销指定设备会话 |
 | POST | `/api/ideas` | `{ idea, genre, count? }` | 想法联想与题材推荐 |
 
 登录界面使用独立页面 `/login?next=...`，不从工作台弹出覆盖内容的 modal。`next` 只接受站内路径，登录成功后返回原来的步骤。
@@ -589,7 +592,8 @@ interface Episode {
 
 - `middleware.ts` 为首次访问设置高熵 `chengju_sid` Cookie；本地开发使用稳定会话，避免重启后项目丢失。
 - 手机号登录后，验证码只保存哈希，5 分钟有效，并有发送冷却和小时上限。
-- Web 使用 HttpOnly Cookie；App 使用同一会话 token 作为 Bearer Token，所以 Web 和 App 读取的是同一批项目。
+- Web 使用 HttpOnly refresh session；App 使用 15 分钟 access token 访问业务接口，过期后用 refresh token 换新。两者读取同一批项目。
+- 账号页列出当前账号的活跃设备，可单独撤销其他会话；撤销后对应 access 与 refresh token 都立即失效。
 - 首次登录只认领当前匿名会话的项目和推送订阅，不会碰其他匿名会话的数据。
 - 项目、快照、关键帧任务、生成资产和推送订阅都按 owner 校验；未登录时 owner 是匿名会话，登录后是用户 id。
 
@@ -712,7 +716,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 长剧集分批与断点续跑 | ✅ 已完成 | 分集每 10 集一批，分镜按场次分批；checkpoint 记录输入签名和游标，失败后从下一批继续 |
 | PWA 安装基础 | ✅ 已完成 | Manifest、Service Worker、离线兜底、条件安装入口、项目与步骤深链、浏览器历史恢复和分享链接；不缓存 API、个人图片或生成资产 |
 | Web Push 生成通知 | 🟡 代码完成，待配置 | 用户授权后推送生成成功/失败，点击回到定妆或分镜；VAPID 私钥只在服务端，生产环境需配置密钥 |
-| 手机号账号与项目归属 | 🟡 第一阶段完成 | 验证码登录、HttpOnly Web 会话、App Bearer Token、首次登录认领当前匿名项目；正式短信通道尚未接入 |
+| 手机号账号与项目归属 | 🟡 第二阶段完成 | 验证码登录、HttpOnly Web 会话、15 分钟 App Access Token、30 天 Refresh Session、设备会话撤销与项目认领；正式短信通道与 App 真机联调尚未完成 |
 | 本地参考图零上传 | ✅ 保持 | 本地图库原图、路径和二进制不上传；仅使用平台已生成且当前项目已采用的关键帧做一致性参考 |
 | 本地图库目录直连 | 🟡 自动化通过 | OPFS 目录句柄已验证扫描、缩略图、中文名自动挂图、刷新恢复、移除/恢复、断开后持久化；真实系统目录授权弹窗仍待人工确认 |
 | 可灵首尾帧衔接清单 | 📋 计划中 | **通用版已上线**（导出包的 `chaining.txt` + 「复制衔接清单」按钮，即梦/可灵都适用）；可灵界面特有的字段还没摸清，不凭猜测做 |

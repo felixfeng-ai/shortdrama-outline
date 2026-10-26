@@ -4,6 +4,16 @@ export interface AuthUserDto {
   displayName: string
 }
 
+export interface AuthSessionDto {
+  id: string
+  client: string
+  deviceName: string
+  createdAt: number
+  lastSeenAt: number
+  expiresAt: number
+  current: boolean
+}
+
 async function payload<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => null)
   if (!response.ok || !body?.success) {
@@ -14,6 +24,18 @@ async function payload<T>(response: Response): Promise<T> {
 
 export async function fetchAuthSession(): Promise<{ user: AuthUserDto | null }> {
   return payload(await fetch("/api/auth/session", { cache: "no-store" }))
+}
+
+export async function fetchAuthSessions(): Promise<{ sessions: AuthSessionDto[] }> {
+  return payload(await fetch("/api/auth/sessions", { cache: "no-store" }))
+}
+
+export async function revokeAuthSession(sessionId: string): Promise<{ revoked: boolean }> {
+  return payload(await fetch("/api/auth/sessions", {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  }))
 }
 
 export async function requestAuthCode(phone: string): Promise<{

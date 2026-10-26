@@ -6,8 +6,8 @@
 
 - 手机号请求 6 位验证码，验证码 5 分钟有效。
 - 验证码只保存哈希，不保存明文；每手机号有发送冷却和小时上限。
-- 验证成功创建或复用用户，并签发 30 天会话。
-- Web 使用 HttpOnly Cookie；App 使用同一会话 token 作为 Bearer Token。
+- 验证成功创建或复用用户，并签发 30 天 refresh session。
+- Web 使用 HttpOnly refresh cookie；App 使用 15 分钟 access token 访问业务接口，并用 refresh token 换新。
 - 登录时把当前匿名会话项目认领到正式用户。
 - 用户只能看到自己的项目、快照、任务、关键帧和推送订阅。
 
