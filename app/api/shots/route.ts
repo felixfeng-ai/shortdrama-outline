@@ -21,14 +21,20 @@ import { buildPlaceRefMap, buildRefMap } from "@/lib/assets/refs"
 import type { Scene, Shot, VisualCharacter } from "@/lib/assets/types"
 import { extractCompleteItems } from "@/lib/partial-json"
 import { readActs, readCharacters, readIdea } from "@/lib/validate"
-import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { chargeQuota } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import {
   planShotBatches,
   shotBatchLabel,
   shotTokenBudget,
 } from "@/lib/shots"
+import {
+  checkpointSignature,
+  clearTextGenerationCheckpoint,
+  loadTextGenerationCheckpoint,
+  saveTextGenerationCheckpoint,
+} from "@/lib/generation/checkpoint"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -53,15 +59,17 @@ export async function POST(req: Request) {
   let projectId: string | null
   let brief: ReturnType<typeof readBrief>
   let look: ReturnType<typeof readLook>
+  let characters: ReturnType<typeof readCharacters>
+  let resumeRequested: boolean
   /** 地点名 -> 地点锚点串，整形时按 place 精确匹配 */
   const placeMap = new Map<string, string>()
   try {
     const body = await req.json().catch(() => null)
     const db = getDbForRequest()
     projectId = typeof body?.projectId === "string" ? body.projectId : null
-    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
+    if (projectId) assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     idea = readIdea(body?.idea)
-    readCharacters(body?.characters, "请先生成核心人物，再拆镜头")
+    characters = readCharacters(body?.characters, "请先生成核心人物，再拆镜头")
     scenes = readScenes(body?.scenes)
     visuals = (Array.isArray(body?.visualCharacters) ? body.visualCharacters : []) as VisualCharacter[]
     acts = Array.isArray(body?.acts) ? readActs(body.acts) : []
@@ -77,29 +85,65 @@ export async function POST(req: Request) {
         placeMap.set(row.name, row.anchor)
       }
     }
+    resumeRequested = body?.resume === true
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
   }
 
-  // 额度闸门：同 episodes，必须在 new ReadableStream 之前
-  try {
-    chargeQuota(getDbForRequest(), identityFromRequest(req), "shots")
-  } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
-  }
-
+  const db = getDbForRequest()
   const sceneRows = scenes as Scene[]
-  const batches = planShotBatches(sceneRows.length)
+  const signature = checkpointSignature("shots", {
+    idea,
+    characters,
+    scenes: sceneRows,
+    visuals,
+    acts,
+    genre: genre.id,
+    brief,
+    look,
+    places: Array.from(placeMap.entries()),
+  })
+  const checkpoint = projectId && resumeRequested
+    ? loadTextGenerationCheckpoint<{ shots?: unknown; stamp?: unknown }>(
+      db,
+      projectId,
+      "shots",
+      signature,
+    )
+    : null
+  const resumedShots = checkpoint && Array.isArray(checkpoint.state?.shots)
+    ? checkpoint.state.shots as Shot[]
+    : []
+  const resumedStamp = checkpoint && Number.isFinite(Number(checkpoint.state?.stamp))
+    ? Math.floor(Number(checkpoint.state.stamp))
+    : Date.now()
+  const allBatches = planShotBatches(sceneRows.length)
+  const batches = checkpoint
+    ? allBatches.filter((batch) => batch.sceneStart >= checkpoint.cursor)
+    : allBatches
+  const shotUnits = Math.max(
+    1,
+    Math.ceil(4 * batches.length / Math.max(1, allBatches.length)),
+  )
+
+  // 额度闸门：同 episodes，必须在 new ReadableStream 之前；续跑只收尚未完成批次的额度。
+  try {
+    chargeQuota(db, resolveRequestIdentity(db, req), "shots", Date.now(), shotUnits)
+  } catch (error) {
+    const { body, status } = errorResponse(error)
+    return NextResponse.json(body, { status })
+  }
+
   const encoder = new TextEncoder()
   // 一次生成固定一个 stamp：同一镜在多次推送里 id 保持不变，React 才不会重挂卡片
-  const stamp = Date.now()
+  const stamp = resumedStamp
+  let lastCheckpointCursor = checkpoint?.cursor ?? 1
 
   // 图台账 -> 角色名到图标签的映射（B6：标注本镜该带哪几张参考图）
-  const refMap = buildRefMap(getDbForRequest(), projectId)
+  const refMap = buildRefMap(db, projectId)
   // 场景图：按地点名挂，并进本镜参考图
-  const placeRefMap = buildPlaceRefMap(getDbForRequest(), projectId)
+  const placeRefMap = buildPlaceRefMap(db, projectId)
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -115,7 +159,13 @@ export async function POST(req: Request) {
       }
 
       try {
-        const finalShots: Shot[] = []
+        const finalShots: Shot[] = [...resumedShots]
+        if (checkpoint) {
+          send("resume", {
+            shots: finalShots,
+            cursor: checkpoint.cursor,
+          })
+        }
         for (const batch of batches) {
           const batchScenes = sceneRows.slice(batch.sceneStart - 1, batch.sceneEnd)
           const previous = finalShots
@@ -178,16 +228,33 @@ export async function POST(req: Request) {
           })
           finalShots.push(...batchShots)
           send("shots", { shots: finalShots })
+          lastCheckpointCursor = batch.sceneEnd + 1
+          if (projectId) {
+            saveTextGenerationCheckpoint(db, {
+              projectId,
+              kind: "shots",
+              signature,
+              cursor: lastCheckpointCursor,
+              state: { shots: finalShots, stamp },
+            })
+          }
         }
 
-        persistIfProject(getDbForRequest(), projectId, "shots", finalShots, {
+        persistIfProject(db, projectId, "shots", finalShots, {
           kinds: ["scenes", "visualCharacters"],
         })
+        if (projectId) clearTextGenerationCheckpoint(db, projectId, "shots")
         send("done", { shots: finalShots })
         finish()
       } catch (error) {
         const { body } = errorResponse(error)
-        send("error", { error: body.error })
+        send("error", {
+          error: body.error,
+          resume: {
+            available: Boolean(projectId),
+            cursor: lastCheckpointCursor,
+          },
+        })
         finish()
       }
     },

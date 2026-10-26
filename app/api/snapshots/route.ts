@@ -6,7 +6,7 @@ import { listSnapshots } from "@/lib/assets/repo"
 import { persistEditedArtifact } from "@/lib/assets/persist"
 import { ARTIFACT_KINDS, type ArtifactKind } from "@/lib/assets/types"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner } from "@/lib/auth/request"
 
 export const runtime = "nodejs"
 // 这些路由依赖请求参数与数据库，不能静态预渲染
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     if (!(ARTIFACT_KINDS as readonly string[]).includes(kind)) throw new InputError("kind 不合法")
 
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, ownerFromRequest(req))
+    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     return NextResponse.json(ok({ snapshots: listSnapshots(db, projectId, kind as ArtifactKind) }))
   } catch (error) {
     const { body, status } = errorResponse(error)
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     if (serialized.length > 2_000_000) throw new InputError("内容过大，无法保存")
 
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, ownerFromRequest(req))
+    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
 
     const snapshot = persistEditedArtifact(db, projectId, artifactKind, payload)
     return NextResponse.json(ok({ snapshot }))

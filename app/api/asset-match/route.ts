@@ -13,7 +13,8 @@ import { errorResponse, ok, InputError } from '@/lib/api'
 import { chatJson } from '@/lib/deepseek'
 import { buildAssetMatchPrompt } from '@/lib/assets/prompts'
 import { getDbForRequest } from '@/lib/assets/store'
-import { chargeQuota, identityFromRequest } from '@/lib/quota'
+import { chargeQuota } from '@/lib/quota'
+import { resolveRequestIdentity } from '@/lib/auth/request'
 import { readGenre } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -104,7 +105,8 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
 
     // 额度闸门：入参已校验、尚未调用模型。走 visual 权重（这是一次美术判断）
-    chargeQuota(getDbForRequest(), identityFromRequest(req), 'assetMatch')
+    const db = getDbForRequest()
+    chargeQuota(db, resolveRequestIdentity(db, req), 'assetMatch')
 
     const { system, user } = buildAssetMatchPrompt(names, files, genre)
     // 判断归属需要推理但不需要发散，温度压低

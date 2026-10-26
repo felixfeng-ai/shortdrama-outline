@@ -9,7 +9,8 @@ import { buildIdeaPrompt } from '@/lib/prompts'
 import { GENRES, readGenre, MAX_IDEAS_PER_ROUND, MAX_KEYWORD_LENGTH } from '@/lib/types'
 import { readRecommendedGenres } from '@/lib/prompts'
 import { getDbForRequest } from '@/lib/assets/store'
-import { chargeQuota, identityFromRequest } from '@/lib/quota'
+import { chargeQuota } from '@/lib/quota'
+import { resolveRequestIdentity } from '@/lib/auth/request'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -47,7 +48,8 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
 
     // 额度闸门：入参已校验、尚未调用模型
-    chargeQuota(getDbForRequest(), identityFromRequest(req), 'ideas')
+    const db = getDbForRequest()
+    chargeQuota(db, resolveRequestIdentity(db, req), 'ideas')
 
     const { system, user } = buildIdeaPrompt(keywords, genre, GENRES)
     // 联想需要发散，温度比人物生成再高一点

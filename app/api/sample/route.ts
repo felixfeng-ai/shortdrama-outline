@@ -21,7 +21,7 @@ import {
   SAMPLE_GENRE,
   SAMPLE_VISUALS,
 } from '@/lib/sample'
-import { ownerFromRequest } from '@/lib/session'
+import { resolveProjectOwner } from '@/lib/auth/request'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,7 +29,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request) {
   try {
     const db = getDbForRequest()
-    const project = createProject(db, SAMPLE_TITLE, ownerFromRequest(req))
+    const project = createProject(db, SAMPLE_TITLE, resolveProjectOwner(db, req))
 
     // 按血缘顺序写：每一步的 parents 指向上一步，这样「影响范围」与对账在示例里也是通的
     persistIfProject(db, project.id, 'idea', { idea: SAMPLE_IDEA, genre: SAMPLE_GENRE }, { kinds: [] })

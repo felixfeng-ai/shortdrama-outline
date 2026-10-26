@@ -11,7 +11,7 @@ import { ARTIFACT_KINDS } from "@/lib/assets/types"
 import type { Shot, VisualCharacter, Scene } from "@/lib/assets/types"
 import { PROJECT_PACKAGE_SCHEMA, PROJECT_PACKAGE_SCHEMA_VERSION } from "@/lib/assets/export"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner } from "@/lib/auth/request"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     if (!projectId) throw new InputError("缺少 projectId")
 
     const db = getDbForRequest()
-    const project = assertProjectAccess(db, projectId, ownerFromRequest(req))
+    const project = assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
 
     // 每一类取最新一版
     const latest: Record<string, { version: number; payload: unknown }> = {}

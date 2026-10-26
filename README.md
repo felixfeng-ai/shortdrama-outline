@@ -41,7 +41,7 @@
 
 | | 指标 | 具体到什么程度 | 怎么验 |
 |---|---|---|---|
-| 🚀 | **零部署** | 从打开 [chenju.work](https://chenju.work) 到拿到第 1 个镜头，**不需要安装任何东西**——不要 Docker、不要注册、不要本机跑服务 | 打开即用，全程只需一个浏览器 |
+| 🚀 | **零部署** | 从打开 [chenju.work](https://chenju.work) 到拿到第 1 个镜头，**不需要安装任何东西**——不要 Docker、不要本机跑服务；不登录也能开始，登录后项目可跨设备找回 | 打开即用，全程只需一个浏览器 |
 | 🔒 | **参考图零上传** | 本地参考图**从不经过服务端**。服务端只存 `vaultKey`（图在你硬盘上的路径）+ `fileHash`（校验指纹），不存这些图的像素 | `/api/refs` 收到带 `data`/`base64`/`file`/`image` 字段的请求会**直接 400 拒绝** |
 | 📦 | **零锁定** | 全部资产可一键导出为自包含 zip（含离线分镜表），换工具不用重建 | 「打包带走」按钮会并入本地参考图与当前采用的云端关键帧；历史关键帧保留元数据 |
 
@@ -82,8 +82,11 @@
 - [技术实现](#技术实现)
 - [项目结构](#项目结构)
 - [接口与数据结构](#接口与数据结构)
+- [认证与项目归属](#认证与项目归属)
+- [生成任务与恢复](#生成任务与恢复)
+- [PWA 与通知](#pwa-与通知)
 - [测试](#测试)
-- [稳健性设计](#稳健性设计)
+- [稳健性与恢复设计](#稳健性与恢复设计)
 - [AI 编程怎么参与开发](#ai-编程怎么参与开发)
 - [路线图](#路线图)
 - [App 产品方向](APP.md)
@@ -135,7 +138,7 @@
 | **不做视频生成 / 一键成片** | 图生视频涉及更高成本、长任务和新的隐私边界；P0 只做到可确认的角色定妆图与镜头首帧 |
 | **不把模型部署成本转嫁给编剧** | 关键帧默认由平台通义万相服务生成；用户不需要理解 Provider、模型或 API Key |
 | **不做全自动成片** | 那是 [huobao-drama](https://github.com/chatfire-AI/huobao-drama) 的赛道。人在环里才有判断权 |
-| **不做用户系统 / 协作** | 上来就要注册的东西，和「打开即用」冲突 |
+| **不做团队协作 / 重型账号体系** | 不登录也能开始；手机号账号只负责找回项目和跨端归属，不做组织、成员和权限后台 |
 | **不做重部署分发** | 不提供 Docker 镜像——那是 Jellyfish 已经做好的事，我们只提供网页 |
 | **不做角色库 / 大纲以外的创作辅助** | 收窄。见[竞争格局](#竞争格局为什么这件事还值得做) |
 
@@ -179,7 +182,7 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 放弃是为了守住「轻」：
 
 - ❌ **不做视频生成**——关键帧 P0 先验证一致性、回选与任务状态，图生视频留到下一阶段
-- ❌ **不做大纲之外的创作辅助**（角色库、协作、用户系统）
+- ❌ **不做大纲之外的创作辅助**（角色库、团队协作、组织权限）
 - ❌ **不做重部署形态**（不做 Docker 分发、不做服务端存储）
 - ❌ **不再加功能**——能力清单已经和 Jellyfish 差不多了，再往上加是拿「轻」去换「全」，必输
 
@@ -228,6 +231,14 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 
 **下一步不是加功能，是加判断**：基座模型是公共的，情绪、审美、判断才是差异。判断层（意图卡、双版本选择、Look Book、判断日志、审片人）的目标与路线见 [JUDGMENT.md](JUDGMENT.md)；正确性与交付侧的方向见 [COMPETITION.md](COMPETITION.md)。
 
+### 判断层怎么落地
+
+- **导演意图卡**：核心情绪、目标观众、参考气质和红线，作为人物、三幕、分集、定妆等步骤的统一约束；不填写时不改变旧行为。
+- **A/B 选择**：人物、三幕和第一集可以一次生成两个方向，用户选一版并可选填理由；第一集确定后可从第 2 集续写。
+- **视觉宪法（Look Book）**：色调、光线、镜头语言和禁用元素逐镜注入分镜提示词，和角色锚点互补。
+- **判断日志**：记录“换一个 / 重生成 / 否决”的原因，默认本地保存，只把最近 10 条作为后续生成的上下文。
+- **节奏曲线与审片**：每集可标 1-5 强度，曲线用于发现中段塌陷；AI 审片只读诊断钩子和平线，不直接改稿。
+
 产品里有几个细节是围绕「判断权在人」做的：
 
 - **「换一个」**：对某个角色不满意，只换他一个，其余阵容不动（新角色会被要求与现有角色形成新的冲突关系，避免功能重复）
@@ -273,6 +284,11 @@ npm run build
 | `WEB_PUSH_PUBLIC_KEY` | 通知功能必填 | — | Web Push VAPID 公钥，可以返回浏览器 |
 | `WEB_PUSH_PRIVATE_KEY` | 通知功能必填 | — | Web Push VAPID 私钥，只允许存在服务端 |
 | `WEB_PUSH_SUBJECT` | | `mailto:admin@chengju.work` | VAPID 联系主体 |
+| `AUTH_SECRET` | 登录功能必填 | — | 验证码散列所需的强随机服务端密钥 |
+| `AUTH_ALLOW_DEV_CODE` | | `0` | 仅 localhost 联调时设为 `1` 返回开发验证码；生产域名永远拒绝 |
+| `CHENGJU_DATA_DIR` | | `./data` | SQLite 与生成文件的数据目录；生产环境建议放在仓库外 |
+| `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录 |
+| `CHENGJU_CLAIM_LEGACY_PROJECTS` | | 关闭 | 升级后把旧版无 owner 项目认领给首次访问会话时可设为 `1` |
 
 > `.env.local` 已在 `.gitignore` 中，不会被提交。密钥只在服务端使用，前端拿不到。
 
@@ -282,15 +298,60 @@ npm run build
 
 | | 层 | 选型 | 说明 |
 |---|---|---|---|
-| ⚛️ | 前端 | Next.js 14 App Router + Tailwind CSS 3 | 纯手写样式，**没有引入任何 UI 组件库** |
-| 🔌 | 后端 | Next.js API Routes | 全栈一体，不用单独起服务 |
-| 🧠 | 模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容协议。人物/三幕/定妆/场次一次性返回；**分集与分镜走 SSE 流式**，边生成边渲染 |
-| 🎨 | 图像 | 阿里云通义万相 | 服务端托管 `ALIYUN_DASHSCOPE_API_KEY`；文生图用 `wanx2.1-t2i-turbo`，带项目已采用关键帧时改用 `qwen-image-2.0-pro` 多图参考 |
-| 🗄️ | 存储 | SQLite + 私有数据目录 | SQLite 存项目、快照、图台账和关键帧元数据；本地参考图像素不进入服务端，云端生成的关键帧写入 `data/generated` |
-| 📦 | 依赖 | **0 个第三方运行时依赖** | ZIP 打包手写、测试用 `node:test`、本地库用 `node:sqlite` |
+| ⚛️ | 前端 | Next.js 14 App Router、React 18、TypeScript 5.5、Tailwind CSS 3 | 纯手写样式，没有引入 UI 组件库；支持深色/浅色主题与 PWA 安装 |
+| 🔌 | 后端 | Next.js Route Handlers + `middleware.ts` | 全栈一体；中间件负责匿名浏览器会话，业务路由统一读取 owner |
+| 🧠 | 文本模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容协议；结构化 JSON、SSE 流式、function calling |
+| 🎨 | 图像模型 | 阿里云通义万相 | 服务端托管密钥；文生图与多图参考编辑，浏览器不接触模型密钥 |
+| 🗄️ | 存储 | SQLite + 私有数据目录 | 项目、快照、血缘、图台账、账号、生成任务、关键帧、推送订阅、额度与生成检查点 |
+| 🔐 | 账号 | 手机号验证码 + HttpOnly Cookie / Bearer Token | Web 与 App 共用同一账号和项目归属；未登录仍可用匿名会话 |
+| 📲 | PWA / 通知 | Manifest、Service Worker、Web Push、VAPID | 可安装、离线兜底、关键帧完成通知；不缓存 API 和个人图片 |
+| 📦 | 依赖 | 框架依赖 + `dotenv`、`web-push` | 功能层没有引入 UI 组件库、ORM、状态库或测试框架；ZIP 打包手写 |
 
-> 依赖只有 Next / React / Tailwind（都是框架本身）。功能层没有拉任何 npm 包——
-> 这不是洁癖：每多一个依赖，用户自部署时踩坑的概率就多一分。
+> 当前不再是“零第三方运行时依赖”。准确口径是：**框架之外只保留了部署所需的
+> `dotenv` 和 Web Push 所需的 `web-push`，没有引入 UI 组件库、ORM 或状态管理库。**
+
+### 架构总览
+
+```text
+浏览器 / PWA / App
+├─ React 工作台：六步、项目画布、任务中心、判断层
+├─ 本地图库：File System Access API / IndexedDB
+├─ AI 场记：前端 ReAct 循环，工具只读或只产出待确认卡片
+└─ Service Worker：离线页、安装与通知点击回跳
+        │
+        ├─ JSON API
+        └─ SSE（分集 / 分镜）
+                │
+Next.js Route Handlers
+├─ middleware：匿名会话 Cookie
+├─ auth：验证码登录、Web Cookie、App Bearer
+├─ 项目归属校验：项目 / 快照 / 任务 / 关键帧 / 推送订阅
+├─ DeepSeek：结构化生成、流式生成、工具调用
+├─ 通义万相：关键帧任务、轮询、下载与落盘
+├─ 生成检查点：长文分批续跑
+└─ 推送服务：成功 / 失败通知，失败不影响生成结果
+        │
+SQLite + 私有数据目录
+├─ projects / snapshots / lineage / ref_images
+├─ users / login_codes / auth_sessions
+├─ generation_tasks / generated_assets
+├─ text_generation_checkpoints
+├─ push_subscriptions / usage_log
+└─ data/generated：仅保存用户主动生成的云端关键帧
+```
+
+### 核心数据模型
+
+| 表 / 模块 | 作用 |
+|---|---|
+| `projects` | 项目标题、所有者、创建与更新时间；所有业务数据都挂在项目下 |
+| `snapshots` / `lineage` | 每一步产物的版本、父快照和影响范围；用于过期判断与回溯 |
+| `ref_images` | 本地参考图台账，只存 `vaultKey`、SHA-256、归属和元数据 |
+| `generation_tasks` / `generated_assets` | 关键帧任务状态、历史版本、采用状态和私有图片文件 |
+| `text_generation_checkpoints` | 分集/分镜的输入签名、批次游标、已生成内容和稳定 stamp |
+| `users` / `login_codes` / `auth_sessions` | 手机号用户、验证码哈希和可撤销会话 |
+| `push_subscriptions` | 当前 owner 的设备推送订阅，endpoint 幂等更新 |
+| `usage_log` | 按身份、步骤、日期的额度流水与全站熔断依据 |
 
 **为什么是 DeepSeek**，只看两条：
 
@@ -331,6 +392,13 @@ DEEPSEEK_MODEL="<你的推理接入点 ID>"
 
 还有一个变体 Prompt 用于「换一个」和「+ 添加角色」——只生成一个角色，并把现有阵容传给模型要求它互补。
 
+判断层不会额外启动一套生成链，而是把结构化上下文注入既有 Prompt：
+
+- 导演意图卡注入人物、三幕、分集等步骤；空表单产生零 prompt 片段，保证与旧行为一致。
+- 视觉宪法只注入分镜步骤，和角色锚点互补。
+- 第一集 A/B 会额外调用一次；用户选定后才从第 2 集续写。
+- 判断日志只取最近 10 条，避免把整段历史塞进上下文。
+
 ---
 
 ## 项目结构
@@ -338,61 +406,75 @@ DEEPSEEK_MODEL="<你的推理接入点 ID>"
 ```
 chengju/
 ├── app/
-│   ├── layout.tsx                  # 根布局 + 页面元信息
-│   ├── globals.css                 # Tailwind 入口 + 全局底色
-│   ├── page.tsx                    # 主页面：六步工作流的状态编排（状态槽按 StepKey 隔离）
+│   ├── layout.tsx                  # 根布局、字体、元信息、PWA 声明
+│   ├── manifest.ts                 # PWA Manifest
+│   ├── globals.css                 # Tailwind 入口、Signal Desk 双舱主题
+│   ├── page.tsx                    # 工作台状态编排：六步、项目、任务、恢复、判断层
 │   └── api/
-│       ├── characters/route.ts     # ① 生成人物（整组 / 单个两种模式）
-│       ├── acts/route.ts           # ② 三幕大纲
-│       ├── episodes/route.ts       # ③ 分集（10/30/60 可选，每 10 集一批，SSE 流式）
-│       ├── visual/route.ts         # ④ 视觉定妆 + 定妆图提示词
-│       ├── scenes/route.ts         # ⑤ 场次剧本
-│       ├── shots/route.ts          # ⑥ 分镜（SSE 流式，一镜一镜出现）
-│       ├── projects/route.ts       # 项目：创建 / 列表
-│       ├── snapshots/route.ts      # 快照：按 kind 列出全部版本
-│       ├── impact/route.ts         # 影响范围：改一处，反查受影响的下游
-│       ├── refs/route.ts           # 图台账：只收引用与指纹，带二进制直接 400
-│       └── export/route.ts         # 导出清单（文本类；图片由前端并入 zip）
+│       ├── auth/                   # 验证码登录、session、logout
+│       ├── characters/             # ① 核心人物
+│       ├── acts/                   # ② 三幕大纲
+│       ├── episodes/               # ③ 分集：分批、SSE、断点续跑
+│       ├── visual/                 # ④ 视觉定妆
+│       ├── scenes/                 # ⑤ 场次与地点锚点
+│       ├── shots/                  # ⑥ 分镜：按场次分批、SSE、断点续跑
+│       ├── projects/               # 项目创建 / 列表 / 改名 / 删除
+│       ├── snapshots/              # 快照读取与手工保存
+│       ├── impact/                 # 上游改动影响范围
+│       ├── refs/                   # 本地参考图台账，只收引用与指纹
+│       ├── generations/            # 关键帧任务、历史资产、回选
+│       ├── generated-assets/       # 私有生成图片响应
+│       ├── push/subscription/      # Web Push 订阅
+│       ├── agent/                  # AI 场记的一次模型往返
+│       ├── assistant/              # 单镜助手
+│       ├── asset-match/            # 无名图片的 AI 认图兜底
+│       ├── ideas/                  # 想法联想与题材推荐
+│       ├── sample/                 # 示例项目
+│       ├── export/                 # 导出清单
+│       ├── quota/                  # 额度查询
+│       └── health/                 # 健康检查
 ├── components/
-│   ├── IdeaPanel.tsx               # 工作面输入区（想法 + 示例 + 生成按钮）
-│   ├── StepPills.tsx               # 顶部六步胶囊（等宽序号 + 当前步）
-│   ├── StepSection.tsx             # 每个步骤的外壳（未开始/加载中/出错/有结果）
-│   ├── VersionBar.tsx              # 版本与联动面板：过期提示 + 影响镜头数
-│   ├── CharacterList.tsx           # 人物卡片列表（可编辑/删除/换一个）
-│   ├── ActList.tsx                 # 三幕大纲列表
-│   ├── EpisodeList.tsx             # 分集列表
-│   ├── SceneList.tsx               # 场次列表
-│   ├── ShotList.tsx                # 镜头列表
-│   ├── ShotCard.tsx                # 镜头卡：主工作面（含「缺参考图」跳转、执行单复制）
-│   ├── VisualAnchorPanel.tsx       # 定妆表 + 批量出图工具箱（母版 + 变量值）
-│   ├── RefImagePicker.tsx          # 带缩略图的九宫格选图器
-│   ├── VaultPanel.tsx              # 本地图库面板（显示当前模式与文件数）
-│   ├── CopyButton.tsx              # 复制按钮
-│   ├── AutoTextarea.tsx            # 高度自适应的输入框
-│   └── Skeleton.tsx                # 加载骨架屏
+│   ├── SignalOverview.tsx          # 项目状态总览
+│   ├── ProjectCanvas.tsx           # 项目画布与搜索/筛选
+│   ├── IdeaPanel.tsx               # 想法输入与生成入口
+│   ├── StepPills.tsx               # 顶部六步胶囊
+│   ├── StepSection.tsx             # 步骤外壳与运行态
+│   ├── CharacterList.tsx           # 人物行
+│   ├── ActList.tsx                 # 三幕大纲
+│   ├── EpisodeList.tsx             # 分集、A/B 与续写
+│   ├── SceneList.tsx               # 场次与地点
+│   ├── ShotList.tsx / ShotCard.tsx # 分镜卡片、台词、景别、运镜、参考图
+│   ├── KeyframePanel.tsx           # 通义关键帧、历史回选、任务状态
+│   ├── GenerationTaskPanel.tsx     # 任务中心、单条/批量重试
+│   ├── VisualAnchorPanel.tsx       # 定妆与批量出图工具箱
+│   ├── BriefCard.tsx               # 导演意图卡
+│   ├── LookBookCard.tsx            # 视觉宪法
+│   ├── VariantPicker.tsx           # A/B 选择
+│   ├── JudgmentLogPanel.tsx        # 判断日志
+│   ├── PacingCurve.tsx             # 节奏曲线
+│   ├── AgentDock.tsx               # AI 场记
+│   ├── VaultPanel.tsx              # 本地图库
+│   ├── AuthButton.tsx              # 登录与账号
+│   ├── PwaInstallButton.tsx        # PWA 安装入口
+│   └── PushNotificationButton.tsx  # 通知开关
 ├── lib/
-│   ├── types.ts                    # 创作层共享类型 + 六步元信息（STEPS）
-│   ├── deepseek.ts                 # 模型调用封装（一次性 + 流式 / 超时 / 重试 / JSON 解析）
-│   ├── partial-json.ts             # 从没接收完的 JSON 里抠出已闭合的元素，供流式渲染
-│   ├── prompts.ts                  # 创作层三个 Prompt 模板
-│   ├── normalize.ts                # 创作产物整形、兜底
-│   ├── validate.ts                 # 请求入参校验与截断
-│   ├── api.ts                      # 统一响应信封 + 前端请求封装（含 SSE）
-│   ├── export.ts                   # Markdown 拼装 / 复制 / 下载
-│   └── assets/                     # ── 资产链（与创作层刻意分开）──
-│       ├── types.ts                # VisualCharacter / Shot / Scene / RefImageMeta
-│       ├── db.ts                   # SQLite 单文件：projects / snapshots / lineage / ref_images
-│       ├── repo.ts                 # 项目 / 快照 / 血缘的读写
-│       ├── store.ts                # 数据库单例（dev 热重载不堆句柄）
-│       ├── anchors.ts              # 锚点编译器 ← 跨镜头一致性的技术核心
-│       ├── graph.ts                # isStale / findImpact ← 「改一处算得出影响了谁」
-│       ├── normalize.ts            # 镜头整形 + ★锚点强制注入 + 参考图标注
-│       ├── prompts.ts              # 资产层三个 Prompt（定妆 / 场次 / 分镜）
-│       ├── refs.ts                 # 图台账读取 → 角色名到参考图的映射
-│       ├── persist.ts              # 快照落库共用逻辑（失败不阻断生成）
-│       ├── vault.ts                # 本地图库（目录直连 / IndexedDB 双路径）
-│       └── export.ts               # 打包带走：执行单 / 首尾帧衔接清单 / CSV / 离线 HTML / 手写 ZIP
-├── tests/                          # 全量回归用例（node:test，零框架依赖）
+│   ├── auth/                       # 验证码、用户、会话、项目认领
+│   ├── agent/                      # ReAct 循环、工具 schema、消息协议
+│   ├── assets/                     # 资源、锚点、血缘、本地图库、SQLite 读写
+│   ├── generation/                 # 通义关键帧、任务、文件、检查点、导出
+│   ├── push/                       # 订阅、通知内容、发送与失效清理
+│   ├── deepseek.ts                 # JSON / 流式 / 工具调用 / 超时 / 重试
+│   ├── partial-json.ts             # 从半截 JSON 中提取已闭合元素
+│   ├── prompts.ts                  # 创作层 Prompt
+│   ├── brief.ts / look.ts          # 意图卡与视觉宪法
+│   ├── pacing.ts / judgment-log.ts # 节奏曲线与判断日志
+│   ├── session.ts                  # 匿名会话 owner
+│   ├── quota.ts                    # 额度权重、日切与全站熔断
+│   └── api.ts / validate.ts        # 统一信封、入参校验、SSE 客户端
+├── specs/                          # 能力规格：认证、检查点、任务恢复、PWA、推送等
+├── tests/                          # 全量 node:test 回归与协议测试
+├── public/                         # sw.js、offline.html、图标等静态资源
+├── middleware.ts                   # 匿名会话 Cookie 注入
 ├── deploy/
 │   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
 │   └── cicd-deploy.sh              # 服务器端部署脚本：停服 → 构建 → 启动
@@ -405,7 +487,7 @@ chengju/
 
 ## 接口与数据结构
 
-三个接口都返回统一的信封格式：
+除 SSE 和私有图片响应外，业务接口统一返回信封格式：
 
 ```jsonc
 // 成功
@@ -416,39 +498,61 @@ chengju/
 
 | 方法 | 路径 | 请求体 | 返回 |
 |------|------|--------|------|
+| POST | `/api/auth/request-code` | `{ phone }` | 发送登录验证码；仅本机开发且显式开启时返回 `devCode` |
+| POST | `/api/auth/verify-code` | `{ phone, code, client? }` | Web 设置 HttpOnly Cookie；App 传 `client: "app"` 时返回 Bearer Token |
+| GET | `/api/auth/session` | — | `{ user }`；未登录为 `null` |
+| POST | `/api/auth/logout` | — | 撤销当前会话并清除 Cookie |
+| POST | `/api/ideas` | `{ idea, genre, count? }` | 想法联想与题材推荐 |
+
+登录界面使用独立页面 `/login?next=...`，不从工作台弹出覆盖内容的 modal。`next` 只接受站内路径，登录成功后返回原来的步骤。
 | POST | `/api/characters` | `{ idea, mode?, existing? }` | `{ characters: Character[] }` |
 | POST | `/api/acts` | `{ idea, characters }` | `{ acts: Act[] }` |
-| POST | `/api/episodes` | `{ idea, characters, acts }` | **SSE 事件流**（见下） |
+| POST | `/api/episodes` | `{ idea, characters, acts, count, start?, resume? }` | **SSE 事件流**，支持分批与断点续跑 |
 | POST | `/api/visual` | `{ projectId?, idea, characters }` | `{ visualCharacters, imagePrompts }` |
 | POST | `/api/scenes` | `{ projectId?, idea, characters, episodes }` | `{ scenes: Scene[] }` |
-| POST | `/api/shots` | `{ projectId?, idea, characters, acts, scenes, visualCharacters }` | **SSE 事件流**（同 episodes 形状） |
+| POST | `/api/shots` | `{ projectId?, idea, characters, acts, scenes, visualCharacters, resume? }` | **SSE 事件流**，按场次分批并保持镜号连续 |
+| POST | `/api/assistant` | `{ shot, question }` | 单镜改写建议，可选择应用 |
+| POST | `/api/agent` | `{ messages, tools? }` | AI 场记的一次模型往返 |
+| POST | `/api/asset-match` | `{ characters, files, genre }` | 文件名到角色的 AI 认图建议，不接收图片 |
 | POST | `/api/projects` | `{ title }` | `{ project }` |
-| GET | `/api/projects` | — | `{ projects: Project[] }` |
+| GET | `/api/projects` | — | 当前 owner 可访问的项目 |
+| PATCH | `/api/projects` | `{ id, title }` | 项目改名 |
+| DELETE | `/api/projects?id=` | — | 删除项目并级联清理快照、任务、台账与文件 |
 | GET | `/api/snapshots` | `?projectId=&kind=` | `{ snapshots: Snapshot[] }`（version 倒序） |
+| POST | `/api/snapshots` | `{ projectId, kind, payload, parents? }` | 手工保存一版快照并连接血缘 |
 | GET | `/api/impact` | `?snapshotId=` | `{ affected: Snapshot[] }`（含多层下游） |
 | GET | `/api/refs` | `?projectId=` | `{ refs: RefImageMeta[] }` |
 | POST | `/api/refs` | `{ projectId, refs: [{ vaultKey, fileHash, ownerType, ownerId, ... }] }` | `{ refs, saved }`；**带二进制字段直接 400** |
-| GET | `/api/generations` | `?projectId=&targetType=&targetId=` | `{ tasks, assets }`；只返回当前匿名会话可访问项目 |
+| GET | `/api/generations` | `?projectId=&targetType=&targetId=` | `{ tasks, assets }`；先恢复超时任务，再返回当前 owner 数据 |
 | POST | `/api/generations` | `{ projectId, targetType, targetId, prompt, aspect }` | `{ task, asset, referenceCount }`；服务端自动选择项目已采用关键帧，不接受浏览器密钥或模型配置 |
 | PATCH | `/api/generations` | `{ projectId, assetId }` | `{ asset }`；在历史关键帧里回选一版 |
 | GET | `/api/generated-assets/:id` | — | 私有图片响应；校验项目归属后返回 PNG/JPEG/WebP |
+| GET | `/api/push/subscription` | — | 返回 VAPID 公钥与当前设备订阅状态 |
+| POST | `/api/push/subscription` | `{ subscription }` | 保存或幂等更新当前设备订阅 |
+| DELETE | `/api/push/subscription` | `{ endpoint }` | 关闭当前设备通知 |
+| POST | `/api/sample` | — | 创建/载入示例项目，不消耗额度 |
 | GET | `/api/export` | `?projectId=` | `{ manifest: { project, latest, refs, exportedAt } }` |
+| GET | `/api/quota` | — | 当前身份额度、全站额度与完整项目成本 |
+| GET | `/api/health` | — | 服务健康检查 |
 
 `mode` 为 `'single'` 时只生成 1 个角色（用于「换一个」和「添加角色」），此时需要传 `existing` 作为已有阵容，让模型避开功能重复。
 
-### `/api/episodes` 是唯一走 SSE 的接口
+### 分集与分镜走 SSE
 
-前两个接口返回上面那个 JSON 信封；分集返回 `text/event-stream`，三种事件：
+一次性接口返回 JSON 信封；分集和分镜返回 `text/event-stream`。分集按每 10 集一批，分镜按场次分批，二者都支持中断后续跑：
 
 | 事件 | 载荷 | 说明 |
 |------|------|------|
-| `episodes` | `{ episodes: Episode[] }` | 已生成的部分结果，每次都是**全量**，不是增量 |
-| `done` | `{ episodes: Episode[] }` | 最终结果，以这一份为准 |
+| `episodes` / `shots` | `{ episodes?: Episode[]; shots?: Shot[] }` | 已生成的部分结果，每次都是**全量**，不是增量 |
+| `done` | 同对应步骤的全量结果 | 最终结果，以这一份为准 |
 | `error` | `{ error: string }` | 生成中途失败，按普通错误提示处理 |
+| `resume` | `{ available, cursor }` | 当前请求从检查点恢复，告知下一批起点 |
 
 **为什么每次都推全量**，而不是只推新增的那几集：`normalizeEpisodes` 按数组下标定集数，只喂新增部分的话每批都会从第 1 集重新编号。
 
 **错误分两段**：入参校验失败时流还没建立，返回的仍是普通 JSON 信封（HTTP 4xx）；流已经开始之后才失败，才走 `error` 事件。`lib/api.ts` 的 `postSse` 把这两种情况都归一成抛异常，调用方的 catch 写法和 `postJson` 一致。
+
+**断点续跑**：分集和分镜各自保存一份 checkpoint，记录输入签名、下一批游标、已生成内容和稳定 stamp。只有项目、生成类型和输入签名都一致时才复用；全部成功或用户主动重新生成后，旧 checkpoint 失效。checkpoint 只是恢复机制，不进入正式快照和版本血缘。
 
 ```ts
 interface Character {
@@ -479,49 +583,102 @@ interface Episode {
 
 ---
 
+## 认证与项目归属
+
+不登录也能完整使用，但匿名数据需要绑定到一个浏览器身份：
+
+- `middleware.ts` 为首次访问设置高熵 `chengju_sid` Cookie；本地开发使用稳定会话，避免重启后项目丢失。
+- 手机号登录后，验证码只保存哈希，5 分钟有效，并有发送冷却和小时上限。
+- Web 使用 HttpOnly Cookie；App 使用同一会话 token 作为 Bearer Token，所以 Web 和 App 读取的是同一批项目。
+- 首次登录只认领当前匿名会话的项目和推送订阅，不会碰其他匿名会话的数据。
+- 项目、快照、关键帧任务、生成资产和推送订阅都按 owner 校验；未登录时 owner 是匿名会话，登录后是用户 id。
+
+当前边界：正式短信通道尚未接入；没有团队成员、组织、角色权限后台；本地图库和相册原图不跨设备同步。
+
+---
+
+## 生成任务与恢复
+
+### 长文生成：checkpoint 续跑
+
+分集和分镜都可能跑几分钟，因此不能只靠一次 HTTP 请求完成：
+
+- 分集每 10 集一批，分镜按场次分批，前一批的摘要会传给下一批。
+- 每批成功后写入 `text_generation_checkpoints`，记录输入签名、下一批游标、已生成内容和稳定 stamp。
+- 中途失败、取消或连接断开时保留 checkpoint；用户再次点生成时，前端带上 `resume` 标记，从已完成批次之后继续。
+- 人物、大纲、场次等输入变化后，签名不一致，旧 checkpoint 自动失效并从头上生成。
+- checkpoint 不是正式快照，不参与版本和血缘；正式结果仍只在全部完成后落快照。
+
+### 关键帧任务：状态机与超时恢复
+
+通义关键帧使用 `queued → running → succeeded / failed / canceled` 状态机：
+
+- 生成任务、模型、Prompt hash、参考图数量和输出资产都入库；历史关键帧可以回选和采用。
+- 取消只会停止等待，不会把未完成的远端任务写进项目；远端可能仍会完成，文案会明确说明。
+- 读取任务列表时会把超过安全时限的 `queued / running` 任务标成失败，避免刷新后永远停在“运行中”。
+- 任务中心支持目标去重、单条重试和确认后的串行批量重试。
+- 成功和失败都会触发 Web Push；用户主动取消不推送，推送失败不影响生成结果落库。
+
+---
+
+## PWA 与通知
+
+- `manifest.webmanifest`、Service Worker、离线页和六步深链已经接入；可以安装到桌面或主屏。
+- Service Worker 不缓存 `/api/`、个人图片或生成资产，只缓存同源静态资源和离线兜底页。
+- 通知权限必须由用户点击后请求，不会自动弹窗。
+- VAPID 私钥只在服务端；订阅按 owner 保存，endpoint 幂等更新，404/410 会清理失效订阅。
+- 通知只包含任务结果和可跳转的步骤，不包含 API Key、Prompt 全文或服务器路径。
+
+---
+
 ## 测试
 
 ```bash
 npm test        # 全量用例，全部通过
 ```
 
-**零测试框架依赖**——用的是 Node 内置的 `node:test`。测试进程里有一个解析钩子
-（`tests/loader.mjs`）补上 Next 的裸模块说明符与 `@/` 路径别名，所以能直接测路由的导出函数，
-不必为了可测性去改业务代码。
+测试使用 Node 内置的 `node:test`，没有引入 Jest、Vitest 等测试框架。`tests/run.mjs`
+统一启动测试进程；`tests/loader.mjs` 补上 Next 的裸模块说明符、`@/` 路径别名和
+TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必为了可测性改业务代码。
 
-| 用例文件 | 覆盖什么 |
+测试还覆盖测试库隔离和生成目录清理，避免并行测试互相污染。
+
+| 覆盖区域 | 代表用例 |
 |---|---|
-| `anchors.test.ts` | 锚点编译的幂等性与字段顺序（一致性成立的前提） |
-| `graph.test.ts` | 过期判定与影响范围（含环形依赖不死循环） |
-| `assets.test.ts` | 血缘建立、版本递增、旧版可回溯 |
-| `shots.test.ts` | 镜头整形、锚点强制注入、运镜兜底 |
-| `vault.test.ts` | 图库取图、读不到时不挂死 |
-| `auto-attach.test.ts` | 按目录名自动挂图（只补空缺，不覆盖手动挂的） |
-| `workorder.test.ts` | 执行单含四要素、缺图必须显式标出 |
-| `step-isolation.test.ts` | 六步状态槽不串台（修过的 bug 不回归） |
-| `refs-export.test.ts` | 打包清单含离线可看的分镜表 |
+| 模型协议 | `agent-loop`、`agent-tools`、`agent-wire`、`assistant`、`ideas`、`asset-match` |
+| 资产一致性 | `anchors`、`shots`、`place-anchor`、`place-ref`、`auto-attach` |
+| 版本与血缘 | `graph`、`impact`、`assets`、`kinds`、`resume` |
+| 生成任务 | `generation-api`、`generation-repo`、`generation-checkpoint`、`generation-task-recovery`、`generation-task-center` |
+| 关键帧与导出 | `generation-aliyun`、`generation-files`、`generation-export`、`export`、`workorder`、`chaining` |
+| 认证与隔离 | `auth-api`、`auth-service`、`auth-ui`、`session`、`project-access`、`projects` |
+| PWA 与推送 | `pwa`、`web-push-api`、`web-push-repo`、`web-push-service`、`web-push-ui` |
+| 交互与回归 | `step-isolation`、`steps-six`、`signal-desk`、`home-layout`、`canvas-view`、`information-hierarchy` |
+| 数据安全 | `refs-export`、`vault`、`test-isolation`、`run-artifacts` |
 
 ---
 
-## 稳健性设计
+## 稳健性与恢复设计
 
-大模型的输出天然不稳定，这几处做了兜底：
+大模型、长任务和本地资产都不稳定，系统在以下位置做了兜底：
 
-1. **JSON 解析兜底**（`lib/deepseek.ts`）：模型偶尔会给 JSON 套上围栏或加一段解释文字，解析时会依次尝试直接解析 → 去代码围栏 → 截取最外层对象/数组
-2. **解析失败自动重试**：整个请求重试一次（模型重新生成通常就正常了）；密钥错误、超时这类重试没意义的问题直接抛出
-3. **字段整形**（`lib/normalize.ts`）：模型漏字段、写错键名、把数组包在多余对象里，都在这里补齐兜底，保证界面拿到的一定是完整结构
-4. **集数以数组下标为准**：不信任模型写的集数，避免界面乱序
-5. **清晰的错误文案**：401 / 429 / 超时 / 网络异常分别翻译成用户看得懂的中文，技术细节只进服务端日志
-6. **上游改动提示**：改了人物之后再重新生成三幕，会提示「当前大纲基于旧人物生成」，而不是默默清空你已经改好的内容。这份「是否过期」由生成时记录的输入指纹推导，因此中途编辑不会被生成回写覆盖
-7. **入参硬上限**（`lib/validate.ts`）：想法 ≤ 500 字，人物 ≤ 5 个、三幕 ≤ 3 幕、每幕 ≤ 8 个情节点、单个字段 ≤ 400 字，超出直接截断。三个接口都是公开且要花钱的，不设上限等于把自己的额度交出去
-8. **请求纪元**（`app/page.tsx`）：生成过程中点「清空重来」，返回的结果会被丢弃，而不是把已清空的页面重新填满
-9. **只渲染「已经写完」的分集**（`lib/partial-json.ts`）：分集是边生成边渲染的，但缓冲区里随时可能是一个只写了一半的 JSON 对象。这里按括号配平扫描，只有已经闭合、且能通过 `JSON.parse` 的元素才交给界面，半截的一律等下一块数据补齐。流结束后还会用完整缓冲区整体解析一次兜底，保证最终结果和一次性调用时完全一致
+1. **JSON 解析兜底**（`lib/deepseek.ts`）：直接解析 → 去代码围栏 → 截取最外层对象/数组；解析失败会自动重试一次，Key 错误、429、超时这类重试无意义的问题直接返回。
+2. **字段整形**（`lib/normalize.ts`）：漏字段、错误枚举、被多包一层的数组、非法集号和镜号都在纯函数层补齐；集数和镜号优先按数组下标重算，不信任模型自报编号。
+3. **锚点安全网**：Prompt 禁止模型复述角色外貌，`normalizeShots` 仍会把角色锚点逐字注入；地点锚点只在名称精确命中时注入，宁可没有，也不挂错房间。
+4. **token 与批次预算**：场次 16000、分镜按场次分批、分集每 10 集一批。这里踩过真实事故：`maxTokens` 太小会把 JSON 拦腰截断，表现为“模型不听话”，实际是输出预算不足。
+5. **SSE 两段式错误**：流建立前失败返回普通 JSON 信封；流建立后失败补发 `error` 事件。响应头带 `X-Accel-Buffering: no`，Nginx 不能压缩 `text/event-stream`。
+6. **请求取消与请求纪元**：每个长任务有 `AbortController`；清空、切换项目或重新生成后，旧请求返回的结果按 epoch 丢弃，不会把新页面覆盖回旧内容。
+7. **断点续跑**：分集和分镜每批成功后保存 checkpoint；输入签名不一致自动失效，成功完成后清理；用户主动“重新生成”不续跑旧批次。
+8. **快照与血缘**：每一步正式产物落快照，下游记录父快照 id；过期不等于清空，影响范围沿血缘反向查询。
+9. **关键帧任务恢复**：读取任务列表时把超过安全时限的 queued/running 任务恢复为 failed；活跃任务不误判，终态任务不重复处理。
+10. **入参与额度硬上限**（`lib/validate.ts` / `lib/quota.ts`）：想法、人物、三幕、字段长度都有上限；额度在模型调用前检查，按北京时间切日，并有全站熔断。
+11. **身份与数据隔离**：匿名会话和登录用户都解析成统一 owner；项目、快照、任务、关键帧和推送订阅按 owner 校验。本地参考图像素不进入服务端。
+12. **PWA 与推送边界**：Service Worker 不缓存 `/api/`、个人图片和生成资产；推送订阅只接受 HTTPS 浏览器端点，失效订阅会被清理，推送失败不影响生成结果。
 
 ---
 
 ## AI 编程怎么参与开发
 
-这个项目的代码**主要由 Claude Code 完成**，我的工作是定方案、写 Prompt、验收纠偏。
+这个项目的代码**主要由 AI 编程助手完成**，我的工作是定方案、写 Prompt、验收纠偏。
 
 **我定的部分：**
 
@@ -535,7 +692,8 @@ npm test        # 全量用例，全部通过
 
 - **Prompt 太泛，人物立不住**：第一版角色动机写出来是「想要成功」这种正确的废话。改法是要求动机必须说明「最想要什么、为什么」，性格必须写成能指导表演的**行为倾向**（「遇事先算成本，被逼到绝路才肯拼命」），而不是形容词
 - **模型会用描述性的话糊弄钩子**：分集 Prompt 加了一条硬约束——钩子要写清最后一秒发生了什么，**不许写「留下悬念」「引发观众好奇」这种描述钩子的话**。不写死这条，模型会用一句套话把任务标记成完成
-- **上线才暴露的问题**：Nginx 的 `proxy_read_timeout` 默认 60s，小于应用里 120s 的模型超时，本地怎么跑都正常、一上线第三步必 504；`git reset --hard` 会覆盖正在执行的部署脚本，所以脚本先把自己复制到 `/tmp` 再 `exec`。这两条都记在下面的「四个必须知道的坑」里
+- **上线才暴露的问题**：Nginx 的 `proxy_read_timeout` 默认 60s，小于应用里 240s 的单批模型超时，本地怎么跑都正常、长分集一上线就 504；`git reset --hard` 会覆盖正在执行的部署脚本，所以脚本先把自己复制到 `/tmp` 再 `exec`。
+- **批量任务的状态黑洞**：前端刷新后，原来处于 running 的任务会永远显示“运行中”。后来在读取任务列表时加入超时恢复，并让 checkpoint 负责长文续跑，避免重复消耗前几批 token。
 
 **我的判断**：AI 把「写代码」这一步压缩到几乎不花时间，但**需求描述不清、验收不严，出来的就是能跑但不能用的东西**。上面这些问题没有一个是写完就对的——都是我实际跑起来、看到输出不对才回头改的。
 
@@ -550,13 +708,18 @@ npm test        # 全量用例，全部通过
 | 角色定妆图 / 镜头首帧 P0 | ✅ 已完成 | 平台托管通义万相；生成任务入库、关键帧历史、采用状态、会话隔离，删除项目时清理文件 |
 | 关键帧任务控制 | ✅ 已完成 | 支持停止等待、取消状态和失败重试；取消不会写入关键帧资产 |
 | 项目生成任务中心 | ✅ 已完成 | 汇总等待、运行、成功、失败与取消任务；支持目标去重、单条重试和确认后串行批量重试 |
+| 生成任务超时恢复 | ✅ 已完成 | 刷新任务列表时把超过安全时限的 queued/running 任务转为 failed；活跃任务和终态任务不误处理 |
+| 长剧集分批与断点续跑 | ✅ 已完成 | 分集每 10 集一批，分镜按场次分批；checkpoint 记录输入签名和游标，失败后从下一批继续 |
 | PWA 安装基础 | ✅ 已完成 | Manifest、Service Worker、离线兜底、条件安装入口和六步深链快捷方式；不缓存 API、个人图片或生成资产 |
-| Web Push 生成通知 | 🟡 本地实现 | 用户授权后推送生成成功/失败，点击回到定妆或分镜；VAPID 私钥只在服务端 |
+| Web Push 生成通知 | 🟡 代码完成，待配置 | 用户授权后推送生成成功/失败，点击回到定妆或分镜；VAPID 私钥只在服务端，生产环境需配置密钥 |
+| 手机号账号与项目归属 | 🟡 第一阶段完成 | 验证码登录、HttpOnly Web 会话、App Bearer Token、首次登录认领当前匿名项目；正式短信通道尚未接入 |
 | 本地参考图零上传 | ✅ 保持 | 本地图库原图、路径和二进制不上传；仅使用平台已生成且当前项目已采用的关键帧做一致性参考 |
 | 本地图库目录直连 | 🟡 自动化通过 | OPFS 目录句柄已验证扫描、缩略图、中文名自动挂图、刷新恢复、移除/恢复、断开后持久化；真实系统目录授权弹窗仍待人工确认 |
 | 可灵首尾帧衔接清单 | 📋 计划中 | **通用版已上线**（导出包的 `chaining.txt` + 「复制衔接清单」按钮，即梦/可灵都适用）；可灵界面特有的字段还没摸清，不凭猜测做 |
 | 导出包 schema 版本化 | ✅ 已完成 | `project.json` 带 `schema: chengju.project` 与 `schemaVersion: 1`，未来读取器可按版本兼容旧包 |
-| 多项目切换界面 | ✅ 已完成 | 项目条支持新建、切换、重命名、删除与导出备份；项目按当前浏览器的匿名会话隔离 |
+| 多项目切换界面 | ✅ 已完成 | 项目条支持新建、切换、重命名、删除与导出备份；未登录按浏览器匿名会话隔离，登录后归属账号 |
+| 镜头成本估算 | 🧪 本地实验 | 已实现按可用率、时长、参考图数量估算单镜与整剧成本；尚未进入线上 UI 和正式 Roadmap |
+| 多实例与任务队列 | 📋 待做 | 当前 SQLite、额度和检查点仍按单进程设计；扩容前要换 Postgres、队列和 Redis 原子限流 |
 | 导出 PDF | 📋 待定 | 目前是 Markdown + 离线 HTML + CSV，PDF 要不要做还没定 |
 | LangGraph 重写执行层 | ❌ 不做 | 六步已是可独立重跑的调用，改成图收益不抵复杂度 |
 | 本地参考图服务端存储 | ❌ **永不做** | 违反参考图零上传 |
@@ -657,6 +820,8 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `ALIYUN_DASHSCOPE_API_KEY` | ✅ | — | 通义万相服务端密钥；浏览器不接触 |
 | `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相模型名 |
 | `ALIYUN_IMAGE_EDIT_MODEL` | | `qwen-image-2.0-pro` | 带项目关键帧参考时使用的多图编辑模型 |
+| `AUTH_SECRET` | 登录功能必填 | — | 生产环境必须设置强随机值；验证码与散列密钥分离保存 |
+| `AUTH_ALLOW_DEV_CODE` | | `0` | 只在 localhost 配合开发验证码；生产域名即使误开也不会生效 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录；仅用户主动生成后写入 |
 | `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的额度（1 个完整项目 = 13，默认够跑 5 个项目） |
@@ -696,7 +861,12 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
 3. **写环境变量**（服务器上，`/opt/chengju/.env`，这个文件不进仓库）
    ```bash
    cd /opt/chengju
-   printf 'DEEPSEEK_API_KEY=%s\n' 'sk-你的密钥' > .env
+   cat > .env <<'EOF'
+   DEEPSEEK_API_KEY=sk-你的模型密钥
+   ALIYUN_DASHSCOPE_API_KEY=sk-你的通义密钥
+   AUTH_SECRET=至少 32 字节的随机值
+   # 可选：WEB_PUSH_PUBLIC_KEY=... / WEB_PUSH_PRIVATE_KEY=...
+   EOF
    ```
 4. **签 HTTPS 证书**（等 DNS 生效后）
    ```bash
@@ -738,11 +908,11 @@ CI 是主路径。要手动触发就在 GitHub Actions 页面点 **Run workflow*
 不想维护服务器的话 Vercel 也能跑：
 
 1. [vercel.com/new](https://vercel.com/new) 导入仓库，项目名填 `chengju`（子域名会是 `chengju.vercel.app`）
-2. Settings → Environment Variables 加 `DEEPSEEK_API_KEY`
+2. Settings → Environment Variables 加 `DEEPSEEK_API_KEY`、`ALIYUN_DASHSCOPE_API_KEY`；需要登录和通知时再加 `AUTH_SECRET` 与 Web Push 配置
 3. Deploy
 
-> Vercel 现在函数超时默认已提升到 300 秒，三个接口声明的 `maxDuration`（120-180 秒）都在范围内。
-> 但 `*.vercel.app` 在国内访问经常被污染或很慢，要给国内的人看还是用香港服务器。
+> Vercel 的可用时长取决于当前套餐和运行时。短集数可以试跑；60 集分 6 批、整条流最长 600 秒，
+> 更适合部署在支持长连接和后台任务的 Node 环境。`*.vercel.app` 在国内访问也经常被污染或很慢。
 
 ### Docker
 
@@ -779,6 +949,21 @@ docker run -p 3000:3000 -e DEEPSEEK_API_KEY=sk-xxx chengju
 改 `.env.local` 里的 `DEEPSEEK_BASE_URL` 和 `DEEPSEEK_MODEL` 即可（需兼容 OpenAI 的 `/chat/completions` 协议）。Prompt 在 `lib/prompts.ts`，可以自由调整。
 
 **刷新页面后项目还在吗？**
-项目内容会保存在当前浏览器的匿名会话与本地 SQLite 快照中，刷新页面、切换项目都能恢复。
+项目内容会保存在当前浏览器的匿名会话与服务端 SQLite 快照中，刷新页面、切换项目都能恢复。
 但服务端认的是这个浏览器的 Cookie：换浏览器或设备、清理站点数据后，就看不到原来的项目。
-重要项目请先用项目条里的「导出备份」带走；图片仍只在你自己的本地图库，不会随匿名会话上传。
+登录后项目会归属到手机号账号，可在 Web 与 App 间恢复；未登录时仍按当前浏览器匿名会话保存。图片仍只在你自己的本地图库，不随登录或匿名会话上传。
+
+**分集或分镜生成到一半失败了怎么办？**
+直接再次点生成即可。服务端会按输入签名找到对应 checkpoint，从下一批继续；人物、大纲或场次改过之后，旧 checkpoint 会自动失效，从头生成。
+
+**关键帧图片存在哪里？**
+用户主动点击生成后，通义万相返回的图片会存进当前服务器的 `CHENGJU_DATA_DIR/generated`，元数据写入 SQLite。历史版本可以回选，删除项目时文件会一起清理。本地参考图像素仍然不进入服务端。
+
+**登录后本地参考图会跨设备同步吗？**
+不会。账号同步的是项目文本、快照、任务和生成结果，本地图库里的原图和目录授权仍是设备级的。
+
+**为什么生成任务会显示“上次生成等待已中断”？**
+服务重启、浏览器刷新或请求异常后，任务可能停在 queued/running。读取任务列表时，超过安全时限的任务会恢复为 failed，并提示可以重试；通义侧的远端任务可能仍会完成，但不会写入当前项目。
+
+**通知为什么没有弹出来？**
+通知必须由用户点击“开启完成通知”后请求权限，并需要 HTTPS、浏览器支持和服务器 VAPID 配置。取消生成不会推送；失败推送也不会包含密钥、完整 Prompt 或服务器路径。

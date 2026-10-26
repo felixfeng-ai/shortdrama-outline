@@ -17,6 +17,7 @@ import ProjectBar from '@/components/ProjectBar'
 import GenerationTaskPanel from '@/components/GenerationTaskPanel'
 import PwaInstallButton from '@/components/PwaInstallButton'
 import PushNotificationButton from '@/components/PushNotificationButton'
+import AuthButton from '@/components/AuthButton'
 import ReleaseNotice from '@/components/ReleaseNotice'
 import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
@@ -265,6 +266,9 @@ export default function Home() {
   const vaultFiles = useMemo(() => visibleVaultFiles(allVaultFiles, ignoredKeys), [allVaultFiles, ignoredKeys])
   /** 正在跑的那一步的取消句柄：点「停止」时用它中断 */
   const abortRef = useRef<AbortController | null>(null)
+  /** 首次默认允许检查断点；成功完成后关闭，失败/取消后重新开启。 */
+  const episodeCheckpointRef = useRef(true)
+  const shotCheckpointRef = useRef(true)
   /** 顶部的轻提示（已停止 / 已恢复上次项目这类「说明性」的话，不是错误） */
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -1005,9 +1009,9 @@ export default function Home() {
     abortRef.current = controller
     try {
       const pid = await ensureProject(idea.trim().slice(0, 20))
-      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid, count: runCount, start: startAt, total: episodeCount, brief }, (event, data) => {
+      await postSse('/api/episodes', { idea: idea.trim(), genre: genre.id, characters, acts, projectId: pid, count: runCount, start: startAt, total: episodeCount, brief, resume: episodeCheckpointRef.current }, (event, data) => {
         if (isCleared(epoch)) return
-        if (event !== 'episodes' && event !== 'done') return
+        if (event !== 'episodes' && event !== 'done' && event !== 'resume') return
 
         const incoming = (data as { episodes: Episode[] }).episodes
         setEpisodes(seed ? [seed, ...incoming] : incoming)
@@ -1016,6 +1020,7 @@ export default function Home() {
 
         if (event === 'done') {
           finished = true
+          episodeCheckpointRef.current = false
           setQuotaRefreshKey((n) => n + 1)
           setStatus((s) => ({ ...s, episodes: 'done' }))
         }
@@ -1026,14 +1031,17 @@ export default function Home() {
     } catch (error) {
       if (isCleared(epoch)) return
       if (isAbortError(error)) {
+        episodeCheckpointRef.current = true
         // 停止流式生成的收场：保留已经到达的那几集，不要清空
         setStatus((s) => ({ ...s, episodes: 'idle' }))
         setNotice('已停止生成分集。已经出来的几集保留在工作台上。')
         return
       }
       const message = error instanceof Error ? error.message : '生成失败，请重试'
+      episodeCheckpointRef.current = true
       setErrors((e) => ({ ...e, episodes: message }))
       setStatus((s) => ({ ...s, episodes: 'error' }))
+      setNotice('已完成批次已保留；再点一次会从断点继续。')
     } finally {
       if (abortRef.current === controller) abortRef.current = null
     }
@@ -1489,9 +1497,17 @@ export default function Home() {
         const pid = await ensureProject(idea.trim().slice(0, 20))
         await postSse(
           "/api/shots",
-          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts, brief, look },
+          { projectId: pid, idea: idea.trim(), genre: genre.id, characters, scenes, places, visualCharacters: visuals, acts, brief, look, resume: shotCheckpointRef.current },
           (event, data) => {
             if (isCleared(epoch)) return
+            if (event === "resume") {
+              const resume = data as { shots?: Shot[]; cursor?: number }
+              if (resume.shots) {
+                setShots(resume.shots.map((s) => applyLocalRefs(s, visuals, attached, placeAttached)))
+              }
+              if (resume.cursor) setShotProgress(`从第 ${resume.cursor} 场继续`)
+              return
+            }
             if (event === "progress") {
               const progress = data as { label?: string }
               if (progress.label) setShotProgress(progress.label)
@@ -1506,6 +1522,7 @@ export default function Home() {
           controller.signal,
         )
         if (isCleared(epoch)) return
+        shotCheckpointRef.current = false
         setQuotaRefreshKey((n) => n + 1)
         setShotsBuiltFrom(builtFrom)
         setStatus((st) => ({ ...st, shots: "done" }))
@@ -1514,14 +1531,17 @@ export default function Home() {
       } catch (error) {
         if (isCleared(epoch)) return
         if (isAbortError(error)) {
+          shotCheckpointRef.current = true
           // 停止流式分镜：已经推过来的镜头保留
           setStatus((st) => ({ ...st, shots: "idle" }))
           setNotice("已停止生成分镜。已经出来的镜头保留在工作台上。")
           return
         }
         const message = error instanceof Error ? error.message : "生成失败，请重试"
+        shotCheckpointRef.current = true
         setErrors((e) => ({ ...e, shots: message }))
         setStatus((st) => ({ ...st, shots: "error" }))
+        setNotice("已完成批次已保留；再点一次会从断点继续。")
       } finally {
         setShotProgress(null)
         if (abortRef.current === controller) abortRef.current = null
@@ -1884,6 +1904,7 @@ export default function Home() {
 
         <PwaInstallButton />
         <PushNotificationButton />
+        <AuthButton />
 
         <ReleaseNotice />
 

@@ -6,14 +6,16 @@
 import { NextResponse } from "next/server"
 import { errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
-import { getQuota, identityFromRequest, FULL_PROJECT_COST, STEP_COST } from "@/lib/quota"
+import { getQuota, FULL_PROJECT_COST, STEP_COST } from "@/lib/quota"
+import { resolveRequestIdentity } from "@/lib/auth/request"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
   try {
-    const snap = getQuota(getDbForRequest(), identityFromRequest(req))
+  const db = getDbForRequest()
+  const snap = getQuota(db, resolveRequestIdentity(db, req))
     return NextResponse.json(ok({
       ...snap,
       // 附带口径，前端不用硬编码这些数字

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { errorResponse, ok, InputError } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { claimLegacyProjects, createProject, deleteProject, listProjects, renameProject } from "@/lib/assets/repo"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner } from "@/lib/auth/request"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { removeGeneratedProjectFiles } from "@/lib/generation/files"
 
@@ -18,7 +18,8 @@ export async function POST(req: Request) {
     if (!title) throw new InputError("请先给这个项目起个名字")
     if (title.length > 100) throw new InputError("项目名太长了，请控制在 100 字以内")
 
-    const project = createProject(getDbForRequest(), title, ownerFromRequest(req))
+    const db = getDbForRequest()
+    const project = createProject(db, title, resolveProjectOwner(db, req))
     return NextResponse.json(ok({ project }))
   } catch (error) {
     const { body, status } = errorResponse(error)
@@ -28,13 +29,14 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const ownerId = ownerFromRequest(req)
+    const db = getDbForRequest()
+    const ownerId = resolveProjectOwner(db, req)
     const url = new URL(req.url)
     const local = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1"
     if (local || process.env.CHENGJU_CLAIM_LEGACY_PROJECTS === "1") {
-      claimLegacyProjects(getDbForRequest(), ownerId)
+      claimLegacyProjects(db, ownerId)
     }
-    return NextResponse.json(ok({ projects: listProjects(getDbForRequest(), ownerId) }))
+    return NextResponse.json(ok({ projects: listProjects(db, ownerId) }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -52,7 +54,7 @@ export async function PATCH(req: Request) {
     if (title.length > 100) throw new InputError('项目名太长了，请控制在 100 字以内')
 
     const db = getDbForRequest()
-    const ownerId = ownerFromRequest(req)
+    const ownerId = resolveProjectOwner(db, req)
     assertProjectAccess(db, id, ownerId)
     const project = renameProject(db, id, title, ownerId)
     if (!project) throw new InputError('项目名没有更新，请重试')
@@ -74,7 +76,7 @@ export async function DELETE(req: Request) {
     if (!id) throw new InputError('缺少项目 id')
 
     const db = getDbForRequest()
-    const ownerId = ownerFromRequest(req)
+    const ownerId = resolveProjectOwner(db, req)
     assertProjectAccess(db, id, ownerId)
     const removed = deleteProject(db, id, ownerId)
     if (!removed) throw new InputError('项目没有删除，请重试')

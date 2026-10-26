@@ -10,7 +10,7 @@ import {
   isAllowedPushEndpoint,
   readPushSubscription,
 } from "@/lib/push/subscription"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner } from "@/lib/auth/request"
 
 export const runtime = "nodejs"
 
@@ -35,11 +35,8 @@ export async function POST(req: Request) {
     const subscription = readPushSubscription(body?.subscription)
     if (!subscription) throw new InputError("浏览器推送订阅格式不正确")
     if (!pushEnabled()) throw new InputError("当前服务尚未启用完成通知")
-    const saved = upsertPushSubscription(
-      getDbForRequest(),
-      ownerFromRequest(req),
-      subscription,
-    )
+    const db = getDbForRequest()
+    const saved = upsertPushSubscription(db, resolveProjectOwner(db, req), subscription)
     return NextResponse.json(ok({ id: saved.id, endpoint: saved.endpoint }))
   } catch (error) {
     const { body, status } = errorResponse(error)
@@ -54,11 +51,8 @@ export async function DELETE(req: Request) {
     if (!endpoint || !isAllowedPushEndpoint(endpoint)) {
       throw new InputError("浏览器推送地址不正确")
     }
-    const removed = removePushSubscription(
-      getDbForRequest(),
-      ownerFromRequest(req),
-      endpoint,
-    )
+    const db = getDbForRequest()
+    const removed = removePushSubscription(db, resolveProjectOwner(db, req), endpoint)
     return NextResponse.json(ok({ removed }))
   } catch (error) {
     const { body, status } = errorResponse(error)

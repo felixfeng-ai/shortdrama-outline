@@ -8,10 +8,10 @@ import { buildActPrompt } from '@/lib/prompts'
 import { readBrief } from '@/lib/brief'
 import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
-import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { chargeQuota } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     const db = getDbForRequest()
     const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
-    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
+    if (projectId) assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     const idea = readIdea(body?.idea)
     const characters = readCharacters(body?.characters, '请先生成核心人物，再生成三幕大纲')
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
-    chargeQuota(db, identityFromRequest(req), "acts")
+    chargeQuota(db, resolveRequestIdentity(db, req), "acts")
 
 
     const { system, user } = buildActPrompt(idea, characters, genre, brief)

@@ -5,6 +5,16 @@ export interface PushConfig {
   publicKey: string
 }
 
+function withPushTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer)
+  })
+}
+
 async function readPayload<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null)
   if (!response.ok || !payload?.success || !payload.data) {
@@ -39,7 +49,11 @@ async function saveSubscription(subscription: PushSubscription): Promise<void> {
 
 export async function activePushSubscription(): Promise<PushSubscription | null> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null
-  const registration = await navigator.serviceWorker.ready
+  const registration = await withPushTimeout(
+    navigator.serviceWorker.ready,
+    15_000,
+    "浏览器未能完成推送服务初始化，请刷新页面后重试",
+  )
   return registration.pushManager.getSubscription()
 }
 
@@ -47,18 +61,30 @@ export async function enablePushNotifications(publicKey: string): Promise<PushSu
   const permission = await Notification.requestPermission()
   if (permission !== "granted") throw new Error("浏览器没有授予通知权限")
   await navigator.serviceWorker.register("/sw.js")
-  const registration = await navigator.serviceWorker.ready
+  const registration = await withPushTimeout(
+    navigator.serviceWorker.ready,
+    15_000,
+    "浏览器未能完成推送服务初始化，请刷新页面后重试",
+  )
   const existing = await registration.pushManager.getSubscription()
-  const subscription = existing ?? await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: base64UrlToBytes(publicKey),
-  })
+  const subscription = existing ?? await withPushTimeout(
+    registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: base64UrlToBytes(publicKey),
+    }),
+    15_000,
+    "浏览器未能完成推送订阅，请确认不是无痕模式并检查通知权限",
+  )
   await saveSubscription(subscription)
   return subscription
 }
 
 export async function disablePushNotifications(): Promise<void> {
-  const registration = await navigator.serviceWorker.ready
+  const registration = await withPushTimeout(
+    navigator.serviceWorker.ready,
+    15_000,
+    "浏览器未能完成推送服务初始化，请刷新页面后重试",
+  )
   const subscription = await registration.pushManager.getSubscription()
   if (!subscription) return
   await fetch(PUSH_API, {

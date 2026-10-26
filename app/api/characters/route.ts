@@ -11,10 +11,10 @@ import { buildCharacterPrompt, buildSingleCharacterPrompt } from '@/lib/prompts'
 import { readBrief } from '@/lib/brief'
 import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
-import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { chargeQuota } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 
 export const runtime = 'nodejs'
 // 生成较慢，放宽函数超时（Vercel 上生效）
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     const db = getDbForRequest()
     const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
-    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
+    if (projectId) assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     const idea = readIdea(body?.idea)
 
     // 只重新生成一个角色时，把现有阵容传给模型，避免功能重复
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
-    chargeQuota(db, identityFromRequest(req), "characters")
+    chargeQuota(db, resolveRequestIdentity(db, req), "characters")
 
 
     const { system, user } =

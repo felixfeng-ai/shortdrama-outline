@@ -8,7 +8,7 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { listRefs } from "@/lib/assets/refs"
 import { randomUUID } from "node:crypto"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner } from "@/lib/auth/request"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     const projectId = new URL(req.url).searchParams.get("projectId") || ""
     if (!projectId) throw new InputError("缺少 projectId")
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, ownerFromRequest(req))
+    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     return NextResponse.json(ok({ refs: listRefs(db, projectId) }))
   } catch (error) {
     const { body, status } = errorResponse(error)
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     if (incoming.length > 500) throw new InputError("一次最多登记 500 张图片")
 
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, ownerFromRequest(req))
+    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     const stmt = db.prepare(
       "INSERT INTO ref_images (id, project_id, vault_key, label, file_hash, mime, bytes, owner_type, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )

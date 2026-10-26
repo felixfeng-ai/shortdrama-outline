@@ -137,8 +137,15 @@ export async function postSse(
         }
 
         if (event === 'error') {
-          const message = (data as { error?: string })?.error
-          throw new Error(message || '生成失败，请重试')
+          const payload = data as {
+            error?: string
+            resume?: { available?: boolean; cursor?: number }
+          }
+          const error = new Error(payload?.error || '生成失败，请重试') as Error & {
+            resume?: { available?: boolean; cursor?: number }
+          }
+          if (payload?.resume) error.resume = payload.resume
+          throw error
         }
         onEvent(event, data)
       }

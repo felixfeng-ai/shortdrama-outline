@@ -9,9 +9,9 @@ import { normalizePlaces, normalizeScenes } from "@/lib/assets/normalize"
 import { buildScenePrompt } from "@/lib/assets/prompts"
 import { persistIfProject } from "@/lib/assets/persist"
 import { readCharacters, readEpisodes, readIdea } from "@/lib/validate"
-import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { chargeQuota } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -22,14 +22,14 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     const db = getDbForRequest()
     const projectId = typeof body?.projectId === "string" ? body.projectId : null
-    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
+    if (projectId) assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     const idea = readIdea(body?.idea)
     const characters = readCharacters(body?.characters, "请先生成核心人物，再拆场次")
     const episodes = readEpisodes(body?.episodes, "请先生成分集剧情，再拆场次")
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
     const genre = readGenre(body?.genre)
-    chargeQuota(db, identityFromRequest(req), "scenes")
+    chargeQuota(db, resolveRequestIdentity(db, req), "scenes")
 
 
     const { system, user } = buildScenePrompt(idea, characters, episodes, genre)

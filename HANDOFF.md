@@ -8,7 +8,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 路径：`D:\Project\drama-outline`
 - 类型：Next.js 短剧大纲创作工具（App Router + Tailwind），面向竖屏短剧与漫剧
 
-## 当前状态（2026-10-25）
+## 当前状态（2026-10-26）
 
 **云端关键帧 P0 已在本地实现，待浏览器验收，不直接推送。**
 
@@ -25,12 +25,20 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 生成任务恢复已接入：读取任务列表时，超过安全时限的 queued/running 任务转成 failed，并给出可重试说明；近期活跃任务保持运行。关键帧卡遇到未结束任务时禁止重复提交。
 - 长剧集分镜已按场次分批：默认每批最多 8 场，后批承接前批末尾镜头，跨批镜号与 `entityId` 连续；SSE 持续推累计结果并显示当前批次，全部批次完成后一次性落快照。
 - 工作台信息层级已收敛：Story Command 只在核心人物步骤完整展开，其他步骤折叠为项目源摘要；本地图库只在定妆/场景完整展示，分镜只显示缺图提示；项目包、Markdown、复制大纲统一收进项目条导出菜单。
+- 长剧集断点续跑已接入：分集和分镜各自按项目保存 checkpoint，每完成一批更新输入签名、游标、已生成内容和稳定 stamp；失败/取消后前端自动带续跑标记，输入变化则旧断点失效，成功完成自动清理。
+- 通义多图参考已完成真实验证：使用内存生成的 512×512 PNG 调用 `qwen-image-2.0-pro`，返回 PNG 约 1.16MB，耗时约 13 秒；未读取本地图片，也未把测试产物写入项目。
+- 正式账号第一阶段已落地：手机号 6 位验证码登录、30 天会话、Web HttpOnly Cookie、App Bearer Token、退出撤销会话；验证码与会话 token 都只存哈希。
+- 首次登录只认领当前 `chengju_sid` 对应的匿名项目与 Push 订阅，不迁移其他匿名会话；项目、快照、资产、生成任务、额度、Agent、导出等接口已统一优先解析登录用户。
+- 登录入口已从遮挡工作台的 modal 改为独立 `/login` 页面；支持手机号/验证码两步、60 秒重发倒计时、内联错误、登录后安全返回原步骤，以及已登录账号与退出状态。
+- 本地联调验证码使用双开关：请求必须来自 localhost/127.0.0.1，且 `AUTH_ALLOW_DEV_CODE=1`；本地 `.env.local` 已写入随机 `AUTH_SECRET`。生产域名即使误开也不会返回开发验证码。
+- 正式短信供应商尚未接入，因此生产环境当前会明确返回“短信登录通道尚未配置”，不会伪造固定验证码。
 - 新增项目级生成任务中心：默认收起，汇总等待/运行/成功/失败/取消；最新失败或取消任务可单条重试，多项需确认后串行批量重试。
 - PWA 基础已落地：Manifest、Service Worker、离线页、静态缓存和条件安装按钮；API 与生成资产明确绕过缓存。
 - Web Push 已完成本地闭环：用户点击后才申请通知权限；订阅按匿名 owner 隔离；定妆或镜头首帧成功/失败后推送，点击通知回到对应步骤；404/410 失效订阅自动清理。VAPID 密钥已写入本地 `.env.local`，线上需要单独配置。
+- Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 六步支持 URL 深链：`?step=visuals` 可刷新恢复，步骤切换写入历史并支持前进后退；Manifest 提供人物、定妆、分镜快捷方式。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md) 与 [specs/web-push/spec.md](specs/web-push/spec.md)。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md) 与 [specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -48,7 +56,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：全量测试 `446/446`；`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.76%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
+- **验证**：当前工作区全量测试 `463/463`；其中 16 项成本实验不随本次提交，账号与断点提交范围为 `447/447`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
 - **本地预览**：`http://localhost:3200/?theme=neutral`。用户确认前不要推送。

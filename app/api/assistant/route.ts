@@ -8,7 +8,8 @@ import { chatJson } from '@/lib/deepseek'
 import { buildAssistantPrompt, parseAssistantReply, readQuestion, type AssistantShot } from '@/lib/assistant'
 import { readGenre } from '@/lib/types'
 import { getDbForRequest } from '@/lib/assets/store'
-import { chargeQuota, identityFromRequest } from '@/lib/quota'
+import { chargeQuota } from '@/lib/quota'
+import { resolveRequestIdentity } from '@/lib/auth/request'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -57,7 +58,8 @@ export async function POST(req: Request) {
     }
 
     // 额度闸门：入参已校验、尚未调用模型
-    chargeQuota(getDbForRequest(), identityFromRequest(req), 'assistant')
+    const db = getDbForRequest()
+    chargeQuota(db, resolveRequestIdentity(db, req), 'assistant')
 
     const { system, user } = buildAssistantPrompt(question, {
       idea: typeof body?.idea === 'string' ? body.idea.slice(0, 500) : '',

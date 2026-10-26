@@ -4,7 +4,7 @@ import { InputError, errorResponse, isAbortError, ok } from "@/lib/api"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { getDbForRequest } from "@/lib/assets/store"
 import { latestSnapshot } from "@/lib/assets/repo"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner } from "@/lib/auth/request"
 import { readLook } from "@/lib/look"
 import {
   completeGenerationTask,
@@ -121,7 +121,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const projectId = requiredString(url.searchParams.get("projectId"), "缺少 projectId")
     const db = getDbForRequest()
-    const ownerId = ownerFromRequest(req)
+    const ownerId = resolveProjectOwner(db, req)
     assertProjectAccess(db, projectId, ownerId)
     reconcileStaleGenerationTasks(db, projectId)
 
@@ -149,7 +149,7 @@ export async function PATCH(req: Request) {
     const projectId = requiredString(body?.projectId, "缺少 projectId")
     const assetId = requiredString(body?.assetId, "缺少 assetId")
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, ownerFromRequest(req))
+    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     const asset = selectGeneratedAsset(db, projectId, assetId)
     return NextResponse.json(ok({ asset }))
   } catch (error) {
@@ -165,7 +165,7 @@ export async function POST(req: Request) {
     targetType: GenerationTargetType
   } | null = null
   const db = getDbForRequest()
-  const ownerId = ownerFromRequest(req)
+  const ownerId = resolveProjectOwner(db, req)
   try {
     const body = await req.json().catch(() => null)
     const projectId = requiredString(body?.projectId, "缺少 projectId")

@@ -32,6 +32,33 @@ const SCHEMA = `
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  phone         TEXT NOT NULL UNIQUE,
+  display_name  TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS login_codes (
+  id           TEXT PRIMARY KEY,
+  phone        TEXT NOT NULL,
+  code_hash    TEXT NOT NULL,
+  attempts     INTEGER NOT NULL DEFAULT 0,
+  expires_at   INTEGER NOT NULL,
+  consumed_at  INTEGER,
+  created_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at    INTEGER NOT NULL,
+  expires_at    INTEGER NOT NULL,
+  last_seen_at  INTEGER NOT NULL,
+  revoked_at    INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS projects (
   id         TEXT PRIMARY KEY,
   title      TEXT NOT NULL,
@@ -119,12 +146,25 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   UNIQUE (owner_id, endpoint)
 );
 
+-- 长文本分批生成断点：每个项目、每种产物只保留最新一份，不进入正式版本血缘。
+CREATE TABLE IF NOT EXISTS text_generation_checkpoints (
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  kind         TEXT NOT NULL,
+  signature    TEXT NOT NULL,
+  cursor       INTEGER NOT NULL,
+  state        TEXT NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  PRIMARY KEY (project_id, kind)
+);
+
 CREATE INDEX IF NOT EXISTS idx_snapshots_project_kind ON snapshots(project_id, kind);
 CREATE INDEX IF NOT EXISTS idx_refs_project ON ref_images(project_id, owner_type);
 CREATE INDEX IF NOT EXISTS idx_lineage_to ON lineage(to_snapshot_id);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_project ON generation_tasks(project_id, target_type, target_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(project_id, target_type, target_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_owner ON push_subscriptions(owner_id);
+CREATE INDEX IF NOT EXISTS idx_login_codes_phone ON login_codes(phone, created_at);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
 `
 
 /**

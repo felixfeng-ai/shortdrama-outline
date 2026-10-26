@@ -11,7 +11,8 @@ import { AiError, chatWithTools, chatJson, type ToolChatMessage } from '@/lib/de
 import { AGENT_TOOL_SCHEMAS } from '@/lib/agent/tools'
 import { toWireMessages } from '@/lib/agent/wire'
 import { getDbForRequest } from '@/lib/assets/store'
-import { chargeQuota, identityFromRequest } from '@/lib/quota'
+import { chargeQuota } from '@/lib/quota'
+import { resolveRequestIdentity } from '@/lib/auth/request'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -39,7 +40,8 @@ export async function POST(req: Request) {
     if (messages.length === 0) throw new InputError('缺少对话内容')
 
     // 额度闸门：入参已校验、尚未调用模型。一次调用 = 1 单位
-    chargeQuota(getDbForRequest(), identityFromRequest(req), 'agent')
+    const db = getDbForRequest()
+    chargeQuota(db, resolveRequestIdentity(db, req), 'agent')
 
     const withSystem: ToolChatMessage[] = [{ role: 'system', content: SYSTEM }, ...messages]
 

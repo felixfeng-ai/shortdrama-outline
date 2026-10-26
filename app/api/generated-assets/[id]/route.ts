@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { errorResponse } from "@/lib/api"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { getDbForRequest } from "@/lib/assets/store"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner } from "@/lib/auth/request"
 import { readGeneratedImage } from "@/lib/generation/files"
 import { findGeneratedAssetById } from "@/lib/generation/repo"
 
@@ -26,7 +26,7 @@ export async function GET(
     const db = getDbForRequest()
     const asset = findGeneratedAssetById(db, id)
     if (!asset) throw statusError("关键帧不存在", 404)
-    assertProjectAccess(db, asset.projectId, ownerFromRequest(req))
+    assertProjectAccess(db, asset.projectId, resolveProjectOwner(db, req))
     const bytes = readGeneratedImage(asset.storageKey)
     const body = bytes.buffer.slice(
       bytes.byteOffset,

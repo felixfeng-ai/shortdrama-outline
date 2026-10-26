@@ -22,12 +22,18 @@ import {
   readEpisodeStart,
 } from '@/lib/episodes'
 import { readGenre, type Act, type Character, type Episode } from '@/lib/types'
-import { readActs, readCharacters, readIdea } from '@/lib/validate'
-import { chargeQuota, identityFromRequest } from "@/lib/quota"
+import { readActs, readCharacters, readEpisodes, readIdea } from '@/lib/validate'
+import { chargeQuota } from "@/lib/quota"
 import { getDbForRequest } from "@/lib/assets/store"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { ownerFromRequest } from "@/lib/session"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
+import {
+  checkpointSignature,
+  clearTextGenerationCheckpoint,
+  loadTextGenerationCheckpoint,
+  saveTextGenerationCheckpoint,
+} from "@/lib/generation/checkpoint"
 
 export const runtime = 'nodejs'
 // 长集数要分多批写（60 集约 6 批），给足时间
@@ -46,11 +52,12 @@ export async function POST(req: Request) {
   let total: number
   let preview: boolean
   let variant: 'A' | 'B'
+  let resumeRequested: boolean
   try {
     const body = await req.json().catch(() => null)
     const db = getDbForRequest()
     projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : null
-    if (projectId) assertProjectAccess(db, projectId, ownerFromRequest(req))
+    if (projectId) assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     idea = readIdea(body?.idea)
     characters = readCharacters(body?.characters, '请先生成核心人物，再生成分集剧情')
     acts = readActs(body?.acts, '请先生成三幕大纲，再生成分集剧情')
@@ -61,22 +68,56 @@ export async function POST(req: Request) {
     total = readEpisodeCount(body?.total ?? start + count - 1, start + count - 1)
     preview = body?.preview === true
     variant = body?.variant === 'B' ? 'B' : 'A'
+    resumeRequested = body?.resume === true
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
   }
 
-  // 额度闸门：必须在建立 SSE 流之前扣。流一旦建立，再抛错前端读到的是
-  // 断裂的事件流而不是可解析的 JSON 信封，错误文案就丢了。
-  // 这里单独包一层 try/catch，与上面入参校验的处理方式保持一致。
+  const db = getDbForRequest()
+  const signature = checkpointSignature('episodes', {
+    idea,
+    characters,
+    acts,
+    genre: genre.id,
+    count,
+    start,
+    total,
+    brief,
+    variant,
+    preview,
+  })
+  const checkpoint = projectId && resumeRequested
+    ? loadTextGenerationCheckpoint<{ episodes?: unknown; stamp?: unknown }>(
+      db,
+      projectId,
+      'episodes',
+      signature,
+    )
+    : null
+  const resumedEpisodes = checkpoint && Array.isArray(checkpoint.state?.episodes)
+    ? readEpisodes(checkpoint.state.episodes)
+    : []
+  const resumedStamp = checkpoint && Number.isFinite(Number(checkpoint.state?.stamp))
+    ? Math.floor(Number(checkpoint.state.stamp))
+    : Date.now()
+  const allBatches = planEpisodeBatches(count).map((b) => ({
+    start: b.start + start - 1,
+    end: b.end + start - 1,
+  }))
+  const batches = checkpoint
+    ? allBatches.filter((batch) => batch.start >= checkpoint.cursor)
+    : allBatches
+  const remainingCount = batches.reduce((sum, batch) => sum + batch.end - batch.start + 1, 0)
+
+  // 续跑只为本轮尚未完成的批次计费。
   try {
-    // 长集数按批次计价：每 10 集 3 单位，一次扣完，避免流建立后再抛额度错误
     chargeQuota(
-      getDbForRequest(),
-      identityFromRequest(req),
+      db,
+      resolveRequestIdentity(db, req),
       "episodes",
       Date.now(),
-      preview ? 1 : episodeQuotaUnits(count),
+      preview ? 1 : episodeQuotaUnits(Math.max(6, remainingCount)),
     )
   } catch (error) {
     const { body, status } = errorResponse(error)
@@ -85,11 +126,8 @@ export async function POST(req: Request) {
 
   const encoder = new TextEncoder()
   // 一次生成固定一个时间戳：同一集在多次推送里 id 保持不变，React 才不会重挂卡片
-  const stamp = Date.now()
-  const batches = planEpisodeBatches(count).map((b) => ({
-    start: b.start + start - 1,
-    end: b.end + start - 1,
-  }))
+  const stamp = resumedStamp
+  let lastCheckpointCursor = checkpoint?.cursor ?? start
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -106,7 +144,13 @@ export async function POST(req: Request) {
 
       try {
         // 长集数分批写：每批 10 集，后一批带上前文的标题与梗概，避免重复与断裂
-        const finalEpisodes: Episode[] = []
+        const finalEpisodes: Episode[] = [...resumedEpisodes]
+        if (checkpoint) {
+          send('resume', {
+            episodes: finalEpisodes,
+            cursor: checkpoint.cursor,
+          })
+        }
         for (const batch of batches) {
           const batchCount = batch.end - batch.start + 1
           const { system, user } = buildEpisodePrompt(idea, characters, acts, genre, {
@@ -147,15 +191,32 @@ export async function POST(req: Request) {
           })
           finalEpisodes.push(...batchEpisodes)
           send('episodes', { episodes: finalEpisodes })
+          lastCheckpointCursor = batch.end + 1
+          if (projectId && !preview) {
+            saveTextGenerationCheckpoint(db, {
+              projectId,
+              kind: 'episodes',
+              signature,
+              cursor: lastCheckpointCursor,
+              state: { episodes: finalEpisodes, stamp },
+            })
+          }
         }
 
         // 落快照放在流末尾：中途失败不写半份分集，恢复出来的必须是一份完整的分集
-        persistIfProject(getDbForRequest(), projectId, 'episodes', finalEpisodes, { kinds: ['acts'] })
+        persistIfProject(db, projectId, 'episodes', finalEpisodes, { kinds: ['acts'] })
+        if (projectId && !preview) clearTextGenerationCheckpoint(db, projectId, 'episodes')
         send('done', { episodes: finalEpisodes })
         finish()
       } catch (error) {
         const { body } = errorResponse(error)
-        send('error', { error: body.error })
+        send('error', {
+          error: body.error,
+          resume: {
+            available: Boolean(projectId && !preview),
+            cursor: lastCheckpointCursor,
+          },
+        })
         finish()
       }
     },

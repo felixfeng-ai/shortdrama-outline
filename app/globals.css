@@ -821,6 +821,483 @@
   .signal-desk .signal-rail { display: none; }
 }
 
+/* Standalone account entry. Long-lived forms belong on their own route, not in a workbench modal. */
+.signal-desk .auth-page {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: minmax(0, 1.15fr) minmax(420px, .85fr);
+  grid-template-rows: 64px minmax(0, 1fr);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .012), transparent 22%),
+    var(--signal-bg);
+  color: var(--signal-text);
+}
+.signal-desk .auth-topbar {
+  z-index: 5;
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 clamp(20px, 4vw, 56px);
+  border-bottom: 1px solid var(--signal-line);
+  background: color-mix(in srgb, var(--signal-panel) 96%, transparent);
+}
+.signal-desk .auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--signal-text);
+}
+.signal-desk .auth-brand-mark {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 5px;
+  background: var(--signal-acid);
+  color: #1b2115;
+  font-family: var(--font-latin), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+.signal-desk .auth-brand-name {
+  font-family: var(--font-latin), sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+.signal-desk .auth-brand-cn {
+  color: var(--signal-text-3);
+  font-size: 11px;
+}
+.signal-desk .auth-back {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--signal-text-3);
+  font-size: 11.5px;
+  transition: border-color 160ms cubic-bezier(.23,1,.32,1), background-color 160ms cubic-bezier(.23,1,.32,1), color 160ms cubic-bezier(.23,1,.32,1);
+}
+.signal-desk .auth-back:focus-visible,
+.signal-desk .auth-brand:focus-visible,
+.signal-desk .auth-form :is(button, input):focus-visible {
+  outline: 2px solid rgba(142, 183, 231, .78);
+  outline-offset: 2px;
+}
+
+.signal-desk .auth-story {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 48px;
+  overflow: hidden;
+  padding: clamp(38px, 7vw, 92px) clamp(34px, 7vw, 104px) 34px;
+  border-right: 1px solid var(--signal-line);
+}
+.signal-desk .auth-story::before {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--signal-line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--signal-line-soft) 1px, transparent 1px);
+  background-size: 64px 64px;
+  content: "";
+  mask-image: linear-gradient(180deg, rgba(0,0,0,.55), transparent 72%);
+  opacity: .18;
+  pointer-events: none;
+}
+.signal-desk .auth-story-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: auto 0;
+}
+.signal-desk .auth-kicker {
+  margin: 0 0 17px;
+  color: var(--signal-acid);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .08em;
+}
+.signal-desk .auth-story h1 {
+  max-width: 10em;
+  margin: 0;
+  color: var(--signal-text);
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: clamp(36px, 4.5vw, 62px);
+  font-weight: 500;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.signal-desk .auth-lede {
+  max-width: 38em;
+  margin: 24px 0 0;
+  color: var(--signal-text-2);
+  font-size: 14px;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+.signal-desk .auth-pipeline {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.signal-desk .auth-pipeline li {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px 8px 0 0;
+  border-top: 1px solid var(--signal-line);
+  color: var(--signal-text-2);
+  font-size: 11px;
+}
+.signal-desk .auth-pipeline li:first-child {
+  border-top-color: color-mix(in srgb, var(--signal-acid) 65%, var(--signal-line));
+}
+.signal-desk .auth-pipeline-index {
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-desk .auth-access {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  padding: 34px clamp(24px, 4vw, 58px);
+  background: color-mix(in srgb, var(--signal-panel) 72%, transparent);
+}
+.signal-desk .auth-form-shell {
+  width: min(100%, 390px);
+}
+.signal-desk .auth-form-heading h2,
+.signal-desk .auth-account h2 {
+  margin: 0;
+  color: var(--signal-text);
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+.signal-desk .auth-form-intro {
+  max-width: 34em;
+  margin: 10px 0 0;
+  color: var(--signal-text-3);
+  font-size: 12.5px;
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+.signal-desk .auth-steprail {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 28px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--signal-line);
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+.signal-desk .auth-steprail span {
+  position: relative;
+}
+.signal-desk .auth-steprail span.on {
+  color: var(--signal-text);
+}
+.signal-desk .auth-steprail span.on::after {
+  position: absolute;
+  right: 0;
+  bottom: -12px;
+  left: 0;
+  height: 1px;
+  background: var(--signal-acid);
+  content: "";
+}
+.signal-desk .auth-form {
+  display: grid;
+  gap: 15px;
+  margin-top: 25px;
+}
+.signal-desk .auth-field {
+  display: grid;
+  gap: 8px;
+}
+.signal-desk .auth-field > span {
+  color: var(--signal-text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+.signal-desk .auth-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 13px;
+  border: 1px solid var(--signal-line);
+  border-radius: 6px;
+  background: #15191d;
+  color: var(--signal-text);
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 160ms cubic-bezier(.23,1,.32,1), background-color 160ms cubic-bezier(.23,1,.32,1);
+}
+.signal-desk .auth-field input:focus {
+  border-color: color-mix(in srgb, var(--signal-blue) 62%, var(--signal-line));
+  background: #171c20;
+}
+.signal-desk .auth-field input::placeholder {
+  color: #64717a;
+}
+.signal-desk .auth-field small {
+  color: var(--signal-text-3);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+.signal-desk .auth-phone-summary {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--signal-line-soft);
+  color: var(--signal-text-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.signal-desk .auth-phone-summary button,
+.signal-desk .auth-code-actions button {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--signal-blue);
+  font-size: 10.5px;
+}
+.signal-desk .auth-code-actions {
+  display: flex;
+  min-height: 32px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  color: var(--signal-text-3);
+  font-size: 10px;
+}
+.signal-desk .auth-code-actions button:disabled {
+  cursor: default;
+  opacity: .55;
+}
+.signal-desk .auth-alert {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--signal-warning) 32%, var(--signal-line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--signal-warning) 8%, var(--signal-panel));
+  color: #e7b29f;
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+.signal-desk .auth-primary,
+.signal-desk .auth-secondary {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: transform 120ms cubic-bezier(.23,1,.32,1), border-color 160ms cubic-bezier(.23,1,.32,1), background-color 160ms cubic-bezier(.23,1,.32,1);
+}
+.signal-desk .auth-primary {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--signal-acid) 72%, var(--signal-line));
+  background: var(--signal-acid);
+  color: #1b2115;
+}
+.signal-desk .auth-primary:active:not(:disabled),
+.signal-desk .auth-secondary:active:not(:disabled) {
+  transform: scale(.99);
+}
+.signal-desk .auth-primary:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+.signal-desk .auth-spinner {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid rgba(27, 33, 21, .28);
+  border-top-color: #1b2115;
+  border-radius: 50%;
+  animation: auth-spin 720ms linear infinite;
+}
+.signal-desk .auth-footnote {
+  margin: 18px 0 0;
+  color: var(--signal-text-3);
+  font-size: 10.5px;
+  line-height: 1.65;
+}
+.signal-desk .auth-account-meta {
+  display: grid;
+  margin: 26px 0 22px;
+  border-top: 1px solid var(--signal-line);
+}
+.signal-desk .auth-account-meta > div {
+  display: flex;
+  min-height: 46px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--signal-line);
+}
+.signal-desk .auth-account-meta dt {
+  color: var(--signal-text-3);
+  font-size: 11px;
+}
+.signal-desk .auth-account-meta dd {
+  margin: 0;
+  color: var(--signal-text-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.signal-desk .auth-secondary {
+  width: 100%;
+  border: 1px solid var(--signal-line);
+  background: var(--signal-raised);
+  color: var(--signal-text-2);
+}
+.signal-desk .auth-secondary:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+.signal-desk .auth-logout {
+  margin-top: 16px;
+}
+@keyframes auth-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .signal-desk .auth-back:hover {
+    border-color: var(--signal-line);
+    background: var(--signal-raised);
+    color: var(--signal-text);
+  }
+  .signal-desk .auth-field input:hover {
+    border-color: var(--signal-line-strong, rgba(213, 224, 228, .18));
+  }
+  .signal-desk .auth-phone-summary button:hover,
+  .signal-desk .auth-code-actions button:hover:not(:disabled) {
+    border-color: var(--signal-line);
+    background: var(--signal-raised);
+  }
+  .signal-desk .auth-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: #d0e39b;
+  }
+  .signal-desk .auth-secondary:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--signal-blue) 34%, var(--signal-line));
+    color: var(--signal-text);
+  }
+}
+
+@media (max-width: 900px) {
+  .signal-desk .auth-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 56px auto minmax(0, 1fr);
+  }
+  .signal-desk .auth-topbar {
+    padding: 0 18px;
+  }
+  .signal-desk .auth-story {
+    gap: 0;
+    padding: 28px 20px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--signal-line);
+  }
+  .signal-desk .auth-story::before {
+    opacity: .1;
+  }
+  .signal-desk .auth-story-copy {
+    margin: 0;
+  }
+  .signal-desk .auth-kicker {
+    margin-bottom: 11px;
+  }
+  .signal-desk .auth-story h1 {
+    max-width: 15em;
+    font-size: clamp(28px, 8vw, 38px);
+    line-height: 1.18;
+  }
+  .signal-desk .auth-lede,
+  .signal-desk .auth-pipeline {
+    display: none;
+  }
+  .signal-desk .auth-access {
+    align-items: start;
+    padding: 26px 20px 40px;
+  }
+  .signal-desk .auth-form-shell {
+    width: min(100%, 440px);
+    margin: 0 auto;
+  }
+  .signal-desk .auth-form-heading h2,
+  .signal-desk .auth-account h2 {
+    font-size: 21px;
+  }
+  .signal-desk .auth-steprail {
+    margin-top: 22px;
+  }
+  .signal-desk .auth-form {
+    margin-top: 21px;
+  }
+  .signal-desk .auth-field input,
+  .signal-desk .auth-primary,
+  .signal-desk .auth-secondary {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 420px) {
+  .signal-desk .auth-brand-name {
+    display: none;
+  }
+  .signal-desk .auth-story {
+    padding-top: 24px;
+  }
+  .signal-desk .auth-story h1 {
+    font-size: 28px;
+  }
+  .signal-desk .auth-access {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+  .signal-desk .auth-back {
+    min-height: 42px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+}
+
 /* Keyframe assets: generated media stays inside the existing ledger rhythm. */
 .keyframe-panel {
   padding-top: 10px;
