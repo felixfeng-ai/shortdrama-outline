@@ -21,7 +21,9 @@ test("P2 顶栏安装按钮只在 beforeinstallprompt 可用时出现，并注�
   assert.ok(source.includes("beforeinstallprompt"), "缺少浏览器安装事件")
   assert.ok(source.includes("priorInstallPrompt.prompt()"), "没有调用安装提示")
   assert.ok(source.includes("serviceWorker.register('/sw.js')"), "没有注册 Service Worker")
-  assert.ok(source.includes("安装应用"), "缺少安装文案")
+  assert.ok(source.includes("setInstallTarget(mobileQuery.matches ? '主屏' : '桌面')"), "安装文案没有区分桌面与主屏")
+  assert.ok(source.includes("添加到{installTarget}"), "缺少设备自适应的添加文案")
+  assert.ok(!source.includes(">安装应用<"), "按钮仍使用容易误解为安装包的旧文案")
   assert.ok(page.includes("<PwaInstallButton"), "顶栏没有安装入口")
 })
 

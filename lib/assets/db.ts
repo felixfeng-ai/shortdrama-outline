@@ -62,6 +62,17 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   revoked_at    INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS project_shares (
+  id             TEXT PRIMARY KEY,
+  project_id     TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  owner_id       TEXT NOT NULL,
+  token_hash     TEXT NOT NULL UNIQUE,
+  created_at     INTEGER NOT NULL,
+  expires_at     INTEGER NOT NULL,
+  last_viewed_at INTEGER,
+  revoked_at     INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS projects (
   id         TEXT PRIMARY KEY,
   title      TEXT NOT NULL,
@@ -168,6 +179,7 @@ CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(proj
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_owner ON push_subscriptions(owner_id);
 CREATE INDEX IF NOT EXISTS idx_login_codes_phone ON login_codes(phone, created_at);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
+CREATE INDEX IF NOT EXISTS idx_project_shares_project ON project_shares(project_id, owner_id, expires_at);
 `
 
 /**

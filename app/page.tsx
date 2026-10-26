@@ -50,6 +50,7 @@ import VersionBar from '@/components/VersionBar'
 import CopyButton from '@/components/CopyButton'
 import {
   createProject,
+  createProjectReviewShare,
   listProjects,
   renameProject,
   deleteProject,
@@ -1750,6 +1751,25 @@ export default function Home() {
     setNotice(done ? '项目链接已复制，打开后会回到当前项目与步骤。' : '复制失败，请稍后再试。')
   }
 
+  const handleCopyReviewLink = async () => {
+    if (!projectId) {
+      setNotice('请先打开或生成一个项目，再生成审阅链接。')
+      return
+    }
+    try {
+      const { share } = await createProjectReviewShare(projectId)
+      const url = new URL(share.path, window.location.origin).toString()
+      const done = await copyText(url)
+      setNotice(
+        done
+          ? '7 天有效的只读审阅链接已复制。重新生成会撤销旧链接。'
+          : '审阅链接已生成，但复制失败，请稍后重试。',
+      )
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '审阅链接生成失败，请稍后再试。')
+    }
+  }
+
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     downloadMarkdown(`成剧-大纲-${stamp}.md`, markdown())
@@ -2129,6 +2149,7 @@ export default function Home() {
                   onExportMarkdown={handleExport}
                   onCopyAll={() => { void handleCopyAll() }}
                   onCopyLink={() => { void handleCopyProjectLink() }}
+                  onCopyReviewLink={() => { void handleCopyReviewLink() }}
                   copied={copied}
                 />
                 {/* 空工作台时给一条最短的上手路径：先看示例长什么样 */}

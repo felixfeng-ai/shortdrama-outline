@@ -89,6 +89,11 @@ export const listRefs = (projectId: string) =>
 export const fetchExportManifest = (projectId: string) =>
   fetch(`/api/export?projectId=${projectId}`).then((r) => r.json()).then((p) => p.data.manifest)
 
+export const createProjectReviewShare = (projectId: string) =>
+  postJson<{
+    share: { id: string; token: string; path: string; expiresAt: number }
+  }>("/api/project-shares", { projectId })
+
 export type { Shot, VisualCharacter, Scene, VisualPlace }
 
 export interface QuotaDto {

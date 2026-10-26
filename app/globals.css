@@ -885,7 +885,7 @@
 .signal-desk .auth-back:focus-visible,
 .signal-desk .auth-brand:focus-visible,
 .signal-desk .auth-form :is(button, input):focus-visible {
-  outline: 2px solid rgba(142, 183, 231, .78);
+  outline: 2px solid color-mix(in srgb, var(--signal-acid) 74%, transparent);
   outline-offset: 2px;
 }
 
@@ -895,7 +895,7 @@
   min-width: 0;
   flex-direction: column;
   justify-content: space-between;
-  gap: 48px;
+  gap: 36px;
   overflow: hidden;
   padding: clamp(38px, 7vw, 92px) clamp(34px, 7vw, 104px) 34px;
   border-right: 1px solid var(--signal-line);
@@ -915,8 +915,9 @@
 .signal-desk .auth-story-copy {
   position: relative;
   z-index: 1;
-  max-width: 720px;
+  max-width: 760px;
   margin: auto 0;
+  animation: auth-enter 260ms cubic-bezier(.23, 1, .32, 1) both;
 }
 .signal-desk .auth-kicker {
   margin: 0 0 17px;
@@ -927,51 +928,78 @@
   letter-spacing: .08em;
 }
 .signal-desk .auth-story h1 {
-  max-width: 10em;
+  max-width: 11em;
   margin: 0;
   color: var(--signal-text);
   font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: clamp(36px, 4.5vw, 62px);
+  font-size: clamp(38px, 4.8vw, 64px);
   font-weight: 500;
-  line-height: 1.15;
+  line-height: 1.08;
+  letter-spacing: 0;
   text-wrap: balance;
 }
+.signal-desk .auth-title-accent {
+  color: var(--signal-acid);
+}
 .signal-desk .auth-lede {
-  max-width: 38em;
+  max-width: 36em;
   margin: 24px 0 0;
   color: var(--signal-text-2);
   font-size: 14px;
   line-height: 1.8;
   text-wrap: pretty;
 }
-.signal-desk .auth-pipeline {
+.signal-desk .auth-proof-chain {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.signal-desk .auth-pipeline li {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 7px;
-  padding: 13px 8px 0 0;
+  padding-top: 15px;
   border-top: 1px solid var(--signal-line);
-  color: var(--signal-text-2);
-  font-size: 11px;
+  animation: auth-enter 260ms 70ms cubic-bezier(.23, 1, .32, 1) both;
 }
-.signal-desk .auth-pipeline li:first-child {
-  border-top-color: color-mix(in srgb, var(--signal-acid) 65%, var(--signal-line));
+.signal-desk .auth-proof-node {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding-top: 2px;
 }
-.signal-desk .auth-pipeline-index {
+.signal-desk .auth-proof-node::before {
+  position: absolute;
+  top: -19px;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--signal-line-2);
+  background: var(--signal-bg);
+  content: "";
+}
+.signal-desk .auth-proof-node:first-child::before {
+  border-color: var(--signal-acid);
+  background: var(--signal-acid);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--signal-acid) 10%, transparent);
+}
+.signal-desk .auth-proof-index {
   color: var(--signal-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 9px;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
+}
+.signal-desk .auth-proof-node strong {
+  color: var(--signal-text);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-wrap: balance;
+}
+.signal-desk .auth-proof-node small {
+  color: var(--signal-text-3);
+  font-size: 11px;
+  line-height: 1.55;
 }
 
 .signal-desk .auth-access {
@@ -983,6 +1011,7 @@
 }
 .signal-desk .auth-form-shell {
   width: min(100%, 390px);
+  animation: auth-enter 260ms 110ms cubic-bezier(.23, 1, .32, 1) both;
 }
 .signal-desk .auth-form-heading h2,
 .signal-desk .auth-account h2 {
@@ -1139,7 +1168,10 @@
 }
 .signal-desk .auth-primary:disabled {
   cursor: not-allowed;
-  opacity: .42;
+  border-color: var(--signal-line);
+  background: var(--signal-raised);
+  color: var(--signal-text-3);
+  opacity: 1;
 }
 .signal-desk .auth-spinner {
   width: 13px;
@@ -1271,6 +1303,16 @@
 @keyframes auth-spin {
   to { transform: rotate(360deg); }
 }
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 @media (hover: hover) and (pointer: fine) {
   .signal-desk .auth-back:hover {
@@ -1306,7 +1348,7 @@
     padding: 0 18px;
   }
   .signal-desk .auth-story {
-    gap: 0;
+    gap: 20px;
     padding: 28px 20px 24px;
     border-right: 0;
     border-bottom: 1px solid var(--signal-line);
@@ -1323,11 +1365,23 @@
   .signal-desk .auth-story h1 {
     max-width: 15em;
     font-size: clamp(28px, 8vw, 38px);
-    line-height: 1.18;
+    line-height: 1.12;
   }
-  .signal-desk .auth-lede,
-  .signal-desk .auth-pipeline {
+  .signal-desk .auth-lede {
     display: none;
+  }
+  .signal-desk .auth-proof-chain {
+    gap: 10px;
+    padding-top: 13px;
+  }
+  .signal-desk .auth-proof-node::before {
+    top: -17px;
+  }
+  .signal-desk .auth-proof-node strong {
+    font-size: 11px;
+  }
+  .signal-desk .auth-proof-node small {
+    font-size: 9.5px;
   }
   .signal-desk .auth-access {
     align-items: start;
@@ -1364,6 +1418,9 @@
   .signal-desk .auth-story h1 {
     font-size: 28px;
   }
+  .signal-desk .auth-proof-node strong {
+    font-size: 10.5px;
+  }
   .signal-desk .auth-access {
     padding-right: 16px;
     padding-left: 16px;
@@ -1372,6 +1429,470 @@
     min-height: 42px;
     padding-right: 8px;
     padding-left: 8px;
+  }
+}
+
+/* Read-only review links: a document, not an editable workspace. */
+.signal-desk .review-page {
+  min-height: 100dvh;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .012), transparent 24%),
+    var(--signal-bg);
+  color: var(--signal-text);
+}
+.signal-desk .review-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 clamp(18px, 4vw, 52px);
+  border-bottom: 1px solid var(--signal-line);
+  background: color-mix(in srgb, var(--signal-panel) 96%, transparent);
+}
+.signal-desk .review-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--signal-text);
+}
+.signal-desk .review-brand > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 5px;
+  background: var(--signal-acid);
+  color: #1b2115;
+  font-family: var(--font-latin), sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+}
+.signal-desk .review-brand b {
+  font-family: var(--font-latin), sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.signal-desk .review-brand em {
+  color: var(--signal-text-3);
+  font-size: 10.5px;
+  font-style: normal;
+}
+.signal-desk .review-badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid var(--signal-line);
+  border-radius: 4px;
+  color: var(--signal-text-3);
+  font-size: 10.5px;
+}
+.signal-desk .review-badge i {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--signal-blue);
+}
+.signal-desk .review-hero {
+  display: grid;
+  max-width: 1280px;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  gap: clamp(32px, 6vw, 96px);
+  margin: 0 auto;
+  padding: clamp(44px, 7vw, 88px) clamp(20px, 5vw, 64px) 52px;
+  border-bottom: 1px solid var(--signal-line);
+}
+.signal-desk .review-kicker {
+  margin: 0 0 14px;
+  color: var(--signal-acid);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: .08em;
+}
+.signal-desk .review-hero h1 {
+  max-width: 12em;
+  margin: 0;
+  color: var(--signal-text);
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: clamp(32px, 4.2vw, 54px);
+  font-weight: 500;
+  line-height: 1.16;
+  text-wrap: balance;
+}
+.signal-desk .review-summary {
+  max-width: 42em;
+  margin: 20px 0 0;
+  color: var(--signal-text-2);
+  font-size: 14px;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+.signal-desk .review-meta {
+  display: grid;
+  align-self: end;
+  margin: 0;
+  border-top: 1px solid var(--signal-line);
+}
+.signal-desk .review-meta > div {
+  display: flex;
+  min-height: 40px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--signal-line-soft);
+}
+.signal-desk .review-meta dt {
+  color: var(--signal-text-3);
+  font-size: 10.5px;
+}
+.signal-desk .review-meta dd {
+  margin: 0;
+  color: var(--signal-text-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.signal-desk .review-layout {
+  display: grid;
+  max-width: 1180px;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: clamp(30px, 6vw, 74px);
+  margin: 0 auto;
+  padding: 42px clamp(20px, 5vw, 64px) 90px;
+}
+.signal-desk .review-nav {
+  position: sticky;
+  top: 90px;
+  align-self: start;
+  display: grid;
+  gap: 2px;
+}
+.signal-desk .review-nav > p {
+  margin: 0 0 8px;
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+.signal-desk .review-nav a {
+  display: grid;
+  min-height: 34px;
+  grid-template-columns: 22px 1fr;
+  gap: 7px;
+  align-items: center;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--signal-text-3);
+  font-size: 11.5px;
+}
+.signal-desk .review-nav a span {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8.5px;
+}
+.signal-desk .review-nav a:focus-visible,
+.signal-desk .review-brand:focus-visible,
+.signal-desk .review-state a:focus-visible {
+  outline: 2px solid rgba(142, 183, 231, .78);
+  outline-offset: 2px;
+}
+.signal-desk .review-article {
+  min-width: 0;
+}
+.signal-desk .review-section {
+  scroll-margin-top: 80px;
+  padding: 30px 0 38px;
+  border-top: 1px solid var(--signal-line);
+}
+.signal-desk .review-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.signal-desk .review-section > header {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 20px;
+  align-items: baseline;
+}
+.signal-desk .review-section h2 {
+  margin: 0;
+  color: var(--signal-text);
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+}
+.signal-desk .review-section > header p {
+  max-width: 42em;
+  margin: 0;
+  color: var(--signal-text-3);
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+.signal-desk .review-section-body {
+  margin-top: 20px;
+  padding-left: 148px;
+}
+.signal-desk .review-prose p {
+  margin: 0;
+  color: var(--signal-text-2);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.signal-desk .review-prose small,
+.signal-desk .review-empty {
+  display: block;
+  margin-top: 12px;
+  color: var(--signal-text-3);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.signal-desk .review-rows > div,
+.signal-desk .review-episodes > div,
+.signal-desk .review-chapters > div,
+.signal-desk .review-shots > div {
+  padding: 22px 0;
+  border-top: 1px solid var(--signal-line-soft);
+}
+.signal-desk .review-rows > div:first-child,
+.signal-desk .review-episodes > div:first-child,
+.signal-desk .review-chapters > div:first-child,
+.signal-desk .review-shots > div:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.signal-desk .review-rows h3,
+.signal-desk .review-episodes h3,
+.signal-desk .review-chapters h3,
+.signal-desk .review-compact-list h3 {
+  margin: 0;
+  color: var(--signal-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.signal-desk .review-rows dl,
+.signal-desk .review-shots dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 24px;
+  margin: 14px 0 0;
+}
+.signal-desk .review-rows dl > div,
+.signal-desk .review-shots dl > div {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 8px;
+}
+.signal-desk .review-rows dt,
+.signal-desk .review-shots dt {
+  color: var(--signal-text-3);
+  font-size: 10.5px;
+}
+.signal-desk .review-rows dd,
+.signal-desk .review-shots dd {
+  margin: 0;
+  color: var(--signal-text-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.signal-desk .review-rows pre,
+.signal-desk .review-shots pre {
+  margin: 14px 0 0;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border: 1px solid var(--signal-line-soft);
+  border-radius: 5px;
+  background: #15191d;
+  color: var(--signal-text-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+.signal-desk .review-episodes > div > span,
+.signal-desk .review-chapters > div > span,
+.signal-desk .review-shots header span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--signal-blue);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+}
+.signal-desk .review-episodes p,
+.signal-desk .review-chapters p {
+  margin: 8px 0 0;
+  color: var(--signal-text-2);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.signal-desk .review-episodes blockquote,
+.signal-desk .review-shots blockquote {
+  margin: 11px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--signal-blue) 22%, var(--signal-line));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--signal-blue) 5%, var(--signal-panel));
+  color: var(--signal-text-2);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.signal-desk .review-chapters ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--signal-text-2);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.signal-desk .review-compact-list {
+  margin-bottom: 22px;
+}
+.signal-desk .review-compact-list > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--signal-line-soft);
+}
+.signal-desk .review-compact-list b {
+  color: var(--signal-text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.signal-desk .review-compact-list span {
+  color: var(--signal-text-3);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.signal-desk .review-shots header b {
+  display: block;
+  color: var(--signal-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.signal-desk .review-state {
+  display: grid;
+  max-width: 640px;
+  min-height: 70dvh;
+  place-content: center;
+  gap: 14px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  text-align: center;
+}
+.signal-desk .review-state p {
+  margin: 0;
+  color: var(--signal-text-3);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.signal-desk .review-state h1 {
+  margin: 0;
+  color: var(--signal-text);
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 28px;
+  font-weight: 500;
+}
+.signal-desk .review-state-code {
+  color: var(--signal-warning) !important;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px !important;
+  letter-spacing: .08em;
+}
+.signal-desk .review-state a {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  padding: 0 18px;
+  border-radius: 5px;
+  background: var(--signal-acid);
+  color: #1b2115;
+  font-size: 12px;
+  font-weight: 600;
+}
+@media (hover: hover) and (pointer: fine) {
+  .signal-desk .review-nav a:hover {
+    background: var(--signal-raised);
+    color: var(--signal-text);
+  }
+  .signal-desk .review-brand:hover b {
+    color: var(--signal-acid);
+  }
+}
+@media (max-width: 760px) {
+  .signal-desk .review-topbar {
+    min-height: 54px;
+    padding: 0 16px;
+  }
+  .signal-desk .review-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+    padding: 34px 18px 28px;
+  }
+  .signal-desk .review-hero h1 {
+    font-size: clamp(28px, 9vw, 38px);
+  }
+  .signal-desk .review-meta {
+    width: 100%;
+  }
+  .signal-desk .review-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0 18px 64px;
+  }
+  .signal-desk .review-nav {
+    position: sticky;
+    top: 54px;
+    z-index: 12;
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+    margin: 0 -18px;
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--signal-line);
+    background: color-mix(in srgb, var(--signal-panel) 97%, transparent);
+  }
+  .signal-desk .review-nav > p {
+    display: none;
+  }
+  .signal-desk .review-nav a {
+    display: inline-flex;
+    min-width: max-content;
+    grid-template-columns: none;
+    gap: 0;
+    padding: 0 9px;
+    border: 1px solid var(--signal-line);
+    background: var(--signal-raised);
+  }
+  .signal-desk .review-nav a span {
+    display: none;
+  }
+  .signal-desk .review-section {
+    padding: 26px 0 30px;
+  }
+  .signal-desk .review-section > header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .signal-desk .review-section-body {
+    margin-top: 16px;
+    padding-left: 0;
+  }
+  .signal-desk .review-rows dl,
+  .signal-desk .review-shots dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .signal-desk .review-compact-list > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
   }
 }
 

@@ -25,6 +25,7 @@ interface Props {
   onExportMarkdown: () => void
   onCopyAll: () => void
   onCopyLink: () => void
+  onCopyReviewLink: () => void
   copied: boolean
 }
 
@@ -49,6 +50,7 @@ export default function ProjectBar({
   onExportMarkdown,
   onCopyAll,
   onCopyLink,
+  onCopyReviewLink,
   copied,
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -157,6 +159,15 @@ export default function ProjectBar({
               transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             复制项目链接
+          </button>
+          <button
+            type="button"
+            disabled={!current}
+            onClick={() => { setExportOpen(false); onCopyReviewLink() }}
+            className="min-h-11 flex-1 rounded-chip border border-surface-line px-3 py-1.5 text-[11px] font-medium text-ink-700
+              transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            生成审阅链接
           </button>
         </div>
       </SmoothCollapse>

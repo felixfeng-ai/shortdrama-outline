@@ -1,0 +1,2651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录页方向样机 - VeyaFrame 成剧</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --shell-bg: #f2f1ec;
+      --shell-panel: #fbfbf8;
+      --shell-ink: #191b18;
+      --shell-muted: #62665f;
+      --shell-line: #d8d9d2;
+      --shell-accent: #6d7c3e;
+      --shell-radius: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--shell-bg);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--shell-bg);
+      color: var(--shell-ink);
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    .preview-shell {
+      width: min(1560px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 34px 0 64px;
+    }
+
+    .preview-intro {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      padding: 24px 0 26px;
+      border-bottom: 1px solid var(--shell-line);
+    }
+
+    .preview-intro h1 {
+      margin: 0;
+      font-family: Bahnschrift, "DIN Alternate", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: clamp(28px, 3vw, 42px);
+      font-weight: 500;
+      line-height: 1.08;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .preview-intro p {
+      max-width: 520px;
+      margin: 12px 0 0;
+      color: var(--shell-muted);
+      font-size: 14px;
+      line-height: 1.7;
+      text-wrap: pretty;
+    }
+
+    .preview-meta {
+      display: grid;
+      justify-items: end;
+      gap: 8px;
+      color: var(--shell-muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      letter-spacing: 0;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preview-meta strong {
+      color: var(--shell-ink);
+      font-weight: 600;
+    }
+
+    .preview-dials {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      padding: 18px 0 24px;
+      border-bottom: 1px solid var(--shell-line);
+    }
+
+    .preview-dial {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .preview-dial-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--shell-muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .preview-dial-head strong {
+      color: var(--shell-ink);
+      font-weight: 600;
+    }
+
+    .preview-dial output {
+      color: var(--shell-accent);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preview-dial input {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--shell-accent);
+      cursor: ew-resize;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+      padding: 28px 0 0;
+    }
+
+    .direction-card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--shell-line);
+      border-radius: var(--shell-radius);
+      background: var(--shell-panel);
+      box-shadow: 0 16px 44px rgb(33 38 27 / 5%);
+    }
+
+    .direction-card.qmdp-selected {
+      border-color: #59683d;
+      box-shadow: 0 0 0 2px rgb(109 124 62 / 18%), 0 18px 48px rgb(33 38 27 / 9%);
+    }
+
+    .direction-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 54px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--shell-line);
+    }
+
+    .direction-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .direction-letter {
+      display: inline-grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border: 1px solid var(--shell-line);
+      border-radius: 6px;
+      color: var(--shell-muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .direction-title strong {
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .recommended {
+      flex: 0 0 auto;
+      border: 1px solid #bdc99a;
+      border-radius: 999px;
+      background: #edf3dd;
+      color: #4c5c2a;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .mock-stage-wrap {
+      position: relative;
+      display: grid;
+      width: 100%;
+      aspect-ratio: 8 / 5;
+      place-items: center;
+      overflow: hidden;
+      background: #e7e7e1;
+      container-type: inline-size;
+    }
+
+    .mock-stage {
+      width: 960px;
+      height: 600px;
+      flex: 0 0 auto;
+      transform: scale(var(--mock-scale, 1));
+      transform-origin: center center;
+    }
+
+    .mobile-stage {
+      display: none;
+    }
+
+    .mob-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      padding: 22px 20px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    .mob-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 24px;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .mob-brand-mark {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border: 1px solid currentColor;
+      font-family: Bahnschrift, "DIN Alternate", Consolas, monospace;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .mob-brand em {
+      font-style: normal;
+      font-weight: 400;
+      opacity: .58;
+    }
+
+    .mob-kicker {
+      margin-top: 28px;
+      font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 9px;
+      line-height: 1.4;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      opacity: .66;
+    }
+
+    .mob-title {
+      margin: 10px 0 0;
+      font-size: 30px;
+      font-weight: 600;
+      line-height: 1.14;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .mob-copy {
+      margin: 12px 0 0;
+      font-size: 13px;
+      line-height: 1.7;
+      text-wrap: pretty;
+      opacity: .72;
+    }
+
+    .mob-proof {
+      display: grid;
+      gap: 7px;
+      margin: 17px 0 0;
+      padding: 12px 0 0;
+      border-top: 1px solid currentColor;
+      list-style: none;
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+
+    .mob-proof li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: .84;
+    }
+
+    .mob-proof li::before {
+      width: 5px;
+      height: 5px;
+      flex: 0 0 auto;
+      content: "";
+      background: currentColor;
+    }
+
+    .mob-project {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-top: 15px;
+      padding: 11px 12px;
+      border: 1px solid currentColor;
+      font-size: 11px;
+      line-height: 1.4;
+      opacity: .88;
+    }
+
+    .mob-project strong {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .mob-project span {
+      align-self: end;
+      font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 8px;
+      letter-spacing: .05em;
+      opacity: .7;
+    }
+
+    .mob-form {
+      display: grid;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 16px;
+    }
+
+    .mob-form label {
+      color: currentColor;
+      font-size: 11.5px;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .mob-form input {
+      width: 100%;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid currentColor;
+      border-radius: 2px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .mob-form input::placeholder {
+      color: currentColor;
+      opacity: .4;
+    }
+
+    .mob-form input:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    .mob-form button {
+      min-height: 46px;
+      border: 1px solid currentColor;
+      border-radius: 2px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .mob-form button:active {
+      transform: scale(.99);
+    }
+
+    .mob-note {
+      margin: 0;
+      font-size: 10.5px;
+      line-height: 1.55;
+      opacity: .56;
+    }
+
+    .mob-a {
+      color: #e8ece5;
+      background:
+        radial-gradient(circle at 82% 12%, rgb(116 169 209 / 10%), transparent 32%),
+        #13171a;
+    }
+
+    .mob-a .mob-brand-mark {
+      border-color: #c4d98a;
+      color: #c4d98a;
+    }
+
+    .mob-a .mob-title strong {
+      color: #c4d98a;
+      font-weight: 600;
+    }
+
+    .mob-a .mob-proof,
+    .mob-a .mob-project {
+      border-color: rgb(196 217 138 / 26%);
+    }
+
+    .mob-a .mob-form input {
+      border-color: #3a4346;
+      background: #111619;
+    }
+
+    .mob-a .mob-form button {
+      border-color: #c4d98a;
+      background: #c4d98a;
+      color: #1a2015;
+    }
+
+    .mob-b {
+      color: #211e19;
+      background: #f2ebde;
+    }
+
+    .mob-b .mob-brand-mark {
+      border-color: #7a2830;
+      color: #7a2830;
+    }
+
+    .mob-b .mob-kicker,
+    .mob-b .mob-project span {
+      font-family: "Courier New", Consolas, monospace;
+    }
+
+    .mob-b .mob-title {
+      color: #211e19;
+      font-family: "Songti SC", "STSong", SimSun, serif;
+      font-size: 31px;
+      line-height: 1.24;
+    }
+
+    .mob-b .mob-proof,
+    .mob-b .mob-project,
+    .mob-b .mob-form input {
+      border-color: #a99b85;
+    }
+
+    .mob-b .mob-proof li::before {
+      background: #7a2830;
+    }
+
+    .mob-b .mob-form button {
+      border-color: #7a2830;
+      background: #7a2830;
+      color: #fff9ef;
+    }
+
+    .mob-c {
+      color: rgb(242 236 227 / 92%);
+      background:
+        linear-gradient(155deg, rgb(181 111 75 / 18%), transparent 38%),
+        #171817;
+    }
+
+    .mob-c .mob-brand-mark {
+      border-color: rgb(210 154 118 / 54%);
+      color: #d29a76;
+      background: rgb(181 111 75 / 10%);
+    }
+
+    .mob-c .mob-kicker {
+      color: #d29a76;
+    }
+
+    .mob-c .mob-title {
+      font-size: 27px;
+    }
+
+    .mob-c .mob-proof,
+    .mob-c .mob-project {
+      border-color: rgb(229 218 204 / 18%);
+    }
+
+    .mob-c .mob-proof li::before {
+      background: #b56f4b;
+    }
+
+    .mob-c .mob-project {
+      background: rgb(30 31 30 / 84%);
+    }
+
+    .mob-c .mob-form input {
+      border-color: rgb(229 218 204 / 18%);
+      background: #191a19;
+    }
+
+    .mob-c .mob-form button {
+      border-color: #8d4e31;
+      background: #8d4e31;
+      color: #f4ece2;
+    }
+
+    .mob-d {
+      color: #20251f;
+      background:
+        linear-gradient(rgb(32 37 31 / 3.5%) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(32 37 31 / 3.5%) 1px, transparent 1px),
+        #e8ebe3;
+      background-size: 24px 24px;
+    }
+
+    .mob-d .mob-brand {
+      padding-bottom: 14px;
+      border-bottom: 2px solid #20251f;
+      font-family: "Bahnschrift SemiCondensed", "DIN Alternate", "Microsoft YaHei", sans-serif;
+    }
+
+    .mob-d .mob-brand-mark {
+      border: 0;
+      background: #20251f;
+      color: #dcea9b;
+    }
+
+    .mob-d .mob-kicker {
+      font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+
+    .mob-d .mob-title {
+      font-family: "Bahnschrift SemiCondensed", "DIN Alternate", "Microsoft YaHei", sans-serif;
+      font-size: 34px;
+      line-height: 1.02;
+    }
+
+    .mob-d .mob-proof {
+      gap: 0;
+      border-top: 2px solid #20251f;
+    }
+
+    .mob-d .mob-proof li {
+      min-height: 34px;
+      border-bottom: 1px solid #aeb6a7;
+    }
+
+    .mob-d .mob-proof li::before {
+      width: 17px;
+      height: 17px;
+      background: #dcea9b;
+    }
+
+    .mob-d .mob-project {
+      border-color: #aeb6a7;
+      background: rgb(241 243 236 / 72%);
+    }
+
+    .mob-d .mob-form {
+      gap: 0;
+      border-top: 2px solid #20251f;
+    }
+
+    .mob-d .mob-form label {
+      margin-top: 12px;
+      font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 9px;
+      letter-spacing: .1em;
+    }
+
+    .mob-d .mob-form input {
+      border-width: 0 0 2px;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .mob-d .mob-form button {
+      margin-top: 12px;
+      border: 0;
+      background: #dcea9b;
+      color: #20251f;
+    }
+
+    .mob-d .mob-note {
+      margin: 10px 0 0;
+    }
+
+    .direction-meta {
+      display: grid;
+      gap: 8px;
+      width: 100%;
+      padding: 16px 18px 18px;
+    }
+
+    .direction-meta p {
+      margin: 0;
+      color: var(--shell-muted);
+      font-size: 13px;
+      line-height: 1.6;
+      text-wrap: pretty;
+    }
+
+    .direction-meta .direction-tag {
+      color: var(--shell-ink);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .direction-card .qmdp-pick-button {
+      width: calc(100% - 36px) !important;
+      margin: 0 18px 18px !important;
+    }
+
+    .notes-section {
+      padding-top: 48px;
+    }
+
+    .notes-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--shell-line);
+    }
+
+    .notes-heading h2 {
+      margin: 0;
+      font-family: Bahnschrift, "DIN Alternate", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .notes-heading p {
+      margin: 0;
+      color: var(--shell-muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      padding-top: 18px;
+    }
+
+    .note {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--shell-line);
+      border-radius: 10px;
+      background: rgb(255 255 255 / 48%);
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .note p {
+      margin: 0;
+      color: var(--shell-muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .note p + p {
+      margin-top: 7px;
+    }
+
+    .notice {
+      margin: 26px 0 0;
+      color: var(--shell-muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1180px) {
+      .notes-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .preview-shell {
+        width: min(100% - 28px, 640px);
+        padding-bottom: 40px;
+      }
+
+      .preview-intro {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .preview-meta {
+        justify-items: start;
+        text-align: left;
+      }
+
+      .preview-dials {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .mock-stage-wrap {
+        display: block;
+        aspect-ratio: auto;
+        height: 640px;
+      }
+
+      .mock-stage {
+        display: none;
+      }
+
+      .mobile-stage {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .notes-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .notes-heading {
+        display: grid;
+        gap: 8px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-shell">
+    <header class="preview-intro">
+      <div>
+        <h1>登录页方向样机</h1>
+        <p>这是设计方向样机，用于选择视觉与交互气质，不是最终 App 或最终页面。选择后再进入正式实现。</p>
+      </div>
+      <div class="preview-meta" aria-label="预览说明">
+        <span><strong>任务</strong> 登录页重设计</span>
+        <span><strong>版本</strong> 2026-10-26</span>
+        <span><strong>入口</strong> VeyaFrame / 成剧</span>
+      </div>
+    </header>
+
+    <section class="preview-dials" data-qmdp-dials aria-label="设计拨盘">
+      <label class="preview-dial">
+        <span class="preview-dial-head"><strong>视觉冒险度</strong><output data-qmdp-output="variance">5</output></span>
+        <input data-qmdp-dial="variance" type="range" min="1" max="10" value="5" aria-label="视觉冒险度">
+      </label>
+      <label class="preview-dial">
+        <span class="preview-dial-head"><strong>动效强度</strong><output data-qmdp-output="motion">3</output></span>
+        <input data-qmdp-dial="motion" type="range" min="1" max="10" value="3" aria-label="动效强度">
+      </label>
+      <label class="preview-dial">
+        <span class="preview-dial-head"><strong>信息密度</strong><output data-qmdp-output="density">4</output></span>
+        <input data-qmdp-dial="density" type="range" min="1" max="10" value="4" aria-label="信息密度">
+      </label>
+    </section>
+
+    <section class="preview-grid" aria-label="登录页方向对比">
+      <article class="direction-card option" data-design-option="A" data-name="Signal Desk / 指令台">
+        <header class="direction-head">
+          <div class="direction-title">
+            <span class="direction-letter">A</span>
+            <strong data-direction-name>Signal Desk / 指令台</strong>
+          </div>
+          <span class="recommended">推荐</span>
+        </header>
+        <div class="mock-stage-wrap">
+          <div class="mock-stage" data-desktop-stage>
+            <style>
+              .dfa-stage {
+                --dfa-graphite: #13171a;
+                --dfa-surface: #171c1f;
+                --dfa-surface-2: #1b2124;
+                --dfa-sidebar: #181d20;
+                --dfa-field: #111619;
+                --dfa-line: #30383b;
+                --dfa-line-soft: #262d30;
+                --dfa-text: #e8ece5;
+                --dfa-text-2: #b7bfb9;
+                --dfa-muted: #929c96;
+                --dfa-sage: #c4d98a;
+                --dfa-sage-hover: #d1e39e;
+                --dfa-sage-ink: #1a2015;
+                --dfa-blue: #74a9d1;
+                --dfa-blue-surface: #24333d;
+                --dfa-blue-line: #3a5261;
+                box-sizing: border-box;
+                width: 960px;
+                height: 600px;
+                overflow: hidden;
+                background: var(--dfa-graphite);
+                color: var(--dfa-text);
+                font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Hiragino Sans GB", sans-serif;
+                font-size: 14px;
+                font-style: normal;
+                line-height: 1.5;
+                text-rendering: optimizeLegibility;
+                -webkit-font-smoothing: antialiased;
+              }
+              .dfa-stage,
+              .dfa-stage *,
+              .dfa-stage *::before,
+              .dfa-stage *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                letter-spacing: 0;
+                font-style: normal;
+              }
+              .dfa-layout {
+                display: grid;
+                grid-template-columns: 60% 40%;
+                width: 100%;
+                height: 100%;
+              }
+              .dfa-main {
+                min-width: 0;
+                height: 100%;
+                padding: 27px 38px 27px 46px;
+                display: flex;
+                flex-direction: column;
+                background: var(--dfa-graphite);
+              }
+              .dfa-topbar {
+                height: 24px;
+                flex: none;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+              }
+              .dfa-brand {
+                display: flex;
+                align-items: center;
+                min-width: 0;
+              }
+              .dfa-brand-mark {
+                width: 21px;
+                height: 21px;
+                display: block;
+                flex: none;
+                margin-right: 9px;
+              }
+              .dfa-brand-name {
+                color: var(--dfa-text);
+                font-family: Bahnschrift, "Segoe UI", sans-serif;
+                font-size: 14px;
+                font-weight: 600;
+                line-height: 1;
+              }
+              .dfa-brand-cn {
+                margin-left: 8px;
+                color: var(--dfa-muted);
+                font-size: 10px;
+                line-height: 1;
+              }
+              .dfa-tech {
+                font-family: Bahnschrift, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+                font-variant-numeric: tabular-nums;
+              }
+              .dfa-view-tag {
+                flex: none;
+                color: var(--dfa-muted);
+                font-size: 9px;
+                line-height: 1;
+              }
+              .dfa-hero {
+                margin-top: 26px;
+                flex: none;
+              }
+              .dfa-heading {
+                max-width: 500px;
+                color: var(--dfa-text);
+                font-size: 45px;
+                font-weight: 600;
+                line-height: 1.12;
+              }
+              .dfa-heading-emphasis {
+                color: var(--dfa-sage);
+              }
+              .dfa-lede {
+                max-width: 468px;
+                margin-top: 15px;
+                color: var(--dfa-text-2);
+                font-size: 14px;
+                line-height: 1.75;
+              }
+              .dfa-nowrap {
+                white-space: nowrap;
+              }
+              .dfa-proof {
+                width: 100%;
+                margin-top: 17px;
+                padding-top: 12px;
+                border-top: 1px solid var(--dfa-line-soft);
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                list-style: none;
+                color: var(--dfa-text-2);
+                font-size: 11.5px;
+                line-height: 18px;
+              }
+              .dfa-proof-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                white-space: nowrap;
+              }
+              .dfa-proof-num {
+                color: var(--dfa-sage);
+                font-size: 9px;
+                line-height: 1;
+              }
+              .dfa-project {
+                height: 218px;
+                flex: none;
+                margin-top: 19px;
+                overflow: hidden;
+                border: 1px solid var(--dfa-line);
+                border-radius: 2px;
+                background: var(--dfa-surface);
+                display: flex;
+                flex-direction: column;
+              }
+              .dfa-project-head {
+                height: 43px;
+                flex: none;
+                padding: 0 12px;
+                border-bottom: 1px solid var(--dfa-line);
+                background: #151a1d;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 14px;
+              }
+              .dfa-project-id {
+                min-width: 0;
+                display: flex;
+                align-items: baseline;
+                gap: 10px;
+              }
+              .dfa-project-kicker {
+                flex: none;
+                color: var(--dfa-muted);
+                font-size: 8.5px;
+                line-height: 1;
+              }
+              .dfa-project-name {
+                overflow: hidden;
+                color: var(--dfa-text);
+                font-size: 14px;
+                font-weight: 600;
+                line-height: 1;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .dfa-live {
+                height: 23px;
+                flex: none;
+                padding: 0 7px;
+                border: 1px solid var(--dfa-blue-line);
+                border-radius: 2px;
+                background: var(--dfa-blue-surface);
+                color: #bcd7e7;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 9.5px;
+                line-height: 1;
+              }
+              .dfa-live-dot {
+                width: 4px;
+                height: 4px;
+                flex: none;
+                border-radius: 50%;
+                background: var(--dfa-blue);
+              }
+              .dfa-live-count {
+                color: var(--dfa-blue);
+                font-size: 9px;
+              }
+              .dfa-project-body {
+                min-height: 0;
+                flex: 1;
+                padding: 10px 12px;
+                display: grid;
+                grid-template-columns: 112px minmax(0, 1fr) 132px;
+                gap: 10px;
+              }
+              .dfa-role {
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+              }
+              .dfa-role-frame {
+                position: relative;
+                height: 94px;
+                overflow: hidden;
+                border: 1px solid #384144;
+                border-radius: 1px;
+                background: #20272a;
+              }
+              .dfa-role-art,
+              .dfa-reference-art {
+                width: 100%;
+                height: 100%;
+                display: block;
+              }
+              .dfa-anchor-tag {
+                position: absolute;
+                top: 6px;
+                left: 6px;
+                padding: 3px 5px;
+                border: 1px solid rgb(196 217 138 / 46%);
+                border-radius: 1px;
+                background: rgb(19 23 26 / 90%);
+                color: var(--dfa-sage);
+                font-size: 8px;
+                line-height: 1;
+              }
+              .dfa-role-meta,
+              .dfa-reference-meta {
+                min-width: 0;
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 5px;
+              }
+              .dfa-role-meta strong,
+              .dfa-reference-meta strong {
+                overflow: hidden;
+                color: var(--dfa-text);
+                font-size: 11px;
+                font-weight: 600;
+                line-height: 1;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .dfa-role-meta span,
+              .dfa-reference-meta span {
+                overflow: hidden;
+                color: var(--dfa-muted);
+                font-size: 8px;
+                line-height: 1;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .dfa-chain {
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+              }
+              .dfa-chain-row {
+                height: 34px;
+                flex: none;
+                padding: 0 7px;
+                border: 1px solid #2d3538;
+                border-radius: 1px;
+                background: var(--dfa-surface-2);
+                display: flex;
+                align-items: center;
+                gap: 7px;
+              }
+              .dfa-chain-row-active {
+                border-color: var(--dfa-blue-line);
+                background: #182229;
+              }
+              .dfa-chain-index {
+                width: 17px;
+                flex: none;
+                color: var(--dfa-sage);
+                font-size: 9px;
+                line-height: 1;
+              }
+              .dfa-chain-row-active .dfa-chain-index {
+                color: var(--dfa-blue);
+              }
+              .dfa-chain-copy {
+                min-width: 0;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+              }
+              .dfa-chain-label {
+                color: var(--dfa-muted);
+                font-size: 7.5px;
+                line-height: 1;
+              }
+              .dfa-chain-title {
+                overflow: hidden;
+                color: var(--dfa-text);
+                font-size: 10.5px;
+                font-weight: 500;
+                line-height: 1;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .dfa-chain-time {
+                flex: none;
+                color: var(--dfa-muted);
+                font-size: 8px;
+                line-height: 1;
+              }
+              .dfa-intent {
+                min-height: 48px;
+                flex: 1;
+                padding: 7px;
+                border-top: 1px dashed #384144;
+                background: #171d20;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 5px;
+              }
+              .dfa-intent-label {
+                color: var(--dfa-sage);
+                font-size: 7.5px;
+                line-height: 1;
+              }
+              .dfa-intent-copy {
+                color: var(--dfa-text-2);
+                font-size: 10px;
+                line-height: 1.45;
+              }
+              .dfa-reference {
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+              }
+              .dfa-reference-frame {
+                position: relative;
+                height: 94px;
+                overflow: hidden;
+                border: 1px solid #384144;
+                border-radius: 1px;
+                background: #20272a;
+              }
+              .dfa-reference-index {
+                position: absolute;
+                top: 6px;
+                left: 6px;
+                color: #d7ddd6;
+                font-size: 8px;
+                line-height: 1;
+              }
+              .dfa-reference-lock {
+                position: absolute;
+                right: 5px;
+                bottom: 5px;
+                height: 18px;
+                padding: 0 5px;
+                border: 1px solid rgb(196 217 138 / 48%);
+                border-radius: 1px;
+                background: rgb(19 23 26 / 94%);
+                color: var(--dfa-sage);
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 7.5px;
+                line-height: 1;
+              }
+              .dfa-lock-icon {
+                width: 9px;
+                height: 9px;
+                display: block;
+              }
+              .dfa-impact {
+                height: 31px;
+                flex: none;
+                padding: 0 12px;
+                border-top: 1px solid var(--dfa-line);
+                background: #14191c;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+              }
+              .dfa-impact-label {
+                flex: none;
+                color: var(--dfa-sage);
+                font-size: 8px;
+                line-height: 1;
+              }
+              .dfa-impact-copy {
+                min-width: 0;
+                overflow: hidden;
+                flex: 1;
+                color: var(--dfa-text-2);
+                font-size: 9.5px;
+                line-height: 1;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+              .dfa-impact-count {
+                flex: none;
+                color: var(--dfa-blue);
+                font-size: 8.5px;
+                line-height: 1;
+              }
+              .dfa-sidebar {
+                min-width: 0;
+                height: 100%;
+                padding: 27px 30px 23px;
+                background: var(--dfa-sidebar);
+                display: flex;
+                flex-direction: column;
+              }
+              .dfa-sidehead {
+                height: 45px;
+                flex: none;
+                border-bottom: 1px solid var(--dfa-line);
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 14px;
+              }
+              .dfa-side-title {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+              }
+              .dfa-side-title span {
+                color: var(--dfa-sage);
+                font-size: 8.5px;
+                line-height: 1;
+              }
+              .dfa-side-title strong {
+                color: var(--dfa-text);
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 1;
+              }
+              .dfa-sync {
+                height: 20px;
+                flex: none;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                color: var(--dfa-muted);
+                font-size: 7.5px;
+                line-height: 1;
+              }
+              .dfa-sync-dot {
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: var(--dfa-blue);
+              }
+              .dfa-side-main {
+                min-height: 0;
+                flex: 1;
+                padding: 18px 0 10px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+              }
+              .dfa-panel-title {
+                color: var(--dfa-text);
+                font-size: 24px;
+                font-weight: 600;
+                line-height: 1.25;
+              }
+              .dfa-panel-copy {
+                max-width: 318px;
+                margin-top: 10px;
+                color: var(--dfa-text-2);
+                font-size: 13px;
+                line-height: 1.75;
+              }
+              .dfa-form {
+                margin-top: 29px;
+              }
+              .dfa-label {
+                display: block;
+                color: var(--dfa-text);
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 1.2;
+              }
+              .dfa-input-wrap {
+                height: 48px;
+                margin-top: 8px;
+                overflow: hidden;
+                border: 1px solid #3a4346;
+                border-radius: 2px;
+                background: var(--dfa-field);
+                display: flex;
+                align-items: stretch;
+                transition: border-color 160ms ease, outline-color 160ms ease;
+              }
+              .dfa-input-wrap:focus-within {
+                border-color: var(--dfa-blue);
+                outline: 2px solid rgb(116 169 209 / 30%);
+                outline-offset: 1px;
+              }
+              .dfa-prefix {
+                width: 52px;
+                flex: none;
+                border-right: 1px solid #31393c;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--dfa-text-2);
+                font-size: 12px;
+              }
+              .dfa-phone-input {
+                width: 100%;
+                min-width: 0;
+                border: 0;
+                outline: 0;
+                background: transparent;
+                padding: 0 12px;
+                color: var(--dfa-text);
+                font-family: Bahnschrift, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+                font-size: 14px;
+                line-height: 1;
+              }
+              .dfa-phone-input::placeholder {
+                color: #6f7974;
+                opacity: 1;
+              }
+              .dfa-send {
+                width: 100%;
+                height: 47px;
+                margin-top: 12px;
+                border: 0;
+                border-radius: 2px;
+                background: var(--dfa-sage);
+                color: var(--dfa-sage-ink);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                font-family: inherit;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1;
+                transition: background-color 160ms ease;
+              }
+              .dfa-send:hover {
+                background: var(--dfa-sage-hover);
+              }
+              .dfa-send:active {
+                background: #b2c976;
+              }
+              .dfa-send:focus-visible {
+                outline: 2px solid var(--dfa-blue);
+                outline-offset: 2px;
+              }
+              .dfa-send-icon {
+                width: 15px;
+                height: 15px;
+                display: block;
+              }
+              .dfa-footnote {
+                margin-top: 13px;
+                color: var(--dfa-muted);
+                font-size: 11px;
+                line-height: 1.65;
+              }
+              .dfa-sidefoot {
+                height: 30px;
+                flex: none;
+                padding-top: 13px;
+                border-top: 1px solid var(--dfa-line);
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 10px;
+                color: var(--dfa-muted);
+                font-size: 7.5px;
+                line-height: 1;
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .dfa-stage .dfa-input-wrap,
+                .dfa-stage .dfa-send {
+                  transition: none;
+                }
+              }
+            </style>
+            <section class="dfa-stage" aria-label="VeyaFrame 成剧登录页，Signal Desk 指令台">
+              <div class="dfa-layout">
+                <div class="dfa-main">
+                  <div class="dfa-topbar">
+                    <div class="dfa-brand">
+                      <svg class="dfa-brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" stroke="#C4D98A" stroke-width="1.6" stroke-linecap="square"/>
+                        <rect x="9" y="9" width="6" height="6" stroke="#C4D98A" stroke-width="1.2"/>
+                        <path d="M12 7v3M12 14v3M7 12h3M14 12h3" stroke="#C4D98A" stroke-width="1.2" stroke-linecap="square"/>
+                      </svg>
+                      <span class="dfa-brand-name">VeyaFrame</span>
+                      <span class="dfa-brand-cn">成剧</span>
+                    </div>
+                    <span class="dfa-view-tag dfa-tech">CHAIN VIEW / DESK A</span>
+                  </div>
+                  <div class="dfa-hero">
+                    <h1 class="dfa-heading">先把戏<span class="dfa-heading-emphasis">做对</span>，<br>再把镜头<span class="dfa-heading-emphasis">生成</span>。</h1>
+                    <p class="dfa-lede">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；<span class="dfa-nowrap">换设备</span>，也能接着写。</p>
+                    <ul class="dfa-proof" aria-label="产品证据">
+                      <li class="dfa-proof-item"><span class="dfa-proof-num dfa-tech">01</span><span>角色锚点贯穿全剧</span></li>
+                      <li class="dfa-proof-item"><span class="dfa-proof-num dfa-tech">02</span><span>改一处看见影响</span></li>
+                      <li class="dfa-proof-item"><span class="dfa-proof-num dfa-tech">03</span><span>参考图不上传，项目可带走</span></li>
+                    </ul>
+                  </div>
+                  <div class="dfa-project" aria-label="迷你项目链与资产预览">
+                    <div class="dfa-project-head">
+                      <div class="dfa-project-id">
+                        <span class="dfa-project-kicker dfa-tech">PROJECT CHAIN / 04</span>
+                        <strong class="dfa-project-name">雾港来信</strong>
+                      </div>
+                      <div class="dfa-live">
+                        <span class="dfa-live-dot" aria-hidden="true"></span>
+                        <span>运行中</span>
+                        <span class="dfa-live-count dfa-tech">02</span>
+                      </div>
+                    </div>
+                    <div class="dfa-project-body">
+                      <div class="dfa-role">
+                        <div class="dfa-role-frame">
+                          <svg class="dfa-role-art" viewBox="0 0 112 94" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                            <rect width="112" height="94" fill="#232B2E"/>
+                            <rect width="112" height="35" fill="#2B3539"/>
+                            <path d="M0 63 112 45V94H0Z" fill="#1B2225"/>
+                            <circle cx="69" cy="31" r="13" fill="#435055"/>
+                            <path d="M44 94c3-29 12-42 25-42 13 0 22 14 25 42Z" fill="#303C40"/>
+                            <path d="M65 54h10l4 40H59Z" fill="#C4D98A" opacity=".72"/>
+                            <path d="M53 74 35 94h31Z" fill="#273135"/>
+                            <path d="M8 54h20M7 59h13M88 53h16M92 58h12" stroke="#455156" stroke-width="1.5"/>
+                          </svg>
+                          <span class="dfa-anchor-tag">角色锚点</span>
+                        </div>
+                        <div class="dfa-role-meta"><strong>林默</strong><span>主线 / 冷静</span></div>
+                      </div>
+                      <div class="dfa-chain">
+                        <div class="dfa-chain-row">
+                          <span class="dfa-chain-index dfa-tech">12</span>
+                          <div class="dfa-chain-copy"><span class="dfa-chain-label dfa-tech">SCENE / 旧码头</span><strong class="dfa-chain-title">外夜 · 雨停后</strong></div>
+                          <span class="dfa-chain-time dfa-tech">00:18</span>
+                        </div>
+                        <div class="dfa-chain-row dfa-chain-row-active">
+                          <span class="dfa-chain-index dfa-tech">04</span>
+                          <div class="dfa-chain-copy"><span class="dfa-chain-label dfa-tech">SHOT / 近景</span><strong class="dfa-chain-title">林默转身，不看对方</strong></div>
+                          <span class="dfa-chain-time dfa-tech">2.4s</span>
+                        </div>
+                        <div class="dfa-intent"><span class="dfa-intent-label dfa-tech">创作意图 / INTENT</span><span class="dfa-intent-copy">克制，别演成告别。</span></div>
+                      </div>
+                      <div class="dfa-reference">
+                        <div class="dfa-reference-frame" aria-label="参考图已锁定">
+                          <svg class="dfa-reference-art" viewBox="0 0 132 94" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                            <rect width="132" height="94" fill="#263238"/>
+                            <rect y="54" width="132" height="40" fill="#1B252A"/>
+                            <path d="M0 64h132M0 73h132M0 82h132" stroke="#304047" stroke-width="1"/>
+                            <path d="M-6 66 123 53l18 5-130 18Z" fill="#4B514A"/>
+                            <path d="M8 84 108 69" stroke="#6B7166" stroke-width="2"/>
+                            <rect x="92" y="10" width="18" height="41" fill="#20292D"/>
+                            <path d="M88 22h27" stroke="#89938B" stroke-width="2"/>
+                            <circle cx="98" cy="34" r="4" fill="#C4D98A" opacity=".8"/>
+                            <circle cx="48" cy="49" r="6" fill="#121719"/>
+                            <path d="M37 84c1-20 5-30 11-30s11 11 12 30Z" fill="#182024"/>
+                            <circle cx="68" cy="52" r="5" fill="#151B1E"/>
+                            <path d="M60 84c0-16 3-25 8-25s9 9 9 25Z" fill="#1A2225"/>
+                          </svg>
+                          <span class="dfa-reference-index dfa-tech">REF / 03</span>
+                          <span class="dfa-reference-lock">
+                            <svg class="dfa-lock-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="1" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7"/></svg>
+                            参考图锁定
+                          </span>
+                        </div>
+                        <div class="dfa-reference-meta"><strong>码头参考</strong><span class="dfa-tech">ASSET 08</span></div>
+                      </div>
+                    </div>
+                    <div class="dfa-impact"><span class="dfa-impact-label dfa-tech">影响提示</span><span class="dfa-impact-copy">场次 12 改动将影响 2 个镜头</span><span class="dfa-impact-count dfa-tech">02</span></div>
+                  </div>
+                </div>
+                <aside class="dfa-sidebar" aria-label="登录侧栏">
+                  <div class="dfa-sidehead">
+                    <div class="dfa-side-title"><span class="dfa-tech">SIGNAL DESK</span><strong>指令台</strong></div>
+                    <div class="dfa-sync"><span class="dfa-sync-dot" aria-hidden="true"></span><span class="dfa-tech">AUTO-SAVED</span></div>
+                  </div>
+                  <div class="dfa-side-main">
+                    <h2 class="dfa-panel-title">继续这个项目</h2>
+                    <p class="dfa-panel-copy">用手机号保存当前项目，之后可以在其他设备找回。</p>
+                    <form class="dfa-form">
+                      <label class="dfa-label" for="dfa-phone">手机号</label>
+                      <div class="dfa-input-wrap"><span class="dfa-prefix dfa-tech">+86</span><input class="dfa-phone-input" id="dfa-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="输入手机号"></div>
+                      <button class="dfa-send" type="submit"><span>发送验证码</span><svg class="dfa-send-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2 11 13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+                    </form>
+                    <p class="dfa-footnote">手机号仅用于登录和项目归属。</p>
+                  </div>
+                  <div class="dfa-sidefoot dfa-tech"><span>LINK / CN-SH-01</span><span>VF 0.9.4</span></div>
+                </aside>
+              </div>
+            </section>
+          </div>
+          <div class="mobile-stage">
+            <div class="mob-shell mob-a">
+              <div class="mob-brand"><span class="mob-brand-mark">V</span><span>VeyaFrame</span><em>成剧</em></div>
+              <div class="mob-kicker">Signal desk / account</div>
+              <h3 class="mob-title">先把戏<strong>做对</strong>，<br>再把镜头<strong>生成</strong>。</h3>
+              <p class="mob-copy">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。</p>
+              <ul class="mob-proof">
+                <li>角色锚点贯穿全剧</li>
+                <li>改一处看见影响</li>
+                <li>参考图不上传，项目可带走</li>
+              </ul>
+              <div class="mob-project"><strong>雾港来信 · 项目链</strong><span>SC 12 / SH 04</span></div>
+              <form class="mob-form">
+                <label for="mob-a-phone">手机号</label>
+                <input id="mob-a-phone" type="tel" placeholder="输入手机号">
+                <button type="button">发送验证码</button>
+                <p class="mob-note">手机号仅用于登录和项目归属。</p>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="direction-meta">
+          <span class="direction-tag">哑光石墨 / 鼠尾草绿 / 非对称双舱</span>
+          <p>最贴近现有工作台，风险最低。左侧项目链让“先定戏，再生成”成为可见的产品结构。</p>
+        </div>
+        <button class="qmdp-pick-button" type="button">选择 A · Signal Desk</button>
+      </article>
+
+      <article class="direction-card option" data-design-option="B" data-name="Production Ledger / 制片账本">
+        <header class="direction-head">
+          <div class="direction-title">
+            <span class="direction-letter">B</span>
+            <strong data-direction-name>Production Ledger / 制片账本</strong>
+          </div>
+        </header>
+        <div class="mock-stage-wrap">
+          <div class="mock-stage" data-desktop-stage>
+            <style>
+              .dfb-stage,
+              .dfb-stage * { box-sizing: border-box; }
+              .dfb-stage {
+                --dfb-paper: #f2ebde;
+                --dfb-paper-deep: #ebe0cf;
+                --dfb-ink: #211e19;
+                --dfb-muted: #6f665b;
+                --dfb-rule: #c8bca8;
+                --dfb-rule-dark: #a99b85;
+                --dfb-accent: #7a2830;
+                --dfb-accent-dark: #622027;
+                --dfb-accent-soft: rgb(122 40 48 / 12%);
+                width: 960px;
+                height: 600px;
+                display: grid;
+                grid-template-columns: 55fr 45fr;
+                overflow: hidden;
+                color: var(--dfb-ink);
+                background: var(--dfb-paper);
+                border: 1px solid #bdb09c;
+                box-shadow: 0 24px 64px rgb(54 42 28 / 14%);
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+              }
+              .dfb-stage ::selection { color: #fffaf0; background: var(--dfb-accent); }
+              .dfb-stage button,
+              .dfb-stage input { font: inherit; }
+              .dfb-left {
+                min-width: 0;
+                padding: 31px 38px 27px;
+                display: flex;
+                flex-direction: column;
+                background: var(--dfb-paper);
+                border-right: 1px solid var(--dfb-rule);
+              }
+              .dfb-masthead {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 20px;
+                min-height: 38px;
+              }
+              .dfb-brand { display: flex; align-items: center; gap: 10px; }
+              .dfb-brand-mark {
+                width: 27px;
+                height: 27px;
+                display: grid;
+                place-items: center;
+                flex: 0 0 27px;
+                border: 1px solid var(--dfb-accent);
+                color: var(--dfb-accent);
+                font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+                font-size: 10px;
+                font-weight: 600;
+                letter-spacing: .08em;
+              }
+              .dfb-brand-copy { display: flex; flex-direction: column; gap: 3px; }
+              .dfb-brand-name {
+                font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+                font-size: 16px;
+                font-weight: 600;
+                line-height: 1;
+                white-space: nowrap;
+              }
+              .dfb-brand-name span {
+                margin-left: 5px;
+                font-family: "Songti SC", "STSong", SimSun, serif;
+                font-size: 13px;
+                font-weight: 600;
+              }
+              .dfb-brand-sub {
+                color: var(--dfb-muted);
+                font-size: 9.5px;
+                letter-spacing: .09em;
+                line-height: 1.2;
+              }
+              .dfb-ledger-mark {
+                color: var(--dfb-muted);
+                text-align: right;
+                font-family: "Courier New", "Microsoft YaHei", monospace;
+                font-size: 8.5px;
+                line-height: 1.55;
+                letter-spacing: .12em;
+                text-transform: uppercase;
+              }
+              .dfb-ledger-mark strong {
+                display: block;
+                color: var(--dfb-accent);
+                font-family: "Songti SC", "STSong", SimSun, serif;
+                font-size: 10.5px;
+                font-weight: 600;
+                letter-spacing: .12em;
+              }
+              .dfb-hero { margin-top: 37px; }
+              .dfb-eyebrow {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                margin-bottom: 13px;
+                color: var(--dfb-accent);
+                font-size: 10.5px;
+                font-weight: 600;
+                letter-spacing: .12em;
+                line-height: 1;
+              }
+              .dfb-eyebrow::after {
+                content: "";
+                width: 49px;
+                height: 1px;
+                background: var(--dfb-accent);
+              }
+              .dfb-title {
+                max-width: 438px;
+                margin: 0;
+                color: var(--dfb-ink);
+                font-family: "Songti SC", "STSong", SimSun, serif;
+                font-size: 40px;
+                font-weight: 600;
+                line-height: 1.17;
+                letter-spacing: .015em;
+                text-wrap: balance;
+              }
+              .dfb-title span { display: block; }
+              .dfb-support {
+                max-width: 426px;
+                margin: 14px 0 0;
+                color: #514a40;
+                font-size: 14.5px;
+                line-height: 1.68;
+                text-wrap: pretty;
+              }
+              .dfb-chain { margin-top: 25px; }
+              .dfb-chain-kicker {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 16px;
+                padding-bottom: 7px;
+                border-bottom: 1px solid var(--dfb-rule-dark);
+              }
+              .dfb-chain-kicker strong {
+                color: var(--dfb-ink);
+                font-size: 10.5px;
+                font-weight: 600;
+                letter-spacing: .11em;
+              }
+              .dfb-chain-kicker span {
+                color: var(--dfb-muted);
+                font-family: "Courier New", monospace;
+                font-size: 8.5px;
+                letter-spacing: .07em;
+              }
+              .dfb-chain-cols {
+                position: relative;
+                display: grid;
+                grid-template-columns: 1.02fr 1fr .92fr 1.26fr;
+                padding-top: 22px;
+              }
+              .dfb-chain-cols::before {
+                content: "";
+                position: absolute;
+                top: 8px;
+                left: 3px;
+                right: 3px;
+                height: 1px;
+                background: var(--dfb-rule-dark);
+              }
+              .dfb-chain-node {
+                position: relative;
+                min-width: 0;
+                min-height: 105px;
+                padding: 0 11px 0 0;
+              }
+              .dfb-chain-node + .dfb-chain-node { padding-left: 12px; border-left: 1px solid #d6cbb9; }
+              .dfb-chain-node::before {
+                content: "";
+                position: absolute;
+                top: -18px;
+                left: 0;
+                width: 7px;
+                height: 7px;
+                background: var(--dfb-paper);
+                border: 1px solid var(--dfb-rule-dark);
+              }
+              .dfb-chain-node + .dfb-chain-node::before { left: 12px; }
+              .dfb-chain-node:last-child::before { background: var(--dfb-accent); border-color: var(--dfb-accent); }
+              .dfb-chain-label {
+                display: block;
+                margin-bottom: 7px;
+                color: var(--dfb-muted);
+                font-size: 9.5px;
+                font-weight: 600;
+                letter-spacing: .1em;
+                line-height: 1;
+              }
+              .dfb-chain-value {
+                display: block;
+                overflow: hidden;
+                color: var(--dfb-ink);
+                font-size: 13.5px;
+                font-weight: 600;
+                line-height: 1.35;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+              }
+              .dfb-chain-note {
+                display: block;
+                margin-top: 4px;
+                color: var(--dfb-muted);
+                font-size: 10.5px;
+                line-height: 1.45;
+              }
+              .dfb-relation {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                margin-top: 9px;
+                color: var(--dfb-accent);
+                font-size: 9.5px;
+                font-weight: 600;
+                line-height: 1;
+              }
+              .dfb-relation::before { content: ""; width: 10px; height: 1px; background: var(--dfb-accent); }
+              .dfb-frame {
+                position: relative;
+                width: 100%;
+                height: 49px;
+                margin-top: 2px;
+                overflow: hidden;
+                background: #2b2822;
+                border: 1px solid #39352e;
+              }
+              .dfb-frame-horizon { position: absolute; left: 0; right: 0; bottom: 14px; height: 1px; background: rgb(241 231 212 / 38%); }
+              .dfb-frame-light { position: absolute; top: 8px; right: 9px; width: 20px; height: 20px; border: 1px solid rgb(241 231 212 / 55%); box-shadow: 0 0 0 4px rgb(241 231 212 / 6%); }
+              .dfb-frame-figure { position: absolute; left: 35%; bottom: 14px; width: 8px; height: 23px; background: #d8cdbb; transform: skew(-4deg); }
+              .dfb-frame-figure::before { content: ""; position: absolute; top: -7px; left: 0; width: 7px; height: 7px; background: #d8cdbb; }
+              .dfb-frame-figure::after { content: ""; position: absolute; top: 7px; right: -12px; width: 13px; height: 1px; background: #d8cdbb; transform: rotate(-18deg); transform-origin: left center; }
+              .dfb-frame-rain { position: absolute; width: 1px; height: 13px; background: rgb(241 231 212 / 35%); transform: rotate(16deg); }
+              .dfb-frame-rain-a { top: 5px; left: 18%; }
+              .dfb-frame-rain-b { top: 16px; left: 52%; height: 9px; }
+              .dfb-frame-rain-c { top: 2px; left: 73%; height: 16px; }
+              .dfb-frame-note { display: block; margin-top: 5px; color: var(--dfb-muted); font-size: 9.5px; line-height: 1.35; }
+              .dfb-proof {
+                display: grid;
+                grid-template-columns: 1.05fr 1fr 1.46fr;
+                margin: auto 0 0;
+                padding: 13px 0 0;
+                border-top: 1px solid var(--dfb-rule-dark);
+                list-style: none;
+              }
+              .dfb-proof li {
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+                min-width: 0;
+                padding: 0 11px;
+                color: #4d463c;
+                font-size: 11.5px;
+                font-weight: 500;
+                line-height: 1.55;
+              }
+              .dfb-proof li:first-child { padding-left: 0; }
+              .dfb-proof li + li { border-left: 1px solid #d6cbb9; }
+              .dfb-proof-mark { width: 5px; height: 5px; margin-top: 6px; flex: 0 0 5px; background: var(--dfb-accent); }
+              .dfb-login { position: relative; min-width: 0; background: var(--dfb-paper-deep); }
+              .dfb-login-sheet {
+                position: relative;
+                height: 100%;
+                padding: 43px 49px 30px 50px;
+                display: flex;
+                flex-direction: column;
+              }
+              .dfb-bind { position: absolute; top: 35px; right: 12px; bottom: 35px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+              .dfb-bind span { width: 17px; height: 1px; background: var(--dfb-rule-dark); }
+              .dfb-sheet-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--dfb-rule-dark);
+                color: var(--dfb-muted);
+                font-family: "Courier New", "Microsoft YaHei", monospace;
+                font-size: 8.5px;
+                letter-spacing: .09em;
+                line-height: 1.3;
+              }
+              .dfb-sheet-head strong {
+                color: var(--dfb-ink);
+                font-family: "Songti SC", "STSong", SimSun, serif;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: .08em;
+              }
+              .dfb-login-title {
+                max-width: 310px;
+                margin: 54px 0 0;
+                color: var(--dfb-ink);
+                font-family: "Songti SC", "STSong", SimSun, serif;
+                font-size: 28px;
+                font-weight: 600;
+                line-height: 1.28;
+                text-wrap: balance;
+              }
+              .dfb-login-copy {
+                max-width: 312px;
+                margin: 12px 0 0;
+                color: #5c5449;
+                font-size: 13.5px;
+                line-height: 1.65;
+                text-wrap: pretty;
+              }
+              .dfb-form { margin-top: 45px; }
+              .dfb-label { display: block; color: var(--dfb-ink); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; line-height: 1; }
+              .dfb-input {
+                width: 100%;
+                height: 45px;
+                margin-top: 9px;
+                padding: 0 13px;
+                border: 1px solid var(--dfb-rule-dark);
+                border-radius: 0;
+                outline: none;
+                background: rgb(255 250 241 / 32%);
+                color: var(--dfb-ink);
+                font-size: 14px;
+                line-height: 1;
+                transition: border-color 140ms cubic-bezier(.23,1,.32,1), box-shadow 140ms cubic-bezier(.23,1,.32,1), background-color 140ms cubic-bezier(.23,1,.32,1);
+              }
+              .dfb-input::placeholder { color: #8e8271; opacity: 1; }
+              .dfb-input:focus-visible { border-color: var(--dfb-accent); background: rgb(255 250 241 / 62%); box-shadow: 0 0 0 2px var(--dfb-accent-soft); }
+              .dfb-submit {
+                width: 100%;
+                min-height: 46px;
+                margin-top: 13px;
+                padding: 0 18px;
+                border: 1px solid var(--dfb-accent);
+                border-radius: 0;
+                background: var(--dfb-accent);
+                color: #fff9ef;
+                font-size: 13.5px;
+                font-weight: 600;
+                letter-spacing: .08em;
+                cursor: pointer;
+                transition: background-color 140ms cubic-bezier(.23,1,.32,1), transform 90ms cubic-bezier(.23,1,.32,1);
+              }
+              .dfb-submit:active { transform: scale(.99); }
+              .dfb-submit:focus-visible { outline: 2px solid var(--dfb-accent); outline-offset: 3px; }
+              .dfb-footnote { margin: 13px 0 0; color: #776d5f; font-size: 11px; line-height: 1.55; }
+              .dfb-sheet-foot {
+                display: flex;
+                align-items: flex-end;
+                justify-content: space-between;
+                gap: 16px;
+                margin-top: auto;
+                padding-top: 14px;
+                border-top: 1px solid var(--dfb-rule);
+                color: var(--dfb-muted);
+                font-family: "Courier New", "Microsoft YaHei", monospace;
+                font-size: 8.5px;
+                letter-spacing: .08em;
+                line-height: 1.3;
+              }
+              .dfb-sheet-foot span:first-child { color: var(--dfb-accent); }
+              @media (hover: hover) and (pointer: fine) {
+                .dfb-input:hover { border-color: #8d806e; }
+                .dfb-submit:hover { background: var(--dfb-accent-dark); border-color: var(--dfb-accent-dark); }
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .dfb-input,
+                .dfb-submit { transition: none; }
+              }
+            </style>
+            <section class="dfb-stage" aria-labelledby="dfb-hero-title">
+              <div class="dfb-left">
+                <header class="dfb-masthead">
+                  <div class="dfb-brand"><span class="dfb-brand-mark" aria-hidden="true">VF</span><div class="dfb-brand-copy"><div class="dfb-brand-name">VeyaFrame <span>成剧</span></div><div class="dfb-brand-sub">AI 短剧创作控制台</div></div></div>
+                  <div class="dfb-ledger-mark" aria-hidden="true">Production Ledger<strong>制片账本</strong></div>
+                </header>
+                <div class="dfb-hero">
+                  <div class="dfb-eyebrow">从人物到镜头</div>
+                  <h1 class="dfb-title" id="dfb-hero-title"><span>先把戏做对，</span><span>再把镜头生成。</span></h1>
+                  <p class="dfb-support">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。</p>
+                </div>
+                <div class="dfb-chain" aria-label="角色、场次、镜头和关键帧组成的项目链">
+                  <div class="dfb-chain-kicker"><strong>项目链</strong><span>CHARACTER → SCENE → SHOT → FRAME</span></div>
+                  <div class="dfb-chain-cols">
+                    <div class="dfb-chain-node"><span class="dfb-chain-label">角色</span><span class="dfb-chain-value">陆停云</span><span class="dfb-chain-note">主角 · 贯场</span><span class="dfb-relation">对手戏：沈砚</span></div>
+                    <div class="dfb-chain-node"><span class="dfb-chain-label">场次</span><span class="dfb-chain-value">旧码头雨夜</span><span class="dfb-chain-note">关系决裂 · 外景</span><span class="dfb-relation">意图已关联</span></div>
+                    <div class="dfb-chain-node"><span class="dfb-chain-label">镜头</span><span class="dfb-chain-value">越肩停步</span><span class="dfb-chain-note">近景 · 手持</span><span class="dfb-relation">承接角色锚点</span></div>
+                    <div class="dfb-chain-node"><span class="dfb-chain-label">关键帧</span><div class="dfb-frame" role="img" aria-label="雨夜码头关键帧构图"><span class="dfb-frame-horizon"></span><span class="dfb-frame-light"></span><span class="dfb-frame-figure"></span><span class="dfb-frame-rain dfb-frame-rain-a"></span><span class="dfb-frame-rain dfb-frame-rain-b"></span><span class="dfb-frame-rain dfb-frame-rain-c"></span></div><span class="dfb-frame-note">雨灯偏左 · 轮廓压暗</span></div>
+                  </div>
+                </div>
+                <ul class="dfb-proof" aria-label="产品证据">
+                  <li><span class="dfb-proof-mark" aria-hidden="true"></span><span>角色锚点贯穿全剧</span></li>
+                  <li><span class="dfb-proof-mark" aria-hidden="true"></span><span>改一处看见影响</span></li>
+                  <li><span class="dfb-proof-mark" aria-hidden="true"></span><span>参考图不上传，项目可带走</span></li>
+                </ul>
+              </div>
+              <aside class="dfb-login" aria-labelledby="dfb-login-title">
+                <div class="dfb-bind" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="dfb-login-sheet">
+                  <div class="dfb-sheet-head"><strong>项目续写</strong><span>ACCOUNT / DEVICE HANDOFF</span></div>
+                  <h2 class="dfb-login-title" id="dfb-login-title">继续这个项目</h2>
+                  <p class="dfb-login-copy">用手机号保存当前项目，之后可以在其他设备找回。</p>
+                  <form class="dfb-form">
+                    <label class="dfb-label" for="dfb-phone">手机号</label>
+                    <input class="dfb-input" id="dfb-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+86 138 0000 0000" aria-describedby="dfb-phone-note">
+                    <button class="dfb-submit" type="submit">发送验证码</button>
+                  </form>
+                  <p class="dfb-footnote" id="dfb-phone-note">手机号仅用于登录和项目归属。</p>
+                  <div class="dfb-sheet-foot" aria-hidden="true"><span>VeyaFrame / 成剧</span><span>PROJECT LEDGER</span></div>
+                </div>
+              </aside>
+            </section>
+          </div>
+          <div class="mobile-stage">
+            <div class="mob-shell mob-b">
+              <div class="mob-brand"><span class="mob-brand-mark">VF</span><span>VeyaFrame</span><em>成剧</em></div>
+              <div class="mob-kicker">Production ledger / 制片账本</div>
+              <h3 class="mob-title">先把戏做对，<br>再把镜头生成。</h3>
+              <p class="mob-copy">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。</p>
+              <ul class="mob-proof">
+                <li>角色锚点贯穿全剧</li>
+                <li>改一处看见影响</li>
+                <li>参考图不上传，项目可带走</li>
+              </ul>
+              <div class="mob-project"><strong>陆停云 / 旧码头雨夜</strong><span>角色 → 场次 → 镜头</span></div>
+              <form class="mob-form">
+                <label for="mob-b-phone">手机号</label>
+                <input id="mob-b-phone" type="tel" placeholder="+86 138 0000 0000">
+                <button type="button">发送验证码</button>
+                <p class="mob-note">手机号仅用于登录和项目归属。</p>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="direction-meta">
+          <span class="direction-tag">暖纸 / 宋体标题 / 制片规则线</span>
+          <p>更像编剧的案头账本，亲和力和内容感更强，但离现有工作台气质更远。</p>
+        </div>
+        <button class="qmdp-pick-button" type="button">选择 B · Production Ledger</button>
+      </article>
+
+      <article class="direction-card option" data-design-option="C" data-name="Anchor Frame / 锚点监视器">
+        <header class="direction-head">
+          <div class="direction-title">
+            <span class="direction-letter">C</span>
+            <strong data-direction-name>Anchor Frame / 锚点监视器</strong>
+          </div>
+        </header>
+        <div class="mock-stage-wrap">
+          <div class="mock-stage" data-desktop-stage>
+            <style>
+              .dfc-stage {
+                --dfc-canvas: #171817;
+                --dfc-panel: #1e1f1e;
+                --dfc-panel-2: #232421;
+                --dfc-line: rgb(229 218 204 / 13%);
+                --dfc-line-strong: rgb(229 218 204 / 22%);
+                --dfc-text: rgb(242 236 227 / 92%);
+                --dfc-text-2: rgb(242 236 227 / 68%);
+                --dfc-text-3: rgb(242 236 227 / 62%);
+                --dfc-rust: #b56f4b;
+                --dfc-rust-deep: #8d4e31;
+                --dfc-rust-pale: #d29a76;
+                --dfc-cn: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+                --dfc-mono: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+                position: relative;
+                width: 960px;
+                height: 600px;
+                overflow: hidden;
+                color: var(--dfc-text);
+                background: var(--dfc-canvas);
+                border: 1px solid rgb(229 218 204 / 16%);
+                border-radius: 6px;
+                box-shadow: 0 22px 52px rgb(20 18 15 / 26%);
+                font-family: var(--dfc-cn);
+                text-rendering: optimizeLegibility;
+                color-scheme: dark;
+              }
+              .dfc-stage,
+              .dfc-stage *,
+              .dfc-stage *::before,
+              .dfc-stage *::after { box-sizing: border-box; }
+              .dfc-grain {
+                position: absolute;
+                inset: 0;
+                z-index: 0;
+                pointer-events: none;
+                opacity: .22;
+                background-image:
+                  repeating-linear-gradient(90deg, rgb(238 227 214 / 1.8%) 0 1px, transparent 1px 4px),
+                  repeating-linear-gradient(0deg, rgb(18 19 18 / 10%) 0 1px, transparent 1px 3px);
+              }
+              .dfc-layout {
+                position: relative;
+                z-index: 1;
+                display: grid;
+                grid-template-columns: 68fr 32fr;
+                width: 100%;
+                height: 100%;
+              }
+              .dfc-left { display: flex; min-width: 0; flex-direction: column; padding: 20px 24px 16px; }
+              .dfc-brand-row { display: flex; align-items: center; justify-content: space-between; min-height: 22px; }
+              .dfc-brand { display: flex; align-items: center; gap: 9px; }
+              .dfc-brand-glyph {
+                display: grid;
+                width: 25px;
+                height: 25px;
+                place-items: center;
+                border: 1px solid rgb(210 154 118 / 50%);
+                border-radius: 2px;
+                color: var(--dfc-rust-pale);
+                background: rgb(181 111 75 / 11%);
+                font-family: var(--dfc-mono);
+                font-size: 9px;
+                font-weight: 600;
+                letter-spacing: .04em;
+              }
+              .dfc-brand-name { color: var(--dfc-text); font-size: 13px; font-weight: 600; }
+              .dfc-brand-name span { color: var(--dfc-text-2); font-weight: 400; }
+              .dfc-project-state { display: flex; align-items: center; gap: 8px; color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 9px; letter-spacing: .08em; }
+              .dfc-project-state strong { color: var(--dfc-text-2); font-weight: 400; }
+              .dfc-status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dfc-rust); box-shadow: 0 0 0 2px rgb(181 111 75 / 13%); }
+              .dfc-hero { margin-top: 17px; }
+              .dfc-overline {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 0 0 7px;
+                color: var(--dfc-rust-pale);
+                font-family: var(--dfc-mono);
+                font-size: 9px;
+                line-height: 1.4;
+                letter-spacing: .11em;
+              }
+              .dfc-overline::after { width: 34px; height: 1px; content: ""; background: rgb(210 154 118 / 38%); }
+              .dfc-title { max-width: 560px; margin: 0; color: var(--dfc-text); font-size: 30px; font-weight: 500; line-height: 1.25; text-wrap: balance; }
+              .dfc-intro { max-width: 570px; margin: 8px 0 0; color: var(--dfc-text-2); font-size: 14px; line-height: 1.72; text-wrap: pretty; }
+              .dfc-monitor {
+                position: relative;
+                display: flex;
+                min-height: 0;
+                flex: 1;
+                flex-direction: column;
+                margin-top: 14px;
+                overflow: hidden;
+                border: 1px solid var(--dfc-line-strong);
+                border-radius: 4px;
+                background: #1b1c1b;
+                box-shadow: 0 1px 0 rgb(242 236 227 / 3.5%) inset, 0 8px 18px rgb(17 18 17 / 17%);
+              }
+              .dfc-monitor-top {
+                display: flex;
+                height: 27px;
+                flex: 0 0 27px;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 0 10px;
+                border-bottom: 1px solid var(--dfc-line);
+                background: rgb(34 35 33 / 94%);
+              }
+              .dfc-monitor-title,
+              .dfc-monitor-meta { display: flex; align-items: center; gap: 8px; font-family: var(--dfc-mono); font-size: 8.5px; letter-spacing: .09em; }
+              .dfc-monitor-title { color: var(--dfc-text-2); }
+              .dfc-monitor-meta { margin-left: auto; color: var(--dfc-text-3); }
+              .dfc-signal { position: relative; width: 6px; height: 6px; border: 1px solid rgb(210 154 118 / 64%); border-radius: 50%; }
+              .dfc-signal::after { position: absolute; inset: 1px; border-radius: inherit; content: ""; background: var(--dfc-rust); }
+              .dfc-sync-chip { display: inline-flex; align-items: center; height: 17px; padding: 0 6px; border: 1px solid rgb(181 111 75 / 30%); border-radius: 2px; color: var(--dfc-rust-pale); background: rgb(181 111 75 / 8%); }
+              .dfc-monitor-main { display: grid; min-height: 0; flex: 1; grid-template-columns: minmax(0, 1fr) 190px; gap: 1px; background: var(--dfc-line); }
+              .dfc-shot-frame { position: relative; margin: 0; min-width: 0; overflow: hidden; background: #1b1c1b; }
+              .dfc-scene { display: block; width: 100%; height: 100%; }
+              .dfc-frame-vignette { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(17 18 17 / 26%), transparent 28%, transparent 64%, rgb(17 18 17 / 68%)); }
+              .dfc-frame-hud { position: absolute; top: 9px; right: 10px; left: 10px; display: flex; justify-content: space-between; gap: 12px; color: rgb(242 236 227 / 76%); font-family: var(--dfc-mono); font-size: 8px; letter-spacing: .08em; }
+              .dfc-frame-hud span:last-child { color: var(--dfc-rust-pale); }
+              .dfc-focus-frame { position: absolute; top: 34%; left: 43%; width: 31%; height: 43%; border: 1px solid rgb(210 154 118 / 72%); }
+              .dfc-focus-frame::before,
+              .dfc-focus-frame::after { position: absolute; width: 9px; height: 9px; content: ""; border-color: var(--dfc-rust-pale); border-style: solid; }
+              .dfc-focus-frame::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+              .dfc-focus-frame::after { right: -1px; bottom: -1px; border-width: 0 2px 2px 0; }
+              .dfc-shot-caption { position: absolute; right: 11px; bottom: 10px; left: 11px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+              .dfc-shot-index { color: var(--dfc-rust-pale); font-family: var(--dfc-mono); font-size: 8px; line-height: 1.4; letter-spacing: .1em; white-space: nowrap; }
+              .dfc-shot-line { margin: 2px 0 0; color: var(--dfc-text); font-size: 12px; font-weight: 500; line-height: 1.5; }
+              .dfc-shot-tech { display: flex; flex: none; gap: 7px; color: rgb(242 236 227 / 62%); font-family: var(--dfc-mono); font-size: 7.5px; }
+              .dfc-monitor-rail { display: flex; min-width: 0; flex-direction: column; background: #20211f; }
+              .dfc-rail-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 9px 5px; color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 7.5px; letter-spacing: .1em; }
+              .dfc-rail-head strong { color: var(--dfc-rust-pale); font-weight: 400; }
+              .dfc-anchor-list { display: grid; margin: 0; padding: 0 8px; list-style: none; }
+              .dfc-anchor { display: grid; grid-template-columns: 29px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-height: 37px; border-top: 1px solid rgb(229 218 204 / 7.5%); }
+              .dfc-anchor:first-child { border-top: 0; }
+              .dfc-avatar { position: relative; width: 27px; height: 31px; overflow: hidden; border: 1px solid rgb(229 218 204 / 15%); border-radius: 2px; background: #292723; }
+              .dfc-avatar::before { position: absolute; top: 6px; left: 50%; width: 10px; height: 11px; border-radius: 46% 46% 43% 43%; content: ""; transform: translateX(-50%); background: #9f8874; }
+              .dfc-avatar::after { position: absolute; right: 3px; bottom: -8px; left: 3px; height: 22px; border-radius: 50% 50% 0 0; content: ""; background: #4f4a43; }
+              .dfc-avatar-2 { background: #322a25; }
+              .dfc-avatar-2::before { background: #b49b83; }
+              .dfc-avatar-2::after { background: #66564a; }
+              .dfc-avatar-3 { background: #272a27; }
+              .dfc-avatar-3::before { background: #8d7a67; }
+              .dfc-avatar-3::after { background: #3e4a45; }
+              .dfc-anchor-copy { min-width: 0; }
+              .dfc-anchor-name { overflow: hidden; color: var(--dfc-text); font-size: 10px; font-weight: 500; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+              .dfc-anchor-role { overflow: hidden; color: var(--dfc-text-3); font-size: 8px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+              .dfc-anchor-score { color: rgb(210 154 118 / 86%); font-family: var(--dfc-mono); font-size: 7.5px; }
+              .dfc-rail-section { margin: 0 8px; padding: 7px 1px; border-top: 1px solid rgb(229 218 204 / 10%); }
+              .dfc-rail-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 7px; letter-spacing: .08em; }
+              .dfc-impact-value { display: flex; align-items: baseline; justify-content: space-between; color: var(--dfc-text-2); font-size: 9px; }
+              .dfc-impact-value strong { color: var(--dfc-text); font-family: var(--dfc-mono); font-size: 9px; font-weight: 500; }
+              .dfc-impact-bars { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-top: 5px; }
+              .dfc-impact-bars span { height: 3px; border-radius: 1px; background: rgb(229 218 204 / 12%); }
+              .dfc-impact-bars span:nth-child(-n + 3) { background: rgb(181 111 75 / 72%); }
+              .dfc-lock-row { display: flex; align-items: center; gap: 6px; color: var(--dfc-text-2); font-size: 9px; }
+              .dfc-lock-icon { width: 11px; height: 11px; color: var(--dfc-rust-pale); }
+              .dfc-lock-row strong { color: var(--dfc-text); font-family: var(--dfc-mono); font-size: 8px; font-weight: 400; }
+              .dfc-scene-strip { flex: 0 0 57px; padding: 6px 9px 5px; border-top: 1px solid var(--dfc-line); background: #1b1c1b; }
+              .dfc-strip-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 7px; letter-spacing: .08em; }
+              .dfc-strip-head strong { color: var(--dfc-text-2); font-weight: 400; }
+              .dfc-scenes { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; }
+              .dfc-scene-tile { position: relative; height: 30px; overflow: hidden; border: 1px solid rgb(229 218 204 / 12%); border-radius: 2px; background: linear-gradient(165deg, rgb(210 154 118 / 16%), transparent 56%), #282824; }
+              .dfc-scene-tile::before { position: absolute; right: 4px; bottom: 3px; left: 4px; height: 9px; content: ""; background: rgb(18 19 18 / 34%); clip-path: polygon(0 100%, 0 72%, 18% 48%, 31% 63%, 49% 20%, 65% 58%, 78% 35%, 100% 67%, 100% 100%); }
+              .dfc-scene-tile span { position: absolute; top: 2px; left: 3px; color: rgb(242 236 227 / 62%); font-family: var(--dfc-mono); font-size: 6.5px; }
+              .dfc-scene-tile:nth-child(3n + 1) { background: linear-gradient(145deg, rgb(141 78 49 / 28%), transparent 52%), #242421; }
+              .dfc-scene-tile:nth-child(3n + 2) { background: linear-gradient(145deg, rgb(210 154 118 / 12%), transparent 52%), #292824; }
+              .dfc-scene-tile-active { border-color: rgb(210 154 118 / 82%); background: linear-gradient(160deg, rgb(181 111 75 / 44%), rgb(41 39 34 / 52%)), #292824; box-shadow: 0 0 0 1px rgb(210 154 118 / 15%) inset; }
+              .dfc-scene-tile-active span { color: #ead5c6; }
+              .dfc-chain { display: grid; min-height: 33px; flex: 0 0 33px; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 0 9px; border-top: 1px solid var(--dfc-line); background: #222320; }
+              .dfc-chain-label { color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 7px; letter-spacing: .07em; white-space: nowrap; }
+              .dfc-chain-track { display: flex; min-width: 0; align-items: center; }
+              .dfc-chain-node { display: inline-flex; height: 15px; align-items: center; gap: 4px; padding: 0 5px; border: 1px solid rgb(229 218 204 / 10%); border-radius: 2px; color: var(--dfc-text-2); background: rgb(229 218 204 / 2.5%); font-size: 7.5px; white-space: nowrap; }
+              .dfc-chain-node::before { width: 3px; height: 3px; border-radius: 50%; content: ""; background: rgb(210 154 118 / 68%); }
+              .dfc-chain-node-active { border-color: rgb(181 111 75 / 42%); color: var(--dfc-text); background: rgb(181 111 75 / 12%); }
+              .dfc-chain-link { width: 10px; height: 1px; flex: 1 1 10px; min-width: 4px; max-width: 16px; background: rgb(210 154 118 / 37%); }
+              .dfc-chain-sync { color: var(--dfc-rust-pale); font-family: var(--dfc-mono); font-size: 7px; letter-spacing: .05em; white-space: nowrap; }
+              .dfc-proof { display: grid; grid-template-columns: 1.15fr 1fr 1.25fr; margin: 9px 0 0; padding: 8px 0 0; border-top: 1px solid var(--dfc-line); list-style: none; }
+              .dfc-proof li { display: flex; min-width: 0; align-items: center; gap: 6px; color: var(--dfc-text-2); font-size: 10.5px; line-height: 1.45; }
+              .dfc-proof li + li { padding-left: 10px; }
+              .dfc-proof-icon { width: 12px; height: 12px; flex: none; color: var(--dfc-rust-pale); }
+              .dfc-login { display: flex; min-width: 0; flex-direction: column; padding: 20px 22px 16px; background: #20211f; }
+              .dfc-login-top { display: flex; align-items: center; justify-content: space-between; min-height: 25px; }
+              .dfc-login-brand { display: flex; align-items: center; gap: 7px; }
+              .dfc-login-mark { display: grid; width: 23px; height: 23px; place-items: center; border: 1px solid rgb(210 154 118 / 44%); border-radius: 2px; color: var(--dfc-rust-pale); background: rgb(181 111 75 / 10%); font-family: var(--dfc-mono); font-size: 8px; font-weight: 600; }
+              .dfc-login-brand-text { color: var(--dfc-text-2); font-size: 10px; }
+              .dfc-security { display: flex; align-items: center; gap: 5px; color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 7px; letter-spacing: .07em; }
+              .dfc-login-body { margin-top: 48px; }
+              .dfc-login-kicker { margin: 0 0 9px; color: var(--dfc-rust-pale); font-family: var(--dfc-mono); font-size: 8px; letter-spacing: .1em; }
+              .dfc-login-title { margin: 0; color: var(--dfc-text); font-size: 22px; font-weight: 500; line-height: 1.35; }
+              .dfc-login-copy { margin: 8px 0 0; color: var(--dfc-text-2); font-size: 13px; line-height: 1.72; text-wrap: pretty; }
+              .dfc-field { margin-top: 20px; }
+              .dfc-field-label { display: block; margin-bottom: 7px; color: var(--dfc-text-2); font-size: 12px; font-weight: 500; line-height: 1.4; }
+              .dfc-phone-control { display: flex; height: 45px; align-items: center; overflow: hidden; border: 1px solid rgb(229 218 204 / 18%); border-radius: 3px; background: #191a19; box-shadow: 0 1px 0 rgb(242 236 227 / 2.5%) inset; }
+              .dfc-phone-prefix { display: grid; width: 42px; height: 100%; flex: none; place-items: center; color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 11px; box-shadow: 1px 0 0 rgb(229 218 204 / 10%); }
+              .dfc-phone-input { width: 100%; min-width: 0; height: 100%; padding: 0 12px; border: 0; outline: 0; color: var(--dfc-text); background: transparent; font-family: var(--dfc-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+              .dfc-phone-input::placeholder { color: rgb(242 236 227 / 38%); opacity: 1; }
+              .dfc-phone-control:focus-within { border-color: rgb(210 154 118 / 78%); outline: 2px solid var(--dfc-rust-pale); outline-offset: 2px; }
+              .dfc-submit {
+                display: flex;
+                width: 100%;
+                height: 44px;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                margin-top: 10px;
+                padding: 0 12px 0 14px;
+                border: 1px solid rgb(224 174 143 / 30%);
+                border-radius: 3px;
+                color: #f4ece2;
+                background: var(--dfc-rust-deep);
+                box-shadow: 0 1px 0 rgb(255 246 237 / 12%) inset, 0 5px 12px rgb(20 16 13 / 16%);
+                font-family: var(--dfc-cn);
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background-color 140ms cubic-bezier(.23,1,.32,1), transform 140ms cubic-bezier(.23,1,.32,1);
+              }
+              .dfc-submit:active { transform: scale(.985); }
+              .dfc-submit:focus-visible { outline: 2px solid var(--dfc-rust-pale); outline-offset: 2px; }
+              .dfc-submit-icon { width: 15px; height: 15px; flex: none; color: rgb(244 236 226 / 82%); }
+              .dfc-form-note { margin: 9px 0 0; color: rgb(242 236 227 / 68%); font-size: 12px; line-height: 1.55; }
+              .dfc-session { margin-top: auto; padding: 12px; border: 1px solid var(--dfc-line); border-radius: 4px; background: #1b1c1b; }
+              .dfc-session-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 7px; letter-spacing: .08em; }
+              .dfc-session-head strong { color: var(--dfc-rust-pale); font-weight: 400; }
+              .dfc-session-project { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 7px; color: var(--dfc-text); font-size: 13px; font-weight: 500; }
+              .dfc-session-project span { color: var(--dfc-text-2); font-family: var(--dfc-mono); font-size: 8px; font-weight: 400; }
+              .dfc-session-chain { display: flex; align-items: center; margin-top: 9px; }
+              .dfc-session-node { display: inline-flex; align-items: center; gap: 4px; color: var(--dfc-text-3); font-size: 8px; white-space: nowrap; }
+              .dfc-session-node::before { width: 4px; height: 4px; border: 1px solid rgb(210 154 118 / 60%); border-radius: 50%; content: ""; }
+              .dfc-session-link { height: 1px; flex: 1; min-width: 4px; margin: 0 4px; background: rgb(210 154 118 / 24%); }
+              .dfc-session-meta { display: flex; gap: 8px; margin-top: 9px; padding-top: 8px; border-top: 1px solid rgb(229 218 204 / 8%); color: var(--dfc-text-3); font-family: var(--dfc-mono); font-size: 7px; }
+              .dfc-session-meta span + span::before { margin-right: 8px; color: rgb(210 154 118 / 48%); content: "/"; }
+              .dfc-login-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; color: rgb(242 236 227 / 44%); font-family: var(--dfc-mono); font-size: 6.5px; letter-spacing: .07em; }
+              @media (hover: hover) and (pointer: fine) {
+                .dfc-submit:hover { border-color: rgb(232 188 160 / 44%); background: #7d4429; }
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .dfc-submit { transition: none; }
+              }
+            </style>
+            <section class="dfc-stage" aria-label="VeyaFrame 成剧登录，锚点监视器">
+              <div class="dfc-grain" aria-hidden="true"></div>
+              <div class="dfc-layout">
+                <div class="dfc-left">
+                  <header class="dfc-brand-row">
+                    <div class="dfc-brand"><span class="dfc-brand-glyph" aria-hidden="true">VF</span><span class="dfc-brand-name">VeyaFrame <span>成剧</span></span></div>
+                    <div class="dfc-project-state"><span class="dfc-status-dot" aria-hidden="true"></span><span>项目在线</span><strong>DRAFT 03</strong></div>
+                  </header>
+                  <div class="dfc-hero">
+                    <p class="dfc-overline">AI SHORT DRAMA / CONTROL SURFACE</p>
+                    <h1 class="dfc-title">先把戏做对，再把镜头生成。</h1>
+                    <p class="dfc-intro">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。</p>
+                  </div>
+                  <section class="dfc-monitor" aria-label="项目监视器">
+                    <div class="dfc-monitor-top"><div class="dfc-monitor-title"><span class="dfc-signal" aria-hidden="true"></span><span>PROJECT MONITOR</span></div><div class="dfc-monitor-meta"><span>YECH_FILM_03 / 23.976 FPS</span><span class="dfc-sync-chip">SYNCED</span></div></div>
+                    <div class="dfc-monitor-main">
+                      <figure class="dfc-shot-frame" aria-label="雨夜天台镜头预览">
+                        <svg class="dfc-scene" viewBox="0 0 430 210" role="img" aria-label="雨夜天台，两名角色站在城市灯光前">
+                          <defs>
+                            <linearGradient id="dfcSky" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#252a2a"/><stop offset=".55" stop-color="#443c33"/><stop offset="1" stop-color="#73533f"/></linearGradient>
+                            <linearGradient id="dfcRoof" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#252521"/><stop offset="1" stop-color="#151715"/></linearGradient>
+                            <linearGradient id="dfcCoat" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#373631"/><stop offset="1" stop-color="#171816"/></linearGradient>
+                            <linearGradient id="dfcCoat2" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#584438"/><stop offset="1" stop-color="#25211e"/></linearGradient>
+                          </defs>
+                          <rect width="430" height="210" fill="url(#dfcSky)"/>
+                          <path d="M0 122 24 111 43 118 65 101 82 110 103 94 120 106 145 88 162 102 186 91 206 105 228 90 248 102 268 96 290 108 315 94 337 103 358 89 381 103 405 97 430 106V164H0Z" fill="#202221" opacity=".92"/>
+                          <path d="M0 139 39 128 73 136 112 121 157 132 199 118 243 130 279 119 323 132 359 123 397 134 430 126V176H0Z" fill="#191b1a"/>
+                          <g fill="#b9744e" opacity=".62"><rect x="39" y="143" width="3" height="2"/><rect x="57" y="137" width="2" height="2"/><rect x="113" y="139" width="3" height="2"/><rect x="148" y="144" width="2" height="2"/><rect x="205" y="137" width="3" height="2"/><rect x="238" y="146" width="2" height="2"/><rect x="285" y="138" width="3" height="2"/><rect x="327" y="144" width="2" height="2"/><rect x="371" y="139" width="3" height="2"/></g>
+                          <path d="M0 163 80 149 161 161 244 148 330 159 430 146V210H0Z" fill="url(#dfcRoof)"/>
+                          <path d="M0 166H430" stroke="#5b4c40" opacity=".58"/>
+                          <g stroke="#6d5a4b" opacity=".5"><path d="M36 162V188"/><path d="M62 160V184"/><path d="M88 158V199"/><path d="M354 158V197"/><path d="M380 156V185"/><path d="M406 154V191"/><path d="M36 170H88"/><path d="M354 168H406"/></g>
+                          <g transform="translate(191 105)"><ellipse cx="0" cy="4" rx="8" ry="9" fill="#a38b77"/><path d="M-16 62Q-13 26 0 21Q14 26 17 62Z" fill="url(#dfcCoat)"/><path d="M1 62 4 109" stroke="#171816" stroke-width="8"/><path d="M-11 62-11 108" stroke="#171816" stroke-width="8"/></g>
+                          <g transform="translate(246 99)"><ellipse cx="0" cy="4" rx="8" ry="9" fill="#b49a82"/><path d="M-17 62Q-15 27 0 22Q15 27 18 62Z" fill="url(#dfcCoat2)"/><path d="M1 62 2 111" stroke="#27211e" stroke-width="8"/><path d="M-11 62-12 109" stroke="#27211e" stroke-width="8"/></g>
+                          <g stroke="#dfc4b0" stroke-width=".7" opacity=".2"><path d="M20 8 8 37"/><path d="M68 3 51 44"/><path d="M126 10 110 45"/><path d="M180 0 158 48"/><path d="M239 7 219 51"/><path d="M299 2 280 46"/><path d="M356 8 339 52"/><path d="M410 3 390 48"/><path d="M33 24 19 55"/><path d="M103 18 85 61"/><path d="M166 15 149 57"/><path d="M274 19 256 62"/><path d="M328 16 314 55"/><path d="M384 13 367 57"/></g>
+                        </svg>
+                        <div class="dfc-frame-vignette" aria-hidden="true"></div>
+                        <div class="dfc-frame-hud"><span>EXT. ROOFTOP — NIGHT</span><span>00:02:14:08</span></div>
+                        <div class="dfc-focus-frame" aria-hidden="true"></div>
+                        <figcaption class="dfc-shot-caption"><div><div class="dfc-shot-index">CURRENT SHOT / SH_04</div><p class="dfc-shot-line">林砚在雨里停住，没有回头。</p></div><div class="dfc-shot-tech"><span>14MM</span><span>1/48</span><span>ISO 800</span></div></figcaption>
+                      </figure>
+                      <aside class="dfc-monitor-rail" aria-label="角色锚点与影响范围">
+                        <div class="dfc-rail-head"><span>CHARACTER ANCHORS</span><strong>03 / 03</strong></div>
+                        <ul class="dfc-anchor-list">
+                          <li class="dfc-anchor"><span class="dfc-avatar" aria-hidden="true"></span><span class="dfc-anchor-copy"><span class="dfc-anchor-name">林砚</span><span class="dfc-anchor-role">主角 / 雨夜天台</span></span><span class="dfc-anchor-score">96%</span></li>
+                          <li class="dfc-anchor"><span class="dfc-avatar dfc-avatar-2" aria-hidden="true"></span><span class="dfc-anchor-copy"><span class="dfc-anchor-name">周晚</span><span class="dfc-anchor-role">对手 / 删改边界</span></span><span class="dfc-anchor-score">91%</span></li>
+                          <li class="dfc-anchor"><span class="dfc-avatar dfc-avatar-3" aria-hidden="true"></span><span class="dfc-anchor-copy"><span class="dfc-anchor-name">老徐</span><span class="dfc-anchor-role">证人 / 旧码头</span></span><span class="dfc-anchor-score">84%</span></li>
+                        </ul>
+                        <div class="dfc-rail-section"><div class="dfc-rail-label"><span>影响范围</span><span>IMPACT</span></div><div class="dfc-impact-value"><span>当前改动</span><strong>3 场 / 6 镜</strong></div><div class="dfc-impact-bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+                        <div class="dfc-rail-section"><div class="dfc-rail-label"><span>参考图锁定</span><span>REFERENCE</span></div><div class="dfc-lock-row"><svg class="dfc-lock-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg><span>本地资产</span><strong>12 / 12</strong></div></div>
+                      </aside>
+                    </div>
+                    <div class="dfc-scene-strip" aria-label="场次条"><div class="dfc-strip-head"><span>SCENE STRIP / 场次条</span><strong>03 SCENES LINKED</strong></div><div class="dfc-scenes" aria-hidden="true"><div class="dfc-scene-tile"><span>01</span></div><div class="dfc-scene-tile"><span>02</span></div><div class="dfc-scene-tile"><span>03</span></div><div class="dfc-scene-tile dfc-scene-tile-active"><span>04</span></div><div class="dfc-scene-tile"><span>05</span></div><div class="dfc-scene-tile"><span>06</span></div><div class="dfc-scene-tile"><span>07</span></div><div class="dfc-scene-tile"><span>08</span></div></div></div>
+                    <div class="dfc-chain" aria-label="项目链"><span class="dfc-chain-label">项目链</span><div class="dfc-chain-track"><span class="dfc-chain-node">人物 07</span><span class="dfc-chain-link"></span><span class="dfc-chain-node">场次 03</span><span class="dfc-chain-link"></span><span class="dfc-chain-node dfc-chain-node-active">分镜 12</span><span class="dfc-chain-link"></span><span class="dfc-chain-node">意图 04</span></div><span class="dfc-chain-sync">ALL CHANGES LINKED</span></div>
+                  </section>
+                  <ul class="dfc-proof" aria-label="产品证据">
+                    <li><svg class="dfc-proof-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="m3 8.4 3 3 7-7"/></svg><span>角色锚点贯穿全剧</span></li>
+                    <li><svg class="dfc-proof-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="m3 8.4 3 3 7-7"/></svg><span>改一处看见影响</span></li>
+                    <li><svg class="dfc-proof-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="m3 8.4 3 3 7-7"/></svg><span>参考图不上传，项目可带走</span></li>
+                  </ul>
+                </div>
+                <aside class="dfc-login" aria-label="登录控制轨">
+                  <div class="dfc-login-top"><div class="dfc-login-brand"><span class="dfc-login-mark">VF</span><span class="dfc-login-brand-text">VEYAFRAME / 成剧</span></div><div class="dfc-security"><span class="dfc-status-dot"></span>SECURE</div></div>
+                  <div class="dfc-login-body">
+                    <p class="dfc-login-kicker">PROJECT HANDOFF / 02</p>
+                    <h2 class="dfc-login-title">继续这个项目</h2>
+                    <p class="dfc-login-copy">用手机号保存当前项目，之后可以在其他设备找回。</p>
+                    <form class="dfc-form"><div class="dfc-field"><label class="dfc-field-label" for="dfc-phone">手机号</label><div class="dfc-phone-control"><span class="dfc-phone-prefix" aria-hidden="true">+86</span><input class="dfc-phone-input" id="dfc-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="138 0000 0000" aria-describedby="dfc-form-note"></div></div><button class="dfc-submit" type="button"><span>发送验证码</span><svg class="dfc-submit-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="M2.5 8h10"/><path d="m9 4.5 3.5 3.5L9 11.5"/></svg></button><p class="dfc-form-note" id="dfc-form-note">手机号仅用于登录和项目归属。</p></form>
+                  </div>
+                  <div class="dfc-session"><div class="dfc-session-head"><span>当前项目</span><strong>LOCAL DRAFT</strong></div><div class="dfc-session-project">夜潮档案<span>SC_04 / SH_04</span></div><div class="dfc-session-chain"><span class="dfc-session-node">人物</span><span class="dfc-session-link"></span><span class="dfc-session-node">场次</span><span class="dfc-session-link"></span><span class="dfc-session-node">分镜</span><span class="dfc-session-link"></span><span class="dfc-session-node">意图</span></div><div class="dfc-session-meta"><span>03 场</span><span>12 镜</span><span>07 角色</span></div></div>
+                  <div class="dfc-login-foot"><span>VF / 0.4.7</span><span>DESKTOP LOGIN</span></div>
+                </aside>
+              </div>
+            </section>
+          </div>
+          <div class="mobile-stage">
+            <div class="mob-shell mob-c">
+              <div class="mob-brand"><span class="mob-brand-mark">VF</span><span>VeyaFrame</span><em>成剧</em></div>
+              <div class="mob-kicker">Project monitor / 锚点监视器</div>
+              <h3 class="mob-title">先把戏做对，<br>再把镜头生成。</h3>
+              <p class="mob-copy">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。</p>
+              <ul class="mob-proof">
+                <li>角色锚点贯穿全剧</li>
+                <li>改一处看见影响</li>
+                <li>参考图不上传，项目可带走</li>
+              </ul>
+              <div class="mob-project"><strong>夜潮档案 · 影响 3 场 / 6 镜</strong><span>LOCAL ASSETS 12 / 12</span></div>
+              <form class="mob-form">
+                <label for="mob-c-phone">手机号</label>
+                <input id="mob-c-phone" type="tel" placeholder="138 0000 0000">
+                <button type="button">发送验证码</button>
+                <p class="mob-note">手机号仅用于登录和项目归属。</p>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="direction-meta">
+          <span class="direction-tag">深炭 / 锈橙 / 高密度资产监视</span>
+          <p>最像专业制片控制台，护城河最可见，但信息量也最重。</p>
+        </div>
+        <button class="qmdp-pick-button" type="button">选择 C · Anchor Frame</button>
+      </article>
+
+      <article class="direction-card option" data-design-option="D" data-name="Studio Sheet / 白盒工作单">
+        <header class="direction-head">
+          <div class="direction-title">
+            <span class="direction-letter">D</span>
+            <strong data-direction-name>Studio Sheet / 白盒工作单</strong>
+          </div>
+        </header>
+        <div class="mock-stage-wrap">
+          <div class="mock-stage" data-desktop-stage>
+            <style>
+              .dfd-stage,
+              .dfd-stage * { box-sizing: border-box; }
+              .dfd-stage {
+                --dfd-paper: #e8ebe3;
+                --dfd-panel: #f1f3ec;
+                --dfd-ink: #20251f;
+                --dfd-ink-2: #4d554b;
+                --dfd-muted: #5f685c;
+                --dfd-rule: #aeb6a7;
+                --dfd-rule-soft: #c9cec2;
+                --dfd-accent: #dcea9b;
+                --dfd-accent-soft: #edf4c8;
+                --dfd-accent-deep: #93a63e;
+                width: 960px;
+                height: 600px;
+                position: relative;
+                overflow: hidden;
+                color: var(--dfd-ink);
+                background: var(--dfd-paper);
+                border: 1px solid var(--dfd-ink);
+                font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+                line-height: 1.5;
+              }
+              .dfd-stage::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: linear-gradient(rgb(32 37 31 / 3.5%) 1px, transparent 1px), linear-gradient(90deg, rgb(32 37 31 / 3.5%) 1px, transparent 1px);
+                background-size: 24px 24px;
+                pointer-events: none;
+              }
+              .dfd-stage ::selection { background: var(--dfd-accent); color: var(--dfd-ink); }
+              .dfd-masthead {
+                height: 58px;
+                position: relative;
+                z-index: 1;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 28px;
+                border-bottom: 2px solid var(--dfd-ink);
+                background: rgb(232 235 227 / 82%);
+              }
+              .dfd-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+              .dfd-mark {
+                width: 28px;
+                height: 28px;
+                display: grid;
+                place-items: center;
+                flex: 0 0 auto;
+                background: var(--dfd-ink);
+                color: var(--dfd-accent);
+                font-family: "Bahnschrift SemiCondensed", "DIN Alternate", "Aptos Display", sans-serif;
+                font-size: 15px;
+                font-weight: 600;
+              }
+              .dfd-brand-copy { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+              .dfd-brand-copy strong { font-family: "Bahnschrift SemiCondensed", "DIN Alternate", "Aptos Display", "Microsoft YaHei", sans-serif; font-size: 15px; font-weight: 600; line-height: 1; }
+              .dfd-brand-copy span { color: var(--dfd-muted); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+              .dfd-sheet-meta { display: flex; align-items: center; gap: 12px; color: var(--dfd-ink-2); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 10px; letter-spacing: .13em; }
+              .dfd-register { width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid var(--dfd-ink); background: var(--dfd-accent-soft); font-size: 12px; }
+              .dfd-sheet-grid { height: 540px; position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; }
+              .dfd-intro { padding: 26px 30px 22px 32px; min-width: 0; display: flex; flex-direction: column; }
+              .dfd-kicker { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--dfd-muted); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 9px; letter-spacing: .15em; text-transform: uppercase; }
+              .dfd-kicker span:first-child { color: var(--dfd-ink-2); }
+              .dfd-title {
+                width: 106.4%;
+                margin: 14px 0 11px;
+                font-family: "Bahnschrift SemiCondensed", "DIN Alternate", "Aptos Display", "Microsoft YaHei", sans-serif;
+                font-size: 43px;
+                font-weight: 600;
+                font-stretch: condensed;
+                line-height: 1;
+                color: var(--dfd-ink);
+                text-wrap: balance;
+                transform: scaleX(.94);
+                transform-origin: left top;
+              }
+              .dfd-title span { display: block; white-space: nowrap; }
+              .dfd-support { margin: 0; max-width: 388px; color: var(--dfd-ink-2); font-size: 14px; line-height: 1.62; text-wrap: pretty; }
+              .dfd-assets { margin-top: 19px; }
+              .dfd-assets-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 7px; border-bottom: 2px solid var(--dfd-ink); }
+              .dfd-assets-head strong { font-size: 12px; font-weight: 600; line-height: 1; }
+              .dfd-assets-head span { color: var(--dfd-muted); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+              .dfd-assets-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+              .dfd-assets-table th { padding: 5px 0 4px; border-bottom: 1px solid var(--dfd-rule-soft); color: var(--dfd-muted); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 8px; font-weight: 400; letter-spacing: .12em; text-align: left; text-transform: uppercase; }
+              .dfd-assets-table th:first-child,
+              .dfd-assets-table td:first-child { width: 42%; }
+              .dfd-assets-table td { padding: 6px 0; border-bottom: 1px solid var(--dfd-rule-soft); font-size: 12px; line-height: 1.25; vertical-align: middle; }
+              .dfd-assets-table td:first-child { font-weight: 500; }
+              .dfd-assets-table td:last-child { color: var(--dfd-ink-2); font-family: "Cascadia Mono", "SFMono-Regular", "Microsoft YaHei", monospace; font-size: 10px; }
+              .dfd-assets-table td:last-child::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 7px; vertical-align: 1px; background: var(--dfd-accent-deep); }
+              .dfd-proofs { list-style: none; margin: 17px 0 0; padding: 0; border-top: 2px solid var(--dfd-ink); }
+              .dfd-proofs li { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 6px 0; border-bottom: 1px solid var(--dfd-rule); font-size: 13px; font-weight: 500; line-height: 1.35; }
+              .dfd-proof-mark { width: 17px; height: 17px; display: grid; place-items: center; flex: 0 0 auto; background: var(--dfd-accent); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 11px; color: var(--dfd-ink); }
+              .dfd-login-panel { padding: 27px 32px 23px; min-width: 0; display: flex; flex-direction: column; background: rgb(241 243 236 / 93%); }
+              .dfd-login-kicker { color: var(--dfd-muted); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 9px; letter-spacing: .15em; text-transform: uppercase; }
+              .dfd-login-title { margin: 13px 0 7px; color: var(--dfd-ink); font-family: "Bahnschrift SemiCondensed", "DIN Alternate", "Aptos Display", "Microsoft YaHei", sans-serif; font-size: 25px; font-weight: 600; line-height: 1.12; }
+              .dfd-login-desc { margin: 0; max-width: 350px; color: var(--dfd-ink-2); font-size: 14px; line-height: 1.58; text-wrap: pretty; }
+              .dfd-ruled-form { margin-top: 18px; flex: 1; min-height: 0; display: flex; flex-direction: column; background-image: repeating-linear-gradient(to bottom, rgb(32 37 31 / 2.6%) 0 1px, transparent 1px 32px); background-size: 100% 32px; background-position: 0 13px; }
+              .dfd-form-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 11px; padding: 14px 0; border-top: 1px solid var(--dfd-rule); }
+              .dfd-form-row:first-child { border-top: 2px solid var(--dfd-ink); }
+              .dfd-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+              .dfd-row-index { padding-top: 2px; color: var(--dfd-muted); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 9px; letter-spacing: .12em; }
+              .dfd-field label { display: block; margin-bottom: 7px; color: var(--dfd-ink-2); font-family: "Cascadia Mono", "SFMono-Regular", "Microsoft YaHei", monospace; font-size: 10px; font-weight: 500; letter-spacing: .1em; }
+              .dfd-tel-control { height: 43px; display: flex; align-items: center; border-bottom: 2px solid var(--dfd-ink); background: rgb(255 255 255 / 24%); }
+              .dfd-dial-code { padding: 0 12px 0 2px; border-right: 1px solid var(--dfd-rule); color: var(--dfd-ink-2); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 11px; }
+              .dfd-phone-input { min-width: 0; flex: 1; height: 41px; padding: 0 2px 0 11px; border: 0; background: transparent; color: var(--dfd-ink); font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.4; }
+              .dfd-phone-input::placeholder { color: var(--dfd-muted); opacity: 1; }
+              .dfd-phone-input:focus-visible { outline: 2px solid var(--dfd-accent-deep); outline-offset: -2px; }
+              .dfd-tel-control:focus-within { background: rgb(220 234 155 / 18%); }
+              .dfd-action-row { align-items: center; border-top: 1px solid var(--dfd-rule); padding-top: 16px; padding-bottom: 16px; }
+              .dfd-send {
+                grid-column: 2;
+                width: 100%;
+                height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 0 15px;
+                border: 0;
+                border-radius: 0;
+                background: var(--dfd-accent);
+                color: var(--dfd-ink);
+                font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background-color 140ms cubic-bezier(.23,1,.32,1), transform 140ms cubic-bezier(.23,1,.32,1);
+              }
+              .dfd-send small { color: rgb(32 37 31 / 66%); font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; font-size: 8px; font-weight: 400; letter-spacing: .13em; }
+              .dfd-send:focus-visible { outline: 2px solid var(--dfd-ink); outline-offset: 3px; }
+              .dfd-send:active { transform: translateY(1px); }
+              .dfd-note-row { margin-top: auto; align-items: start; border-top: 1px solid var(--dfd-rule); }
+              .dfd-note-row p { margin: 0; grid-column: 2; color: var(--dfd-muted); font-size: 13px; line-height: 1.5; text-wrap: pretty; }
+              @media (hover: hover) and (pointer: fine) {
+                .dfd-send:hover { background: #cfdf82; }
+                .dfd-assets-table tbody tr:hover td { background: rgb(220 234 155 / 12%); }
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .dfd-send { transition: none; }
+              }
+            </style>
+            <section class="dfd-stage" aria-labelledby="dfd-title">
+              <header class="dfd-masthead">
+                <div class="dfd-brand"><span class="dfd-mark" aria-hidden="true">V</span><div class="dfd-brand-copy"><strong>VeyaFrame 成剧</strong><span>AI 短剧创作控制台</span></div></div>
+                <div class="dfd-sheet-meta"><span class="dfd-register" aria-hidden="true">+</span><span>STUDIO SHEET / D</span></div>
+              </header>
+              <div class="dfd-sheet-grid">
+                <div class="dfd-intro">
+                  <div class="dfd-kicker"><span>项目工作单</span><span>PROJECT CONTINUITY</span></div>
+                  <h1 class="dfd-title" id="dfd-title"><span>先把戏做对，</span><span>再把镜头生成。</span></h1>
+                  <p class="dfd-support">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。</p>
+                  <div class="dfd-assets">
+                    <div class="dfd-assets-head"><strong>项目资产</strong><span>当前项目</span></div>
+                    <table class="dfd-assets-table">
+                      <caption class="dfd-sr-only">当前项目的资产状态</caption>
+                      <thead><tr><th scope="col">资产</th><th scope="col">状态</th></tr></thead>
+                      <tbody><tr><td>角色锚点</td><td>已贯穿</td></tr><tr><td>场次顺序</td><td>可回看</td></tr><tr><td>分镜关联</td><td>可追溯</td></tr><tr><td>参考素材</td><td>项目内</td></tr></tbody>
+                    </table>
+                  </div>
+                  <ul class="dfd-proofs">
+                    <li><span class="dfd-proof-mark" aria-hidden="true">+</span><span>角色锚点贯穿全剧</span></li>
+                    <li><span class="dfd-proof-mark" aria-hidden="true">+</span><span>改一处看见影响</span></li>
+                    <li><span class="dfd-proof-mark" aria-hidden="true">+</span><span>参考图不上传，项目可带走</span></li>
+                  </ul>
+                </div>
+                <div class="dfd-login-panel">
+                  <div class="dfd-login-kicker">继续项目 / LOGIN</div>
+                  <h2 class="dfd-login-title">继续这个项目</h2>
+                  <p class="dfd-login-desc">用手机号保存当前项目，之后可以在其他设备找回。</p>
+                  <form class="dfd-ruled-form">
+                    <div class="dfd-form-row"><span class="dfd-row-index" aria-hidden="true">01</span><div class="dfd-field"><label for="dfd-phone">手机号</label><div class="dfd-tel-control"><span class="dfd-dial-code" aria-hidden="true">+86</span><input class="dfd-phone-input" id="dfd-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="输入 11 位手机号…" spellcheck="false"></div></div></div>
+                    <div class="dfd-form-row dfd-action-row"><span class="dfd-row-index" aria-hidden="true">02</span><button class="dfd-send" type="button"><span>发送验证码</span><small aria-hidden="true">VERIFY →</small></button></div>
+                    <div class="dfd-form-row dfd-note-row"><span class="dfd-row-index" aria-hidden="true">03</span><p>手机号仅用于登录和项目归属。</p></div>
+                  </form>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="mobile-stage">
+            <div class="mob-shell mob-d">
+              <div class="mob-brand"><span class="mob-brand-mark">V</span><span>VeyaFrame 成剧</span><em>工作单</em></div>
+              <div class="mob-kicker">Studio sheet / project continuity</div>
+              <h3 class="mob-title">先把戏做对，<br>再把镜头生成。</h3>
+              <p class="mob-copy">人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。</p>
+              <ul class="mob-proof">
+                <li>角色锚点贯穿全剧</li>
+                <li>改一处看见影响</li>
+                <li>参考图不上传，项目可带走</li>
+              </ul>
+              <div class="mob-project"><strong>项目资产</strong><span>角色 / 场次 / 分镜 / 素材</span></div>
+              <form class="mob-form">
+                <label for="mob-d-phone">手机号</label>
+                <input id="mob-d-phone" type="tel" placeholder="输入 11 位手机号…">
+                <button type="button">发送验证码</button>
+                <p class="mob-note">手机号仅用于登录和项目归属。</p>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="direction-meta">
+          <span class="direction-tag">浅灰绿 / 粗规则线 / 工业工作单</span>
+          <p>更年轻、更有排版态度，适合强调“制作工具”而不是“内容平台”。</p>
+        </div>
+        <button class="qmdp-pick-button" type="button">选择 D · Studio Sheet</button>
+      </article>
+    </section>
+
+    <section class="notes-section" aria-labelledby="notes-title">
+      <header class="notes-heading">
+        <h2 id="notes-title">方向说明</h2>
+        <p>可以只选中意某个细节，在对话里组合，例如“要 A 的配色 + C 的资产监视器”。</p>
+      </header>
+      <div class="notes-grid">
+        <article class="note">
+          <strong>A · Signal Desk / 指令台</strong>
+          <p>像深夜的短剧制作指令台。记忆点是左侧项目链和右侧登录轨之间的明暗切换。</p>
+          <p>适合现有品牌延续，推荐原因是它最容易让老用户认出成剧。</p>
+        </article>
+        <article class="note">
+          <strong>B · Production Ledger / 制片账本</strong>
+          <p>像编剧案头的制片账本。记忆点是暖纸、宋体标题和贯穿版面的细规则线。</p>
+          <p>适合强调文本与判断，代价是与当前深色工作台有明显断代。</p>
+        </article>
+        <article class="note">
+          <strong>C · Anchor Frame / 锚点监视器</strong>
+          <p>像导演审片台。记忆点是角色锚点、影响提示和参考图锁定状态同时出现在首屏。</p>
+          <p>最适合突出护城河，代价是登录页会比常规账号页更密。</p>
+        </article>
+        <article class="note">
+          <strong>D · Studio Sheet / 白盒工作单</strong>
+          <p>像工业制片工作单。记忆点是粗规则线、压缩标题和浅色黄绿的工作单结构。</p>
+          <p>适合建立独立品牌感，代价是客户可能需要适应更强的排版态度。</p>
+        </article>
+      </div>
+      <p class="notice">三个参数都可在上方拖动：视觉冒险度决定版式胆量，动效强度决定反馈多少，信息密度决定信息铺陈。点选方向后会打开确认层，可补充你的调整建议。</p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const dials = document.querySelectorAll('[data-qmdp-dial]');
+      dials.forEach((input) => {
+        const output = document.querySelector(`[data-qmdp-output="${input.dataset.qmdpDial}"]`);
+        const sync = () => {
+          if (!output) return;
+          output.value = input.value;
+          output.textContent = input.value;
+        };
+        input.addEventListener('input', sync);
+        sync();
+      });
+
+      const fitStage = () => {
+        document.querySelectorAll('.mock-stage-wrap').forEach((wrap) => {
+          const stage = wrap.querySelector('[data-desktop-stage]');
+          if (!stage) return;
+          const scale = Math.min(wrap.clientWidth / 960, wrap.clientHeight / 600);
+          stage.style.setProperty('--mock-scale', String(Math.max(0, scale)));
+        });
+      };
+
+      const observer = new ResizeObserver(fitStage);
+      document.querySelectorAll('.mock-stage-wrap').forEach((wrap) => observer.observe(wrap));
+      window.addEventListener('load', fitStage, { once: true });
+      fitStage();
+    })();
+  </script>
+</body>
+</html>

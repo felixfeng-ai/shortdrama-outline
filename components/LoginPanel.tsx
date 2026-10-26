@@ -182,21 +182,33 @@ export default function LoginPanel() {
 
       <section className="auth-story" aria-labelledby="auth-story-title">
         <div className="auth-story-copy">
-          <p className="auth-kicker">STORY DESK / ACCOUNT</p>
-          <h1 id="auth-story-title">一句想法，<br />长成能出图的分镜。</h1>
+          <p className="auth-kicker">PROJECT CONTINUITY / ACCOUNT</p>
+          <h1 id="auth-story-title">
+            先把戏<span className="auth-title-accent">做对</span>，<br />
+            再把镜头<span className="auth-title-accent">生成</span>。
+          </h1>
           <p className="auth-lede">
-            人物、结构、分集与资产都在同一个项目里。登录后，换一台设备也能接着写。
+            人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。
           </p>
         </div>
 
-        <ol className="auth-pipeline" aria-label="创作流程">
-          {['人物', '三幕', '分集', '定妆', '场次', '分镜'].map((label, index) => (
-            <li key={label}>
-              <span className="auth-pipeline-index">{String(index + 1).padStart(2, '0')}</span>
-              <span>{label}</span>
-            </li>
-          ))}
-        </ol>
+        <div className="auth-proof-chain" aria-label="项目核心能力">
+          <div className="auth-proof-node">
+            <span className="auth-proof-index">01</span>
+            <strong>角色锚点</strong>
+            <small>贯穿全剧</small>
+          </div>
+          <div className="auth-proof-node">
+            <span className="auth-proof-index">02</span>
+            <strong>改动影响</strong>
+            <small>看得见下游</small>
+          </div>
+          <div className="auth-proof-node">
+            <span className="auth-proof-index">03</span>
+            <strong>参考图不上传</strong>
+            <small>项目可带走</small>
+          </div>
+        </div>
       </section>
 
       <section className="auth-access" aria-label="账号登录">
@@ -263,18 +275,17 @@ export default function LoginPanel() {
           ) : (
             <>
               <div className="auth-form-heading">
-                <p className="auth-kicker">PHONE SIGN-IN</p>
-                <h2>{step === 'phone' ? '登录成剧' : '输入验证码'}</h2>
+                <h2>{step === 'phone' ? '继续这个项目' : '输入验证码'}</h2>
                 <p className="auth-form-intro">
                   {step === 'phone'
-                    ? '用手机号登录，认领当前浏览器里的项目。'
+                    ? '用手机号保存当前项目，之后可以在其他设备找回。'
                     : `验证码已发送至 ${phone.trim()}。`}
                 </p>
               </div>
 
               <div className="auth-steprail" aria-hidden="true">
                 <span className="on">01 手机号</span>
-                <span className={step === 'code' ? 'on' : ''}>02 验证</span>
+                <span className={step === 'code' ? 'on' : ''}>02 验证码</span>
               </div>
 
               <form className="auth-form" onSubmit={submit} aria-busy={busy}>
@@ -297,7 +308,7 @@ export default function LoginPanel() {
                       aria-describedby="auth-phone-hint"
                       aria-invalid={Boolean(error)}
                     />
-                    <small id="auth-phone-hint">中国大陆手机号，用于登录与跨设备找回项目。</small>
+                    <small id="auth-phone-hint">仅支持中国大陆手机号，用于登录和找回项目。</small>
                   </label>
                 ) : (
                   <>
@@ -344,12 +355,12 @@ export default function LoginPanel() {
                 >
                   {busy
                     ? <><span className="auth-spinner" aria-hidden="true" />{step === 'phone' ? '正在发送…' : '正在登录…'}</>
-                    : step === 'phone' ? '获取验证码' : '登录并认领项目'}
+                    : step === 'phone' ? '发送验证码' : '登录并继续项目'}
                 </button>
               </form>
 
               <p className="auth-footnote">
-                手机号只用于登录和项目归属，不会展示给其他用户。
+                手机号仅用于登录和项目归属。
               </p>
             </>
           )}
