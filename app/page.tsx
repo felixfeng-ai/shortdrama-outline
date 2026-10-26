@@ -101,7 +101,12 @@ import {
   downloadBlob,
 } from '@/lib/assets/export'
 import { postJson, postSse, isAbortError } from '@/lib/api'
-import { readStepQuery, withStepQuery } from '@/lib/app-nav'
+import {
+  readProjectQuery,
+  readStepQuery,
+  withProjectQuery,
+  withStepQuery,
+} from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import {
@@ -248,13 +253,38 @@ export default function Home() {
    * 点左栏（或窄屏步骤条）切换。生成状态都在这之外，切换不会打断正在跑的任务。
    */
   const [view, setView] = useState<StepKey>('characters')
+  const projectIdRef = useRef<string | null>(null)
   useEffect(() => {
-    const syncStepFromUrl = () => {
+    projectIdRef.current = projectId
+  }, [projectId])
+  useEffect(() => {
+    let cancelled = false
+    const syncViewFromUrl = () => {
       setView(readStepQuery(window.location.search) ?? 'characters')
     }
-    syncStepFromUrl()
-    window.addEventListener('popstate', syncStepFromUrl)
-    return () => window.removeEventListener('popstate', syncStepFromUrl)
+    const syncFromPopState = () => {
+      syncViewFromUrl()
+      const targetProjectId = readProjectQuery(window.location.search)
+      if (targetProjectId === projectIdRef.current) return
+      if (!targetProjectId) {
+        clearWorkspace()
+        setProjectId(null)
+        return
+      }
+      void (async () => {
+        clearWorkspace()
+        const restored = await loadProject(targetProjectId).catch(() => false)
+        if (cancelled) return
+        if (!restored) setProjectId(targetProjectId)
+        setNotice(restored ? null : '这个项目还没有内容，可以从故事灵感开始写。')
+      })()
+    }
+    syncViewFromUrl()
+    window.addEventListener('popstate', syncFromPopState)
+    return () => {
+      cancelled = true
+      window.removeEventListener('popstate', syncFromPopState)
+    }
   }, [])
   // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
   const [impact, setImpact] = useState<({ affected: number } & ShotAudit) | null>(null)
@@ -805,6 +835,20 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  /** 项目是 URL 的一等状态：切换写历史，自动恢复和新建则只修正当前记录。 */
+  function writeProjectToUrl(projectIdValue: string | null, mode: 'push' | 'replace' = 'replace') {
+    const rawCurrent = new URLSearchParams(window.location.search).get('project')
+    if ((projectIdValue ?? null) === rawCurrent) return
+    const search = withProjectQuery(window.location.search, projectIdValue)
+    const href = `${window.location.pathname}${search}${window.location.hash}`
+    const previous = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state
+      : {}
+    const state = { ...previous, project: projectIdValue }
+    if (mode === 'push') window.history.pushState(state, '', href)
+    else window.history.replaceState(state, '', href)
+  }
+
   /** 左栏高亮的是「正在看的那一步」，不是「该做哪一步」 */
   const viewIndex = STEPS.find((s) => s.key === view)?.index ?? currentStep
 
@@ -1085,6 +1129,7 @@ export default function Home() {
     try {
       const { project } = await createProject(title || "未命名漫剧")
       setProjectId(project.id)
+      writeProjectToUrl(project.id, 'replace')
       // 新项目要立刻出现在项目条里，否则用户看不到「刚才那次生成存到哪了」
       void refreshProjects()
       return project.id
@@ -1432,10 +1477,37 @@ export default function Home() {
       const list = await listProjects().catch(() => [])
       if (cancelled) return
       setProjects(list)
-      if (list.length === 0) return
-      const restored = await loadProject(list[0].id).catch(() => false)
+      const requestedProjectId = readProjectQuery(window.location.search)
+      const requestedProject = requestedProjectId
+        ? list.find((project) => project.id === requestedProjectId) ?? null
+        : null
+      const targetProject = requestedProject ?? list[0] ?? null
+      const linkInvalid = Boolean(requestedProjectId && !requestedProject)
+
+      if (!targetProject) {
+        if (requestedProjectId) {
+          writeProjectToUrl(null, 'replace')
+          setNotice('项目链接已失效，已打开空白工作台。')
+        }
+        return
+      }
+
+      const restored = await loadProject(targetProject.id).catch(() => false)
       if (cancelled) return
-      if (restored) setNotice(`已恢复上次的项目「${list[0].title}」，可以接着往下做。`)
+      if (!restored && requestedProject) setProjectId(targetProject.id)
+      if (restored || requestedProject) writeProjectToUrl(targetProject.id, 'replace')
+      if (linkInvalid) {
+        writeProjectToUrl(restored ? targetProject.id : null, 'replace')
+        setNotice(
+          restored
+            ? `项目链接已失效，已打开最近项目「${targetProject.title}」。`
+            : '项目链接已失效，已打开空白工作台。',
+        )
+      } else if (restored && !requestedProject) {
+        setNotice(`已恢复上次的项目「${targetProject.title}」，可以接着往下做。`)
+      } else if (!restored && requestedProject) {
+        setNotice('这个项目还没有内容，可以从故事灵感开始写。')
+      }
     })()
     return () => { cancelled = true }
     // 只在挂载时跑一次；依赖的 setter 都是稳定的
@@ -1667,6 +1739,17 @@ export default function Home() {
     if (done) copyTimer.current = setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleCopyProjectLink = async () => {
+    if (!projectId) {
+      setNotice('请先打开或生成一个项目，再复制分享链接。')
+      return
+    }
+    const url = new URL(window.location.href)
+    url.search = withProjectQuery(url.search, projectId)
+    const done = await copyText(url.toString())
+    setNotice(done ? '项目链接已复制，打开后会回到当前项目与步骤。' : '复制失败，请稍后再试。')
+  }
+
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     downloadMarkdown(`成剧-大纲-${stamp}.md`, markdown())
@@ -1719,6 +1802,7 @@ export default function Home() {
   /** 切到另一个项目：换工作台 = 全清 + 装载目标项目的快照 */
   async function handleSwitchProject(id: string) {
     if (id === projectId) return
+    writeProjectToUrl(id, 'push')
     clearWorkspace()
     setProjectId(id)
     const restored = await loadProject(id).catch(() => false)
@@ -1742,6 +1826,7 @@ export default function Home() {
       if (id === projectId) {
         clearWorkspace()
         setProjectId(null)
+        writeProjectToUrl(null, 'replace')
       }
       await refreshProjects()
       setNotice('项目已删除，连带它的快照与图台账一起清掉了。')
@@ -1752,6 +1837,7 @@ export default function Home() {
 
   /** 新建：先给一张白纸，下一次生成时才真正落成项目 */
   function handleNewProject() {
+    writeProjectToUrl(null, 'push')
     clearWorkspace()
     setProjectId(null)
     setNotice('已经开了一个空白工作台，写下想法点生成就会存成新项目。')
@@ -1768,6 +1854,7 @@ export default function Home() {
       clearWorkspace()
       const restored = await loadProject(project.id).catch(() => false)
       if (!restored) throw new Error('示例没有载入成功，请重试')
+      writeProjectToUrl(project.id, 'push')
       setNotice(`已载入示例项目「${project.title}」——六步都有内容，可以直接乱点着看。`)
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '示例载入失败，请重试')
@@ -2041,6 +2128,7 @@ export default function Home() {
                   onBackup={() => { void handleExportPackage() }}
                   onExportMarkdown={handleExport}
                   onCopyAll={() => { void handleCopyAll() }}
+                  onCopyLink={() => { void handleCopyProjectLink() }}
                   copied={copied}
                 />
                 {/* 空工作台时给一条最短的上手路径：先看示例长什么样 */}

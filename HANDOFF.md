@@ -36,9 +36,9 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - PWA 基础已落地：Manifest、Service Worker、离线页、静态缓存和条件安装按钮；API 与生成资产明确绕过缓存。
 - Web Push 已完成本地闭环：用户点击后才申请通知权限；订阅按匿名 owner 隔离；定妆或镜头首帧成功/失败后推送，点击通知回到对应步骤；404/410 失效订阅自动清理。VAPID 密钥已写入本地 `.env.local`，线上需要单独配置。
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
-- 六步支持 URL 深链：`?step=visuals` 可刷新恢复，步骤切换写入历史并支持前进后退；Manifest 提供人物、定妆、分镜快捷方式。
+- 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md) 与 [specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md) 与 [specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -56,10 +56,11 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `463/463`；其中 16 项成本实验不随本次提交，账号与断点提交范围为 `447/447`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
+- **验证**：当前工作区全量测试 `467/467`；其中 16 项成本实验不随本次提交，当前提交范围为 `451/451`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
-- **本地预览**：`http://localhost:3200/?theme=neutral`。用户确认前不要推送。
+- **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；当前项目深链改动仍在本地等待验收。
+- **本地预览**：`http://localhost:3200/?theme=neutral`。
 - **真实通义验证**：用户提供的可用 Key 已写入服务端 `.env.local`；真实生成成功，任务为 `succeeded`，输出 PNG 为 720×1280，约 1.06MB，已落库并成为当前采用关键帧。
 - **Web Push 剩余验收**：headless Chrome 处于临时上下文，不支持真实 Push API 订阅；按钮错误态已兜底。仍需在普通 Chrome 窗口中人工点击授权，完成一次真实浏览器订阅与测试通知。
 - **执行顺序调整**：图生视频成本较高，放到最后；先完成视觉一致性、任务管理和低成本音频/协作基础。
