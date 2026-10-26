@@ -54,6 +54,9 @@ test("R2 Refresh Token 能换取新的 Access Token", () => {
     const refreshed = refreshAccessToken(db, session.token, { now: now + 30_000, secret })
     assert.equal(refreshed?.user.id, session.user.id)
     assert.match(refreshed?.access.token || "", /^cj1\./)
+    assert.notEqual(refreshed?.refreshToken, session.token)
+    assert.equal(userFromSessionToken(db, session.token, now + 31_000), null)
+    assert.equal(userFromSessionToken(db, refreshed!.refreshToken, now + 31_000)?.id, session.user.id)
     assert.equal(
       userFromAccessToken(db, refreshed!.access.token, { now: now + 31_000, secret })?.id,
       session.user.id,

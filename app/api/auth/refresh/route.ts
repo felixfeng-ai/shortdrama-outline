@@ -22,6 +22,8 @@ export async function POST(req: Request) {
       user: result.user,
       accessToken: result.access.token,
       accessExpiresAt: result.access.expiresAt,
+      refreshToken: result.refreshToken,
+      refreshExpiresAt: result.refreshExpiresAt,
     }))
   } catch (error) {
     const { body, status } = errorResponse(error)

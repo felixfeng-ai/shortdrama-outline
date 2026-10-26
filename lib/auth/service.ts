@@ -26,6 +26,13 @@ export interface AuthAccessResult {
   expiresAt: number
 }
 
+export interface AuthRefreshResult {
+  user: AuthUser
+  access: AuthAccessResult
+  refreshToken: string
+  refreshExpiresAt: number
+}
+
 export interface AuthSessionSummary {
   id: string
   client: string
@@ -275,13 +282,43 @@ export function refreshAccessToken(
   db: DatabaseSync,
   refreshToken: string,
   options: { now?: number; secret?: string } = {},
-): { user: AuthUser; access: AuthAccessResult } | null {
+): AuthRefreshResult | null {
   const now = options.now ?? Date.now()
-  const user = userFromSessionToken(db, refreshToken, now)
-  if (!user) return null
+  const oldToken = refreshToken.trim()
+  const secret = options.secret?.trim() || process.env.AUTH_SECRET?.trim()
+  if (!oldToken || !secret) return null
+  const row = db.prepare(
+    `SELECT u.*, s.expires_at AS session_expires_at
+     FROM auth_sessions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.id = ? AND s.revoked_at IS NULL AND s.expires_at > ?`,
+  ).get(hash(oldToken), now) as (Record<string, unknown> & { session_expires_at: number }) | undefined
+  if (!row) return null
+
+  const nextToken = randomBytes(32).toString("base64url")
+  const nextTokenId = hash(nextToken)
+  db.exec("BEGIN IMMEDIATE")
+  try {
+    const updated = db.prepare(
+      `UPDATE auth_sessions
+       SET id = ?, last_seen_at = ?
+       WHERE id = ? AND revoked_at IS NULL AND expires_at > ?`,
+    ).run(nextTokenId, now, hash(oldToken), now)
+    if (Number(updated.changes) !== 1) {
+      db.exec("ROLLBACK")
+      return null
+    }
+    db.exec("COMMIT")
+  } catch (error) {
+    db.exec("ROLLBACK")
+    throw error
+  }
+  const user = userRow(row)
   return {
     user,
-    access: createAccessToken(refreshToken, user, { now, secret: options.secret }),
+    access: createAccessToken(nextToken, user, { now, secret }),
+    refreshToken: nextToken,
+    refreshExpiresAt: Number(row.session_expires_at),
   }
 }
 

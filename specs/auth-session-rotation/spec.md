@@ -27,7 +27,7 @@
 
 **When** 调用刷新接口
 
-**Then** 返回新的短期 access token；refresh session 本身仍保持 30 天有效。
+**Then** 返回新的短期 access token 和新的 refresh token；旧 refresh token 立即失效，会话总有效期保持 30 天。
 
 ### R3 Access 过期与会话撤销
 

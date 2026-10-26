@@ -502,7 +502,7 @@ chengju/
 | POST | `/api/auth/verify-code` | `{ phone, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 15 分钟 `accessToken` 与 30 天 `refreshToken` |
 | GET | `/api/auth/session` | — | `{ user }`；未登录为 `null` |
 | POST | `/api/auth/logout` | — | 撤销当前会话并清除 Cookie |
-| POST | `/api/auth/refresh` | `{ refreshToken }` | App 用 refresh session 换取新的短期 access token |
+| POST | `/api/auth/refresh` | `{ refreshToken }` | App 换取新的短期 access token，同时轮换 refresh token；旧 refresh token 立即失效 |
 | GET | `/api/auth/sessions` | — | 按最后活跃时间返回当前账号的设备会话 |
 | DELETE | `/api/auth/sessions` | `{ sessionId }` | 撤销指定设备会话 |
 | POST | `/api/ideas` | `{ idea, genre, count? }` | 想法联想与题材推荐 |
@@ -592,7 +592,7 @@ interface Episode {
 
 - `middleware.ts` 为首次访问设置高熵 `chengju_sid` Cookie；本地开发使用稳定会话，避免重启后项目丢失。
 - 手机号登录后，验证码只保存哈希，5 分钟有效，并有发送冷却和小时上限。
-- Web 使用 HttpOnly refresh session；App 使用 15 分钟 access token 访问业务接口，过期后用 refresh token 换新。两者读取同一批项目。
+- Web 使用 HttpOnly refresh session；App 使用 15 分钟 access token 访问业务接口，过期后用 refresh token 换新。每次刷新都会轮换 refresh token，旧值立即失效。两者读取同一批项目。
 - 账号页列出当前账号的活跃设备，可单独撤销其他会话；撤销后对应 access 与 refresh token 都立即失效。
 - 首次登录只认领当前匿名会话的项目和推送订阅，不会碰其他匿名会话的数据。
 - 项目、快照、关键帧任务、生成资产和推送订阅都按 owner 校验；未登录时 owner 是匿名会话，登录后是用户 id。

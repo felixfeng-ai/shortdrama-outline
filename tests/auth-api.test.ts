@@ -132,6 +132,8 @@ test("App 客户端验证后拿到 Bearer Token，并可通过 session 接口恢
     const refreshedPayload = await refreshed.json()
     assert.equal(refreshed.status, 200)
     assert.match(refreshedPayload.data.accessToken, /^cj1\./)
+    assert.match(refreshedPayload.data.refreshToken, /^[A-Za-z0-9_-]{40,}$/)
+    assert.notEqual(refreshedPayload.data.refreshToken, payload.data.refreshToken)
   } finally {
     delete process.env.AUTH_SECRET
   }

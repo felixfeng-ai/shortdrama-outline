@@ -27,7 +27,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 工作台信息层级已收敛：Story Command 只在核心人物步骤完整展开，其他步骤折叠为项目源摘要；本地图库只在定妆/场景完整展示，分镜只显示缺图提示；项目包、Markdown、复制大纲统一收进项目条导出菜单。
 - 长剧集断点续跑已接入：分集和分镜各自按项目保存 checkpoint，每完成一批更新输入签名、游标、已生成内容和稳定 stamp；失败/取消后前端自动带续跑标记，输入变化则旧断点失效，成功完成自动清理。
 - 通义多图参考已完成真实验证：使用内存生成的 512×512 PNG 调用 `qwen-image-2.0-pro`，返回 PNG 约 1.16MB，耗时约 13 秒；未读取本地图片，也未把测试产物写入项目。
-- 正式账号第二阶段已落地：手机号 6 位验证码登录、Web HttpOnly refresh session、App 15 分钟 access token、30 天 refresh token、退出撤销会话；验证码、refresh token 与 access session 都做哈希或签名校验。
+- 正式账号第二阶段已落地：手机号 6 位验证码登录、Web HttpOnly refresh session、App 15 分钟 access token、30 天 refresh token、一次性 refresh 轮换与退出撤销会话；验证码、refresh token 与 access session 都做哈希或签名校验。
 - 账号页新增活跃设备列表，可查看设备类型、最后活跃时间并单独退出其他设备；撤销后对应 access 与 refresh token 同时失效。
 - 首次登录只认领当前 `chengju_sid` 对应的匿名项目与 Push 订阅，不迁移其他匿名会话；项目、快照、资产、生成任务、额度、Agent、导出等接口已统一优先解析登录用户。
 - 登录入口已从遮挡工作台的 modal 改为独立 `/login` 页面；支持手机号/验证码两步、60 秒重发倒计时、内联错误、登录后安全返回原步骤，以及已登录账号与退出状态。
