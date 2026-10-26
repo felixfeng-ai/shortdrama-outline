@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>成剧 VeyaFrame · Signal Desk 舒适版提案</title>
+  <style>
+    :root {
+      --page: #13171a;
+      --page-deep: #101316;
+      --panel: #181d21;
+      --surface: #1d2328;
+      --surface-2: #22292e;
+      --surface-3: #293138;
+      --line: rgba(213, 224, 228, .11);
+      --line-strong: rgba(213, 224, 228, .18);
+      --text: #dfe4e2;
+      --text-2: #b6c0c5;
+      --text-3: #8b969d;
+      --text-4: #7d8990;
+      --accent: #c4d98a;
+      --accent-strong: #d0e39b;
+      --accent-ink: #1b2115;
+      --blue: #8eb7e7;
+      --warning: #d58d73;
+      --radius: 8px;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    body.original {
+      --page: #0b0d10;
+      --page-deep: #080a0c;
+      --panel: #12161a;
+      --surface: #171c21;
+      --surface-2: #1b2329;
+      --surface-3: #222c33;
+      --line: #2a3037;
+      --line-strong: #39434c;
+      --text: #eef2f4;
+      --text-2: #c2cad1;
+      --text-3: #87919b;
+      --text-4: #64717b;
+      --accent: #b9f35a;
+      --accent-strong: #c9ff72;
+      --accent-ink: #0b0d10;
+      --blue: #71a7ff;
+      --warning: #ff8b70;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--page); }
+    body {
+      min-width: 320px;
+      min-height: 100dvh;
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 32% -8%, rgba(196, 217, 138, .035), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, .012), transparent 17%),
+        var(--page);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      transition: background-color 180ms var(--ease), color 180ms var(--ease);
+    }
+
+    button, textarea, input { font: inherit; }
+    button { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, textarea:focus-visible, input:focus-visible {
+      outline: 2px solid rgba(142, 183, 231, .75);
+      outline-offset: 2px;
+    }
+    ::selection { background: rgba(196, 217, 138, .28); color: var(--text); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--text-3) 42%, transparent);
+      background-clip: padding-box;
+    }
+    svg { display: block; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+
+    .app {
+      display: grid;
+      min-height: 100dvh;
+      grid-template-columns: 72px minmax(0, 1fr) 390px;
+      grid-template-rows: 54px minmax(0, 1fr);
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      grid-column: 1 / -1;
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 18px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 9px;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: .01em;
+    }
+    .brand-mark {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line));
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .brand-en {
+      color: var(--text-3);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .14em;
+    }
+    .crumb {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      color: var(--text-3);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .crumb b { color: var(--text-2); font-weight: 500; }
+    .top-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+    .quota {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-3);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .quota-track { width: 54px; height: 3px; overflow: hidden; border-radius: 3px; background: var(--surface-3); }
+    .quota-track i { display: block; width: 69%; height: 100%; background: var(--accent); }
+    .top-button {
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11.5px;
+      cursor: pointer;
+      transition: border-color 150ms var(--ease), background-color 150ms var(--ease), color 150ms var(--ease);
+    }
+    .top-button:hover { border-color: var(--line-strong); background: var(--surface); color: var(--text); }
+    .top-button svg { width: 15px; height: 15px; stroke-width: 1.5; }
+    .preview-badge {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      padding: 0 8px;
+      border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--line));
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--blue) 8%, transparent);
+      color: color-mix(in srgb, var(--blue) 88%, var(--text));
+      font-size: 10px;
+      letter-spacing: .05em;
+    }
+    .compare.is-original {
+      border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      color: var(--accent);
+    }
+
+    .rail {
+      position: sticky;
+      top: 54px;
+      z-index: 10;
+      display: flex;
+      height: calc(100dvh - 54px);
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 8px;
+      border-right: 1px solid var(--line);
+      background: color-mix(in srgb, var(--page-deep) 86%, transparent);
+    }
+    .rail canvas-button {
+      display: grid;
+      width: 44px;
+      height: 40px;
+      margin-bottom: 8px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--text-3);
+      cursor: pointer;
+    }
+    .rail svg { width: 17px; height: 17px; stroke-width: 1.5; }
+    .step {
+      position: relative;
+      display: grid;
+      width: 52px;
+      min-height: 48px;
+      place-items: center;
+      gap: 2px;
+      padding: 5px 2px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), border-color 150ms var(--ease), color 150ms var(--ease);
+    }
+    .step small {
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .step:hover { border-color: var(--line); background: var(--surface); color: var(--text-2); }
+    .step.is-active {
+      border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+      color: var(--accent);
+    }
+    .step.is-done { color: var(--blue); }
+    .rail-flow {
+      margin-top: auto;
+      color: var(--text-4);
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: 8px;
+      letter-spacing: .16em;
+      writing-mode: vertical-rl;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 18px 20px 28px;
+    }
+    .status-row {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: var(--text-3);
+      font-size: 11.5px;
+    }
+    .status-row strong {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--text-2);
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status-sep { width: 1px; height: 12px; background: var(--line); }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+    .status-chip i { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); }
+    .status-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .text-button {
+      min-height: 30px;
+      padding: 0 9px;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .text-button:hover { border-color: var(--line); background: var(--panel); color: var(--text); }
+
+    .story-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(220px, .82fr);
+      gap: 12px;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .018);
+    }
+    .story-panel { min-width: 0; padding: 18px 20px 16px; }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .kicker {
+      color: var(--text-3);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: .05em;
+    }
+    .story-hint { color: var(--text-4); font-size: 10.5px; }
+    .story-input {
+      display: block;
+      width: 100%;
+      min-height: 76px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 400;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+    .story-input::placeholder { color: var(--text-4); }
+    .story-input:focus { color: var(--text); }
+    .genre-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .genre {
+      min-height: 29px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .genre:hover { border-color: var(--line-strong); color: var(--text); }
+    .genre.is-on {
+      border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+      color: var(--accent-strong);
+    }
+    .story-footer {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+    .primary-action {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      border: 1px solid color-mix(in srgb, var(--accent) 66%, var(--line));
+      border-radius: 6px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 10px 26px -20px rgba(196, 217, 138, .75);
+      transition: transform 140ms var(--ease), background-color 140ms var(--ease);
+    }
+    .primary-action:hover { background: var(--accent-strong); transform: translateY(-1px); }
+    .primary-action:active { transform: translateY(0) scale(.985); }
+    .primary-action svg { width: 15px; height: 15px; stroke-width: 1.7; }
+    .secondary-action {
+      min-height: 42px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .secondary-action:hover { border-color: var(--line-strong); background: var(--surface); color: var(--text); }
+    .story-metrics {
+      display: flex;
+      gap: 16px;
+      margin-left: auto;
+      color: var(--text-4);
+      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
+    }
+    .story-metrics span { display: grid; gap: 1px; text-align: right; }
+    .story-metrics b { color: var(--text-2); font-size: 11.5px; font-weight: 500; }
+
+    .inspiration { min-width: 0; padding: 16px; }
+    .inspiration .panel-head { margin-bottom: 5px; }
+    .inspiration-title { display: flex; align-items: center; gap: 7px; color: var(--text-2); font-size: 12.5px; font-weight: 500; }
+    .inspiration-title svg { width: 15px; height: 15px; color: var(--accent); }
+    .inspiration-sub { color: var(--text-4); font-size: 10px; }
+    .idea-list { display: grid; gap: 7px; margin-top: 10px; }
+    .idea {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text-3);
+      font-size: 11.5px;
+      line-height: 1.55;
+      text-align: left;
+      cursor: pointer;
+    }
+    .idea:hover { border-color: var(--line-strong); background: var(--surface-2); color: var(--text-2); }
+    .idea b { display: block; margin-bottom: 2px; color: var(--text-2); font-weight: 500; }
+    .idea.is-recommended {
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+      background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+      color: var(--text-2);
+    }
+    .inspiration-note {
+      display: flex;
+      gap: 7px;
+      margin-top: 11px;
+      color: var(--text-4);
+      font-size: 10.5px;
+      line-height: 1.55;
+    }
+    .inspiration-note i { width: 4px; height: 4px; margin-top: 6px; border-radius: 50%; background: var(--blue); flex: 0 0 4px; }
+
+    .work-section { margin-top: 14px; overflow: hidden; }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-index {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+      border-radius: 5px;
+      background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+      color: var(--accent);
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+    .section-title { display: grid; gap: 1px; }
+    .section-title b { color: var(--text); font-size: 13.5px; font-weight: 500; }
+    .section-title small { color: var(--text-4); font-size: 10px; }
+    .section-actions { display: flex; gap: 6px; margin-left: auto; }
+    .section-actions button {
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--text-3);
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .section-actions button:hover { border-color: var(--line-strong); color: var(--text); }
+    .section-actions .next { border-color: color-mix(in srgb, var(--blue) 23%, var(--line)); color: var(--text-2); }
+    .section-actions .regen {
+      border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+      background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+      color: var(--accent);
+    }
+    .character-list { display: grid; }
+    .character {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 22px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .character:last-child { border-bottom: 0; }
+    .character-head {
+      display: flex;
+      grid-column: 1 / -1;
+      min-width: 0;
+      align-items: center;
+      gap: 9px;
+    }
+    .character-index {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 5px;
+      background: var(--surface-2);
+      color: var(--text-3);
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: 9.5px;
+    }
+    .character-name { color: var(--text); font-size: 13px; font-weight: 500; }
+    .character-role { color: var(--text-4); font-size: 10.5px; }
+    .character-tools { display: flex; gap: 3px; margin-left: auto; }
+    .character-tools button {
+      min-height: 28px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-4);
+      font-size: 10.5px;
+      cursor: pointer;
+    }
+    .character-tools button:hover { border-color: var(--line); background: var(--surface-2); color: var(--text-2); }
+    .field { display: grid; min-width: 0; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: start; }
+    .field dt { padding-top: 10px; color: var(--text-4); font-size: 10.5px; }
+    .field dd {
+      min-width: 0;
+      margin: 0;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 12px;
+      line-height: 1.72;
+    }
+    .field dd strong { color: var(--text); font-weight: 500; }
+
+    .console {
+      position: sticky;
+      top: 54px;
+      display: grid;
+      min-width: 0;
+      height: calc(100dvh - 54px);
+      grid-template-rows: 44px auto minmax(0, 1fr) auto;
+      border-left: 1px solid var(--line);
+      background: color-mix(in srgb, var(--page-deep) 86%, transparent);
+    }
+    .console-head {
+      display: flex;
+      align-items: end;
+      gap: 4px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .console-tab {
+      min-height: 36px;
+      padding: 0 10px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .console-tab.is-on { border-bottom-color: var(--accent); color: var(--text); font-weight: 500; }
+    .shot-no { margin-left: auto; padding-bottom: 11px; color: var(--text-4); font: 9px/1 ui-monospace, Consolas, monospace; letter-spacing: .08em; }
+    .agent-summary {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .agent-identity { display: flex; align-items: center; gap: 9px; }
+    .agent-mark {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--line));
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--warning) 9%, var(--surface));
+      color: var(--warning);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .agent-name { display: grid; gap: 1px; }
+    .agent-name b { color: var(--text); font-size: 12.5px; font-weight: 500; }
+    .agent-name small { color: var(--text-4); font-size: 10px; }
+    .context-pill {
+      display: flex;
+      min-height: 34px;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--text-3);
+      font-size: 10.5px;
+    }
+    .context-pill b { color: var(--text-2); font-weight: 500; }
+    .context-pill span:last-child { margin-left: auto; color: var(--text-4); }
+    .console-body { min-height: 0; overflow-y: auto; padding: 14px; }
+    .quick-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; color: var(--text-4); font-size: 10px; }
+    .quick-list { display: grid; }
+    .quick {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 16px;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 2px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .quick:hover .quick-title { color: var(--text); }
+    .quick-title { color: var(--text-2); font-size: 12px; line-height: 1.5; transition: color 140ms var(--ease); }
+    .quick-sub { display: block; margin-top: 2px; color: var(--text-4); font-size: 10px; }
+    .quick-arrow { color: var(--text-4); font-size: 15px; text-align: right; }
+    .console-foot {
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px 12px;
+      border-top: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .composer {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      gap: 8px;
+      padding: 0 6px 0 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    .composer span { color: var(--blue); font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+    .composer input {
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 11.5px;
+    }
+    .composer input::placeholder { color: var(--text-4); }
+    .send {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+      border-radius: 5px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      cursor: pointer;
+    }
+    .send svg { width: 14px; height: 14px; stroke-width: 1.8; }
+    .console-meta { color: var(--text-4); font-size: 9.5px; line-height: 1.5; }
+
+    @media (max-width: 1180px) {
+      .app { grid-template-columns: 68px minmax(0, 1fr) 350px; }
+      .story-layout { grid-template-columns: minmax(0, 1fr); }
+      .inspiration { display: none; }
+    }
+    @media (max-width: 980px) {
+      .app { display: block; }
+      .topbar { position: sticky; min-height: 54px; }
+      .rail { display: none; }
+      .main { padding: 14px 14px 18px; }
+      .console { position: static; height: auto; min-height: 420px; border-top: 1px solid var(--line); border-left: 0; }
+      .top-actions .quota { display: none; }
+      .crumb { display: none; }
+      .mobile-steps { display: flex !important; }
+    }
+    @media (min-width: 981px) {
+      .mobile-steps { display: none; }
+    }
+    .mobile-steps {
+      display: none;
+      grid-column: 1 / -1;
+      gap: 4px;
+      overflow-x: auto;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      scrollbar-width: none;
+    }
+    .mobile-steps::-webkit-scrollbar { display: none; }
+    .mobile-step {
+      flex: 0 0 auto;
+      min-height: 30px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 10.5px;
+      cursor: pointer;
+    }
+    .mobile-step.is-active {
+      border-color: var(--line);
+      background: var(--surface-2);
+      color: var(--text);
+    }
+    @media (max-width: 620px) {
+      .topbar { gap: 8px; padding: 0 12px; }
+      .brand-en, .top-button.crumb-action { display: none; }
+      .preview-badge {
+        display: inline-flex;
+        min-height: 22px;
+        padding: 0 6px;
+        font-size: 9px;
+      }
+      .status-row { flex-wrap: wrap; }
+      .status-actions { width: 100%; margin-left: 0; }
+      .story-panel { padding: 15px; }
+      .story-input { min-height: 108px; font-size: 15px; }
+      .story-footer { flex-wrap: wrap; }
+      .story-metrics { width: 100%; margin-left: 0; justify-content: space-between; }
+      .section-head { flex-wrap: wrap; }
+      .section-actions { width: 100%; margin-left: 0; }
+      .section-actions button { flex: 1; }
+      .character { grid-template-columns: minmax(0, 1fr); }
+      .character-head, .field { grid-column: 1; }
+      .mobile-step { font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">成</span>
+        <span>成剧</span>
+        <span class="brand-en">VEYAFRAME</span>
+      </div>
+      <span class="preview-badge">视觉提案</span>
+      <div class="crumb">项目 <b>示例 · 快递员的最后一单</b></div>
+      <div class="top-actions">
+        <span class="quota">今日额度 9 / 13 <span class="quota-track"><i></i></span></span>
+        <button class="top-button crumb-action" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M8 6h8M7 8l4 8M17 8l-4 8"></path></svg>
+          项目画布
+        </button>
+        <button class="top-button compare" id="compare" type="button">对比现版配色</button>
+      </div>
+    </header>
+
+    <nav class="mobile-steps" aria-label="创作步骤">
+      <button class="mobile-step is-active" type="button">核心人物</button>
+      <button class="mobile-step" type="button">三幕大纲</button>
+      <button class="mobile-step" type="button">分集剧情</button>
+      <button class="mobile-step" type="button">定妆</button>
+      <button class="mobile-step" type="button">场景</button>
+      <button class="mobile-step" type="button">分镜</button>
+    </nav>
+
+    <aside class="rail" aria-label="创作步骤">
+      <button style="display:grid;width:44px;height:40px;margin-bottom:8px;place-items:center;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text-3)" type="button" aria-label="打开项目画布">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M8 6h8M7 8l4 8M17 8l-4 8"></path></svg>
+      </button>
+      <button class="step is-active" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"></circle><path d="M5.5 19c.8-3.2 3-4.8 6.5-4.8s5.7 1.6 6.5 4.8"></path></svg>
+        <small>人物</small>
+      </button>
+      <button class="step" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h10M5 18h14"></path><circle cx="18" cy="12" r="1.4"></circle></svg>
+        <small>三幕</small>
+      </button>
+      <button class="step" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M8 9h8M8 13h6"></path></svg>
+        <small>分集</small>
+      </button>
+      <button class="step" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="3"></circle><path d="M5 20c1-3.4 3.3-5 7-5s6 1.6 7 5M7 5l1.4 1.4M17 5l-1.4 1.4"></path></svg>
+        <small>定妆</small>
+      </button>
+      <button class="step" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 18 5-6 4 3 6-8v11H4Z"></path><circle cx="8" cy="7" r="2"></circle></svg>
+        <small>场景</small>
+      </button>
+      <button class="step" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2"></rect><path d="M8 10h5M8 14h8"></path></svg>
+        <small>分镜</small>
+      </button>
+      <span class="rail-flow">FLOW / SIGNAL DESK</span>
+    </aside>
+
+    <main class="main">
+      <div class="status-row">
+        <strong>示例 · 快递员的最后一单</strong>
+        <span class="status-sep" aria-hidden="true"></span>
+        <span class="status-chip"><i></i>已保存</span>
+        <span>2 项待办</span>
+        <span>6 / 6 步已生成</span>
+        <div class="status-actions">
+          <button class="text-button" type="button">重命名</button>
+          <button class="text-button" type="button">导出备份</button>
+        </div>
+      </div>
+
+      <section class="story-layout" aria-label="故事起点">
+        <article class="panel story-panel">
+          <div class="panel-head">
+            <span class="kicker">故事起点</span>
+            <span class="story-hint">一句话即可开始，之后仍可随时修改</span>
+          </div>
+          <textarea class="story-input" aria-label="故事想法">一个快递员意外继承了百万遗产，条件却是替原主人完成七桩未竟的交易。</textarea>
+          <div class="genre-row" aria-label="题材选择">
+            <button class="genre is-on" type="button">都市</button>
+            <button class="genre" type="button">悬疑</button>
+            <button class="genre" type="button">轻喜剧</button>
+            <button class="genre" type="button">逆袭</button>
+            <button class="genre" type="button">漫剧</button>
+          </div>
+          <div class="story-footer">
+            <button class="primary-action" type="button">
+              生成 · 核心人物
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M14 7l5 5-5 5"></path></svg>
+            </button>
+            <button class="secondary-action" type="button">清空重来</button>
+            <div class="story-metrics">
+              <span><b>3–5</b>人物</span>
+              <span><b>约 30 秒</b>预计</span>
+              <span><b>1 单位</b>消耗</span>
+            </div>
+          </div>
+        </article>
+
+        <aside class="panel inspiration" aria-label="灵感助手">
+          <div class="panel-head">
+            <span class="inspiration-title">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M8.3 14.4A6 6 0 1 1 15.7 14.4c-.8.7-1.2 1.6-1.2 2.6h-5c0-1-.4-1.9-1.2-2.6Z"></path></svg>
+              灵感助手
+            </span>
+            <span class="inspiration-sub">只提供选择</span>
+          </div>
+          <p class="inspiration-sub">从你的故事里找一个更具体的切口。</p>
+          <div class="idea-list">
+            <button class="idea is-recommended" type="button"><b>让最后一单成为主角的秘密</b>七桩交易彼此有关，收尾时才知道遗产从哪来。</button>
+            <button class="idea" type="button"><b>把规则写得更残酷</b>每完成一笔，主人物都会失去一段记忆。</button>
+            <button class="idea" type="button"><b>给对手一个合理的立场</b>拦截交易的人，其实在保护遗产真正的主人。</button>
+          </div>
+          <div class="inspiration-note"><i></i><span>由你决定采用哪条。助手不会自动改故事。</span></div>
+        </aside>
+      </section>
+
+      <section class="panel work-section" aria-label="当前步骤">
+        <header class="section-head">
+          <span class="section-index">01</span>
+          <span class="section-title">
+            <b>生成核心人物</b>
+            <small>动机、软肋和彼此之间的冲突</small>
+          </span>
+          <div class="section-actions">
+            <button type="button">两版对比</button>
+            <button type="button">添加角色</button>
+            <button class="next" type="button">下一步 · 三幕大纲</button>
+            <button class="regen" type="button">重新生成</button>
+          </div>
+        </header>
+
+        <div class="character-list">
+          <article class="character">
+            <header class="character-head">
+              <span class="character-index">01</span>
+              <span class="character-name">林遥</span>
+              <span class="character-role">28 岁 · 同城快递员</span>
+              <span class="character-tools">
+                <button type="button">换个方向</button>
+                <button type="button">删除</button>
+              </span>
+            </header>
+            <dl class="field"><dt>人物身份</dt><dd><strong>同城快递员。</strong> 孤儿院长大，独居，习惯把每一天拆成可以完成的清单。</dd></dl>
+            <dl class="field"><dt>核心动机</dt><dd>想给自己一个真正的家。但每完成一桩交易，他都会更接近一个不愿承认的事实。</dd></dl>
+            <dl class="field"><dt>性格侧面</dt><dd>遇事先算成本再开口。越紧张越爱讲冷笑话，用轻描淡写遮住真正的在意。</dd></dl>
+            <dl class="field"><dt>人物弧光</dt><dd>从只想着拿走遗产的外人，变成主动追问交易背后真相的人。</dd></dl>
+          </article>
+
+          <article class="character">
+            <header class="character-head">
+              <span class="character-index">02</span>
+              <span class="character-name">沈望</span>
+              <span class="character-role">36 岁 · 遗产执行人</span>
+              <span class="character-tools">
+                <button type="button">换个方向</button>
+                <button type="button">删除</button>
+              </span>
+            </header>
+            <dl class="field"><dt>人物身份</dt><dd><strong>遗产执行人。</strong> 说话像写合同，永远比对面早一步准备退路。</dd></dl>
+            <dl class="field"><dt>核心动机</dt><dd>确保七桩交易全部完成。至于谁会因此付出代价，不在她写下的条款里。</dd></dl>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <aside class="console" aria-label="AI 场记">
+      <header class="console-head">
+        <button class="console-tab" type="button">产出</button>
+        <button class="console-tab is-on" type="button">场记</button>
+        <span class="shot-no">SHOT 01</span>
+      </header>
+      <section class="agent-summary">
+        <div class="agent-identity">
+          <span class="agent-mark">记</span>
+          <span class="agent-name"><b>AI 场记</b><small>知道拍到哪了，也能替你改，改前先问你</small></span>
+        </div>
+        <div class="context-pill"><span>正在看</span><b>第 1 步 · 核心人物</b><span>可读全文</span></div>
+      </section>
+      <div class="console-body">
+        <div class="quick-head"><span>快捷指令</span><span>先查项目，再回答</span></div>
+        <div class="quick-list">
+          <button class="quick" type="button"><span><span class="quick-title">现在还有哪些要处理？</span><span class="quick-sub">读进度和镜头健康度</span></span><span class="quick-arrow">›</span></button>
+          <button class="quick" type="button"><span><span class="quick-title">怎么把产物拿到出图平台生成视频？</span><span class="quick-sub">查文档，回答带出处</span></span><span class="quick-arrow">›</span></button>
+          <button class="quick" type="button"><span><span class="quick-title">帮我把第 1 镜的雨再改大一点</span><span class="quick-sub">给一张待确认卡片，你点了才改</span></span><span class="quick-arrow">›</span></button>
+        </div>
+      </div>
+      <footer class="console-foot">
+        <div class="composer"><span>›</span><input aria-label="向 AI 场记提问" placeholder="问进度、怎么导出，或让我改某一镜…"><button class="send" type="button" aria-label="发送"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-4 14-3-6-7-1Z"></path></svg></button></div>
+        <div class="console-meta">完整流程 13 单位 · 单次提问按模型计费 · 单轮最多 6 次查询</div>
+      </footer>
+    </aside>
+  </div>
+
+  <script>
+    const compare = document.getElementById('compare');
+    compare.addEventListener('click', () => {
+      const original = document.body.classList.toggle('original');
+      compare.classList.toggle('is-original', original);
+      compare.textContent = original ? '返回舒适版' : '对比现版配色';
+    });
+
+    document.querySelectorAll('.genre').forEach((button) => {
+      button.addEventListener('click', () => button.classList.toggle('is-on'));
+    });
+
+    const setActive = (selector, active) => {
+      document.querySelectorAll(selector).forEach((item) => item.classList.remove('is-active'));
+      active.classList.add('is-active');
+    };
+    document.querySelectorAll('.step').forEach((button) => {
+      button.addEventListener('click', () => {
+        setActive('.step', button);
+        const sameIndex = [...document.querySelectorAll('.step')].indexOf(button);
+        const mobile = document.querySelectorAll('.mobile-step')[sameIndex];
+        if (mobile) setActive('.mobile-step', mobile);
+      });
+    });
+    document.querySelectorAll('.mobile-step').forEach((button) => {
+      button.addEventListener('click', () => {
+        setActive('.mobile-step', button);
+        const sameIndex = [...document.querySelectorAll('.mobile-step')].indexOf(button);
+        const desktop = document.querySelectorAll('.step')[sameIndex];
+        if (desktop) setActive('.step', desktop);
+      });
+    });
+    document.querySelectorAll('.console-tab').forEach((button) => {
+      button.addEventListener('click', () => setActive('.console-tab', button));
+    });
+  </script>
+</body>
+</html>

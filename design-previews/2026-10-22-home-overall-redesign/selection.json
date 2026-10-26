@@ -1,0 +1,14 @@
+{
+  "id": "A",
+  "label": "A: Signal Desk 深夜指令台",
+  "name": "Signal Desk 深夜指令台",
+  "notes": "",
+  "dials": {
+    "variance": 7,
+    "motion": 8,
+    "density": 5
+  },
+  "adjustments": "",
+  "source": "click",
+  "receivedAt": "2026-10-22T09:53:52.778Z"
+}
