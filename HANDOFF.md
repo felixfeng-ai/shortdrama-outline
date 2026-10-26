@@ -31,6 +31,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 账号页新增活跃设备列表，可查看设备类型、最后活跃时间并单独退出其他设备；撤销后对应 access 与 refresh token 同时失效。
 - 首次登录只认领当前 `chengju_sid` 对应的匿名项目与 Push 订阅，不迁移其他匿名会话；项目、快照、资产、生成任务、额度、Agent、导出等接口已统一优先解析登录用户。
 - 登录入口已从遮挡工作台的 modal 改为独立 `/login` 页面；支持手机号/验证码两步、60 秒重发倒计时、内联错误、登录后安全返回原步骤，以及已登录账号与退出状态。
+- 新增只读项目审阅链接：项目条生成 7 天 token，仅存哈希；重新生成会撤销旧链接。`/share/:token` 无需登录，只开放六步文本快照，不包含本地图库、生成文件、额度或写接口。
 - 本地联调验证码使用双开关：请求必须来自 localhost/127.0.0.1，且 `AUTH_ALLOW_DEV_CODE=1`；本地 `.env.local` 已写入随机 `AUTH_SECRET`。生产域名即使误开也不会返回开发验证码。
 - 正式短信供应商尚未接入，因此生产环境当前会明确返回“短信登录通道尚未配置”，不会伪造固定验证码。
 - 新增项目级生成任务中心：默认收起，汇总等待/运行/成功/失败/取消；最新失败或取消任务可单条重试，多项需确认后串行批量重试。
@@ -39,7 +40,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md) 与 [specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md) 与 [specs/project-review-share/spec.md](specs/project-review-share/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -57,7 +58,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `471/471`；其中 16 项成本实验不随本次提交，当前提交范围为 `455/455`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
+- **验证**：当前工作区全量测试 `477/477`；其中 16 项成本实验不随本次提交，当前提交范围为 `461/461`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
 - **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；项目深链已推送 `bbd6df5`；当前会话轮换与设备管理仍在本地等待验收。
@@ -65,6 +66,17 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **真实通义验证**：用户提供的可用 Key 已写入服务端 `.env.local`；真实生成成功，任务为 `succeeded`，输出 PNG 为 720×1280，约 1.06MB，已落库并成为当前采用关键帧。
 - **Web Push 剩余验收**：headless Chrome 处于临时上下文，不支持真实 Push API 订阅；按钮错误态已兜底。仍需在普通 Chrome 窗口中人工点击授权，完成一次真实浏览器订阅与测试通知。
 - **执行顺序调整**：图生视频成本较高，放到最后；先完成视觉一致性、任务管理和低成本音频/协作基础。
+
+## 下一阶段优先级
+
+1. **P0：生产账号、短信通道与调用风控**。当前生产账号入口在没有短信供应商时只返回“通道尚未配置”，真实用户无法登录。必须接入供应商、配置生产密钥、发送冷却与小时上限、短信防刷、IP/账号调用限流、异常告警，并用真实手机号完成登录、刷新、退出和失败路径验收。
+2. **P1：发布与浏览器能力收口**。提交并发布只读审阅链接；配置生产 Web Push 并完成真实浏览器订阅、通知到达和点击回跳验收；完成真实 Chrome/Edge 的系统目录授权验证。
+3. **P1：App 工作区合并 Web 基线**。App 分支仍落后于当前账号、深链、会话和审阅能力，先合并基线，再开发 Keychain/Keystore、安全 refresh、401 单飞刷新和深链。
+4. **P1：Web/App 同项目联调**。用同一手机号在两端打开同一项目，验证项目列表、refresh 轮换、设备会话撤销、只读审阅和错误恢复。
+5. **P2：多实例、任务队列与可观测性**。正式放量前迁移 Postgres、接入持久队列和 Redis 原子限流，补数据库自动备份与恢复演练、容量监控、告警、崩溃监控和回滚演练。
+6. **P3：后置产品能力**。团队协作、订阅支付、内容审核、AI 内容标识、原生推送与商店合规按真实留存和商业验证推进；图生视频与成片时间线继续放在最后。
+
+状态判断以 [README.md](README.md) 的「正式上线缺口」为准：`🟡` 只表示代码完成，不表示生产可用；没有完成生产配置、真实设备和线上验收的项目，不进入“已上线”。
 
 ---
 
