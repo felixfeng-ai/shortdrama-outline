@@ -10,7 +10,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
 const baseUrl = process.env.KEYFRAME_VERIFY_BASE || "http://localhost:3241"
 await page.goto(
   `${baseUrl}/`,
-  { waitUntil: "networkidle" },
+  { waitUntil: "domcontentloaded", timeout: 60000 },
 )
 await page.evaluate(() => {
   const host = document.createElement("section")

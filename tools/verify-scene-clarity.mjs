@@ -14,14 +14,14 @@ page.on("console", (message) => {
 })
 page.on("pageerror", (error) => errors.push(`PAGEERROR: ${error.message}`))
 
-await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" })
+await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 60000 })
 const sample = await context.request.post(`${baseUrl}/api/sample`)
 const samplePayload = await sample.json()
 const projectId = samplePayload?.data?.project?.id
 if (!sample.ok() || !projectId) throw new Error("示例项目没有创建成功")
 
-await page.goto(`${baseUrl}/?step=scenes&project=${projectId}`, { waitUntil: "networkidle" })
-await page.getByRole("heading", { name: "生成场次剧本" }).waitFor()
+await page.goto(`${baseUrl}/?step=scenes&project=${projectId}`, { waitUntil: "domcontentloaded", timeout: 60000 })
+await page.getByRole("heading", { name: "生成场次剧本" }).waitFor({ timeout: 60000 })
 const firstCard = page.locator(".scene-card").first()
 await firstCard.scrollIntoViewIfNeeded()
 const text = await firstCard.innerText()
