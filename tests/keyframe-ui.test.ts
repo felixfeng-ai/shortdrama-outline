@@ -65,3 +65,16 @@ test("G6.3 关键帧状态使用主题令牌、Responsive 与 reduced-motion", (
   assert.ok(css.includes("prefers-reduced-motion"), "缺少减少动效兜底")
   assert.ok(page.includes("ensureProject"), "页面没有把懒建项目能力传给关键帧入口")
 })
+
+test("G6.4 关键帧预览与元信息必须分区，不因最小高度溢出到文字列", () => {
+  assert.ok(keyframe.includes("keyframe-asset-summary"), "预览与元信息没有独立布局容器")
+  assert.ok(keyframe.includes("keyframe-preview-${aspect}"), "预览没有按源画幅声明尺寸")
+  assert.equal(keyframe.includes("min-h-28"), false, "预览仍有最小高度，会撑破网格列")
+  assert.ok(css.includes(".keyframe-asset-summary"), "缺少预览分区样式")
+  assert.ok(
+    css.includes("grid-template-columns: minmax(96px, 180px) minmax(0, 1fr)"),
+    "桌面预览与信息没有稳定双列",
+  )
+  assert.ok(css.includes(".keyframe-preview-landscape"), "缺少 16:9 预览尺寸")
+  assert.ok(css.includes(".keyframe-preview-portrait"), "缺少 9:16 预览尺寸")
+})

@@ -1904,8 +1904,33 @@
 .keyframe-settings {
   max-width: 560px;
 }
+.keyframe-asset-summary {
+  display: grid;
+  grid-template-columns: minmax(96px, 180px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+}
 .keyframe-preview {
-  max-height: 180px;
+  max-height: none;
+  min-height: 0;
+  justify-self: start;
+}
+.keyframe-preview-landscape {
+  width: 180px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.keyframe-preview-portrait,
+.keyframe-preview-vertical {
+  width: 101px;
+  max-width: 100%;
+  aspect-ratio: 9 / 16;
+}
+.keyframe-preview-square {
+  width: 140px;
+  max-width: 100%;
+  aspect-ratio: 1;
 }
 .keyframe-preview img {
   display: block;
@@ -1940,8 +1965,24 @@
     width: 100%;
     min-height: 44px;
   }
+  .keyframe-asset-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
   .keyframe-preview {
-    max-height: 230px;
+    max-height: none;
+  }
+  .keyframe-preview-landscape {
+    width: 100%;
+    max-width: 360px;
+  }
+  .keyframe-preview-portrait,
+  .keyframe-preview-vertical {
+    width: 160px;
+    max-width: 55vw;
+  }
+  .keyframe-preview-square {
+    width: min(220px, 100%);
   }
   .keyframe-settings {
     max-width: none;
@@ -2386,6 +2427,135 @@
   .batch-generation-adopt-all:active,
   .batch-generation-track > span {
     transition: none !important;
+  }
+}
+
+.scene-card {
+  padding-top: 14px;
+  padding-bottom: 16px;
+}
+.scene-card-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--signal-line-soft);
+}
+.scene-card-number {
+  display: inline-flex;
+  min-height: 25px;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--signal-acid) 28%, var(--signal-line));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--signal-acid) 6%, var(--signal-panel));
+  color: var(--signal-acid);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.scene-card-type {
+  flex: 0 0 auto;
+  color: var(--signal-text-2);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.scene-card-meta {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scene-card-delete {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--signal-text-3);
+  transition: background-color 140ms cubic-bezier(.23, 1, .32, 1), color 140ms cubic-bezier(.23, 1, .32, 1);
+}
+.scene-card-delete:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 2px;
+}
+.scene-card-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 124px;
+  gap: 12px;
+  padding: 10px 0 7px;
+}
+.scene-card-label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--signal-text-3);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+.scene-card-field {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 6px 0;
+}
+.scene-card-field > .scene-card-label {
+  margin-top: 7px;
+  margin-bottom: 0;
+}
+.scene-card-summary,
+.scene-card-cast {
+  min-width: 0;
+  border: 1px solid var(--signal-line-soft);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--signal-raised) 48%, transparent);
+  padding: 3px 4px;
+}
+.scene-card-summary textarea {
+  min-height: 54px;
+  line-height: 1.72;
+}
+.scene-card-cast textarea {
+  min-height: 30px;
+}
+.scene-card-footnote {
+  margin: 6px 0 0 78px;
+  color: var(--signal-text-3);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+@media (hover: hover) and (pointer: fine) {
+  .scene-card-delete:hover {
+    background: color-mix(in srgb, var(--signal-warning) 9%, var(--signal-panel));
+    color: color-mix(in srgb, var(--signal-warning) 82%, var(--signal-text));
+  }
+}
+@media (max-width: 620px) {
+  .scene-card-setting {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .scene-card-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+  .scene-card-field > .scene-card-label {
+    margin-top: 0;
+  }
+  .scene-card-footnote {
+    margin-left: 0;
+  }
+  .scene-card-delete {
+    width: 38px;
+    height: 38px;
   }
 }
 

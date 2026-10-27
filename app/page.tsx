@@ -2713,8 +2713,8 @@ export default function Home() {
               error={errors.scenes}
               hasContent={scenes.length > 0}
               locked={!hasEpisodes}
-              lockedHint="请先生成分集剧情，再拆场景"
-              actionLabel="场景"
+              lockedHint="请先生成分集剧情，再拆场次"
+              actionLabel="场次剧本"
               onGenerate={generateSceneList}
               skeletonVariant="acts"
             >

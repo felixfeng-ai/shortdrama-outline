@@ -224,8 +224,8 @@ export default function KeyframePanel({
       </div>
 
       {previewAsset ? (
-        <div className="mt-2.5 grid min-w-0 gap-2 sm:grid-cols-[112px_minmax(0,1fr)]">
-          <div className={`keyframe-preview ${previewClass} min-h-28 overflow-hidden rounded-chip border border-surface-line bg-surface-deep`}>
+        <div className="keyframe-asset-summary mt-2.5 min-w-0">
+          <div className={`keyframe-preview keyframe-preview-${aspect} overflow-hidden rounded-chip border border-surface-line bg-surface-deep`}>
             <img
               src={previewAsset.downloadUrl || `/api/generated-assets/${previewAsset.id}`}
               alt={`${actionLabel}结果`}
