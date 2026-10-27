@@ -13,6 +13,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 **云端关键帧 P0 已在本地实现，待浏览器验收，不直接推送。**
 
 - 角色视觉定妆卡与分镜卡新增 `KeyframePanel`：生成定妆图 / 首帧、运行态、历史版本回选。
+- 地点视觉锚点卡复用 `KeyframePanel` 生成 16:9 空场景图；场景图会作为地点重生成参考，并在镜头首帧参考图预算中补入。缺失地点可直接补建锚点，并先落 `visualPlaces` 快照。
 - 图像服务改为平台托管通义万相，前端不出现 Provider、模型或 API Key；服务端使用 `ALIYUN_DASHSCOPE_API_KEY` 与 `ALIYUN_IMAGE_MODEL`。
 - 新增 `generation_tasks` / `generated_assets` 两张 SQLite 表。任务按 queued → running → succeeded / failed 记账，关键帧按项目与目标隔离。
 - 生成结果落在 `CHENGJU_DATA_DIR/generated/<projectId>/`，本地参考图仍不随请求上传；删除项目会连生成目录一起清理。
@@ -27,10 +28,12 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 工作台信息层级已收敛：Story Command 只在核心人物步骤完整展开，其他步骤折叠为项目源摘要；本地图库只在定妆/场景完整展示，分镜只显示缺图提示；项目包、Markdown、复制大纲统一收进项目条导出菜单。
 - 长剧集断点续跑已接入：分集和分镜各自按项目保存 checkpoint，每完成一批更新输入签名、游标、已生成内容和稳定 stamp；失败/取消后前端自动带续跑标记，输入变化则旧断点失效，成功完成自动清理。
 - 通义多图参考已完成真实验证：使用内存生成的 512×512 PNG 调用 `qwen-image-2.0-pro`，返回 PNG 约 1.16MB，耗时约 13 秒；未读取本地图片，也未把测试产物写入项目。
-- 正式账号第二阶段已落地：手机号 6 位验证码登录、Web HttpOnly refresh session、App 15 分钟 access token、30 天 refresh token、一次性 refresh 轮换与退出撤销会话；验证码、refresh token 与 access session 都做哈希或签名校验。
+- 正式账号第二阶段已落地：邮箱与手机号 6 位验证码、Web HttpOnly refresh session、App 15 分钟 access token、30 天 refresh token、一次性 refresh 轮换与退出撤销会话；验证码、refresh token 与 access session 都做哈希或签名校验。
 - 账号页新增活跃设备列表，可查看设备类型、最后活跃时间并单独退出其他设备；撤销后对应 access 与 refresh token 同时失效。
 - 首次登录只认领当前 `chengju_sid` 对应的匿名项目与 Push 订阅，不迁移其他匿名会话；项目、快照、资产、生成任务、额度、Agent、导出等接口已统一优先解析登录用户。
-- 登录入口已从遮挡工作台的 modal 改为独立 `/login` 页面；支持手机号/验证码两步、60 秒重发倒计时、内联错误、登录后安全返回原步骤，以及已登录账号与退出状态。
+- 登录入口已从遮挡工作台的 modal 改为独立 `/login` 页面；当前默认邮箱/验证码两步，保留手机号 API，支持 60 秒重发倒计时、内联错误、登录后安全返回原步骤，以及已登录账号与退出状态。
+- 新增邮箱验证码登录：邮箱规范化、验证码哈希、5 分钟有效期、单邮箱 60 秒冷却、每小时 5 次上限、5 次尝试上限、匿名项目认领和旧手机号数据库无损迁移均已接入；Web 登录页改为邮箱优先。
+- 生产邮件发送使用 Resend HTTP API，不在前端暴露 Key；`RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 未配置时明确返回 503，发送失败清理本次验证码并返回 502。仍需配置已认证发件域名并完成真实邮箱收件验收。
 - 新增只读项目审阅链接：项目条生成 7 天 token，仅存哈希；重新生成会撤销旧链接。`/share/:token` 无需登录，只开放六步文本快照，不包含本地图库、生成文件、额度或写接口。
 - 本地联调验证码使用双开关：请求必须来自 localhost/127.0.0.1，且 `AUTH_ALLOW_DEV_CODE=1`；本地 `.env.local` 已写入随机 `AUTH_SECRET`。生产域名即使误开也不会返回开发验证码。
 - 正式短信供应商尚未接入，因此生产环境当前会明确返回“短信登录通道尚未配置”，不会伪造固定验证码。
@@ -40,7 +43,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md) 与 [specs/project-review-share/spec.md](specs/project-review-share/spec.md)。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md) 与 [specs/email-login/spec.md](specs/email-login/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -58,8 +61,8 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `477/477`；其中 16 项成本实验不随本次提交，当前提交范围为 `461/461`。`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `96.87%`，`generation/checkpoint` 为 `98.02%`，`lib/shots` 为 `100%`，`lib/push` 为 `97.60%`。
-- **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
+- **验证**：当前工作区全量测试 `498/498` 通过。`npx tsc --noEmit` 通过；生产构建通过；全量测试可执行行覆盖率 `88.48%`，`lib/auth/service` 为 `97.64%`，`lib/auth/email` 为 `96.97%`，`lib/assets/db` 为 `96.27%`。
+- **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；邮箱验证码发送、自动填入、登录、HttpOnly 会话与账号页展示均通过；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
 - **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；项目深链已推送 `bbd6df5`；当前会话轮换与设备管理仍在本地等待验收。
 - **本地预览**：`http://localhost:3200/?theme=neutral`。
@@ -69,8 +72,8 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 
 ## 下一阶段优先级
 
-1. **P0：生产账号、短信通道与调用风控**。当前生产账号入口在没有短信供应商时只返回“通道尚未配置”，真实用户无法登录。必须接入供应商、配置生产密钥、发送冷却与小时上限、短信防刷、IP/账号调用限流、异常告警，并用真实手机号完成登录、刷新、退出和失败路径验收。
-2. **P1：发布与浏览器能力收口**。提交并发布只读审阅链接；配置生产 Web Push 并完成真实浏览器订阅、通知到达和点击回跳验收；完成真实 Chrome/Edge 的系统目录授权验证。
+1. **P0：邮箱登录生产收口与调用风控**。配置 Resend、验证发件域名的 SPF/DKIM/DMARC，并完成真实邮箱收件、垃圾箱、延迟、登录、刷新、退出和失败路径验收；再补 IP/账号调用限流、异常告警。短信登录降为后续可选通道，不再阻塞个人开发者首轮上线。
+2. **P1：发布与浏览器能力收口**。发布只读审阅链接；配置生产 Web Push 并完成真实浏览器订阅、通知到达和点击回跳验收；完成真实 Chrome/Edge 的系统目录授权验证。
 3. **P1：App 工作区合并 Web 基线**。App 分支仍落后于当前账号、深链、会话和审阅能力，先合并基线，再开发 Keychain/Keystore、安全 refresh、401 单飞刷新和深链。
 4. **P1：Web/App 同项目联调**。用同一手机号在两端打开同一项目，验证项目列表、refresh 轮换、设备会话撤销、只读审阅和错误恢复。
 5. **P2：多实例、任务队列与可观测性**。正式放量前迁移 Postgres、接入持久队列和 Redis 原子限流，补数据库自动备份与恢复演练、容量监控、告警、崩溃监控和回滚演练。

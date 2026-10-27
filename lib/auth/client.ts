@@ -1,6 +1,7 @@
 export interface AuthUserDto {
   id: string
-  phone: string
+  phone: string | null
+  email: string | null
   displayName: string
 }
 
@@ -58,6 +59,29 @@ export async function verifyAuthCode(phone: string, code: string): Promise<{
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ phone, code }),
+  }))
+}
+
+export async function requestEmailAuthCode(email: string): Promise<{
+  expiresAt: number
+  cooldownSeconds: number
+  devCode?: string
+}> {
+  return payload(await fetch("/api/auth/email/request-code", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email }),
+  }))
+}
+
+export async function verifyEmailAuthCode(email: string, code: string): Promise<{
+  user: AuthUserDto
+  claimed?: { projects?: number; pushSubscriptions?: number }
+}> {
+  return payload(await fetch("/api/auth/email/verify-code", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, code }),
   }))
 }
 

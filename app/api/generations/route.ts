@@ -4,6 +4,7 @@ import { InputError, errorResponse, isAbortError, ok } from "@/lib/api"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { getDbForRequest } from "@/lib/assets/store"
 import { latestSnapshot } from "@/lib/assets/repo"
+import { placeGenerationTargetId } from "@/lib/assets/anchors"
 import { resolveProjectOwner } from "@/lib/auth/request"
 import { readLook } from "@/lib/look"
 import {
@@ -39,7 +40,7 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 300
 
 function targetType(value: unknown): GenerationTargetType {
-  if (value === "character" || value === "shot") return value
+  if (value === "character" || value === "place" || value === "shot") return value
   throw new InputError("生成目标类型不正确")
 }
 
@@ -55,13 +56,15 @@ function hasTarget(
   type: GenerationTargetType,
   targetId: string,
 ): boolean {
-  const kind = type === "character" ? "visualCharacters" : "shots"
+  const kind = type === "character" ? "visualCharacters" : type === "place" ? "visualPlaces" : "shots"
   const snapshot = latestSnapshot(db, projectId, kind)
   if (!snapshot || !Array.isArray(snapshot.payload)) return false
   return snapshot.payload.some((item) => {
     if (!item || typeof item !== "object") return false
     const record = item as Record<string, unknown>
-    return record.entityId === targetId || record.id === targetId
+    return record.entityId === targetId ||
+      record.id === targetId ||
+      (type === "place" && typeof record.name === "string" && placeGenerationTargetId(record.name) === targetId)
   })
 }
 
@@ -82,7 +85,8 @@ function loadReferenceImages(
     targetId,
     shots: latestSnapshot(db, projectId, "shots")?.payload ?? [],
     visualCharacters: latestSnapshot(db, projectId, "visualCharacters")?.payload ?? [],
-    assets: listGeneratedAssets(db, projectId, "character"),
+    visualPlaces: latestSnapshot(db, projectId, "visualPlaces")?.payload ?? [],
+    assets: listGeneratedAssets(db, projectId),
   })
   const candidates: GenerationReferenceCandidate[] = []
   const images: AliyunReferenceImage[] = []
@@ -178,7 +182,7 @@ export async function POST(req: Request) {
 
     assertProjectAccess(db, projectId, ownerId)
     if (!hasTarget(db, projectId, type, targetId)) {
-      throw new InputError("当前角色或镜头还没有保存到项目，请先生成对应步骤")
+      throw new InputError("当前角色、地点或镜头还没有保存到项目，请先生成对应步骤")
     }
     const references = loadReferenceImages(db, projectId, type, targetId)
     const generationModel = references.images.length > 0

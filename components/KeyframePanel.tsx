@@ -35,6 +35,7 @@ export default function KeyframePanel({
   actionLabel,
   look,
 }: Props) {
+  const isPlace = targetType === 'place'
   const [assets, setAssets] = useState<GeneratedAsset[]>([])
   const [lastTask, setLastTask] = useState<GenerationTask | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -120,7 +121,7 @@ export default function KeyframePanel({
         }
         return
       }
-      setError(cause instanceof Error ? cause.message : '关键帧生成失败，请重试')
+      setError(cause instanceof Error ? cause.message : isPlace ? '场景图生成失败，请重试' : '关键帧生成失败，请重试')
     } finally {
       if (abortRef.current === controller) abortRef.current = null
       setGenerating(false)
@@ -143,7 +144,7 @@ export default function KeyframePanel({
       })))
       window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '关键帧采用失败')
+      setError(cause instanceof Error ? cause.message : '图片采用失败')
     } finally {
       setSelectingId(null)
     }
@@ -162,11 +163,15 @@ export default function KeyframePanel({
               <rect x="2.5" y="3.5" width="15" height="13" rx="1.5" />
               <path d="m4.5 13 3.2-3.2 2.6 2.6 1.8-1.8 3.4 3.4M13.5 7.2h.01" />
             </svg>
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-500">云端关键帧</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+              {isPlace ? '云端场景图' : '云端关键帧'}
+            </span>
             <span className="rounded-pill bg-done-100 px-2 py-0.5 text-[9px] font-semibold text-done-800">通义万相</span>
           </div>
           <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">
-            由平台默认生成；会带入当前项目已采用的关键帧作一致性参考，本地参考图不会上传。
+            {isPlace
+              ? '由平台默认生成；会带入当前地点已采用场景图作一致性参考，本地参考图不会上传。'
+              : '由平台默认生成；会带入当前项目已采用的关键帧作一致性参考，本地参考图不会上传。'}
           </p>
           <p className={`mt-1 text-[10px] ${isLookEmpty(look) ? 'text-accent-700' : 'text-done-700'}`}>
             {isLookEmpty(look)
@@ -176,8 +181,8 @@ export default function KeyframePanel({
           {referenceCount !== null && (
             <p className="mt-1 text-[10px] text-ink-400">
               {referenceCount > 0
-                ? `本次已带入 ${referenceCount} 张项目关键帧`
-                : '本次没有可用项目关键帧，已按文字生成'}
+                ? `本次已带入 ${referenceCount} 张${isPlace ? '场景参考图' : '项目关键帧'}`
+                : `本次没有可用${isPlace ? '场景参考图' : '项目关键帧'}，已按文字生成`}
             </p>
           )}
           {pendingTask && !generating && (
@@ -225,7 +230,7 @@ export default function KeyframePanel({
               download={keyframeExportName(selected)}
               className="mt-1.5 inline-flex min-h-8 items-center text-[10px] font-medium text-done-700 underline-offset-2 hover:underline"
             >
-              下载关键帧
+              {isPlace ? '下载场景图' : '下载关键帧'}
             </a>
             {assets.length > 1 && (
               <button
@@ -241,7 +246,7 @@ export default function KeyframePanel({
         </div>
       ) : (
         <p className="mt-2 rounded-chip border border-dashed border-surface-line px-2.5 py-2 text-[10.5px] text-ink-400">
-          还没有关键帧。生成后会和当前项目一起保存。
+          {isPlace ? '还没有场景图。生成后会和当前项目一起保存。' : '还没有关键帧。生成后会和当前项目一起保存。'}
         </p>
       )}
 
@@ -258,7 +263,7 @@ export default function KeyframePanel({
                 asset.selectedAt ? 'border-done-500' : 'border-surface-line hover:border-info-500'
               } ${selectingId === asset.id ? 'opacity-50' : ''}`}
             >
-              <img src={asset.downloadUrl} alt={`历史版本 ${index + 1}`} className="aspect-[9/16] h-full w-full object-cover" />
+              <img src={asset.downloadUrl} alt={`历史版本 ${index + 1}`} className={`${previewClass} h-full w-full object-cover`} />
               {asset.selectedAt && (
                 <span className="absolute inset-x-0 bottom-0 bg-done-600/90 py-0.5 text-center text-[8px] font-semibold text-white">
                   已采用

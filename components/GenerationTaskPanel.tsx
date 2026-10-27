@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import SmoothCollapse from './SmoothCollapse'
-import type { Shot, VisualCharacter } from '@/lib/assets/types'
+import type { Shot, VisualCharacter, VisualPlace } from '@/lib/assets/types'
 import {
   fetchProjectGenerationAssets,
   generateKeyframe,
@@ -21,6 +21,7 @@ import type { LookBook } from '@/lib/look'
 interface Props {
   projectId: string | null
   visuals: VisualCharacter[]
+  places: VisualPlace[]
   shots: Shot[]
   look: LookBook
 }
@@ -37,7 +38,7 @@ function notifyUpdated() {
   window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
 }
 
-export default function GenerationTaskPanel({ projectId, visuals, shots, look }: Props) {
+export default function GenerationTaskPanel({ projectId, visuals, places, shots, look }: Props) {
   const [open, setOpen] = useState(false)
   const [tasks, setTasks] = useState<GenerationTask[]>([])
   const [assets, setAssets] = useState<GeneratedAsset[]>([])
@@ -89,6 +90,8 @@ export default function GenerationTaskPanel({ projectId, visuals, shots, look }:
     const shot = shots.find((item) => item.entityId === task.targetId || item.id === task.targetId)
     const aspect = task.targetType === 'character'
       ? 'portrait'
+      : task.targetType === 'place'
+        ? 'landscape'
       : shot?.params.ratio === '16:9' ? 'landscape' : 'vertical'
     return generateKeyframe({
       projectId,
@@ -188,7 +191,7 @@ export default function GenerationTaskPanel({ projectId, visuals, shots, look }:
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                       <span className="truncate text-[11px] font-medium text-ink-700">
-                        {generationTaskTargetLabel(task, visuals, shots)}
+                        {generationTaskTargetLabel(task, visuals, shots, places)}
                       </span>
                       <span className={`text-[9.5px] font-medium ${status.text}`}>{status.label}</span>
                       <time className="font-mono text-[9px] text-ink-300">

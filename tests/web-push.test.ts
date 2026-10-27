@@ -61,6 +61,19 @@ test("成功通知按目标跳转定妆或分镜，并且不包含提示词", ()
       tag: "generation-task-2",
     },
   )
+  assert.deepEqual(
+    buildGenerationNotification({
+      taskId: "task-place",
+      targetType: "place",
+      status: "succeeded",
+    }),
+    {
+      title: "场景图已生成",
+      body: "打开成剧查看最新关键帧并决定是否采用。",
+      url: "/?step=scenes",
+      tag: "generation-task-place",
+    },
+  )
 })
 
 test("失败通知脱敏 Key 和文件路径；取消生成不通知", () => {

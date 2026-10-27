@@ -1228,6 +1228,15 @@ export default function Home() {
     }
   }
 
+  /** 补建地点必须先落 visualPlaces 快照，否则生成场景图时服务端找不到它。 */
+  async function addPlaceAnchor(place: VisualPlace) {
+    const next = [...places, place]
+    const pid = projectId ?? await ensureProject(idea.trim().slice(0, 20))
+    if (!pid) throw new Error("项目还没有保存成功，请重试")
+    await saveSnapshot(pid, 'visualPlaces', next)
+    setPlaces(next)
+  }
+
   function detachPlaceImage(placeName: string, key: string) {
     setPlaceAttached((prev) => {
       const rest = (prev[placeName] ?? []).filter((k) => k !== key)
@@ -1672,7 +1681,7 @@ export default function Home() {
         "shotlist.txt      逐镜执行清单（提示词 + 该带的参考图 + 参数），照着做即可",
         "chaining.txt      首尾帧衔接清单（哪一镜的尾帧接哪一镜的首帧）",
         "storyboard.html   离线可看的分镜表（双击用浏览器打开）",
-        "keyframes/        已采用的云端关键帧（按角色 / 镜头分类）",
+        "keyframes/        已采用的云端生成图（按角色 / 地点 / 镜头分类）",
         "characters/       角色参考图（若从本地图库成功并入）",
         "places/           场景参考图（按地点名分目录）",
         "",
@@ -2167,6 +2176,7 @@ export default function Home() {
                   <GenerationTaskPanel
                     projectId={projectId}
                     visuals={visuals}
+                places={places}
                     shots={shots}
                     look={look}
                   />
@@ -2447,6 +2457,10 @@ export default function Home() {
                 attached={placeAttached}
                 onAttach={attachPlaceImage}
                 onDetach={detachPlaceImage}
+                projectId={projectId}
+                onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
+                look={look}
+                onAddPlace={addPlaceAnchor}
               />
               <SceneList scenes={scenes} onChange={setScenes} />
             </StepSection>

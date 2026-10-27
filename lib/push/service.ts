@@ -75,7 +75,7 @@ export async function notifyGenerationFinished(
   ownerId: string,
   input: {
     taskId: string
-    targetType: "character" | "shot"
+    targetType: "character" | "place" | "shot"
     status: "queued" | "running" | "succeeded" | "failed" | "canceled"
     error?: string | null
   },

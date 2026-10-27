@@ -1,4 +1,4 @@
-export type GenerationTargetType = "character" | "shot"
+export type GenerationTargetType = "character" | "place" | "shot"
 export type GenerationStatus = "queued" | "running" | "succeeded" | "failed" | "canceled"
 
 export interface GenerationTask {

@@ -1,4 +1,5 @@
-import type { Shot, VisualCharacter } from "../assets/types.ts"
+import type { Shot, VisualCharacter, VisualPlace } from "../assets/types.ts"
+import { placeGenerationTargetId } from "../assets/anchors.ts"
 import type { GenerationStatus, GenerationTask } from "./types.ts"
 
 export interface GenerationTaskSummary {
@@ -36,10 +37,17 @@ export function generationTaskTargetLabel(
   task: GenerationTask,
   visuals: readonly VisualCharacter[],
   shots: readonly Shot[],
+  places: readonly VisualPlace[] = [],
 ): string {
   if (task.targetType === "character") {
     const character = visuals.find((item) => item.entityId === task.targetId || item.id === task.targetId)
     return character?.name ? `角色 · ${character.name}` : `角色 · ${task.targetId.slice(0, 8)}`
+  }
+  if (task.targetType === "place") {
+    const place = places.find((item) =>
+      item.id === task.targetId || placeGenerationTargetId(item.name) === task.targetId
+    )
+    return place?.name ? `地点 · ${place.name}` : `地点 · ${task.targetId.slice(0, 8)}`
   }
   const shot = shots.find((item) => item.entityId === task.targetId || item.id === task.targetId)
   if (!shot) return `镜头 · ${task.targetId.slice(0, 8)}`

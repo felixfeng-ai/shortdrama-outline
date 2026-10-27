@@ -8,6 +8,7 @@ import {
 } from "../lib/generation/references.ts"
 import { runImageGeneration } from "../lib/generation/service.ts"
 import type { GeneratedAsset } from "../lib/generation/types.ts"
+import { placeGenerationTargetId } from "../lib/assets/anchors.ts"
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01])
 
@@ -16,12 +17,13 @@ function asset(
   targetId: string,
   selected = true,
   createdAt = 1,
+  targetType: GeneratedAsset["targetType"] = "character",
 ): GeneratedAsset {
   return {
     id,
     taskId: `task-${id}`,
     projectId: "project-1",
-    targetType: "character",
+    targetType,
     targetId,
     storageKey: `generated/project-1/${id}.png`,
     mime: "image/png",
@@ -34,6 +36,80 @@ function asset(
     downloadUrl: `/api/generated-assets/${id}`,
   }
 }
+
+test("参考图：地点重生成优先使用自己已采用的场景图", () => {
+  const placeId = placeGenerationTargetId("旧码头")
+  const candidates = selectGenerationReferenceCandidates({
+    targetType: "place",
+    targetId: placeId,
+    shots: [],
+    visualCharacters: [],
+    visualPlaces: [{ name: "旧码头" }],
+    assets: [
+      asset("asset-old", placeId, true, 2, "place"),
+      asset("asset-character", "char-linyuan", true, 3, "character"),
+    ],
+  })
+
+  assert.deepEqual(candidates.map((item) => item.asset.id), ["asset-old"])
+  assert.deepEqual(candidates.map((item) => item.role), ["location"])
+  const prompt = withGenerationReferenceInstructions("empty location", candidates)
+  assert.match(prompt, /已采用场景图/)
+  assert.match(prompt, /不要复制人物/)
+})
+
+test("参考图：镜头在角色图之后带入地点场景图", () => {
+  const placeId = placeGenerationTargetId("旧码头")
+  const candidates = selectGenerationReferenceCandidates({
+    targetType: "shot",
+    targetId: "shot-e-1",
+    shots: [{
+      id: "shot-1",
+      entityId: "shot-e-1",
+      characters: ["林远"],
+      place: "旧码头",
+    }],
+    visualCharacters: [{ name: "林远", entityId: "char-linyuan" }],
+    visualPlaces: [{ name: "旧码头" }],
+    assets: [
+      asset("asset-lin", "char-linyuan", true, 1, "character"),
+      asset("asset-place", placeId, true, 2, "place"),
+    ],
+  })
+
+  assert.deepEqual(candidates.map((item) => item.asset.id), ["asset-lin", "asset-place"])
+  assert.deepEqual(candidates.map((item) => item.role), ["identity", "location"])
+  assert.deepEqual(candidates.map((item) => item.label), ["林远", "旧码头"])
+})
+
+test("参考图：三张角色图已占满时地点图不挤掉角色身份", () => {
+  const placeId = placeGenerationTargetId("旧码头")
+  const candidates = selectGenerationReferenceCandidates({
+    targetType: "shot",
+    targetId: "shot-e-1",
+    shots: [{
+      id: "shot-1",
+      entityId: "shot-e-1",
+      characters: ["林远", "苏婉", "店主"],
+      place: "旧码头",
+    }],
+    visualCharacters: [
+      { name: "林远", entityId: "char-lin" },
+      { name: "苏婉", entityId: "char-su" },
+      { name: "店主", entityId: "char-shop" },
+    ],
+    visualPlaces: [{ name: "旧码头" }],
+    assets: [
+      asset("asset-lin", "char-lin", true, 1),
+      asset("asset-su", "char-su", true, 2),
+      asset("asset-shop", "char-shop", true, 3),
+      asset("asset-place", placeId, true, 4, "place"),
+    ],
+  })
+
+  assert.deepEqual(candidates.map((item) => item.asset.id), ["asset-lin", "asset-su", "asset-shop"])
+  assert.equal(candidates.length, 3)
+})
 
 test("参考图：镜头按出场角色带入已采用关键帧，跳过未采用并限制三张", () => {
   const candidates = selectGenerationReferenceCandidates({

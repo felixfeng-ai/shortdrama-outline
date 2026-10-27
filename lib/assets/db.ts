@@ -34,15 +34,27 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
-  phone         TEXT NOT NULL UNIQUE,
+  phone         TEXT UNIQUE,
+  email         TEXT UNIQUE,
   display_name  TEXT NOT NULL,
   created_at    INTEGER NOT NULL,
-  updated_at    INTEGER NOT NULL
+  updated_at    INTEGER NOT NULL,
+  CHECK (phone IS NOT NULL OR email IS NOT NULL)
 );
 
 CREATE TABLE IF NOT EXISTS login_codes (
   id           TEXT PRIMARY KEY,
   phone        TEXT NOT NULL,
+  code_hash    TEXT NOT NULL,
+  attempts     INTEGER NOT NULL DEFAULT 0,
+  expires_at   INTEGER NOT NULL,
+  consumed_at  INTEGER,
+  created_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS email_login_codes (
+  id           TEXT PRIMARY KEY,
+  email        TEXT NOT NULL,
   code_hash    TEXT NOT NULL,
   attempts     INTEGER NOT NULL DEFAULT 0,
   expires_at   INTEGER NOT NULL,
@@ -178,6 +190,7 @@ CREATE INDEX IF NOT EXISTS idx_generation_tasks_project ON generation_tasks(proj
 CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(project_id, target_type, target_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_owner ON push_subscriptions(owner_id);
 CREATE INDEX IF NOT EXISTS idx_login_codes_phone ON login_codes(phone, created_at);
+CREATE INDEX IF NOT EXISTS idx_email_login_codes_email ON email_login_codes(email, created_at);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_project_shares_project ON project_shares(project_id, owner_id, expires_at);
 `
@@ -196,6 +209,46 @@ export function openDb(dbPath: string = defaultDbPath()): DatabaseSync {
   const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[]
   if (!projectColumns.some((column) => column.name === "owner_id")) {
     db.exec("ALTER TABLE projects ADD COLUMN owner_id TEXT")
+  }
+  const userColumns = db.prepare("PRAGMA table_info(users)").all() as {
+    name: string
+    notnull: number
+  }[]
+  const phoneColumn = userColumns.find((column) => column.name === "phone")
+  const hasEmailColumn = userColumns.some((column) => column.name === "email")
+  if (!hasEmailColumn || phoneColumn?.notnull === 1) {
+    db.exec("PRAGMA foreign_keys = OFF")
+    try {
+      db.exec("DROP TABLE IF EXISTS users_next")
+      db.exec("BEGIN IMMEDIATE")
+      db.exec(`
+        CREATE TABLE users_next (
+          id            TEXT PRIMARY KEY,
+          phone         TEXT UNIQUE,
+          email         TEXT UNIQUE,
+          display_name  TEXT NOT NULL,
+          created_at    INTEGER NOT NULL,
+          updated_at    INTEGER NOT NULL,
+          CHECK (phone IS NOT NULL OR email IS NOT NULL)
+        )
+      `)
+      db.exec(`
+        INSERT INTO users_next (id, phone, email, display_name, created_at, updated_at)
+        SELECT id, phone, NULL, display_name, created_at, updated_at FROM users
+      `)
+      db.exec("DROP TABLE users")
+      db.exec("ALTER TABLE users_next RENAME TO users")
+      db.exec("COMMIT")
+    } catch (error) {
+      try {
+        db.exec("ROLLBACK")
+      } catch {
+        // 迁移未进入事务时无需回滚
+      }
+      throw error
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON")
+    }
   }
   const authSessionColumns = db.prepare("PRAGMA table_info(auth_sessions)").all() as { name: string }[]
   if (!authSessionColumns.some((column) => column.name === "client_type")) {

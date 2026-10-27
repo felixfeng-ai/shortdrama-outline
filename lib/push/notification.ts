@@ -14,8 +14,16 @@ export function buildGenerationNotification(input: {
   error?: string | null
 }): GenerationNotificationPayload | null {
   if (input.status !== "succeeded" && input.status !== "failed") return null
-  const target = input.targetType === "character" ? "定妆图" : "镜头首帧"
-  const url = input.targetType === "character" ? "/?step=visuals" : "/?step=shots"
+  const target = input.targetType === "character"
+    ? "定妆图"
+    : input.targetType === "place"
+      ? "场景图"
+      : "镜头首帧"
+  const url = input.targetType === "character"
+    ? "/?step=visuals"
+    : input.targetType === "place"
+      ? "/?step=scenes"
+      : "/?step=shots"
   if (input.status === "succeeded") {
     return {
       title: `${target}已生成`,

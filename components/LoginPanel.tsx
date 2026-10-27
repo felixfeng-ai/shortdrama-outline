@@ -7,18 +7,18 @@ import {
   fetchAuthSession,
   logoutAuth,
   revokeAuthSession,
-  requestAuthCode,
-  verifyAuthCode,
+  requestEmailAuthCode,
+  verifyEmailAuthCode,
   type AuthSessionDto,
   type AuthUserDto,
 } from '@/lib/auth/client'
 import { safeReturnPath } from '@/lib/auth/return-to'
 
-type LoginStep = 'phone' | 'code'
+type LoginStep = 'email' | 'code'
 
-function validPhone(value: string): boolean {
-  const digits = value.trim().replaceAll(' ', '').replaceAll('-', '').replace(/^\+86/, '')
-  return /^1[3-9]\d{9}$/.test(digits)
+function validEmail(value: string): boolean {
+  const email = value.trim()
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
 }
 
 function sessionSeen(timestamp: number): string {
@@ -31,10 +31,10 @@ function sessionSeen(timestamp: number): string {
 
 export default function LoginPanel() {
   const [user, setUser] = useState<AuthUserDto | null>(null)
-  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [devCode, setDevCode] = useState('')
-  const [step, setStep] = useState<LoginStep>('phone')
+  const [step, setStep] = useState<LoginStep>('email')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
@@ -83,14 +83,14 @@ export default function LoginPanel() {
 
   async function requestCode() {
     if (busy || cooldown > 0) return
-    if (!validPhone(phone)) {
-      setError('请输入有效的中国大陆手机号。')
+    if (!validEmail(email)) {
+      setError('请输入有效的邮箱地址。')
       return
     }
     setBusy(true)
     setError('')
     try {
-      const result = await requestAuthCode(phone.trim())
+      const result = await requestEmailAuthCode(email.trim())
       setStep('code')
       setCooldown(result.cooldownSeconds)
       setDevCode(result.devCode || '')
@@ -111,7 +111,7 @@ export default function LoginPanel() {
     setBusy(true)
     setError('')
     try {
-      const result = await verifyAuthCode(phone.trim(), code)
+      const result = await verifyEmailAuthCode(email.trim(), code)
       setUser(result.user)
       window.location.assign(returnTo)
     } catch (cause) {
@@ -123,12 +123,12 @@ export default function LoginPanel() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (step === 'phone') void requestCode()
+    if (step === 'email') void requestCode()
     else void verify()
   }
 
-  function editPhone() {
-    setStep('phone')
+  function editEmail() {
+    setStep('email')
     setCode('')
     setDevCode('')
     setError('')
@@ -143,7 +143,7 @@ export default function LoginPanel() {
       setUser(null)
       setSessions([])
       setSessionsLoading(false)
-      editPhone()
+      editEmail()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '退出失败，请稍后再试。')
     } finally {
@@ -222,8 +222,8 @@ export default function LoginPanel() {
               </p>
               <dl className="auth-account-meta">
                 <div>
-                  <dt>手机号</dt>
-                  <dd>{user.phone}</dd>
+                  <dt>{user.email ? '邮箱' : '手机号'}</dt>
+                  <dd>{user.email || user.phone || user.displayName}</dd>
                 </div>
                 <div>
                   <dt>会话状态</dt>
@@ -275,46 +275,46 @@ export default function LoginPanel() {
           ) : (
             <>
               <div className="auth-form-heading">
-                <h2>{step === 'phone' ? '继续这个项目' : '输入验证码'}</h2>
+                <h2>{step === 'email' ? '继续这个项目' : '输入验证码'}</h2>
                 <p className="auth-form-intro">
-                  {step === 'phone'
-                    ? '用手机号保存当前项目，之后可以在其他设备找回。'
-                    : `验证码已发送至 ${phone.trim()}。`}
+                  {step === 'email'
+                    ? '用邮箱验证码保存当前项目，之后可以在其他设备找回。'
+                    : `验证码已发送至 ${email.trim()}。`}
                 </p>
               </div>
 
               <div className="auth-steprail" aria-hidden="true">
-                <span className="on">01 手机号</span>
+                <span className="on">01 邮箱</span>
                 <span className={step === 'code' ? 'on' : ''}>02 验证码</span>
               </div>
 
               <form className="auth-form" onSubmit={submit} aria-busy={busy}>
-                {step === 'phone' ? (
-                  <label className="auth-field" htmlFor="auth-phone">
-                    <span>手机号</span>
+                {step === 'email' ? (
+                  <label className="auth-field" htmlFor="auth-email">
+                    <span>邮箱验证码</span>
                     <input
-                      id="auth-phone"
-                      name="phone"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
+                      id="auth-email"
+                      name="email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       autoFocus
-                      value={phone}
+                      value={email}
                       onChange={(event) => {
-                        setPhone(event.target.value)
+                        setEmail(event.target.value)
                         if (error) setError('')
                       }}
-                      placeholder="138 0013 8000"
-                      aria-describedby="auth-phone-hint"
+                      placeholder="writer@example.com"
+                      aria-describedby="auth-email-hint"
                       aria-invalid={Boolean(error)}
                     />
-                    <small id="auth-phone-hint">仅支持中国大陆手机号，用于登录和找回项目。</small>
+                    <small id="auth-email-hint">验证码会发送到该邮箱，用于登录和找回项目。</small>
                   </label>
                 ) : (
                   <>
                     <div className="auth-phone-summary">
-                      <span>{phone.trim()}</span>
-                      <button type="button" onClick={editPhone}>修改手机号</button>
+                      <span>{email.trim()}</span>
+                      <button type="button" onClick={editEmail}>修改邮箱</button>
                     </div>
                     <label className="auth-field" htmlFor="auth-code">
                       <span>验证码</span>
@@ -351,16 +351,16 @@ export default function LoginPanel() {
                 <button
                   className="auth-primary"
                   type="submit"
-                  disabled={busy || (step === 'phone' ? !validPhone(phone) : code.length !== 6)}
+                  disabled={busy || (step === 'email' ? !validEmail(email) : code.length !== 6)}
                 >
                   {busy
-                    ? <><span className="auth-spinner" aria-hidden="true" />{step === 'phone' ? '正在发送…' : '正在登录…'}</>
-                    : step === 'phone' ? '发送验证码' : '登录并继续项目'}
+                    ? <><span className="auth-spinner" aria-hidden="true" />{step === 'email' ? '正在发送…' : '正在登录…'}</>
+                    : step === 'email' ? '发送验证码' : '登录并继续项目'}
                 </button>
               </form>
 
               <p className="auth-footnote">
-                手机号仅用于登录和项目归属。
+                邮箱仅用于登录和项目归属，不会用于营销邮件。
               </p>
             </>
           )}

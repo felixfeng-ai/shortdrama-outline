@@ -10,7 +10,8 @@ import {
 
 export interface AuthUser {
   id: string
-  phone: string
+  phone: string | null
+  email: string | null
   displayName: string
   createdAt: number
 }
@@ -69,12 +70,27 @@ export function normalizePhone(value: unknown): string {
   return `+86${digits}`
 }
 
+export function normalizeEmail(value: unknown): string {
+  const email = typeof value === "string" ? value.trim().toLowerCase() : ""
+  if (
+    email.length > 254
+    || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+  ) {
+    throw new AuthError("邮箱地址不正确")
+  }
+  return email
+}
+
 function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex")
 }
 
 function codeHash(phone: string, code: string, secret: string): string {
   return hash(`${phone}:${code}:${secret}`)
+}
+
+function emailCodeHash(email: string, code: string, secret: string): string {
+  return hash(`email:${email}:${code}:${secret}`)
 }
 
 function authSecret(value?: string): string {
@@ -142,9 +158,38 @@ export function createAccessToken(
 function userRow(row: Record<string, unknown>): AuthUser {
   return {
     id: String(row.id),
-    phone: String(row.phone),
+    phone: typeof row.phone === "string" ? row.phone : null,
+    email: typeof row.email === "string" ? row.email : null,
     displayName: String(row.display_name),
     createdAt: Number(row.created_at),
+  }
+}
+
+function createSession(
+  db: DatabaseSync,
+  user: AuthUser,
+  options: {
+    now: number
+    client?: string
+    deviceName?: string
+    userAgent?: string
+  },
+): AuthSessionResult {
+  const token = randomBytes(32).toString("base64url")
+  const tokenId = hash(token)
+  const expiresAt = options.now + 30 * 24 * 60 * 60_000
+  const clientType = options.client === "app" ? "app" : "web"
+  const deviceName = (options.deviceName ?? "").trim().slice(0, 80)
+  const userAgent = (options.userAgent ?? "").trim().slice(0, 240)
+  db.prepare(
+    `INSERT INTO auth_sessions
+      (id, user_id, client_type, device_name, user_agent, created_at, expires_at, last_seen_at, revoked_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+  ).run(tokenId, user.id, clientType, deviceName, userAgent, options.now, expiresAt, options.now)
+  return {
+    user,
+    token,
+    expiresAt,
   }
 }
 
@@ -179,6 +224,46 @@ export function requestLoginCode(
     expiresAt,
     cooldownSeconds: 60,
   }
+}
+
+export function requestEmailLoginCode(
+  db: DatabaseSync,
+  rawEmail: string,
+  options: { now?: number; secret?: string; dev?: boolean } = {},
+): { id: string; code: string; devCode?: string; expiresAt: number; cooldownSeconds: number } {
+  const now = options.now ?? Date.now()
+  const email = normalizeEmail(rawEmail)
+  const secret = authSecret(options.secret)
+  const latest = db.prepare(
+    "SELECT created_at FROM email_login_codes WHERE email = ? ORDER BY created_at DESC LIMIT 1",
+  ).get(email) as { created_at: number } | undefined
+  if (latest && now - latest.created_at < 60_000) {
+    throw new AuthError("验证码发送过于频繁，请稍后再试", 429)
+  }
+  const recent = db.prepare(
+    "SELECT COUNT(*) AS n FROM email_login_codes WHERE email = ? AND created_at > ?",
+  ).get(email, now - 60 * 60_000) as { n: number }
+  if (recent.n >= 5) throw new AuthError("验证码发送次数过多，请稍后再试", 429)
+
+  const id = randomUUID()
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0")
+  const expiresAt = now + 5 * 60_000
+  db.prepare(
+    `INSERT INTO email_login_codes
+      (id, email, code_hash, attempts, expires_at, consumed_at, created_at)
+     VALUES (?, ?, ?, 0, ?, NULL, ?)`,
+  ).run(id, email, emailCodeHash(email, code, secret), expiresAt, now)
+  return {
+    id,
+    code,
+    ...(options.dev ? { devCode: code } : {}),
+    expiresAt,
+    cooldownSeconds: 60,
+  }
+}
+
+export function discardEmailLoginCode(db: DatabaseSync, id: string): void {
+  db.prepare("DELETE FROM email_login_codes WHERE id = ? AND consumed_at IS NULL").run(id)
 }
 
 export function verifyLoginCode(
@@ -224,22 +309,55 @@ export function verifyLoginCode(
   }
 
   db.prepare("UPDATE login_codes SET consumed_at = ? WHERE id = ?").run(now, row.id)
-  const token = randomBytes(32).toString("base64url")
-  const tokenId = hash(token)
-  const expiresAt = now + 30 * 24 * 60 * 60_000
-  const clientType = options.client === "app" ? "app" : "web"
-  const deviceName = (options.deviceName ?? "").trim().slice(0, 80)
-  const userAgent = (options.userAgent ?? "").trim().slice(0, 240)
-  db.prepare(
-    `INSERT INTO auth_sessions
-      (id, user_id, client_type, device_name, user_agent, created_at, expires_at, last_seen_at, revoked_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
-  ).run(tokenId, String(user.id), clientType, deviceName, userAgent, now, expiresAt, now)
-  return {
-    user: userRow(user),
-    token,
-    expiresAt,
+  return createSession(db, userRow(user), { ...options, now })
+}
+
+export function verifyEmailLoginCode(
+  db: DatabaseSync,
+  rawEmail: string,
+  code: string,
+  options: {
+    now?: number
+    secret?: string
+    client?: string
+    deviceName?: string
+    userAgent?: string
+  } = {},
+): AuthSessionResult {
+  const now = options.now ?? Date.now()
+  const email = normalizeEmail(rawEmail)
+  const secret = authSecret(options.secret)
+  const row = db.prepare(
+    `SELECT * FROM email_login_codes
+     WHERE email = ? AND consumed_at IS NULL
+     ORDER BY created_at DESC LIMIT 1`,
+  ).get(email) as {
+    id: string
+    code_hash: string
+    attempts: number
+    expires_at: number
+  } | undefined
+  if (!row || row.expires_at <= now) throw new AuthError("验证码已过期，请重新获取")
+  if (row.attempts >= 5) throw new AuthError("验证码尝试次数过多，请重新获取", 429)
+  if (row.code_hash !== emailCodeHash(email, code.trim(), secret)) {
+    db.prepare("UPDATE email_login_codes SET attempts = attempts + 1 WHERE id = ?").run(row.id)
+    throw new AuthError("验证码错误")
   }
+
+  let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as Record<string, unknown> | undefined
+  if (!user) {
+    const id = `user_${randomUUID()}`
+    const createdAt = now
+    const local = email.split("@")[0].slice(0, 12)
+    db.prepare(
+      `INSERT INTO users (id, phone, email, display_name, created_at, updated_at)
+       VALUES (?, NULL, ?, ?, ?, ?)`,
+    ).run(id, email, `用户${local}`, createdAt, createdAt)
+    user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as Record<string, unknown>
+  }
+
+  db.prepare("UPDATE email_login_codes SET consumed_at = ? WHERE id = ?").run(now, row.id)
+  return createSession(db, userRow(user), { ...options, now })
 }
 
 export function userFromSessionToken(

@@ -130,6 +130,23 @@ export function buildPlaceImagePrompt(place: Pick<VisualPlace, "anchor">): strin
 }
 
 /**
+ * 地点生成目标的稳定身份。
+ *
+ * 不能直接用 `VisualPlace.id`：重新生成场次时 id 会变化，历史场景图就会
+ * 和当前地点断开。地点名是当前唯一稳定且唯一的匹配键，因此用名称派生
+ * 一个 ASCII id，既保留稳定性，也可安全用于下载文件名。
+ */
+export function placeGenerationTargetId(name: string): string {
+  const normalized = name.trim()
+  let hash = 2166136261
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash ^= normalized.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `place-${(hash >>> 0).toString(36)}`
+}
+
+/**
  * 把角色锚点注入镜头 prompt。
  *
  * 为什么需要它：模型经常「理解并改写」锚点（把「沙色短夹克」写成「米色外套」），

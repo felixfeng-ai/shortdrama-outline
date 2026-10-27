@@ -8,6 +8,7 @@ import {
   summarizeGenerationTasks,
 } from "../lib/generation/task-view.ts"
 import type { GenerationTask } from "../lib/generation/types.ts"
+import { placeGenerationTargetId } from "../lib/assets/anchors.ts"
 
 function task(patch: Partial<GenerationTask>): GenerationTask {
   return {
@@ -73,6 +74,25 @@ test("TC2.1 目标标签使用真实角色和镜头信息", () => {
   assert.equal(label, "第 2 集 · 第 3 镜 · 天台")
 })
 
+test("PG-R4.1 任务中心用真实地点名标记地点任务", () => {
+  const name = "外门弟子通铺外"
+  const label = generationTaskTargetLabel(
+    task({ targetType: "place", targetId: placeGenerationTargetId(name) }),
+    [],
+    [],
+    [{
+      id: "place-1",
+      name,
+      space: "通铺与木栅栏",
+      props: "旧木箱",
+      lighting: "清晨冷光",
+      grade: "灰绿",
+      anchor: "space: 通铺与木栅栏",
+    }],
+  )
+  assert.equal(label, `地点 · ${name}`)
+})
+
 test("TC1/TC3 页面挂载任务中心，支持确认后串行批量重试", () => {
   const component = fs.readFileSync("components/GenerationTaskPanel.tsx", "utf8")
   const page = fs.readFileSync("app/page.tsx", "utf8")
@@ -82,5 +102,8 @@ test("TC1/TC3 页面挂载任务中心，支持确认后串行批量重试", () 
   assert.ok(component.includes("确认重试"), "批量重试没有确认态")
   assert.ok(component.includes("for (const task of"), "批量重试没有串行执行")
   assert.ok(page.includes("<GenerationTaskPanel"), "页面没有挂载任务中心")
+  assert.ok(page.includes("<GenerationTaskPanel") && page.includes("places={places}"), "地点任务没有传给任务中心")
   assert.ok(keyframe.includes("chengju:generation-updated"), "关键帧状态变化没有通知任务中心")
+  assert.ok(component.includes("task.targetType === 'place'"), "地点任务没有独立宽高比")
+  assert.ok(component.includes("'landscape'"), "地点任务重试应使用横图")
 })

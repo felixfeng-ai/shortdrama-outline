@@ -135,7 +135,7 @@
 
 | 不做 | 为什么 |
 |---|---|
-| **不做视频生成 / 一键成片** | 图生视频涉及更高成本、长任务和新的隐私边界；P0 只做到可确认的角色定妆图与镜头首帧 |
+| **不做视频生成 / 一键成片** | 图生视频涉及更高成本、长任务和新的隐私边界；P0 只做到可确认的角色定妆图、地点场景图与镜头首帧 |
 | **不把模型部署成本转嫁给编剧** | 关键帧默认由平台通义万相服务生成；用户不需要理解 Provider、模型或 API Key |
 | **不做全自动成片** | 那是 [huobao-drama](https://github.com/chatfire-AI/huobao-drama) 的赛道。人在环里才有判断权 |
 | **不做团队协作 / 重型账号体系** | 不登录也能开始；手机号账号只负责找回项目和跨端归属，不做组织、成员和权限后台 |
@@ -285,6 +285,8 @@ npm run build
 | `WEB_PUSH_PRIVATE_KEY` | 通知功能必填 | — | Web Push VAPID 私钥，只允许存在服务端 |
 | `WEB_PUSH_SUBJECT` | | `mailto:admin@chengju.work` | VAPID 联系主体 |
 | `AUTH_SECRET` | 登录功能必填 | — | 验证码散列所需的强随机服务端密钥 |
+| `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只存在服务端 |
+| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证发件域名下的发件人，例如 `成剧 VeyaFrame <login@chenju.work>` |
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 仅 localhost 联调时设为 `1` 返回开发验证码；生产域名永远拒绝 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 与生成文件的数据目录；生产环境建议放在仓库外 |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录 |
@@ -303,7 +305,7 @@ npm run build
 | 🧠 | 文本模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容协议；结构化 JSON、SSE 流式、function calling |
 | 🎨 | 图像模型 | 阿里云通义万相 | 服务端托管密钥；文生图与多图参考编辑，浏览器不接触模型密钥 |
 | 🗄️ | 存储 | SQLite + 私有数据目录 | 项目、快照、血缘、图台账、账号、生成任务、关键帧、推送订阅、额度与生成检查点 |
-| 🔐 | 账号 | 手机号验证码 + HttpOnly Refresh Session + 15 分钟 Access Token | Web 与 App 共用同一账号和项目归属；App 用短期 Bearer 访问、用 30 天 refresh token 换新 |
+| 🔐 | 账号 | 邮箱验证码优先，保留手机号验证码 + HttpOnly Refresh Session + 15 分钟 Access Token | Web 与 App 共用同一账号和项目归属；App 用短期 Bearer 访问、用 30 天 refresh token 换新 |
 | 📲 | PWA / 通知 | Manifest、Service Worker、Web Push、VAPID | 可安装、离线兜底、关键帧完成通知；不缓存 API 和个人图片 |
 | 📦 | 依赖 | 框架依赖 + `dotenv`、`web-push` | 功能层没有引入 UI 组件库、ORM、状态库或测试框架；ZIP 打包手写 |
 
@@ -351,7 +353,7 @@ SQLite + 私有数据目录
 | `ref_images` | 本地参考图台账，只存 `vaultKey`、SHA-256、归属和元数据 |
 | `generation_tasks` / `generated_assets` | 关键帧任务状态、历史版本、采用状态和私有图片文件 |
 | `text_generation_checkpoints` | 分集/分镜的输入签名、批次游标、已生成内容和稳定 stamp |
-| `users` / `login_codes` / `auth_sessions` | 手机号用户、验证码哈希和可撤销会话 |
+| `users` / `login_codes` / `email_login_codes` / `auth_sessions` | 邮箱或手机号用户、验证码哈希和可撤销会话 |
 | `project_shares` | 只读审阅 token 哈希、有效期、撤销与最后访问时间 |
 | `push_subscriptions` | 当前 owner 的设备推送订阅，endpoint 幂等更新 |
 | `usage_log` | 按身份、步骤、日期的额度流水与全站熔断依据 |
@@ -506,6 +508,8 @@ chengju/
 
 | 方法 | 路径 | 请求体 | 返回 |
 |------|------|--------|------|
+| POST | `/api/auth/email/request-code` | `{ email }` | 发送邮箱验证码；仅本机开发且显式开启时返回 `devCode` |
+| POST | `/api/auth/email/verify-code` | `{ email, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 Access/Refresh Token |
 | POST | `/api/auth/request-code` | `{ phone }` | 发送登录验证码；仅本机开发且显式开启时返回 `devCode` |
 | POST | `/api/auth/verify-code` | `{ phone, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 15 分钟 `accessToken` 与 30 天 `refreshToken` |
 | GET | `/api/auth/session` | — | `{ user }`；未登录为 `null` |
@@ -603,13 +607,15 @@ interface Episode {
 不登录也能完整使用，但匿名数据需要绑定到一个浏览器身份：
 
 - `middleware.ts` 为首次访问设置高熵 `chengju_sid` Cookie；本地开发使用稳定会话，避免重启后项目丢失。
-- 手机号登录后，验证码只保存哈希，5 分钟有效，并有发送冷却和小时上限。
+- Web 默认使用邮箱验证码登录；验证码只保存哈希，5 分钟有效，并有发送冷却和小时上限。
+- 邮箱登录不依赖短信供应商。生产环境通过 Resend 发信，发件域名必须完成 SPF、DKIM 和 DMARC 配置；未配置或发送失败时不会返回开发验证码。
+- 手机号验证码接口保留兼容，短信供应商未接入时不对外展示为默认入口。
 - Web 使用 HttpOnly refresh session；App 使用 15 分钟 access token 访问业务接口，过期后用 refresh token 换新。每次刷新都会轮换 refresh token，旧值立即失效。两者读取同一批项目。
 - 账号页列出当前账号的活跃设备，可单独撤销其他会话；撤销后对应 access 与 refresh token 都立即失效。
 - 首次登录只认领当前匿名会话的项目和推送订阅，不会碰其他匿名会话的数据。
 - 项目、快照、关键帧任务、生成资产和推送订阅都按 owner 校验；未登录时 owner 是匿名会话，登录后是用户 id。
 
-当前边界：正式短信通道尚未接入；没有团队成员、组织、角色权限后台；本地图库和相册原图不跨设备同步。
+当前边界：邮箱登录代码已完成，生产发件密钥和真实收件验收待完成；正式短信通道仍未接入；没有团队成员、组织、角色权限后台；本地图库和相册原图不跨设备同步。
 
 ---
 
@@ -721,7 +727,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 
 | 方向 | 状态 | 说明 |
 |---|---|---|
-| 角色定妆图 / 镜头首帧 P0 | ✅ 已完成 | 平台托管通义万相；生成任务入库、关键帧历史、采用状态、会话隔离，删除项目时清理文件 |
+| 角色定妆图 / 地点场景图 / 镜头首帧 P0 | ✅ 已完成 | 地点场景图可从锚点直接生成，并作为地点重生成与镜头首帧的一致性参考；生成任务入库、历史、采用状态、会话隔离，删除项目时清理文件 |
 | 关键帧任务控制 | ✅ 已完成 | 支持停止等待、取消状态和失败重试；取消不会写入关键帧资产 |
 | 项目生成任务中心 | ✅ 已完成 | 汇总等待、运行、成功、失败与取消任务；支持目标去重、单条重试和确认后串行批量重试 |
 | 生成任务超时恢复 | ✅ 已完成 | 刷新任务列表时把超过安全时限的 queued/running 任务转为 failed；活跃任务和终态任务不误处理 |
@@ -751,6 +757,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 
 | 范围 | 状态 | 尚未完成与验收标准 |
 |---|---|---|
+| 邮箱验证码登录 | 🟡 | 代码、数据库迁移和安全测试已完成；仍需配置 Resend、验证发件域名并完成 QQ/163/Gmail 等真实收件、垃圾箱和延迟验收 |
 | 生产短信登录 | 🟡 | 验证码与会话代码已完成；仍需接短信供应商、生产密钥、发送限流、短信防刷、失败告警，并用真实手机号完成登录与退出验收 |
 | 身份与调用风控 | 📋 | 当前有单次入参和额度上限，尚无 IP/账号级频率限制、异常调用告警、风控封禁与人工处置流程；公开放量前必须补齐并验证 429/熔断行为 |
 | Web Push 生产通知 | 🟡 | 本地代码闭环已完成；生产 VAPID 密钥、真实浏览器订阅、通知到达、点击回跳和失效订阅清理仍待线上验收 |
@@ -764,7 +771,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 原生 App | 📋 | Web/PWA 已具备；原生工作区仍需合并当前 Web 基线，并补 Keychain/Keystore、401 单飞刷新、深链、原生推送、相机/相册和离线草稿 |
 | 图生视频与成片时间线 | 📋 | 当前只到角色定妆图和镜头首帧；图生视频、视频拼接和成片时间线留到最后，不与本轮 P0 上线阻塞项混排 |
 
-发布顺序按“真实用户能否安全进入并持续使用”判断：生产账号与风控 → 审阅、通知和本地授权的发布验收 → 多实例与运维 → 团队、计费、合规。图生视频属于后续产品扩展，不是当前正式上线的必要条件。
+发布顺序按“真实用户能否安全进入并持续使用”判断：邮箱登录生产配置与收件验收 → 调用风控 → 审阅、通知和本地授权的发布验收 → 多实例与运维 → 团队、计费、合规。短信和微信登录不再阻塞个人开发者的首轮上线。图生视频属于后续产品扩展，不是当前正式上线的必要条件。
 
 ---
 
@@ -859,6 +866,8 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相模型名 |
 | `ALIYUN_IMAGE_EDIT_MODEL` | | `qwen-image-2.0-pro` | 带项目关键帧参考时使用的多图编辑模型 |
 | `AUTH_SECRET` | 登录功能必填 | — | 生产环境必须设置强随机值；验证码与散列密钥分离保存 |
+| `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只放服务端 |
+| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `成剧 VeyaFrame <login@chenju.work>` |
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 只在 localhost 配合开发验证码；生产域名即使误开也不会生效 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录；仅用户主动生成后写入 |
@@ -903,6 +912,8 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    DEEPSEEK_API_KEY=sk-你的模型密钥
    ALIYUN_DASHSCOPE_API_KEY=sk-你的通义密钥
    AUTH_SECRET=至少 32 字节的随机值
+   RESEND_API_KEY=re_你的邮件密钥
+   AUTH_EMAIL_FROM=成剧 VeyaFrame <login@chenju.work>
    # 可选：WEB_PUSH_PUBLIC_KEY=... / WEB_PUSH_PRIVATE_KEY=...
    EOF
    ```
@@ -946,7 +957,7 @@ CI 是主路径。要手动触发就在 GitHub Actions 页面点 **Run workflow*
 不想维护服务器的话 Vercel 也能跑：
 
 1. [vercel.com/new](https://vercel.com/new) 导入仓库，项目名填 `chengju`（子域名会是 `chengju.vercel.app`）
-2. Settings → Environment Variables 加 `DEEPSEEK_API_KEY`、`ALIYUN_DASHSCOPE_API_KEY`；需要登录和通知时再加 `AUTH_SECRET` 与 Web Push 配置
+2. Settings → Environment Variables 加 `DEEPSEEK_API_KEY`、`ALIYUN_DASHSCOPE_API_KEY`、`AUTH_SECRET`；需要邮箱登录时再加 `RESEND_API_KEY` 与 `AUTH_EMAIL_FROM`，通知则补 Web Push 配置
 3. Deploy
 
 > Vercel 的可用时长取决于当前套餐和运行时。短集数可以试跑；60 集分 6 批、整条流最长 600 秒，
