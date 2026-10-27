@@ -1,21 +1,20 @@
 'use client'
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
 import SmoothCollapse from './SmoothCollapse'
 import {
   eligibleBatchTargets,
   estimateBatchDuration,
   isBatchTargetReady,
-  runBatchGeneration,
   type BatchGenerationStatus,
   type BatchGenerationTarget,
 } from '@/lib/generation/batch'
-import { generateKeyframe, selectKeyframe } from '@/lib/generation/client'
-import type { GeneratedAsset } from '@/lib/generation/types'
+import { batchRunStore, EMPTY_BATCH_RUN_STATE } from '@/lib/generation/batch-store'
 import type { LookBook } from '@/lib/look'
 
 interface Props {
+  scope: string
   title?: string
   description: string
   targets: BatchGenerationTarget[]
@@ -33,6 +32,7 @@ const STATUS_LABEL: Record<BatchGenerationStatus, string> = {
 }
 
 export default function BatchGenerationPanel({
+  scope,
   title = '批量生成',
   description,
   targets,
@@ -50,19 +50,30 @@ export default function BatchGenerationPanel({
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(eligibleBatchTargets(targets).map((item) => item.key)),
   )
-  const [statuses, setStatuses] = useState<Record<string, BatchGenerationStatus>>({})
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [assets, setAssets] = useState<Record<string, GeneratedAsset>>({})
-  const [adopted, setAdopted] = useState<Set<string>>(() => new Set())
   const [starting, setStarting] = useState(false)
-  const [running, setRunning] = useState(false)
-  const [stopping, setStopping] = useState(false)
-  const [busyKey, setBusyKey] = useState<string | null>(null)
-  const [adoptingAll, setAdoptingAll] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const controllerRef = useRef<AbortController | null>(null)
+  const [startError, setStartError] = useState<string | null>(null)
+  const [runKeyOverride, setRunKeyOverride] = useState<string | null>(null)
   const activeProjectId = useRef(projectId)
+  const batchKey = projectId
+    ? `${projectId}:${scope}`
+    : runKeyOverride ?? `pending:${scope}`
+  const subscribe = useCallback(
+    (listener: () => void) => batchRunStore.subscribe(batchKey, listener),
+    [batchKey],
+  )
+  const getSnapshot = useCallback(() => batchRunStore.getSnapshot(batchKey), [batchKey])
+  const runState = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_BATCH_RUN_STATE)
+  const statuses = runState.statuses
+  const errors = runState.errors
+  const assets = runState.assets
+  const adopted = useMemo(() => new Set(runState.adoptedKeys), [runState.adoptedKeys])
+  const running = runState.running
+  const stopping = runState.stopping
+  const busyKey = runState.busyKey
+  const adoptingAll = runState.adoptingAll
+  const error = runState.error ?? startError
+  const notice = runState.notice
+  const runSelectionSignature = runState.selectedKeys.join('|')
 
   useEffect(() => {
     activeProjectId.current = projectId
@@ -70,12 +81,20 @@ export default function BatchGenerationPanel({
 
   useEffect(() => {
     if (running) return
-    setSelected(new Set(eligible.map((item) => item.key)))
-  }, [readySignature, running])
+    const saved = runState.selectedKeys.filter((key) =>
+      eligible.some((item) => item.key === key))
+    setSelected(new Set(saved.length > 0 ? saved : eligible.map((item) => item.key)))
+  }, [readySignature, runSelectionSignature, running])
 
-  useEffect(() => () => controllerRef.current?.abort(), [])
+  useEffect(() => {
+    if (running || notice || error) setOpen(true)
+  }, [error, notice, running])
 
-  const selectedTargets = targets.filter((item) => selected.has(item.key) && isBatchTargetReady(item))
+  const effectiveSelected = running
+    ? new Set(runState.selectedKeys)
+    : selected
+
+  const selectedTargets = targets.filter((item) => effectiveSelected.has(item.key) && isBatchTargetReady(item))
   const blockedCount = targets.length - eligible.length
   const warningCount = targets.filter((item) => item.warning?.trim()).length
   const estimate = estimateBatchDuration(selectedTargets.length, 2)
@@ -98,16 +117,10 @@ export default function BatchGenerationPanel({
     })
   }
 
-  function notifyTarget(item: BatchGenerationTarget) {
-    window.dispatchEvent(new CustomEvent('chengju:generation-updated', {
-      detail: { targetType: item.targetType, targetId: item.targetId },
-    }))
-  }
-
   async function projectForBatch(): Promise<string | null> {
     const pid = activeProjectId.current ?? await onEnsureProject()
     if (!pid) {
-      setError('项目还没有保存成功，请重试')
+      setStartError('项目还没有保存成功，请重试')
       return null
     }
     activeProjectId.current = pid
@@ -117,132 +130,39 @@ export default function BatchGenerationPanel({
   async function execute(items: BatchGenerationTarget[]) {
     if (items.length === 0 || running || starting) return
     setStarting(true)
-    setError(null)
-    setNotice(null)
-    setBusyKey(null)
-    setStopping(false)
+    setStartError(null)
     let pid: string | null = null
     try {
       pid = await projectForBatch()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '项目保存失败，请重试')
+      setStartError(cause instanceof Error ? cause.message : '项目保存失败，请重试')
     }
     if (!pid) {
       setStarting(false)
       return
     }
-    const keys = new Set(items.map((item) => item.key))
-    setStatuses((current) => {
-      const next = { ...current }
-      for (const key of keys) next[key] = 'waiting'
-      return next
-    })
-    setErrors((current) => {
-      const next = { ...current }
-      for (const key of keys) delete next[key]
-      return next
-    })
-    setAssets((current) => {
-      const next = { ...current }
-      for (const key of keys) delete next[key]
-      return next
-    })
-    setAdopted((current) => {
-      const next = new Set(current)
-      for (const key of keys) next.delete(key)
-      return next
-    })
-
-    const controller = new AbortController()
-    controllerRef.current = controller
+    const key = `${pid}:${scope}`
+    setRunKeyOverride(key)
     setStarting(false)
-    setRunning(true)
-    try {
-      const outcomes = await runBatchGeneration(items, {
-        concurrency: 2,
-        signal: controller.signal,
-        run: async (item, signal) => {
-          const result = await generateKeyframe({
-            projectId: pid,
-            targetType: item.targetType,
-            targetId: item.targetId,
-            prompt: item.prompt.trim(),
-            aspect: item.aspect,
-            look,
-            autoSelect: false,
-          }, signal)
-          notifyTarget(item)
-          return result.asset
-        },
-        onProgress: (item, status, detail) => {
-          setStatuses((current) => ({ ...current, [item.key]: status }))
-          if (detail?.asset) {
-            setAssets((current) => ({ ...current, [item.key]: detail.asset! }))
-          }
-          if (detail?.error) {
-            setErrors((current) => ({ ...current, [item.key]: detail.error! }))
-          }
-        },
-      })
-      const succeeded = outcomes.filter((item) => item.status === 'succeeded').length
-      const failed = outcomes.filter((item) => item.status === 'failed').length
-      const canceled = outcomes.filter((item) => item.status === 'canceled').length
-      setNotice(
-        canceled > 0
-          ? `已停止等待。已完成 ${succeeded} 项，另有 ${canceled} 项停止排队；已提交任务可能仍会完成。`
-          : `本批完成 ${succeeded} 项${failed > 0 ? `，${failed} 项失败可单独重试` : ''}。结果只保存为候选。`,
-      )
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '批量生成失败，请重试')
-    } finally {
-      if (controllerRef.current === controller) controllerRef.current = null
-      setRunning(false)
-      setStopping(false)
-    }
+    await batchRunStore.start(key, { projectId: pid, targets: items, look })
   }
 
   function handleStop() {
     if (!running || stopping) return
-    setStopping(true)
-    controllerRef.current?.abort()
+    batchRunStore.stop(batchKey)
   }
 
   async function adoptCandidate(item: BatchGenerationTarget) {
-    const candidate = assets[item.key]
     const pid = activeProjectId.current ?? projectId
-    if (!candidate || !pid || busyKey) return
-    setBusyKey(item.key)
-    setError(null)
-    try {
-      await selectKeyframe(pid, candidate.id)
-      setAdopted((current) => new Set(current).add(item.key))
-      setNotice(`已采用「${item.name}」的新版本`)
-      notifyTarget(item)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '采用失败，请重试')
-    } finally {
-      setBusyKey(null)
-    }
+    if (!pid || !assets[item.key] || busyKey) return
+    await batchRunStore.adoptCandidate(batchKey, pid, item)
   }
 
   async function adoptAll() {
     const pid = activeProjectId.current ?? projectId
     const pending = successTargets.filter((item) => !adopted.has(item.key) && assets[item.key])
     if (!pid || pending.length === 0 || adoptingAll) return
-    setAdoptingAll(true)
-    setError(null)
-    try {
-      for (const item of pending) {
-        await selectKeyframe(pid, assets[item.key].id)
-        setAdopted((current) => new Set(current).add(item.key))
-        notifyTarget(item)
-      }
-      setNotice(`已采用 ${pending.length} 张候选图`)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '批量采用失败，请重试')
-    } finally {
-      setAdoptingAll(false)
-    }
+    await batchRunStore.adoptAll(batchKey, pid, successTargets)
   }
 
   if (targets.length === 0) return null
@@ -320,7 +240,7 @@ export default function BatchGenerationPanel({
             {targets.map((item) => {
               const ready = isBatchTargetReady(item)
               const status = statuses[item.key]
-              const checked = selected.has(item.key)
+              const checked = effectiveSelected.has(item.key)
               const candidate = assets[item.key]
               return (
                 <div

@@ -18,6 +18,7 @@ import {
   runBatchGeneration,
   type BatchGenerationTarget,
 } from "../lib/generation/batch.ts"
+import { createBatchRunStore } from "../lib/generation/batch-store.ts"
 import type { GeneratedAsset } from "../lib/generation/types.ts"
 
 const OWNER = `anon_${"m".repeat(48)}`
@@ -251,4 +252,112 @@ test("BATCH6 批量生成默认保存候选，不覆盖当前采用图", async (
     delete process.env.ALIYUN_DASHSCOPE_API_KEY
     delete process.env.ALIYUN_IMAGE_MODEL
   }
+})
+
+test("BATCH7 切换步骤卸载订阅后，批量任务继续并保留已生成候选", async () => {
+  const store = createBatchRunStore()
+  const pending = new Map<string, (value: GeneratedAsset) => void>()
+  const targets = [
+    target({ key: "a", targetId: "a" }),
+    target({ key: "b", targetId: "b" }),
+  ]
+  const unsubscribe = store.subscribe("project-1:visuals", () => {})
+  const run = store.start("project-1:visuals", {
+    projectId: "project-1",
+    targets,
+    look: { palette: "", light: "", lens: "", banned: "" },
+    runner: (item) => new Promise<GeneratedAsset>((resolve) => pending.set(item.key, resolve)),
+  })
+
+  const deadline = Date.now() + 1000
+  while (pending.size < 2 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  assert.equal(pending.size, 2)
+  unsubscribe()
+
+  pending.get("a")!(asset("a"))
+  await new Promise((resolve) => setTimeout(resolve, 10))
+  const mid = store.getSnapshot("project-1:visuals")
+  assert.equal(mid.running, true)
+  assert.equal(mid.statuses.a, "succeeded")
+  assert.equal(mid.assets.a?.id, "a")
+
+  pending.get("b")!(asset("b"))
+  await run
+  const finished = store.getSnapshot("project-1:visuals")
+  assert.equal(finished.running, false)
+  assert.equal(finished.statuses.b, "succeeded")
+  assert.match(finished.notice || "", /本批完成 2 项/)
+})
+
+test("BATCH8 页面接入持久批量控制器，步骤组件不再卸载即 abort", () => {
+  const read = (path: string) => fs.readFileSync(path, "utf8")
+  const panel = read("components/BatchGenerationPanel.tsx")
+  const visual = read("components/VisualAnchorPanel.tsx")
+  const place = read("components/PlacePanel.tsx")
+  const shots = read("components/ShotList.tsx")
+
+  assert.ok(panel.includes("useSyncExternalStore"), "批量面板没有订阅页面级状态")
+  assert.ok(panel.includes("batchRunStore"), "批量面板没有使用持久控制器")
+  assert.equal(panel.includes("controllerRef.current?.abort()"), false, "卸载仍会主动 abort")
+  assert.ok(visual.includes('scope="visuals"'), "角色定妆没有稳定批次作用域")
+  assert.ok(place.includes('scope="places"'), "地点场景没有稳定批次作用域")
+  assert.ok(shots.includes('scope="shots"'), "镜头首帧没有稳定批次作用域")
+})
+
+test("BATCH9 停止排队会取消当前等待并保留持久状态", async () => {
+  const store = createBatchRunStore()
+  const pending = new Map<string, (reason?: unknown) => void>()
+  const run = store.start("project-stop:visuals", {
+    projectId: "project-stop",
+    targets: [target({ key: "a", targetId: "a" }), target({ key: "b", targetId: "b" })],
+    look: { palette: "", light: "", lens: "", banned: "" },
+    runner: (item, signal) => new Promise<GeneratedAsset>((_resolve, reject) => {
+      pending.set(item.key, reject)
+      signal?.addEventListener("abort", () => {
+        const error = new Error("aborted")
+        error.name = "AbortError"
+        reject(error)
+      }, { once: true })
+    }),
+  })
+  const deadline = Date.now() + 1000
+  while (pending.size < 2 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  store.stop("project-stop:visuals")
+  assert.equal(store.getSnapshot("project-stop:visuals").stopping, true)
+  await run
+  const state = store.getSnapshot("project-stop:visuals")
+  assert.equal(state.running, false)
+  assert.match(state.notice || "", /已停止等待/)
+  assert.deepEqual(state.statuses, { a: "canceled", b: "canceled" })
+})
+
+test("BATCH10 持久控制器支持逐张与批量采用", async () => {
+  const selectedIds: string[] = []
+  const store = createBatchRunStore({
+    selectAsset: async (_projectId, assetId) => {
+      selectedIds.push(assetId)
+      return { ...asset(assetId), selectedAt: Date.now() }
+    },
+  })
+  const targets = [
+    target({ key: "a", targetId: "a" }),
+    target({ key: "b", targetId: "b" }),
+  ]
+  await store.start("project-adopt:visuals", {
+    projectId: "project-adopt",
+    targets,
+    look: { palette: "", light: "", lens: "", banned: "" },
+    runner: async (item) => asset(item.key),
+  })
+  await store.adoptCandidate("project-adopt:visuals", "project-adopt", targets[0])
+  assert.deepEqual(store.getSnapshot("project-adopt:visuals").adoptedKeys, ["a"])
+  await store.adoptAll("project-adopt:visuals", "project-adopt", targets)
+  const state = store.getSnapshot("project-adopt:visuals")
+  assert.deepEqual(new Set(state.adoptedKeys), new Set(["a", "b"]))
+  assert.deepEqual(selectedIds.sort(), ["a", "b"])
+  assert.match(state.notice || "", /已采用 1 张候选图/)
 })

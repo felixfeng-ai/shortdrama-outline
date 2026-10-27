@@ -284,6 +284,7 @@ export default function VisualAnchorPanel({
       </div>
 
       <BatchGenerationPanel
+        scope="visuals"
         title="批量生成角色定妆"
         description="按当前角色清单逐项生成，适合先铺一版全角色定妆，再逐张挑选。"
         targets={visuals.map((vc) => {

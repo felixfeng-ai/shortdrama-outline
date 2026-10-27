@@ -118,6 +118,7 @@ export default function PlacePanel({
       {places.length > 0 && (
         <div className="mt-3">
           <BatchGenerationPanel
+            scope="places"
             title="批量生成场景图"
             description="按全剧地点清单生成 16:9 空场景，适合作所有镜头的环境与光线基准。"
             targets={places.map((place) => {

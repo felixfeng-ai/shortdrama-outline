@@ -126,6 +126,7 @@ export default function ShotList({
       </div>
 
       <BatchGenerationPanel
+        scope="shots"
         title={episodeFilter === null ? '批量生成全剧首帧' : `批量生成${selectedEpisodeLabel}首帧`}
         description={
           episodeFilter === null
