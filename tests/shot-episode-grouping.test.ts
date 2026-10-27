@@ -71,15 +71,15 @@ test("SEG3 集内连续同场次归段，场景标签变化另起一段", () => 
 
 test("SEG4 分镜列表渲染集头、摘要、场次段和集号下拉", () => {
   const list = fs.readFileSync("components/ShotList.tsx", "utf8")
-  const card = fs.readFileSync("components/ShotCard.tsx", "utf8")
+  const inspector = fs.readFileSync("components/ShotInspector.tsx", "utf8")
   const page = fs.readFileSync("app/page.tsx", "utf8")
 
   assert.ok(list.includes("groupShotsByEpisode"), "分镜列表没有按集分组")
-  assert.ok(list.includes("shot-episode-head"), "缺少集头")
+  assert.ok(list.includes("shot-board-episode"), "缺少卡流集头")
   assert.ok(list.includes("durationSeconds"), "缺少每集时长摘要")
   assert.ok(list.includes("未标注"), "缺少未标注分组")
-  assert.ok(list.includes("shot-scene-head"), "缺少场次分段")
-  assert.ok(card.includes("episodeCount"), "镜头卡没有可选集数范围")
-  assert.ok(card.includes('aria-label={`第 ${shot.shot} 镜集号`}'), "镜头卡缺少集号选择器")
-  assert.ok(page.includes("episodeCount={episodeCount}"), "页面没有把总集数传给分镜列表")
+  assert.ok(list.includes("shot-board-scene-head"), "缺少场次分段")
+  assert.ok(inspector.includes("episodeCount"), "镜头检查器没有可选集数范围")
+  assert.ok(inspector.includes(">所属集<"), "镜头检查器缺少集号选择器")
+  assert.ok(page.includes("episodeCount={episodeCount}"), "页面没有把总集数传给制作台")
 })

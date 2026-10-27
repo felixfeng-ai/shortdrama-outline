@@ -88,3 +88,33 @@ export function groupShotsByEpisode<T extends GroupableShot>(shots: T[]): ShotEp
       }
     })
 }
+
+export interface ShotWorkbenchTree<T> extends ShotEpisodeGroup<T> {
+  label: string
+}
+
+/** 分镜制作台树：与分集审阅共用一套稳定排序和连续场次规则。 */
+export function buildShotWorkbenchTree<T extends GroupableShot>(
+  shots: T[],
+): ShotWorkbenchTree<T>[] {
+  return groupShotsByEpisode(shots).map((group) => ({
+    ...group,
+    label: group.episode === 0 ? "未标注" : `第 ${group.episode} 集`,
+  }))
+}
+
+/** episode=null 表示全剧；episode=0 是未标注，不能偷偷回退到第 1 集。 */
+export function filterShotsForWorkbench<T extends GroupableShot>(
+  shots: T[],
+  episode: number | null,
+  scene: string | null,
+): T[] {
+  return shots.filter((shot) => {
+    const normalizedEpisode = Number.isFinite(Number(shot.episode)) && Number(shot.episode) > 0
+      ? Number(shot.episode)
+      : 0
+    if (episode !== null && normalizedEpisode !== episode) return false
+    if (scene !== null && (shot.scene?.trim() || "场景未标注") !== scene) return false
+    return true
+  })
+}

@@ -42,6 +42,7 @@ import { buildProjectStatus } from '@/lib/project-status'
 import AgentDock from '@/components/AgentDock'
 import type { AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
+import ShotInspector from '@/components/ShotInspector'
 import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
 import PlacePanel from '@/components/PlacePanel'
@@ -325,6 +326,8 @@ export default function Home() {
   const [importProgress, setImportProgress] = useState<string | null>(null)
   /** 场记是否展开：H 双舱里它就是右舱的第二个 tab */
   const [agentOpen, setAgentOpen] = useState(false)
+  /** 第 6 步当前镜头的属性检查器 */
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   /** 窄屏抽屉是否展开（桌面端是常驻右舱，这个状态不参与） */
   const [deckOpen, setDeckOpen] = useState(false)
   /** 停在「产出」tab 时收到的新回答数；切到场记即清零 */
@@ -346,6 +349,7 @@ export default function Home() {
   useEffect(() => {
     if (tabTouched.current) return
     setAgentOpen(view !== 'shots')
+    setInspectorOpen(view === 'shots')
   }, [view])
   /* 窄屏抽屉：Esc 收起 + 展开时锁住背景滚动 */
   useEffect(() => {
@@ -2795,7 +2799,12 @@ export default function Home() {
                 progress={shotProgress}
                 onChange={setShots}
                 activeShotId={activeShot?.id ?? null}
-                onSelect={setActiveShotId}
+                onSelect={(id) => {
+                  setActiveShotId(id)
+                  setInspectorOpen(true)
+                  setAgentOpen(false)
+                  if (window.matchMedia('(max-width: 920px)').matches) setDeckOpen(true)
+                }}
                 projectId={projectId}
                 onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
                 look={look}
@@ -2961,10 +2970,14 @@ export default function Home() {
               type="button"
               role="tab"
               id="deck-tab-output"
-              aria-selected={!agentOpen}
+              aria-selected={!agentOpen && !inspectorOpen}
               aria-controls="deck-pane-output"
-              className={`h-deck-tab ${agentOpen ? '' : 'on'}`}
-              onClick={() => { tabTouched.current = true; setAgentOpen(false) }}
+              className={`h-deck-tab ${!agentOpen && !inspectorOpen ? 'on' : ''}`}
+              onClick={() => {
+                tabTouched.current = true
+                setAgentOpen(false)
+                setInspectorOpen(false)
+              }}
             >
               产出
             </button>
@@ -2975,7 +2988,11 @@ export default function Home() {
               aria-selected={agentOpen}
               aria-controls="deck-pane-agent"
               className={`h-deck-tab ${agentOpen ? 'on' : ''}`}
-              onClick={() => { tabTouched.current = true; setAgentOpen(true) }}
+              onClick={() => {
+                tabTouched.current = true
+                setInspectorOpen(false)
+                setAgentOpen(true)
+              }}
             >
               场记
               {!agentOpen && agentUnread > 0 && (
@@ -2984,6 +3001,23 @@ export default function Home() {
                 </span>
               )}
             </button>
+            {view === 'shots' && activeShot && (
+              <button
+                type="button"
+                role="tab"
+                id="deck-tab-inspector"
+                aria-selected={inspectorOpen}
+                aria-controls="deck-pane-inspector"
+                className={`h-deck-tab ${inspectorOpen ? 'on' : ''}`}
+                onClick={() => {
+                  tabTouched.current = true
+                  setAgentOpen(false)
+                  setInspectorOpen(true)
+                }}
+              >
+                镜头属性
+              </button>
+            )}
             <span className="h-deck-meta">
               {anyRunning
                 ? `生成中 · ${elapsed.toFixed(1)}s`
@@ -2997,7 +3031,7 @@ export default function Home() {
               id="deck-pane-output"
               role="tabpanel"
               aria-labelledby="deck-tab-output"
-              style={{ display: agentOpen ? 'none' : 'flex' }}
+              style={{ display: agentOpen || inspectorOpen ? 'none' : 'flex' }}
             >
               <AssistantDock
                 shot={activeShot}
@@ -3018,7 +3052,10 @@ export default function Home() {
                 variant="docked"
                 state={agentState}
                 open
-                onOpenChange={setAgentOpen}
+                onOpenChange={(open) => {
+                  setAgentOpen(open)
+                  if (open) setInspectorOpen(false)
+                }}
                 onNewMessage={() => {
                   // 正停在场记里就不用提示；停在产出/别的步骤才点亮角标
                   if (!agentOpen) setAgentUnread((n) => n + 1)
@@ -3037,6 +3074,34 @@ export default function Home() {
                 seedPrompt={agentSeed}
               />
             </div>
+            {view === 'shots' && activeShot && (
+              <div
+                className="h-deck-pane"
+                id="deck-pane-inspector"
+                role="tabpanel"
+                aria-labelledby="deck-tab-inspector"
+                style={{ display: inspectorOpen ? 'flex' : 'none' }}
+              >
+                <ShotInspector
+                  shot={activeShot}
+                  projectId={projectId}
+                  onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
+                  look={look}
+                  episodeCount={episodeCount}
+                  onUpdate={(id, patch) => {
+                    setShots((prev) => prev.map((shot) =>
+                      shot.id === id ? { ...shot, ...patch } : shot))
+                  }}
+                  onRemove={(id) => {
+                    setShots((prev) => {
+                      const next = prev.filter((shot) => shot.id !== id)
+                      return next.map((shot, index) => ({ ...shot, shot: index + 1 }))
+                    })
+                    setActiveShotId((current) => current === id ? null : current)
+                  }}
+                />
+              </div>
+            )}
           </div>
         </aside>
       </div>
