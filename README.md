@@ -43,7 +43,7 @@
 |---|---|---|---|
 | 🚀 | **零部署** | 从打开 [chenju.work](https://chenju.work) 到拿到第 1 个镜头，**不需要安装任何东西**——不要 Docker、不要本机跑服务；不登录也能开始，登录后项目可跨设备找回 | 打开即用，全程只需一个浏览器 |
 | 🔒 | **参考图零上传** | 本地参考图**从不经过服务端**。服务端只存 `vaultKey`（图在你硬盘上的路径）+ `fileHash`（校验指纹），不存这些图的像素 | `/api/refs` 收到带 `data`/`base64`/`file`/`image` 字段的请求会**直接 400 拒绝** |
-| 📦 | **零锁定** | 全部资产可一键导出为自包含 zip（含离线分镜表），换工具不用重建 | 「打包带走」按钮会并入本地参考图与当前采用的云端关键帧；历史关键帧保留元数据 |
+| 📦 | **零锁定** | 全部资产可导出为自包含 zip；交付包适合下游执行，完整备份可重新导入继续编辑 | 交付包含采用图与执行文件；完整备份含全部快照、任务、候选图、本地参考图、意图、视觉宪法与判断日志 |
 
 > 为什么把「零部署」放在第一位：同类开源方案（Jellyfish 等）能力更强，但要走
 > Docker + MySQL + Redis，**得先会运维才能开始写剧本**。编剧不该为了用工具先变成工程师。
@@ -220,7 +220,7 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 ⑥ 分镜        每镜：场景 / 出场角色 / 动作 / 运镜 / 英文提示词
                并标注「本镜该带哪几张角色参考图」
 ──────────  以上是资产层：产出给出图工具的提示词  ──────────
-复制全部  /  导出 .md  /  打包带走（zip）
+复制全部  /  导出 .md  /  交付包 / 完整备份（zip）
 ```
 
 **这就是创作工具和「聊天机器人」的区别——人始终保留判断权。** 每一小步的结果都摆在台面上，用户改哪一步、重生成哪一步，自己说了算。
@@ -287,6 +287,9 @@ npm run build
 | `AUTH_SECRET` | 登录功能必填 | — | 验证码散列所需的强随机服务端密钥 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只存在服务端 |
 | `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证发件域名下的发件人，例如 `成剧 VeyaFrame <login@chenju.work>` |
+| `AUTH_CODE_IP_10M_LIMIT` | | `5` | 同一 IP 每 10 分钟最多请求验证码次数 |
+| `AUTH_CODE_IP_DAILY_LIMIT` | | `20` | 同一 IP 每连续 24 小时最多请求验证码次数 |
+| `AUTH_CODE_GLOBAL_DAILY_LIMIT` | | `200` | 全站每连续 24 小时验证码发送预算 |
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 仅 localhost 联调时设为 `1` 返回开发验证码；生产域名永远拒绝 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 与生成文件的数据目录；生产环境建议放在仓库外 |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录 |
@@ -336,7 +339,8 @@ Next.js Route Handlers
         │
 SQLite + 私有数据目录
 ├─ projects / snapshots / lineage / ref_images
-├─ users / login_codes / auth_sessions
+├─ users / login_codes / email_login_codes / auth_sessions
+├─ auth_rate_limits：验证码发送 IP 与全站窗口
 ├─ generation_tasks / generated_assets
 ├─ project_shares
 ├─ text_generation_checkpoints
@@ -354,6 +358,7 @@ SQLite + 私有数据目录
 | `generation_tasks` / `generated_assets` | 关键帧任务状态、历史版本、采用状态和私有图片文件 |
 | `text_generation_checkpoints` | 分集/分镜的输入签名、批次游标、已生成内容和稳定 stamp |
 | `users` / `login_codes` / `email_login_codes` / `auth_sessions` | 邮箱或手机号用户、验证码哈希和可撤销会话 |
+| `auth_rate_limits` | 验证码发送的 IP、全站窗口起点与计数；跨服务重启保留 |
 | `project_shares` | 只读审阅 token 哈希、有效期、撤销与最后访问时间 |
 | `push_subscriptions` | 当前 owner 的设备推送订阅，endpoint 幂等更新 |
 | `usage_log` | 按身份、步骤、日期的额度流水与全站熔断依据 |
@@ -609,6 +614,7 @@ interface Episode {
 - `middleware.ts` 为首次访问设置高熵 `chengju_sid` Cookie；本地开发使用稳定会话，避免重启后项目丢失。
 - Web 默认使用邮箱验证码登录；验证码只保存哈希，5 分钟有效，并有发送冷却和小时上限。
 - 邮箱登录不依赖短信供应商。生产环境通过 Resend 发信，发件域名必须完成 SPF、DKIM 和 DMARC 配置；未配置或发送失败时不会返回开发验证码。
+- 验证码发送另有持久化风控：只信任 Nginx 写入的 `X-Real-IP`，同一 IP 每 10 分钟最多 5 次、每 24 小时最多 20 次，全站每 24 小时最多 200 次；窗口计数写入 SQLite，服务重启不清零。
 - 手机号验证码接口保留兼容，短信供应商未接入时不对外展示为默认入口。
 - Web 使用 HttpOnly refresh session；App 使用 15 分钟 access token 访问业务接口，过期后用 refresh token 换新。每次刷新都会轮换 refresh token，旧值立即失效。两者读取同一批项目。
 - 账号页列出当前账号的活跃设备，可单独撤销其他会话；撤销后对应 access 与 refresh token 都立即失效。
@@ -732,6 +738,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 项目生成任务中心 | ✅ 已完成 | 汇总等待、运行、成功、失败与取消任务；支持目标去重、单条重试和确认后串行批量重试 |
 | 生成任务超时恢复 | ✅ 已完成 | 刷新任务列表时把超过安全时限的 queued/running 任务转为 failed；活跃任务和终态任务不误处理 |
 | 长剧集分批与断点续跑 | ✅ 已完成 | 总集数支持 6–120（默认 30）；分集内部每批 10 集、分镜按场次分批；checkpoint 记录输入签名和游标，失败后从下一批继续 |
+| 分镜按集审阅 | ✅ 已完成 | 分镜按集分组，集头显示镜头数、时长合计、缺图与返修；未标注镜头集中置顶，并可在镜头卡内直接修正集号 |
 | PWA 安装基础 | ✅ 已完成 | Manifest、Service Worker、离线兜底、条件安装入口、项目与步骤深链和浏览器历史恢复；不缓存 API、个人图片或生成资产 |
 | 只读项目审阅链接 | 🟡 本地完成，待发布 | 7 天有效、重新生成撤销旧链接、无需登录；只开放文本快照，不暴露本地图库、生成文件、额度或任务 |
 | Web Push 生成通知 | 🟡 代码完成，待配置 | 用户授权后推送生成成功/失败，点击回到定妆或分镜；VAPID 私钥只在服务端，生产环境需配置密钥 |
@@ -739,7 +746,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 本地参考图零上传 | ✅ 保持 | 本地图库原图、路径和二进制不上传；仅使用平台已生成且当前项目已采用的关键帧做一致性参考 |
 | 本地图库目录直连 | 🟡 自动化通过 | OPFS 目录句柄已验证扫描、缩略图、中文名自动挂图、刷新恢复、移除/恢复、断开后持久化；真实系统目录授权弹窗仍待人工确认 |
 | 可灵首尾帧衔接清单 | 📋 计划中 | **通用版已上线**（导出包的 `chaining.txt` + 「复制衔接清单」按钮，即梦/可灵都适用）；可灵界面特有的字段还没摸清，不凭猜测做 |
-| 导出包 schema 版本化 | ✅ 已完成 | `project.json` 带 `schema: chengju.project` 与 `schemaVersion: 1`，未来读取器可按版本兼容旧包 |
+| 项目包 V2 与导入恢复 | ✅ 已完成 | `chengju.project v2` 统一客户端与服务端结构；交付包 / 完整备份双模式，含导出报告、可读资产路径、离线分镜与 ZIP 导入 |
 | 多项目切换界面 | ✅ 已完成 | 项目条支持新建、切换、重命名、删除与导出备份；未登录按浏览器匿名会话隔离，登录后归属账号 |
 | 镜头成本估算 | 🧪 本地实验 | 已实现按可用率、时长、参考图数量估算单镜与整剧成本；尚未进入线上 UI 和正式 Roadmap |
 | 多实例与任务队列 | 📋 待做 | 当前 SQLite、额度和检查点仍按单进程设计；扩容前要换 Postgres、队列和 Redis 原子限流 |
@@ -759,7 +766,8 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 |---|---|---|
 | 邮箱验证码登录 | 🟡 | 代码、数据库迁移和安全测试已完成；仍需配置 Resend、验证发件域名并完成 QQ/163/Gmail 等真实收件、垃圾箱和延迟验收 |
 | 生产短信登录 | 🟡 | 验证码与会话代码已完成；仍需接短信供应商、生产密钥、发送限流、短信防刷、失败告警，并用真实手机号完成登录与退出验收 |
-| 身份与调用风控 | 📋 | 当前有单次入参和额度上限，尚无 IP/账号级频率限制、异常调用告警、风控封禁与人工处置流程；公开放量前必须补齐并验证 429/熔断行为 |
+| 验证码发送风控 | ✅ | 邮箱与手机号验证码共用 IP 十分钟/24 小时限额和全站 24 小时预算，计数持久化到 SQLite；代理来源只信任 `X-Real-IP` |
+| 通用调用风控与告警 | 📋 | 模型生成、Agent、导出等业务接口仍无统一 IP/账号频率限制；异常调用告警、风控封禁和人工处置流程待补 |
 | Web Push 生产通知 | 🟡 | 本地代码闭环已完成；生产 VAPID 密钥、真实浏览器订阅、通知到达、点击回跳和失效订阅清理仍待线上验收 |
 | 只读项目审阅链接 | 🟡 | 本地功能与测试已完成；仍需提交、部署，并验证匿名访问、7 天过期、重新生成撤销、私有资产不泄露 |
 | 本地目录系统授权 | 🟡 | 扫描、缩略图、中文名挂图和刷新恢复已自动化验证；仍需在真实 Chrome/Edge 的系统目录授权弹窗中完成人工验收 |
@@ -868,6 +876,9 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `AUTH_SECRET` | 登录功能必填 | — | 生产环境必须设置强随机值；验证码与散列密钥分离保存 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只放服务端 |
 | `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `成剧 VeyaFrame <login@chenju.work>` |
+| `AUTH_CODE_IP_10M_LIMIT` | | `5` | 同一 IP 每 10 分钟验证码请求上限 |
+| `AUTH_CODE_IP_DAILY_LIMIT` | | `20` | 同一 IP 每连续 24 小时验证码请求上限 |
+| `AUTH_CODE_GLOBAL_DAILY_LIMIT` | | `200` | 全站每连续 24 小时验证码发送上限 |
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 只在 localhost 配合开发验证码；生产域名即使误开也不会生效 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录；仅用户主动生成后写入 |
@@ -914,6 +925,9 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    AUTH_SECRET=至少 32 字节的随机值
    RESEND_API_KEY=re_你的邮件密钥
    AUTH_EMAIL_FROM=成剧 VeyaFrame <login@chenju.work>
+   AUTH_CODE_IP_10M_LIMIT=5
+   AUTH_CODE_IP_DAILY_LIMIT=20
+   AUTH_CODE_GLOBAL_DAILY_LIMIT=200
    # 可选：WEB_PUSH_PUBLIC_KEY=... / WEB_PUSH_PRIVATE_KEY=...
    EOF
    ```

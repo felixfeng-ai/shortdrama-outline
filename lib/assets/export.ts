@@ -7,67 +7,27 @@
 //
 // 注意：zip 不引入任何第三方库。自己写一个最小的 ZIP（store 模式，不压缩），
 // 因为项目已经有「零新增依赖」的惯例（测试框架也是这么处理的）。
-import type { Shot, VisualCharacter, Scene } from './types'
+import type { Shot, VisualCharacter, VisualPlace, Scene } from './types'
+import type { LookBook } from '../look'
+import { placeGenerationTargetId } from './anchors'
+export {
+  PROJECT_PACKAGE_SCHEMA,
+  PROJECT_PACKAGE_SCHEMA_VERSION,
+  buildProjectPackageManifest,
+} from '../export/package'
+export type {
+  ProjectExportMode,
+  ProjectExportFile,
+  ProjectExportMissing,
+  ProjectExportReport,
+  ProjectPackageManifest,
+  ProjectPackageSettings,
+} from '../export/package'
 
 /**
  * 项目包是用户带走的长期契约，不是内部临时数据结构。
  * 读取器必须用 schemaVersion 分支，不能靠字段是否碰巧存在来猜版本。
  */
-export const PROJECT_PACKAGE_SCHEMA = 'chengju.project' as const
-export const PROJECT_PACKAGE_SCHEMA_VERSION = 1 as const
-
-export interface ProjectPackageManifest<
-  TProject = unknown,
-  TStory = unknown,
-  TAssets = unknown,
-  TRef = unknown,
-  TKeyframe = unknown,
-> {
-  schema: typeof PROJECT_PACKAGE_SCHEMA
-  schemaVersion: typeof PROJECT_PACKAGE_SCHEMA_VERSION
-  project: TProject
-  exportedAt: number
-  story: TStory
-  assets: TAssets
-  refs: TRef[]
-  keyframes: TKeyframe[]
-}
-
-export function buildProjectPackageManifest<
-  TProject,
-  TStory,
-  TAssets,
-  TRef,
-  TKeyframe = unknown,
->(input: {
-  project: TProject
-  exportedAt: number
-  story: TStory
-  assets: TAssets
-  refs: TRef[]
-  keyframes?: TKeyframe[]
-}): ProjectPackageManifest<TProject, TStory, TAssets, TRef, TKeyframe> {
-  return {
-    schema: PROJECT_PACKAGE_SCHEMA,
-    schemaVersion: PROJECT_PACKAGE_SCHEMA_VERSION,
-    project: input.project,
-    exportedAt: input.exportedAt,
-    story: input.story,
-    assets: input.assets,
-    refs: input.refs,
-    keyframes: input.keyframes ?? [],
-  }
-}
-
-export interface ExportManifest {
-  schema: typeof PROJECT_PACKAGE_SCHEMA
-  schemaVersion: typeof PROJECT_PACKAGE_SCHEMA_VERSION
-  project: { id: string; title: string; createdAt: number; updatedAt: number }
-  latest: Record<string, { version: number; payload: unknown }>
-  refs: unknown[]
-  exportedAt: number
-}
-
 /**
  * 单个镜头的「执行单」文本。
  *
@@ -207,13 +167,22 @@ export function shotsToChainingList(shots: Shot[], title = "首尾帧衔接清�
 }
 
 /** 镜头 -> CSV。服务端与前端共用同一份实现，避免两份逻辑漂移 */
-export function shotsToCsv(shots: Shot[]): string {
+export function shotsToCsv(
+  shots: Shot[],
+  options: { keyframePathByTargetId?: Record<string, string> } = {},
+): string {
   const esc = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`
-  const head = ['镜号', '集号', '场景', '出场角色', '动作', '说话人', '台词', '景别', '运镜', '提示词', '参考图', '画面比例', '时长', '状态']
+  const head = [
+    '镜号', '集号', '场景', '地点', '出场角色', '动作', '说话人', '台词',
+    '景别', '运镜', '提示词', '参考图', '缺失参考', '接下一镜首帧',
+    '画面比例', '时长', '状态', '镜头实体 ID', '已采用图路径',
+  ]
   const rows = shots.map((s) => [
-    s.shot, s.episode > 0 ? s.episode : '', s.scene, s.characters.join('、'), s.action, s.speaker, s.dialogue,
+    s.shot, s.episode > 0 ? s.episode : '', s.scene, s.place, s.characters.join('、'), s.action, s.speaker, s.dialogue,
     s.shotSize || '中景', s.camera,
-    s.prompt, s.refImages.join(' | '), s.params.ratio, s.params.duration, s.status,
+    s.prompt, s.refImages.join(' | '), s.missingRefFor.join('、'),
+    s.params.lastFrame ? '是' : '否', s.params.ratio, s.params.duration, s.status,
+    s.entityId, options.keyframePathByTargetId?.[s.entityId] ?? '',
   ].map(esc).join(','))
   return '\ufeff' + [head.map(esc).join(','), ...rows].join('\n') + '\n'
 }
@@ -228,13 +197,25 @@ function esc(s: unknown): string {
 export function buildStoryboardHtml(input: {
   title: string
   visuals: VisualCharacter[]
+  places?: VisualPlace[]
+  look?: LookBook
   scenes: Scene[]
   shots: Shot[]
+  images?: StoryboardImage[]
 }): string {
-  const { title, visuals, scenes, shots } = input
+  const { title, visuals, places = [], look, scenes, shots, images = [] } = input
+  const imageByTarget = new Map(images.map((image) => [`${image.targetType}:${image.targetId}`, image]))
+  const imageMarkup = (targetType: StoryboardImage["targetType"], targetId: string, alt: string) => {
+    const image = imageByTarget.get(`${targetType}:${targetId}`)
+    if (!image) return '<span class="dim">—</span>'
+    return `<img class="thumb" src="../${esc(image.path)}" alt="${esc(image.alt || alt)}" width="120" height="68" loading="lazy">`
+  }
 
   const visualRows = visuals.map((v) => `
-    <tr><td>${esc(v.name)}</td><td class="mono">${esc(v.anchor)}</td></tr>`).join('')
+    <tr><td>${esc(v.name)}</td><td class="mono">${esc(v.anchor)}</td><td>${imageMarkup("character", v.entityId ?? v.id, `${v.name}角色定妆`)}</td></tr>`).join('')
+
+  const placeRows = places.map((place) => `
+    <tr><td>${esc(place.name)}</td><td class="mono">${esc(place.anchor)}</td><td>${imageMarkup("place", placeGenerationTargetId(place.name), `${place.name}场景图`)}</td></tr>`).join('')
 
   const sceneRows = scenes.map((s) => `
     <tr><td>${s.number}</td><td>${s.episode}</td><td>${esc(s.location)}</td><td>${esc(s.timeOfDay)}</td>
@@ -242,6 +223,7 @@ export function buildStoryboardHtml(input: {
 
   const shotRows = shots.map((s) => `
     <tr>
+      <td>${imageMarkup("shot", s.entityId, `第 ${s.shot} 镜首帧`)}</td>
       <td>${s.shot}</td>
       <td>${s.episode > 0 ? s.episode : '—'}</td>
       <td>${esc(s.scene)}</td>
@@ -250,9 +232,21 @@ export function buildStoryboardHtml(input: {
       <td>${esc(s.dialogue) ? `${esc(s.speaker)}${s.speaker ? '：' : ''}${esc(s.dialogue)}` : '<span class="dim">—</span>'}</td>
       <td>${esc(s.shotSize || '中景')}</td>
       <td>${esc(s.camera)}</td>
+      <td>${esc(s.params.ratio)} / ${s.params.duration}s</td>
+      <td>${esc(shotStatusLabel(s.status))}</td>
       <td>${esc(s.refImages.join(' | ')) || '<span class="warn">缺参考图</span>'}</td>
       <td class="mono">${esc(s.prompt)}</td>
     </tr>`).join('')
+
+  const lookRows = look
+    ? [
+      ["色调", look.palette],
+      ["光线", look.light],
+      ["镜头语言", look.lens],
+      ["不要出现", look.banned],
+    ].filter(([, value]) => value).map(([label, value]) =>
+      `<tr><th>${esc(label)}</th><td>${esc(value)}</td></tr>`).join('')
+    : ''
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -274,6 +268,8 @@ export function buildStoryboardHtml(input: {
   tr:last-child td { border-bottom: none; }
   .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #334155; }
   .warn { color: #b45309; background: #fef3c7; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+  .dim { color: #94a3b8; }
+  .thumb { display: block; width: 120px; height: 68px; object-fit: cover; border-radius: 4px; background: #e2e8f0; }
   footer { margin-top: 32px; color: #94a3b8; font-size: 12px; }
 </style>
 </head>
@@ -281,15 +277,32 @@ export function buildStoryboardHtml(input: {
   <h1>${esc(title)} · 分镜表</h1>
   <p class="meta">导出时间：${new Date().toISOString().slice(0, 19).replace('T', ' ')}　·　共 ${shots.length} 个镜头 / ${scenes.length} 场 / ${visuals.length} 个角色</p>
 
-  ${visuals.length ? `<h2>角色视觉锚点</h2><table><thead><tr><th>角色</th><th>英文锚点（逐镜复用）</th></tr></thead><tbody>${visualRows}</tbody></table>` : ''}
+  ${visuals.length ? `<h2>角色视觉锚点</h2><table><thead><tr><th>角色</th><th>英文锚点（逐镜复用）</th><th>采用图</th></tr></thead><tbody>${visualRows}</tbody></table>` : ''}
+
+  ${places.length ? `<h2>地点视觉锚点</h2><table><thead><tr><th>地点</th><th>英文锚点（逐镜复用）</th><th>场景图</th></tr></thead><tbody>${placeRows}</tbody></table>` : ''}
+
+  ${lookRows ? `<h2>视觉宪法</h2><table class="look"><tbody>${lookRows}</tbody></table>` : ''}
 
   ${scenes.length ? `<h2>场景</h2><table><thead><tr><th>#</th><th>集号</th><th>地点</th><th>时间</th><th>出场</th><th>内容</th></tr></thead><tbody>${sceneRows}</tbody></table>` : ''}
 
-  ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>镜</th><th>集号</th><th>场景</th><th>出场</th><th>动作</th><th>台词</th><th>景别</th><th>运镜</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
+  ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>首帧</th><th>镜</th><th>集号</th><th>场景</th><th>出场</th><th>动作</th><th>台词</th><th>景别</th><th>运镜</th><th>画幅 / 时长</th><th>状态</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
 
   <footer>由「成剧」导出 —— 本文件不依赖任何外部资源，可离线打开。</footer>
 </body>
 </html>`
+}
+
+export interface StoryboardImage {
+  path: string
+  targetType: "character" | "place" | "shot"
+  targetId: string
+  alt: string
+}
+
+function shotStatusLabel(status: Shot["status"]): string {
+  if (status === "done") return "已出图"
+  if (status === "rework") return "需返修"
+  return "待出图"
 }
 
 // ── 最小 ZIP 打包（store 模式，不压缩）──────────────────────────

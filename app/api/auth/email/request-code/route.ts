@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { emailAuthConfigured, sendLoginCodeEmail } from "@/lib/auth/email"
+import { enforceVerificationRateLimits } from "@/lib/auth/rate-limit"
 import {
   AuthError,
   discardEmailLoginCode,
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
     }
 
     const db = getDbForRequest()
+    enforceVerificationRateLimits(db, req)
     const result = requestEmailLoginCode(db, email, {
       secret: process.env.AUTH_SECRET,
       dev,

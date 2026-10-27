@@ -53,25 +53,39 @@ export default function KeyframePanel({
       setReferenceCount(null)
       return
     }
-    let cancelled = false
-    fetchGenerationState(projectId, targetType, targetId)
-      .then((state) => {
-        if (cancelled) return
-        setAssets(state.assets)
-        setLastTask(state.tasks[0] ?? null)
-      })
-      .catch(() => {
-        if (!cancelled) setAssets([])
-      })
-    return () => { cancelled = true }
+    let active = true
+    const load = () => {
+      fetchGenerationState(projectId, targetType, targetId)
+        .then((state) => {
+          if (!active) return
+          setAssets(state.assets)
+          setLastTask(state.tasks[0] ?? null)
+          if (state.assets.length > 0 && !state.assets.some((asset) => asset.selectedAt)) {
+            setHistoryOpen(true)
+          }
+        })
+        .catch(() => {
+          if (active) setAssets([])
+        })
+    }
+    const onGenerationUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ targetType?: string; targetId?: string }>).detail
+      if (detail?.targetType && detail.targetType !== targetType) return
+      if (detail?.targetId && detail.targetId !== targetId) return
+      load()
+    }
+    load()
+    window.addEventListener('chengju:generation-updated', onGenerationUpdated)
+    return () => {
+      active = false
+      window.removeEventListener('chengju:generation-updated', onGenerationUpdated)
+    }
   }, [projectId, targetId, targetType])
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  const selected = useMemo(
-    () => assets.find((asset) => asset.selectedAt) ?? assets[0] ?? null,
-    [assets],
-  )
+  const selected = useMemo(() => assets.find((asset) => asset.selectedAt) ?? null, [assets])
+  const previewAsset = selected ?? assets[0] ?? null
   const pendingTask = lastTask?.status === 'queued' || lastTask?.status === 'running'
     ? lastTask
     : null
@@ -203,35 +217,46 @@ export default function KeyframePanel({
             ? '停止生成'
             : pendingTask
               ? '任务可能仍在运行'
-            : lastTask?.status === 'failed' && !selected
+            : lastTask?.status === 'failed' && !previewAsset
               ? '重试生成'
-              : selected ? `重${actionLabel}` : actionLabel}
+              : previewAsset ? `再${actionLabel}` : actionLabel}
         </button>
       </div>
 
-      {selected ? (
+      {previewAsset ? (
         <div className="mt-2.5 grid min-w-0 gap-2 sm:grid-cols-[112px_minmax(0,1fr)]">
           <div className={`keyframe-preview ${previewClass} min-h-28 overflow-hidden rounded-chip border border-surface-line bg-surface-deep`}>
             <img
-              src={selected.downloadUrl || `/api/generated-assets/${selected.id}`}
+              src={previewAsset.downloadUrl || `/api/generated-assets/${previewAsset.id}`}
               alt={`${actionLabel}结果`}
               className="h-full w-full object-cover"
             />
           </div>
           <div className="min-w-0 self-center">
             <p className="text-[10.5px] font-medium text-ink-600">
-              已采用 · {new Date(selected.createdAt).toLocaleString('zh-CN', { hour12: false })}
+              {selected ? '已采用' : '候选版本 · 尚未采用'} · {new Date(previewAsset.createdAt).toLocaleString('zh-CN', { hour12: false })}
             </p>
             <p className="mt-1 line-clamp-2 font-mono text-[9.5px] leading-relaxed text-ink-400">
-              {selected.model} · {(selected.bytes / 1024).toFixed(0)} KB
+              {previewAsset.model} · {(previewAsset.bytes / 1024).toFixed(0)} KB
             </p>
             <a
-              href={selected.downloadUrl}
-              download={keyframeExportName(selected)}
+              href={previewAsset.downloadUrl}
+              download={keyframeExportName(previewAsset)}
               className="mt-1.5 inline-flex min-h-8 items-center text-[10px] font-medium text-done-700 underline-offset-2 hover:underline"
             >
               {isPlace ? '下载场景图' : '下载关键帧'}
             </a>
+            {!selected && (
+              <button
+                type="button"
+                onClick={() => void handleSelect(previewAsset)}
+                disabled={Boolean(selectingId)}
+                className="ml-3 mt-1.5 rounded-chip border border-done-300 bg-done-50 px-2 py-1 text-[10px] font-semibold text-done-900
+                  transition-colors hover:bg-done-100 disabled:opacity-50"
+              >
+                {selectingId === previewAsset.id ? '采用中…' : '采用这张'}
+              </button>
+            )}
             {assets.length > 1 && (
               <button
                 type="button"

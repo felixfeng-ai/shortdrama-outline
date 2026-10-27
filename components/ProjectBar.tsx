@@ -21,12 +21,15 @@ interface Props {
   /** 载入示例项目：第一次来的人先看见"做出来是什么样" */
   onLoadSample: () => void
   /** 匿名会话项目只能靠导出带走，项目条常驻备份入口 */
-  onBackup: () => void
+  onBackup: (mode: "delivery" | "backup") => void
+  onImportPackage: (file: File) => void
   onExportMarkdown: () => void
   onCopyAll: () => void
   onCopyLink: () => void
   onCopyReviewLink: () => void
   copied: boolean
+  exportProgress?: string | null
+  importProgress?: string | null
 }
 
 function when(ts: number): string {
@@ -47,11 +50,14 @@ export default function ProjectBar({
   onNew,
   onLoadSample,
   onBackup,
+  onImportPackage,
   onExportMarkdown,
   onCopyAll,
   onCopyLink,
   onCopyReviewLink,
   copied,
+  exportProgress = null,
+  importProgress = null,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -59,10 +65,15 @@ export default function ProjectBar({
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const nameInputRef = useRef<HTMLInputElement | null>(null)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (editing) requestAnimationFrame(() => nameInputRef.current?.focus())
   }, [editing])
+
+  useEffect(() => {
+    if (exportProgress || importProgress) setExportOpen(true)
+  }, [exportProgress, importProgress])
 
   const current = projects.find((p) => p.id === currentId) ?? null
   const title = current?.title ?? (hasContent ? '未保存的新项目' : '还没有项目')
@@ -126,14 +137,28 @@ export default function ProjectBar({
       </div>
 
       <SmoothCollapse open={exportOpen}>
-        <div className="project-export-menu mt-2 flex flex-wrap gap-2 border-t border-surface-line pt-2">
+        <div className="project-export-menu mt-2 border-t border-surface-line pt-2">
+          <p className="mb-2 text-[10.5px] leading-relaxed text-ink-400">
+            交付包只带已采用图和执行文件；完整备份保留全部版本、任务和历史候选。
+          </p>
+          <div className="project-export-actions flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => { setExportOpen(false); onBackup() }}
+            disabled={Boolean(exportProgress)}
+            onClick={() => onBackup("delivery")}
             className="min-h-11 flex-1 rounded-chip bg-accent-700 px-3 py-1.5 text-[11px] font-medium text-white
-              transition-colors hover:bg-accent-800"
+              transition-colors hover:bg-accent-800 disabled:cursor-wait disabled:opacity-60"
           >
-            导出项目包
+            导出交付包
+          </button>
+          <button
+            type="button"
+            disabled={Boolean(exportProgress)}
+            onClick={() => onBackup("backup")}
+            className="min-h-11 flex-1 rounded-chip border border-done-300 bg-done-50 px-3 py-1.5 text-[11px] font-medium text-done-900
+              transition-colors hover:bg-done-100 disabled:cursor-wait disabled:opacity-60"
+          >
+            导出完整备份
           </button>
           <button
             type="button"
@@ -169,6 +194,32 @@ export default function ProjectBar({
           >
             生成审阅链接
           </button>
+          <button
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+            disabled={Boolean(importProgress)}
+            className="project-import-action min-h-11 flex-1 rounded-chip border border-surface-line bg-surface-soft px-3 py-1.5 text-[11px] font-medium text-ink-600
+              transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-wait disabled:opacity-60"
+          >
+            导入项目包
+          </button>
+          </div>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ""
+              if (file) onImportPackage(file)
+            }}
+          />
+          {(exportProgress || importProgress) && (
+            <p className="mt-2 rounded-chip bg-surface-soft px-2.5 py-1.5 text-[10.5px] text-ink-500" role="status" aria-live="polite">
+              {exportProgress || importProgress}
+            </p>
+          )}
         </div>
       </SmoothCollapse>
 

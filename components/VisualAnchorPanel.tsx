@@ -10,6 +10,7 @@ import CopyButton from './CopyButton'
 import RefImagePicker from './RefImagePicker'
 import SmoothCollapse from './SmoothCollapse'
 import KeyframePanel from './KeyframePanel'
+import BatchGenerationPanel from './BatchGenerationPanel'
 import { buildCharacterKeyframePrompt } from '@/lib/generation/prompt'
 import type { LookBook } from '@/lib/look'
 import { visualTraitLabel } from '@/lib/assets/anchors'
@@ -57,9 +58,8 @@ const FIELDS: { key: keyof VisualCharacter; label: string; hint: string }[] = [
  * 平台没有等价能力时，「复制全部提示词」逐个出图这条退路一直留着。
  */
 function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
-  // 默认展开：这条链路本来就是用来省掉「一个个复制去平台」的，
-  // 折叠起来等于把答案藏了，用户只会继续手动逐个出图
-  const [open, setOpen] = useState(true)
+  // 平台内批量生成已覆盖主链路；外部平台导出保留为需要指定模型时的备用路径。
+  const [open, setOpen] = useState(false)
 
   // 母版：整段提示词就是一个变量占位符
   const template = "〖定妆提示词〗"
@@ -75,7 +75,7 @@ function BatchImageKit({ prompts }: { prompts: ImagePrompt[] }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-accent-900">
-            批量出定妆图 · ${prompts.length} 个角色一次出完
+            外部平台批量出图 · ${prompts.length} 个角色
           </p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-accent-800/80">
             不用一个个复制粘贴：下面两块各自复制一次，贴进出图平台就是一次批量提交。
@@ -282,6 +282,28 @@ export default function VisualAnchorPanel({
           </p>
         </div>
       </div>
+
+      <BatchGenerationPanel
+        title="批量生成角色定妆"
+        description="按当前角色清单逐项生成，适合先铺一版全角色定妆，再逐张挑选。"
+        targets={visuals.map((vc) => {
+          const prompt = imagePrompts.find((item) => item.name === vc.name)?.en ||
+            buildCharacterKeyframePrompt(vc)
+          return {
+            key: vc.entityId ?? vc.id,
+            targetType: 'character' as const,
+            targetId: vc.entityId ?? vc.id,
+            name: vc.name,
+            detail: [vc.age, vc.face, vc.hair].filter(Boolean).join(' · ') || '角色定妆',
+            prompt,
+            aspect: 'portrait' as const,
+            blockedReason: prompt.trim() ? null : '缺定妆提示词',
+          }
+        })}
+        projectId={projectId}
+        onEnsureProject={onEnsureProject}
+        look={look}
+      />
 
       {imagePrompts.length > 0 && <BatchImageKit prompts={imagePrompts} />}
 

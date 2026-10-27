@@ -304,3 +304,33 @@ test("E8 邮件发送失败时清理验证码并返回 502", async () => {
     delete process.env.AUTH_SECRET
   }
 })
+
+test("E9 同一 IP 超限后路由返回 429，且不新增验证码记录", async () => {
+  __resetDbForTests(":memory:")
+  process.env.AUTH_SECRET = secret
+  process.env.AUTH_ALLOW_DEV_CODE = "1"
+  try {
+    for (let i = 0; i < 5; i += 1) {
+      const response = await requestEmailCode(request("/api/auth/email/request-code", {
+        method: "POST",
+        headers: { "x-real-ip": "203.0.113.50" },
+        body: JSON.stringify({ email: `writer-${i}@example.com` }),
+      }))
+      assert.equal(response.status, 200)
+    }
+
+    const blocked = await requestEmailCode(request("/api/auth/email/request-code", {
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.50" },
+      body: JSON.stringify({ email: "writer-5@example.com" }),
+    }))
+    assert.equal(blocked.status, 429)
+    const count = getDbForRequest().prepare(
+      "SELECT COUNT(*) AS n FROM email_login_codes",
+    ).get() as { n: number }
+    assert.equal(count.n, 5)
+  } finally {
+    delete process.env.AUTH_SECRET
+    delete process.env.AUTH_ALLOW_DEV_CODE
+  }
+})

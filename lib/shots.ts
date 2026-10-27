@@ -29,3 +29,62 @@ export function shotBatchLabel(batch: ShotBatch, total: number): string {
   const totalBatches = Math.max(1, planShotBatches(total).length)
   return `第 ${batch.index}/${totalBatches} 批 · 第 ${batch.sceneStart}-${batch.sceneEnd} 场`
 }
+
+export interface ShotSceneGroup<T> {
+  label: string
+  shots: T[]
+}
+
+export interface ShotEpisodeGroup<T> {
+  episode: number
+  shots: T[]
+  scenes: ShotSceneGroup<T>[]
+  shotCount: number
+  durationSeconds: number
+  missingRefShots: number
+  reworkShots: number
+}
+
+type GroupableShot = {
+  episode: number
+  scene?: string
+  params?: { duration?: number }
+  missingRefFor?: unknown[]
+  status?: string
+}
+
+export function groupShotsByEpisode<T extends GroupableShot>(shots: T[]): ShotEpisodeGroup<T>[] {
+  const byEpisode = new Map<number, T[]>()
+  for (const shot of shots) {
+    const raw = Math.floor(Number(shot.episode))
+    const episode = Number.isFinite(raw) && raw > 0 ? raw : 0
+    const group = byEpisode.get(episode) ?? []
+    group.push(shot)
+    byEpisode.set(episode, group)
+  }
+
+  return [...byEpisode.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([episode, episodeShots]) => {
+      const scenes: ShotSceneGroup<T>[] = []
+      for (const shot of episodeShots) {
+        const label = shot.scene?.trim() || "场景未标注"
+        const current = scenes[scenes.length - 1]
+        if (current?.label === label) current.shots.push(shot)
+        else scenes.push({ label, shots: [shot] })
+      }
+
+      return {
+        episode,
+        shots: episodeShots,
+        scenes,
+        shotCount: episodeShots.length,
+        durationSeconds: episodeShots.reduce((sum, shot) => {
+          const duration = Number(shot.params?.duration)
+          return sum + (Number.isFinite(duration) && duration > 0 ? duration : 0)
+        }, 0),
+        missingRefShots: episodeShots.filter((shot) => (shot.missingRefFor?.length ?? 0) > 0).length,
+        reworkShots: episodeShots.filter((shot) => shot.status === "rework").length,
+      }
+    })
+}

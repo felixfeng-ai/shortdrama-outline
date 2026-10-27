@@ -118,10 +118,11 @@ test("E1 导出自包含清单：含项目、各类最新版、图台账元数�
 
   assert.equal(payload.success, true)
   assert.equal(payload.data.manifest.project.title, "导出测试")
-  assert.equal(payload.data.manifest.latest.shots.version, 1)
+  assert.equal(payload.data.manifest.assets.shots.length, 1)
   assert.ok(Array.isArray(payload.data.manifest.refs))
   assert.equal(payload.data.manifest.schema, "chengju.project")
-  assert.equal(payload.data.manifest.schemaVersion, 1)
+  assert.equal(payload.data.manifest.schemaVersion, 2)
+  assert.ok(Array.isArray(payload.data.manifest.snapshots))
 })
 
 test("E2 导出缺 projectId 时返回 400", async () => {

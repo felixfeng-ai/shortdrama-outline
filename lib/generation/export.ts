@@ -18,6 +18,9 @@ export interface KeyframeManifestEntry {
   prompt: string
   selectedAt: number | null
   createdAt: number
+  archivePath?: string | null
+  included?: boolean
+  importFile?: string | null
 }
 
 function safePart(value: string): string {
@@ -34,7 +37,10 @@ export function keyframeExportName(asset: GeneratedAsset): string {
   return `${safePart(asset.targetType)}-${safePart(asset.targetId)}-${safePart(asset.id)}.${ext}`
 }
 
-export function keyframeManifestEntry(asset: GeneratedAsset): KeyframeManifestEntry {
+export function keyframeManifestEntry(
+  asset: GeneratedAsset,
+  archive: Pick<KeyframeManifestEntry, "archivePath" | "included" | "importFile"> = {},
+): KeyframeManifestEntry {
   return {
     id: asset.id,
     taskId: asset.taskId,
@@ -47,5 +53,8 @@ export function keyframeManifestEntry(asset: GeneratedAsset): KeyframeManifestEn
     prompt: asset.prompt,
     selectedAt: asset.selectedAt,
     createdAt: asset.createdAt,
+    archivePath: archive.archivePath ?? null,
+    included: archive.included ?? false,
+    importFile: archive.importFile ?? null,
   }
 }

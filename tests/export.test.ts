@@ -114,14 +114,22 @@ test("E20 project.json 清单必须带稳定的格式标识与 schema 版本", (
 
   const manifest = buildManifest({
     project: { id: "p1", title: "测试剧" },
+    mode: "delivery",
     exportedAt: 123,
+    projectSettings: {
+      genre: "none",
+      episodeCount: 0,
+      brief: { emotion: "", audience: "", references: "", redline: "" },
+      look: { palette: "", light: "", lens: "", banned: "" },
+      judgments: [],
+    },
     story: { idea: "一句话" },
     assets: { shots: [] },
     refs: [],
   })
 
   assert.equal(manifest.schema, "chengju.project")
-  assert.equal(manifest.schemaVersion, 1)
+  assert.equal(manifest.schemaVersion, 2)
   assert.deepEqual(manifest.project, { id: "p1", title: "测试剧" })
   assert.equal(manifest.exportedAt, 123)
   const pageSource = fs.readFileSync("app/page.tsx", "utf8")

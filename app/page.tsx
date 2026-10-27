@@ -59,6 +59,7 @@ import {
   generateVisuals,
   generateScenes,
   registerRefs,
+  importProjectPackage,
   listSnapshots,
   listRefs,
   saveSnapshot,
@@ -78,6 +79,7 @@ import {
   listImages,
   listVaultFiles,
   listIgnoredKeys,
+  addFilesToVault,
   ignoreVaultKey,
   clearIgnoredKeys,
   clearDirectoryHandle,
@@ -92,16 +94,28 @@ import {
   type VaultFile,
   type VaultMode,
 } from '@/lib/assets/vault'
+import { readStoreZip } from '@/lib/archive/zip'
+import { parseProjectPackage } from '@/lib/export/import'
 import {
   buildStoryboardHtml,
   shotsToCsv,
   shotsToChainingList,
   shotsToWorkList,
-  buildProjectPackageManifest,
   buildZip,
   downloadBlob,
 } from '@/lib/assets/export'
 import { postJson, postSse, isAbortError } from '@/lib/api'
+import { placeGenerationTargetId } from '@/lib/assets/anchors'
+import {
+  buildExportReport,
+  buildProjectPackageManifest,
+  keyframeArchivePath,
+  safePathSegment,
+  safeProjectFileStem,
+  uniqueArchivePath,
+  type ProjectExportFile,
+  type ProjectExportMissing,
+} from '@/lib/export/package'
 import {
   readProjectQuery,
   readStepQuery,
@@ -110,10 +124,7 @@ import {
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
-import {
-  keyframeExportName,
-  keyframeManifestEntry,
-} from '@/lib/generation/export'
+import { keyframeManifestEntry } from '@/lib/generation/export'
 import {
   MIN_IDEA_LENGTH,
   GENRES,
@@ -310,6 +321,8 @@ export default function Home() {
   }, [notice])
   /** 项目列表：用于「切换 / 重命名 / 删除」 */
   const [projects, setProjects] = useState<ProjectDto[]>([])
+  const [exportProgress, setExportProgress] = useState<string | null>(null)
+  const [importProgress, setImportProgress] = useState<string | null>(null)
   /** 场记是否展开：H 双舱里它就是右舱的第二个 tab */
   const [agentOpen, setAgentOpen] = useState(false)
   /** 窄屏抽屉是否展开（桌面端是常驻右舱，这个状态不参与） */
@@ -1632,113 +1645,368 @@ export default function Home() {
   }
 
   // ── 打包带走（P2）─────────────────────────────────────────────
-  const handleExportPackage = async () => {
+  const handleExportPackage = async (mode: "delivery" | "backup") => {
+    if (exportProgress) return
     const enc = new TextEncoder()
     const entries: { name: string; data: Uint8Array }[] = []
-    const title = idea.trim().slice(0, 20) || "未命名漫剧"
-    const keyframeState = projectId
-      ? await fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] }))
-      : { tasks: [], assets: [] }
-    const keyframes = keyframeState.assets
+    const files: ProjectExportFile[] = []
+    const missing: ProjectExportMissing[] = []
+    const warnings: string[] = []
+    const usedPaths = new Set<string>()
+    const exportedAt = Date.now()
+    const project = projects.find((item) => item.id === projectId)
+    const title = project?.title?.trim() || idea.trim().slice(0, 20) || "未命名漫剧"
+    const keyframePathByTargetId: Record<string, string> = {}
+    setExportProgress(mode === "backup" ? "正在整理完整备份…" : "正在准备交付包…")
 
-    const manifest = buildProjectPackageManifest({
-      project: { id: projectId, title },
-      exportedAt: Date.now(),
-      story: { idea, characters, acts, episodes },
-      assets: { visuals, scenes, places, shots },
-      refs: [
-        ...Object.entries(attached).flatMap(([name, keys]) =>
-          keys.map((k) => ({ ownerType: "character", ownerId: name, vaultKey: k }))),
-        ...Object.entries(placeAttached).flatMap(([name, keys]) =>
-          keys.map((k) => ({ ownerType: "place", ownerId: name, vaultKey: k }))),
-      ],
-      keyframes: keyframes.map(keyframeManifestEntry),
-    })
-
-    entries.push({ name: "project.json", data: enc.encode(JSON.stringify(manifest, null, 2)) })
-    entries.push({ name: "prompts.csv", data: enc.encode(shotsToCsv(shots)) })
-    // 平台没有导入接口，所以除了 CSV 再给一份人类可读的执行清单
-    entries.push({
-      name: "shotlist.txt",
-      data: enc.encode(shotsToWorkList(shots, `${title} · 分镜执行清单`)),
-    })
-    // 首尾帧清单：只勾了「接下一镜首帧」的镜头才有内容；一处都没勾时不占地方
-    if (shots.some((s) => s.params.lastFrame)) {
-      entries.push({
-        name: "chaining.txt",
-        data: enc.encode(shotsToChainingList(shots, `${title} · 首尾帧衔接清单`)),
-      })
+    const addEntry = (path: string, data: Uint8Array, kind: string) => {
+      const name = uniqueArchivePath(path, usedPaths)
+      entries.push({ name, data })
+      files.push({ path: name, kind, bytes: data.length })
+      return name
     }
-    entries.push({ name: "storyboard.html", data: enc.encode(buildStoryboardHtml({ title, visuals, scenes, shots })) })
-    entries.push({
-      name: "README.txt",
-      data: enc.encode([
-        "成剧 · 项目包",
-        "",
-        "project.json      全部文本资产 + 角色视觉锚点 + 地点视觉锚点 + 分镜",
-        "                  格式 chengju.project v1；读取器按 schemaVersion 兼容旧包",
-        "prompts.csv       逐镜提示词（表格格式，含画面比例）",
-        "shotlist.txt      逐镜执行清单（提示词 + 该带的参考图 + 参数），照着做即可",
-        "chaining.txt      首尾帧衔接清单（哪一镜的尾帧接哪一镜的首帧）",
-        "storyboard.html   离线可看的分镜表（双击用浏览器打开）",
-        "keyframes/        已采用的云端生成图（按角色 / 地点 / 镜头分类）",
-        "characters/       角色参考图（若从本地图库成功并入）",
-        "places/           场景参考图（按地点名分目录）",
-        "",
-        "台词在 prompts.csv 与 shotlist.txt 里，是给配音和字幕用的文本；",
-        "本工具不生成音频，配音在剪映或即梦那边做。",
-        "",
-        "说明：本地参考图不会上传；keyframes/ 只包含你主动云端生成并采用的图片。",
-      ].join("\n")),
-    })
+    const addText = (path: string, content: string, kind: string) =>
+      addEntry(path, enc.encode(content), kind)
 
-    // 云端生成结果按当前采用版本并入；历史版本只保留 project.json 元数据。
-    for (const asset of keyframes.filter((item) => item.selectedAt)) {
-      try {
-        const response = await fetch(asset.downloadUrl)
-        if (!response.ok) continue
-        entries.push({
-          name: `keyframes/${asset.targetType}/${keyframeExportName(asset)}`,
-          data: new Uint8Array(await response.arrayBuffer()),
+    try {
+      const [keyframeState, refMetadata, snapshotLists] = await Promise.all([
+        projectId
+          ? fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] }))
+          : Promise.resolve({ tasks: [], assets: [] }),
+        projectId ? listRefs(projectId).catch(() => []) : Promise.resolve([]),
+        mode === "backup" && projectId
+          ? Promise.all(ARTIFACT_KINDS.map((kind) => listSnapshots<unknown>(projectId, kind)))
+          : Promise.resolve([]),
+      ])
+      const metadataByKey = new Map(refMetadata.map((ref) => [ref.vaultKey, ref]))
+      const refsToExport: Array<Record<string, unknown>> = []
+
+      const exportLocalRefs = async (
+        ownerType: "character" | "place",
+        groups: Record<string, string[]>,
+      ) => {
+        for (const [ownerId, keys] of Object.entries(groups)) {
+          for (const vaultKey of keys) {
+            const meta = metadataByKey.get(vaultKey)
+            const fileName = safePathSegment(vaultKey.split("/").pop() || "图片")
+            const path = `references/${ownerType === "character" ? "characters" : "places"}/${safePathSegment(ownerId)}/${fileName}`
+            const record: Record<string, unknown> = {
+              ...(meta ?? {}),
+              ownerType,
+              ownerId,
+              vaultKey,
+              label: meta?.label || fileName,
+              archivePath: null,
+              included: false,
+            }
+            try {
+              const blob = await getVaultBlob(vaultKey)
+              if (!blob) throw new Error("本地图已不可读取")
+              const archivePath = addEntry(path, new Uint8Array(await blob.arrayBuffer()), "reference")
+              record.archivePath = archivePath
+              record.included = true
+            } catch (cause) {
+              const reason = cause instanceof Error ? cause.message : "读取失败"
+              missing.push({ kind: "reference", label: `${ownerId} · ${fileName}`, path, reason })
+            }
+            refsToExport.push(record)
+          }
+        }
+      }
+
+      await exportLocalRefs("character", attached)
+      await exportLocalRefs("place", placeAttached)
+
+      const keyframeEntries = []
+      const packageAssets = mode === "backup"
+        ? keyframeState.assets
+        : keyframeState.assets.filter((asset) => asset.selectedAt)
+      for (const [index, asset] of packageAssets.entries()) {
+        const selected = Boolean(asset.selectedAt)
+        let folder = `misc/${asset.targetType}`
+        let label = "图片"
+        if (asset.targetType === "character") {
+          const visual = visuals.find((item) => (item.entityId ?? item.id) === asset.targetId)
+          folder = `characters/${safePathSegment(visual?.name || asset.targetId)}`
+          label = "定妆图"
+        } else if (asset.targetType === "place") {
+          const place = places.find((item) => placeGenerationTargetId(item.name) === asset.targetId)
+          folder = `places/${safePathSegment(place?.name || asset.targetId)}`
+          label = "场景图"
+        } else {
+          const shot = shots.find((item) => item.entityId === asset.targetId)
+          folder = `shots/episode-${String(shot?.episode || 0).padStart(2, "0")}`
+          label = shot
+            ? `第${String(shot.shot).padStart(2, "0")}镜-${safePathSegment(shot.scene)}`
+            : `镜头-${safePathSegment(asset.targetId)}`
+        }
+        const archivePath = keyframeArchivePath(asset, { mode, selected, folder, label })
+        const entry = keyframeManifestEntry(asset, {
+          archivePath,
+          included: false,
+          importFile: `generated-${index}`,
         })
+        try {
+          const response = await fetch(asset.downloadUrl)
+          if (!response.ok) throw new Error(`图片下载失败（${response.status}）`)
+          const bytes = new Uint8Array(await response.arrayBuffer())
+          entry.archivePath = addEntry(archivePath, bytes, "keyframe")
+          entry.included = true
+          if (selected) keyframePathByTargetId[asset.targetId] = entry.archivePath
+        } catch (cause) {
+          entry.included = false
+          missing.push({
+            kind: "keyframe",
+            label: `${asset.targetType} · ${asset.targetId}`,
+            path: archivePath,
+            reason: cause instanceof Error ? cause.message : "下载失败",
+          })
+        }
+        keyframeEntries.push(entry)
+      }
+
+      addText(
+        "production/prompts.csv",
+        shotsToCsv(shots, { keyframePathByTargetId }),
+        "csv",
+      )
+      addText("production/shotlist.txt", shotsToWorkList(shots, `${title} · 分镜执行清单`), "text")
+      addText("production/chaining.txt", shotsToChainingList(shots, `${title} · 首尾帧衔接清单`), "text")
+
+      const storyboardImages = keyframeEntries
+        .filter((entry) => entry.included && entry.selectedAt && entry.archivePath)
+        .map((entry) => ({
+          path: entry.archivePath!,
+          targetType: entry.targetType,
+          targetId: entry.targetId,
+          alt: `${entry.targetType} 采用图`,
+        }))
+      addText(
+        "storyboard/index.html",
+        buildStoryboardHtml({ title, visuals, places, look, scenes, shots, images: storyboardImages }),
+        "html",
+      )
+
+      const snapshots = snapshotLists.flatMap((list, kindIndex) =>
+        list.map((snapshot) => ({
+          id: snapshot.id,
+          kind: ARTIFACT_KINDS[kindIndex],
+          version: snapshot.version,
+          payload: snapshot.payload,
+          parents: snapshot.parents,
+          createdAt: snapshot.createdAt,
+        })))
+      const selectedAssetIds = new Set(packageAssets.filter((asset) => asset.selectedAt).map((asset) => asset.id))
+      const tasks = mode === "backup"
+        ? keyframeState.tasks
+        : keyframeState.tasks.filter((task) => task.assetId && selectedAssetIds.has(task.assetId))
+
+      const baseInput = {
+        project: {
+          id: projectId,
+          title,
+          createdAt: project?.createdAt ?? exportedAt,
+          updatedAt: project?.updatedAt ?? exportedAt,
+        },
+        mode,
+        exportedAt,
+        projectSettings: {
+          genre: genre.id,
+          episodeCount,
+          brief,
+          look,
+          judgments,
+        },
+        story: { idea, characters, acts, episodes },
+        assets: { visuals, places, scenes, shots },
+        refs: refsToExport,
+        keyframes: keyframeEntries,
+        tasks,
+        snapshots,
+        files,
+        warnings,
+      } as const
+
+      let manifest = buildProjectPackageManifest(baseInput)
+      let projectBytes = enc.encode(JSON.stringify(manifest, null, 2))
+      files.push({ path: "project.json", kind: "manifest", bytes: projectBytes.length })
+
+      warnings.push(
+        mode === "backup"
+          ? "完整备份包含全部候选图和快照，但不包含远端 Provider 任务 id。"
+          : "交付包只包含已采用生成图；如需迁移全部候选，请导出完整备份。",
+      )
+      if (missing.length > 0) warnings.push(`有 ${missing.length} 项文件未能并入，详见 export-report.json。`)
+
+      const readme = [
+        `# ${title}`,
+        "",
+        mode === "backup" ? "导出模式：完整备份" : "导出模式：交付包",
+        "",
+        "## 目录",
+        "project.json：完整项目状态与文件索引",
+        "manifest.json：轻量索引",
+        "export-report.json：成功、缺失与提醒",
+        "production/：CSV、执行单与首尾帧衔接",
+        "storyboard/index.html：离线分镜审阅",
+        "references/：本地参考图（不上传）",
+        "generated/selected/：当前采用生成图",
+        "generated/history/：历史候选（仅完整备份）",
+        "",
+        "## 说明",
+        "本地参考图像素只随 ZIP 交给用户，不经过平台服务器。",
+        mode === "backup"
+          ? "完整备份可在成剧的“导入项目包”中恢复。"
+          : "交付包用于审阅和下游执行；项目迁移请使用完整备份。",
+      ].join("\n")
+      const readmeBytes = enc.encode(readme)
+      files.push({ path: "README.md", kind: "document", bytes: readmeBytes.length })
+
+      const report = buildExportReport({ mode, exportedAt, files, missing, warnings })
+      const reportBytes = enc.encode(JSON.stringify(report, null, 2))
+      files.push({ path: "export-report.json", kind: "report", bytes: reportBytes.length })
+
+      manifest = buildProjectPackageManifest({ ...baseInput, files, warnings })
+      projectBytes = enc.encode(JSON.stringify(manifest, null, 2))
+      const manifestBytes = enc.encode(JSON.stringify({
+        schema: manifest.schema,
+        schemaVersion: manifest.schemaVersion,
+        mode: manifest.mode,
+        project: manifest.project,
+        exportedAt,
+        files,
+        report: "export-report.json",
+      }, null, 2))
+
+      entries.unshift(
+        { name: "project.json", data: projectBytes },
+        { name: "manifest.json", data: manifestBytes },
+        { name: "export-report.json", data: reportBytes },
+        { name: "README.md", data: readmeBytes },
+      )
+      downloadBlob(
+        `${safeProjectFileStem(title)}-${mode === "backup" ? "完整备份" : "交付包"}.zip`,
+        buildZip(entries),
+      )
+      setNotice(
+        mode === "backup"
+          ? `完整备份已生成：${files.length} 个文件${missing.length ? `，${missing.length} 项缺失` : ""}。`
+          : `交付包已生成：${files.length} 个文件${missing.length ? `，${missing.length} 项缺失` : ""}。`,
+      )
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : "项目包生成失败，请重试")
+    } finally {
+      setExportProgress(null)
+    }
+  }
+
+  const handleImportPackage = async (file: File) => {
+    if (importProgress) return
+    if (file.size > 250 * 1024 * 1024) {
+      setNotice("项目包不能超过 250 MB。")
+      return
+    }
+    setImportProgress("正在读取项目包…")
+    try {
+      const entries = await readStoreZip(file)
+      const projectEntry = entries.get("project.json")
+      if (!projectEntry) throw new Error("项目包缺少 project.json")
+      let raw: unknown
+      try {
+        raw = JSON.parse(new TextDecoder().decode(projectEntry))
       } catch {
-        // 单张关键帧下载失败不阻断文本与本地参考图交付
+        throw new Error("project.json 不是有效 JSON")
       }
-    }
+      const manifest = parseProjectPackage(raw)
+      const form = new FormData()
+      form.set("manifest", JSON.stringify(manifest))
+      const keyframes = manifest.keyframes as Array<{
+        archivePath?: string
+        importFile?: string
+        mime?: string
+        included?: boolean
+      }>
+      let attachedFiles = 0
+      keyframes.forEach((entry, index) => {
+        if (!entry.included || !entry.archivePath) return
+        const bytes = entries.get(entry.archivePath)
+        if (!bytes) return
+        const field = entry.importFile || `generated-${index}`
+        const name = entry.archivePath.split("/").pop() || `image-${index}.png`
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+        form.append(field, new File([buffer], name, { type: entry.mime || "image/png" }))
+        attachedFiles += 1
+      })
 
-    // 把本地图库里的角色图并入包（从本地读，不经服务端）
-    for (const [name, keys] of Object.entries(attached)) {
-      for (const key of keys) {
-        try {
-          const blob = await getVaultBlob(key)
-          if (!blob) continue
-          entries.push({
-            name: `characters/${name}/${key.split("/").pop() ?? "image.png"}`,
-            data: new Uint8Array(await blob.arrayBuffer()),
-          })
-        } catch {
-          // 单张图读不到不影响整体导出
-        }
+      setImportProgress("正在恢复项目与生成图…")
+      const result = await importProjectPackage(form)
+      const localRefs = manifest.refs as Array<Record<string, unknown>>
+      let restoredRefs = 0
+      const refInputs: Array<{
+        vaultKey: string
+        label: string
+        fileHash: string
+        mime?: string
+        bytes?: number
+        ownerType: "character" | "place" | "shot"
+        ownerId: string
+      }> = []
+      for (const ref of localRefs) {
+        if (!ref.included || typeof ref.archivePath !== "string") continue
+        const bytes = entries.get(ref.archivePath)
+        if (!bytes) continue
+        const ownerType = ref.ownerType
+        const ownerId = ref.ownerId
+        if (
+          ownerType !== "character" &&
+          ownerType !== "place" &&
+          ownerType !== "shot"
+        ) continue
+        if (typeof ownerId !== "string" || !ownerId) continue
+        const name = ref.archivePath.split("/").pop() || "图片"
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+        const imported = await addFilesToVault([
+          new File([buffer], name, { type: typeof ref.mime === "string" ? ref.mime : "image/png" }),
+        ])
+        if (!imported[0]) continue
+        restoredRefs += 1
+        refInputs.push({
+          vaultKey: imported[0].key,
+          label: typeof ref.label === "string" ? ref.label : imported[0].name,
+          fileHash: imported[0].hash,
+          mime: imported[0].mime,
+          bytes: imported[0].size,
+          ownerType,
+          ownerId,
+        })
       }
-    }
+      if (refInputs.length > 0) await registerRefs(result.project.id, refInputs)
 
-    // 场景图同样并入，放在 places/ 下——按地点名分目录，和 characters/ 对称
-    for (const [name, keys] of Object.entries(placeAttached)) {
-      for (const key of keys) {
-        try {
-          const blob = await getVaultBlob(key)
-          if (!blob) continue
-          entries.push({
-            name: `places/${name}/${key.split("/").pop() ?? "image.png"}`,
-            data: new Uint8Array(await blob.arrayBuffer()),
-          })
-        } catch {
-          // 单张图读不到不影响整体导出
-        }
+      const settings = manifest.projectSettings
+      const warnings = [...result.warnings]
+      try {
+        window.localStorage.setItem(`chengju:brief:${result.project.id}`, JSON.stringify(readBrief(settings.brief)))
+        window.localStorage.setItem(`chengju:look:${result.project.id}`, JSON.stringify(readLook(settings.look)))
+        window.localStorage.setItem(`chengju:judgments:${result.project.id}`, JSON.stringify(readJudgments(settings.judgments)))
+      } catch {
+        warnings.push("浏览器未允许写入本地偏好，意图、视觉宪法和判断日志未恢复。")
       }
+      briefLoadedFor.current = null
+      setProjects(await listProjects())
+      await handleSwitchProject(result.project.id)
+      if (attachedFiles < keyframes.filter((entry) => entry.included).length) {
+        warnings.push("部分生成图未随项目包提供。")
+      }
+      const refsInManifest = localRefs.filter((ref) => ref.included).length
+      if (restoredRefs < refsInManifest) warnings.push("部分本地参考图未能恢复到本机图库。")
+      setNotice(
+        `已导入「${result.project.title}」：${result.counts.snapshots} 个快照、${result.counts.tasks} 个任务、${result.counts.keyframes} 张生成图、${restoredRefs} 张本地参考图。${warnings.length ? ` ${warnings.slice(0, 2).join(" ")}` : ""}`,
+      )
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : "项目包导入失败，请重试")
+    } finally {
+      setImportProgress(null)
     }
-
-    downloadBlob(`${title}-成剧项目包.zip`, buildZip(entries))
   }
 
   const handleCopyAll = async () => {
@@ -2154,12 +2422,15 @@ export default function Home() {
                   onDelete={(id) => { void handleDeleteProject(id) }}
                   onNew={handleNewProject}
                   onLoadSample={() => { void handleLoadSample() }}
-                  onBackup={() => { void handleExportPackage() }}
+                  onBackup={(mode) => { void handleExportPackage(mode) }}
+                  onImportPackage={(file) => { void handleImportPackage(file) }}
                   onExportMarkdown={handleExport}
                   onCopyAll={() => { void handleCopyAll() }}
                   onCopyLink={() => { void handleCopyProjectLink() }}
                   onCopyReviewLink={() => { void handleCopyReviewLink() }}
                   copied={copied}
+                  exportProgress={exportProgress}
+                  importProgress={importProgress}
                 />
                 {/* 空工作台时给一条最短的上手路径：先看示例长什么样 */}
                 {!hasResult && (
@@ -2528,6 +2799,7 @@ export default function Home() {
                 projectId={projectId}
                 onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
                 look={look}
+                episodeCount={episodeCount}
               />
             </StepSection>
 

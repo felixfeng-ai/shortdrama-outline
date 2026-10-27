@@ -89,6 +89,19 @@ export const listRefs = (projectId: string) =>
 export const fetchExportManifest = (projectId: string) =>
   fetch(`/api/export?projectId=${projectId}`).then((r) => r.json()).then((p) => p.data.manifest)
 
+export async function importProjectPackage(form: FormData): Promise<{
+  project: ProjectDto
+  counts: { snapshots: number; tasks: number; keyframes: number; refs: number }
+  warnings: string[]
+}> {
+  const response = await fetch("/api/project-import", { method: "POST", body: form })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "项目包导入失败，请重试")
+  }
+  return payload.data
+}
+
 export const createProjectReviewShare = (projectId: string) =>
   postJson<{
     share: { id: string; token: string; path: string; expiresAt: number }

@@ -7,17 +7,19 @@ import { InputError, errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { listRefs } from "@/lib/assets/refs"
 import { listSnapshots } from "@/lib/assets/repo"
-import { ARTIFACT_KINDS } from "@/lib/assets/types"
-import type { Shot, VisualCharacter, Scene } from "@/lib/assets/types"
-import { PROJECT_PACKAGE_SCHEMA, PROJECT_PACKAGE_SCHEMA_VERSION } from "@/lib/assets/export"
+import { ARTIFACT_KINDS, type ArtifactKind, type Shot, type VisualCharacter, type Scene } from "@/lib/assets/types"
+import { buildProjectPackageManifest } from "@/lib/export/package"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner } from "@/lib/auth/request"
+import { EMPTY_BRIEF } from "@/lib/brief"
+import { EMPTY_LOOK } from "@/lib/look"
+import { listGeneratedAssets, listGenerationTasks } from "@/lib/generation/repo"
+import { keyframeManifestEntry } from "@/lib/generation/export"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-/** 导出清单里不含 idea（它是输入，不是产物）；清单本身仍来自唯一来源 */
-const KINDS = ARTIFACT_KINDS.filter((k) => k !== "idea")
+const KINDS = ARTIFACT_KINDS
 
 export async function GET(req: Request) {
   try {
@@ -27,23 +29,73 @@ export async function GET(req: Request) {
     const db = getDbForRequest()
     const project = assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
 
-    // 每一类取最新一版
-    const latest: Record<string, { version: number; payload: unknown }> = {}
+    // 每一类取最新一版，同时保留完整快照供备份读取器使用。
+    const latest: Record<string, unknown> = {}
+    const snapshots: Array<{
+      id: string
+      kind: ArtifactKind
+      version: number
+      payload: unknown
+      parents: string[]
+      createdAt: number
+    }> = []
     for (const kind of KINDS) {
       const list = listSnapshots(db, projectId, kind)
-      if (list[0]) latest[kind] = { version: list[0].version, payload: list[0].payload }
+      if (list[0]) latest[kind] = list[0].payload
+      for (const snapshot of list) {
+        snapshots.push({
+          id: snapshot.id,
+          kind,
+          version: snapshot.version,
+          payload: snapshot.payload,
+          parents: snapshot.parents,
+          createdAt: snapshot.createdAt,
+        })
+      }
     }
 
-    return NextResponse.json(ok({
-      manifest: {
-        schema: PROJECT_PACKAGE_SCHEMA,
-        schemaVersion: PROJECT_PACKAGE_SCHEMA_VERSION,
-        project,
-        latest,
-        refs: listRefs(db, projectId),   // 只有元数据，图由前端并入
-        exportedAt: Date.now(),
+    const idea = latest.idea as { idea?: unknown; genre?: unknown } | undefined
+    const episodes = Array.isArray(latest.episodes) ? latest.episodes as unknown[] : []
+    const manifest = buildProjectPackageManifest({
+      project: {
+        id: project.id,
+        title: project.title,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
       },
-    }))
+      mode: "delivery",
+      exportedAt: Date.now(),
+      projectSettings: {
+        genre: typeof idea?.genre === "string" ? idea.genre : "none",
+        episodeCount: episodes.length,
+        brief: EMPTY_BRIEF,
+        look: EMPTY_LOOK,
+        judgments: [],
+      },
+      story: {
+        idea: typeof idea?.idea === "string" ? idea.idea : "",
+        characters: latest.characters ?? [],
+        acts: latest.acts ?? [],
+        episodes: latest.episodes ?? [],
+      },
+      assets: {
+        visuals: latest.visualCharacters ?? [],
+        scenes: latest.scenes ?? [],
+        places: latest.visualPlaces ?? [],
+        shots: latest.shots ?? [],
+      },
+      refs: listRefs(db, projectId),
+      keyframes: listGeneratedAssets(db, projectId).map((asset) =>
+        keyframeManifestEntry(asset, { archivePath: null, included: false })),
+      tasks: listGenerationTasks(db, projectId),
+      snapshots,
+      files: [],
+      warnings: [
+        "服务端清单不含本地参考图像素、浏览器本地偏好和图片文件；完整迁移请使用 Web 端“完整备份”。",
+      ],
+    })
+
+    return NextResponse.json(ok({ manifest }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

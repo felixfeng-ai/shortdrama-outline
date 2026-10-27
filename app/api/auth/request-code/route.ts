@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { AuthError, requestLoginCode } from "@/lib/auth/service"
+import { enforceVerificationRateLimits } from "@/lib/auth/rate-limit"
 
 export const runtime = "nodejs"
 
@@ -17,8 +18,10 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     const dev = devAuthAllowed(req)
     if (!dev) throw new AuthError("短信登录通道尚未配置，请联系管理员", 503)
+    const db = getDbForRequest()
+    enforceVerificationRateLimits(db, req)
     const result = requestLoginCode(
-      getDbForRequest(),
+      db,
       String(body?.phone ?? ""),
       { secret: process.env.AUTH_SECRET, dev },
     )

@@ -35,7 +35,15 @@ test("G7.1 单独下载文件名只含安全字符与正确扩展名", () => {
 test("G7.2 manifest 保留关键帧元数据，但不泄露服务器 storageKey", () => {
   const manifest = buildProjectPackageManifest({
     project: { id: "project-1", title: "测试" },
+    mode: "delivery",
     exportedAt: 999,
+    projectSettings: {
+      genre: "none",
+      episodeCount: 0,
+      brief: { emotion: "", audience: "", references: "", redline: "" },
+      look: { palette: "", light: "", lens: "", banned: "" },
+      judgments: [],
+    },
     story: {},
     assets: {},
     refs: [],
@@ -43,6 +51,7 @@ test("G7.2 manifest 保留关键帧元数据，但不泄露服务器 storageKey"
   })
 
   assert.equal(manifest.keyframes.length, 1)
+  assert.equal(manifest.schemaVersion, 2)
   assert.equal(manifest.keyframes[0].id, "asset-1")
   assert.equal("storageKey" in manifest.keyframes[0], false)
   assert.equal(manifest.keyframes[0].selectedAt, 123)
@@ -56,7 +65,8 @@ test("G7.2/G7.3 页面导出会拉取关键帧、写入 manifest 并只打包已
   assert.ok(client.includes("fetchProjectGenerationAssets"), "缺少项目级关键帧拉取")
   assert.ok(page.includes("fetchProjectGenerationAssets"), "导出流程没有读取关键帧")
   assert.ok(page.includes("keyframes:"), "project.json 没有写入关键帧元数据")
-  assert.ok(page.includes("keyframes/"), "ZIP 没有关键帧目录")
+  assert.ok(page.includes("generated/selected/"), "ZIP 没有采用图目录")
+  assert.ok(page.includes("generated/history/"), "完整备份没有历史候选目录")
   assert.ok(page.includes("selectedAt"), "ZIP 没有按采用状态筛选")
   assert.ok(panel.includes("下载关键帧"), "关键帧卡缺少单独下载入口")
 })

@@ -62,6 +62,15 @@ CREATE TABLE IF NOT EXISTS email_login_codes (
   created_at   INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+  bucket            TEXT NOT NULL,
+  subject           TEXT NOT NULL,
+  window_started_at INTEGER NOT NULL,
+  count             INTEGER NOT NULL,
+  updated_at        INTEGER NOT NULL,
+  PRIMARY KEY (bucket, subject)
+);
+
 CREATE TABLE IF NOT EXISTS auth_sessions (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -191,6 +200,7 @@ CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(proj
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_owner ON push_subscriptions(owner_id);
 CREATE INDEX IF NOT EXISTS idx_login_codes_phone ON login_codes(phone, created_at);
 CREATE INDEX IF NOT EXISTS idx_email_login_codes_email ON email_login_codes(email, created_at);
+CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_updated ON auth_rate_limits(updated_at);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_project_shares_project ON project_shares(project_id, owner_id, expires_at);
 `

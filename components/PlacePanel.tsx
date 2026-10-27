@@ -10,6 +10,7 @@
 // 到第 15 镜变成「落地窗的现代办公室」——人物的脸保住了，房间每镜在变。
 import { useState } from 'react'
 import AutoTextarea from './AutoTextarea'
+import BatchGenerationPanel from './BatchGenerationPanel'
 import CopyButton from './CopyButton'
 import KeyframePanel from './KeyframePanel'
 import RefImagePicker from './RefImagePicker'
@@ -113,6 +114,31 @@ export default function PlacePanel({
           全剧共用一份，逐镜注入提示词——改这里，那个地点的所有镜头一起变
         </p>
       </div>
+
+      {places.length > 0 && (
+        <div className="mt-3">
+          <BatchGenerationPanel
+            title="批量生成场景图"
+            description="按全剧地点清单生成 16:9 空场景，适合作所有镜头的环境与光线基准。"
+            targets={places.map((place) => {
+              const prompt = buildPlaceImagePrompt(place)
+              return {
+                key: placeGenerationTargetId(place.name),
+                targetType: 'place' as const,
+                targetId: placeGenerationTargetId(place.name),
+                name: place.name,
+                detail: [place.space, place.lighting].filter(Boolean).join(' · ') || '地点场景',
+                prompt,
+                aspect: 'landscape' as const,
+                blockedReason: prompt.trim() ? null : '缺地点锚点',
+              }
+            })}
+            projectId={projectId}
+            onEnsureProject={onEnsureProject}
+            look={look}
+          />
+        </div>
+      )}
 
       {missing.length > 0 && (
         <div className="mt-2 rounded-chip border border-accent-200 bg-accent-50/70 px-2.5 py-2 text-[11px] leading-relaxed text-accent-800">

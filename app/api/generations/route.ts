@@ -176,6 +176,7 @@ export async function POST(req: Request) {
     const type = targetType(body?.targetType)
     const targetId = requiredString(body?.targetId, "缺少生成目标 id")
     const prompt = requiredString(body?.prompt, "缺少图像提示词")
+    const autoSelect = body?.autoSelect !== false
     const look = readLook(body?.look)
     const imageConfig = getAliyunImageConfig()
     const seed = projectImageSeed(projectId)
@@ -225,7 +226,7 @@ export async function POST(req: Request) {
       model: generationModel,
       prompt: effectivePrompt,
     })
-    selectGeneratedAsset(db, projectId, asset.id)
+    if (autoSelect) selectGeneratedAsset(db, projectId, asset.id)
     const completed = completeGenerationTask(db, task.id, asset.id)
     await notifyGeneration(db, ownerId, {
       ...notification,
@@ -233,7 +234,7 @@ export async function POST(req: Request) {
     })
     return NextResponse.json(ok({
       task: completed,
-      asset: selectGeneratedAsset(db, projectId, asset.id),
+      asset: autoSelect ? selectGeneratedAsset(db, projectId, asset.id) : asset,
       referenceCount: references.images.length,
     }))
   } catch (error) {

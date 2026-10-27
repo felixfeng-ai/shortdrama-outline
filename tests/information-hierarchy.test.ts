@@ -25,7 +25,8 @@ test("本地图库仅在定妆和场景完整展示，分镜只保留缺图摘�
 })
 
 test("导出统一进入项目菜单，工作台底部不再重复导出卡片", () => {
-  assert.ok(projectBar.includes("导出项目包"))
+  assert.ok(projectBar.includes("导出交付包"))
+  assert.ok(projectBar.includes("导出完整备份"))
   assert.ok(projectBar.includes("导出 Markdown"))
   assert.ok(projectBar.includes("复制全部大纲"))
   assert.equal(page.includes(">打包带走<"), false)

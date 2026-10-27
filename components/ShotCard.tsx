@@ -28,6 +28,7 @@ interface Props {
   projectId: string | null
   onEnsureProject: () => Promise<string | null>
   look: LookBook
+  episodeCount: number
 }
 
 const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
@@ -38,10 +39,11 @@ const STATUS_META: Record<ShotStatus, { label: string; cls: string }> = {
 
 export default function ShotCard({
   shot, index, onUpdate, onRemove, active = false, onSelect,
-  projectId, onEnsureProject, look,
+  projectId, onEnsureProject, look, episodeCount,
 }: Props) {
   const missing = shot.missingRefFor ?? []
   const [open, setOpen] = useState(false)
+  const episodeOptions = Math.max(1, Math.floor(episodeCount), Math.max(0, shot.episode))
 
   return (
     <article
@@ -53,18 +55,36 @@ export default function ShotCard({
         摘要行：镜号 + 场景 + 参数一行看完，点箭头才展开编辑。
         生成完 12 镜时，一屏能扫完比"每镜都是一张大卡"重要得多。
       */}
-      <div className="flex items-start gap-2.5 sm:gap-3">
+      <div className="shot-card-summary flex flex-wrap items-start gap-2.5 sm:flex-nowrap sm:gap-3">
         <span className="mt-0.5 w-7 shrink-0 text-center font-mono text-[15px] leading-7 text-ink-900">
           {String(shot.shot).padStart(2, '0')}
         </span>
 
         <div className="min-w-0 flex-1">
-          {/* 集号：分镜是全剧的，没有它分不清这一镜属于哪一集 */}
-          {shot.episode > 0 && (
-            <span className="mb-0.5 mr-1 inline-block rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium text-ink-500">
-              第 {shot.episode} 集
-            </span>
-          )}
+          {/* 集号：分镜是全剧的，没有它分不清这一镜属于哪一集。允许就地修正，避免漏标后只能重生成。 */}
+          <div className="mb-1 flex min-w-0 flex-wrap items-center gap-1">
+            <select
+              value={shot.episode}
+              onClick={(event) => event.stopPropagation()}
+              onChange={(event) => onUpdate(shot.id, { episode: Number(event.target.value) })}
+              aria-label={`第 ${shot.shot} 镜集号`}
+              className={`rounded-chip border px-1.5 py-0.5 text-[10px] font-medium ${
+                shot.episode > 0
+                  ? "border-surface-line bg-ink-100 text-ink-500"
+                  : "border-accent-300 bg-accent-50 text-accent-800"
+              }`}
+            >
+              <option value={0}>未标注</option>
+              {Array.from({ length: episodeOptions }, (_, i) => i + 1).map((episode) => (
+                <option key={episode} value={episode}>第 {episode} 集</option>
+              ))}
+            </select>
+            {missing.length > 0 && (
+              <span className="shrink-0 rounded-chip bg-accent-100 px-1.5 py-0.5 text-[10px] font-semibold text-accent-800">
+                缺图 {missing.length}
+              </span>
+            )}
+          </div>
           <AutoTextarea
             value={shot.scene}
             onChange={(scene) => onUpdate(shot.id, { scene })}
@@ -78,49 +98,46 @@ export default function ShotCard({
           </span>
         </div>
 
-        {missing.length > 0 && (
-          <span className="mt-1 shrink-0 rounded-chip bg-accent-100 px-1.5 py-0.5 text-[10px] font-semibold text-accent-800">
-            缺图 {missing.length}
-          </span>
-        )}
-
-        <select
-          value={shot.status}
-          onChange={(e) => onUpdate(shot.id, { status: e.target.value as ShotStatus })}
-          aria-label={`第 ${shot.shot} 镜状态`}
-          className={`shrink-0 rounded-chip border border-transparent px-2 py-1 text-xs font-medium ${STATUS_META[shot.status].cls}`}
-        >
-          {(Object.keys(STATUS_META) as ShotStatus[]).map((k) => (
-            <option key={k} value={k}>{STATUS_META[k].label}</option>
-          ))}
-        </select>
-
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
-          aria-expanded={open}
-          aria-label={open ? `收起第 ${shot.shot} 镜` : `展开第 ${shot.shot} 镜`}
-          className="shrink-0 rounded-chip p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-800"
-        >
-          <svg
-            viewBox="0 0 20 20"
-            aria-hidden="true"
-            className={`h-4 w-4 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.8] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        <div className="shot-card-actions flex basis-full items-center justify-end gap-1 sm:basis-auto sm:shrink-0">
+          <select
+            value={shot.status}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(e) => onUpdate(shot.id, { status: e.target.value as ShotStatus })}
+            aria-label={`第 ${shot.shot} 镜状态`}
+            className={`shrink-0 rounded-chip border border-transparent px-2 py-1 text-xs font-medium ${STATUS_META[shot.status].cls}`}
           >
-            <path d="M5 7.5l5 5 5-5" />
-          </svg>
-        </button>
+            {(Object.keys(STATUS_META) as ShotStatus[]).map((k) => (
+              <option key={k} value={k}>{STATUS_META[k].label}</option>
+            ))}
+          </select>
 
-        <button
-          type="button"
-          onClick={() => onRemove(shot.id)}
-          aria-label={`删除第 ${shot.shot} 镜`}
-          className="shrink-0 rounded-chip p-2 text-ink-200 transition-colors hover:bg-accent-50 hover:text-accent-600"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-            <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-          </svg>
-        </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+            aria-expanded={open}
+            aria-label={open ? `收起第 ${shot.shot} 镜` : `展开第 ${shot.shot} 镜`}
+            className="shrink-0 rounded-chip p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-800"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+              className={`h-4 w-4 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.8] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+            >
+              <path d="M5 7.5l5 5 5-5" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); onRemove(shot.id) }}
+            aria-label={`删除第 ${shot.shot} 镜`}
+            className="shrink-0 rounded-chip p-2 text-ink-200 transition-colors hover:bg-accent-50 hover:text-accent-600"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <SmoothCollapse open={open} className="shot-card-reveal">

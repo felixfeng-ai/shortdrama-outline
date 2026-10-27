@@ -16,6 +16,8 @@ export async function generateKeyframe(input: {
   prompt: string
   aspect: ImageAspect
   look?: LookBook
+  /** 批量任务默认只保存候选，不覆盖当前采用图。 */
+  autoSelect?: boolean
 }, signal?: AbortSignal): Promise<KeyframeGenerationResult> {
   return postJson<KeyframeGenerationResult>("/api/generations", input, signal)
 }

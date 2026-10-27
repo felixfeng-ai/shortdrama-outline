@@ -18,7 +18,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 新增 `generation_tasks` / `generated_assets` 两张 SQLite 表。任务按 queued → running → succeeded / failed 记账，关键帧按项目与目标隔离。
 - 生成结果落在 `CHENGJU_DATA_DIR/generated/<projectId>/`，本地参考图仍不随请求上传；删除项目会连生成目录一起清理。
 - 新增 `GET/POST/PATCH /api/generations` 与 `GET /api/generated-assets/:id`；私有读取继续校验匿名会话 owner。
-- 关键帧卡支持单独下载；“打包带走”会把当前采用的关键帧写入 `keyframes/`，历史版本元数据保留在 `project.json`，不重复打包历史像素。
+- 关键帧卡支持单独下载；项目包 V2 区分“交付包”和“完整备份”：交付包只并入当前采用图，完整备份按角色、地点、集镜号归档全部候选图，并保留任务与快照。两种模式都能从项目条导入恢复。
 - 视觉一致性基线已完成：Look Book 的色调、光线、镜头语言与禁区会注入所有关键帧请求；同一项目使用稳定通义 seed。关键帧卡显示“视觉宪法已带入/未填写”状态。
 - 生成一致性参考已接入：镜头按出场顺序带入当前项目已采用的角色关键帧；角色重生成优先带自己的身份图，其他角色图只作风格参考。单次最多 3 张，缺失文件自动跳过；只有平台生成且已采用的图会进入参考，本地图库原图仍不上传。
 - 带参考图时使用 `qwen-image-2.0-pro` 多图编辑接口，无参考图仍用 `wanx2.1-t2i-turbo` 文生图。可通过 `ALIYUN_IMAGE_EDIT_MODEL` 覆盖编辑模型。
@@ -34,16 +34,18 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 登录入口已从遮挡工作台的 modal 改为独立 `/login` 页面；当前默认邮箱/验证码两步，保留手机号 API，支持 60 秒重发倒计时、内联错误、登录后安全返回原步骤，以及已登录账号与退出状态。
 - 新增邮箱验证码登录：邮箱规范化、验证码哈希、5 分钟有效期、单邮箱 60 秒冷却、每小时 5 次上限、5 次尝试上限、匿名项目认领和旧手机号数据库无损迁移均已接入；Web 登录页改为邮箱优先。
 - 生产邮件发送使用 Resend HTTP API，不在前端暴露 Key；`RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 未配置时明确返回 503，发送失败清理本次验证码并返回 502。仍需配置已认证发件域名并完成真实邮箱收件验收。
+- 新增验证码发送风控：邮箱与手机号入口共用 SQLite 持久化窗口，同一 IP 每 10 分钟最多 5 次、每 24 小时最多 20 次，全站每 24 小时最多 200 次；来源只信任 Nginx 写入的 `X-Real-IP`，伪造 `X-Forwarded-For` 不能绕过。
 - 新增只读项目审阅链接：项目条生成 7 天 token，仅存哈希；重新生成会撤销旧链接。`/share/:token` 无需登录，只开放六步文本快照，不包含本地图库、生成文件、额度或写接口。
 - 本地联调验证码使用双开关：请求必须来自 localhost/127.0.0.1，且 `AUTH_ALLOW_DEV_CODE=1`；本地 `.env.local` 已写入随机 `AUTH_SECRET`。生产域名即使误开也不会返回开发验证码。
 - 正式短信供应商尚未接入，因此生产环境当前会明确返回“短信登录通道尚未配置”，不会伪造固定验证码。
 - 新增项目级生成任务中心：默认收起，汇总等待/运行/成功/失败/取消；最新失败或取消任务可单条重试，多项需确认后串行批量重试。
+- 分镜工作区已按集分组：集头统计镜头数、时长、缺图与返修；未标注镜头置顶；集内按连续场次分段；镜头卡可直接修改集号。移动端摘要操作下移，避免场景名被挤成逐字换行。
 - PWA 基础已落地：Manifest、Service Worker、离线页、静态缓存和条件安装按钮；API 与生成资产明确绕过缓存。
 - Web Push 已完成本地闭环：用户点击后才申请通知权限；订阅按匿名 owner 隔离；定妆或镜头首帧成功/失败后推送，点击通知回到对应步骤；404/410 失效订阅自动清理。VAPID 密钥已写入本地 `.env.local`，线上需要单独配置。
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md) 与 [specs/email-login/spec.md](specs/email-login/spec.md)。
+- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md)、[specs/email-login/spec.md](specs/email-login/spec.md) 与 [specs/auth-abuse-hardening/spec.md](specs/auth-abuse-hardening/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -61,7 +63,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `498/498` 通过。`npx tsc --noEmit` 通过；生产构建通过；全量测试可执行行覆盖率 `88.48%`，`lib/auth/service` 为 `97.64%`，`lib/auth/email` 为 `96.97%`，`lib/assets/db` 为 `96.27%`。
+- **验证**：当前工作区全量测试 `531/531` 通过。`npx tsc --noEmit` 通过；生产构建通过；全量测试可执行行覆盖率 `89.18%`，`lib/auth/rate-limit` 为 `100%`，`lib/generation/batch` 为 `100%`，`lib/auth/service` 为 `97.64%`，`lib/auth/email` 为 `96.97%`，`lib/assets/db` 为 `94.96%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；邮箱验证码发送、自动填入、登录、HttpOnly 会话与账号页展示均通过；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
 - **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；项目深链已推送 `bbd6df5`；当前会话轮换与设备管理仍在本地等待验收。
@@ -72,7 +74,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 
 ## 下一阶段优先级
 
-1. **P0：邮箱登录生产收口与调用风控**。配置 Resend、验证发件域名的 SPF/DKIM/DMARC，并完成真实邮箱收件、垃圾箱、延迟、登录、刷新、退出和失败路径验收；再补 IP/账号调用限流、异常告警。短信登录降为后续可选通道，不再阻塞个人开发者首轮上线。
+1. **P0：邮箱登录生产收口与通用调用风控**。配置 Resend、验证发件域名的 SPF/DKIM/DMARC，并完成真实邮箱收件、垃圾箱、延迟、登录、刷新、退出和失败路径验收；验证码发送限流已完成，下一步补模型生成、Agent 与导出接口的统一 IP/账号频率限制和异常告警。短信登录降为后续可选通道，不再阻塞个人开发者首轮上线。
 2. **P1：发布与浏览器能力收口**。发布只读审阅链接；配置生产 Web Push 并完成真实浏览器订阅、通知到达和点击回跳验收；完成真实 Chrome/Edge 的系统目录授权验证。
 3. **P1：App 工作区合并 Web 基线**。App 分支仍落后于当前账号、深链、会话和审阅能力，先合并基线，再开发 Keychain/Keystore、安全 refresh、401 单飞刷新和深链。
 4. **P1：Web/App 同项目联调**。用同一手机号在两端打开同一项目，验证项目列表、refresh 轮换、设备会话撤销、只读审阅和错误恢复。
