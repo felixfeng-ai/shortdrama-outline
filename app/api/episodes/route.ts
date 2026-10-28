@@ -28,6 +28,7 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
   checkpointSignature,
   clearTextGenerationCheckpoint,
@@ -70,11 +71,18 @@ export async function POST(req: Request) {
     variant = body?.variant === 'B' ? 'B' : 'A'
     resumeRequested = body?.resume === true
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 
   const db = getDbForRequest()
+  const identity = resolveRequestIdentity(db, req)
+  try {
+    enforceApiRateLimit(db, req, "model", { identity })
+  } catch (error) {
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
+  }
   const signature = checkpointSignature('episodes', {
     idea,
     characters,
@@ -114,14 +122,14 @@ export async function POST(req: Request) {
   try {
     chargeQuota(
       db,
-      resolveRequestIdentity(db, req),
+      identity,
       "episodes",
       Date.now(),
       preview ? 1 : episodeQuotaUnits(Math.max(6, remainingCount)),
     )
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 
   const encoder = new TextEncoder()

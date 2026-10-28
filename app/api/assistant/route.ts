@@ -10,6 +10,7 @@ import { readGenre } from '@/lib/types'
 import { getDbForRequest } from '@/lib/assets/store'
 import { chargeQuota } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -59,7 +60,9 @@ export async function POST(req: Request) {
 
     // 额度闸门：入参已校验、尚未调用模型
     const db = getDbForRequest()
-    chargeQuota(db, resolveRequestIdentity(db, req), 'assistant')
+    const identity = resolveRequestIdentity(db, req)
+    enforceApiRateLimit(db, req, "assistant", { identity })
+    chargeQuota(db, identity, 'assistant')
 
     const { system, user } = buildAssistantPrompt(question, {
       idea: typeof body?.idea === 'string' ? body.idea.slice(0, 500) : '',
@@ -76,7 +79,7 @@ export async function POST(req: Request) {
     }
     return NextResponse.json(ok(parseAssistantReply(raw)))
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

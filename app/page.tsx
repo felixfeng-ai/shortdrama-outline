@@ -107,6 +107,7 @@ import {
 } from '@/lib/assets/export'
 import { postJson, postSse, isAbortError } from '@/lib/api'
 import { placeGenerationTargetId } from '@/lib/assets/anchors'
+import type { ShotQcResult } from '@/lib/assets/qc'
 import {
   buildExportReport,
   buildProjectPackageManifest,
@@ -117,6 +118,11 @@ import {
   type ProjectExportFile,
   type ProjectExportMissing,
 } from '@/lib/export/package'
+import {
+  buildPlatformExportKit,
+  preflightPlatformExport,
+  type PlatformExportTarget,
+} from '@/lib/export/platforms'
 import {
   readProjectQuery,
   readStepQuery,
@@ -324,10 +330,12 @@ export default function Home() {
   const [projects, setProjects] = useState<ProjectDto[]>([])
   const [exportProgress, setExportProgress] = useState<string | null>(null)
   const [importProgress, setImportProgress] = useState<string | null>(null)
+  const [exportTarget, setExportTarget] = useState<PlatformExportTarget>("general")
   /** 场记是否展开：H 双舱里它就是右舱的第二个 tab */
   const [agentOpen, setAgentOpen] = useState(false)
   /** 第 6 步当前镜头的属性检查器 */
   const [inspectorOpen, setInspectorOpen] = useState(false)
+  const [activeShotQc, setActiveShotQc] = useState<ShotQcResult | null>(null)
   /** 窄屏抽屉是否展开（桌面端是常驻右舱，这个状态不参与） */
   const [deckOpen, setDeckOpen] = useState(false)
   /** 停在「产出」tab 时收到的新回答数；切到场记即清零 */
@@ -607,6 +615,14 @@ export default function Home() {
   const hasActs = acts.length > 0
   const hasEpisodes = episodes.length > 0
   const hasResult = hasCharacters || hasActs || hasEpisodes || visuals.length > 0 || shots.length > 0
+  const exportPreflight = useMemo(
+    () => preflightPlatformExport(shots, {
+      target: exportTarget,
+      visuals,
+      places,
+    }),
+    [exportTarget, places, shots, visuals],
+  )
 
   // 步骤条高亮到「第一个还没产出内容的步骤」；六步全部有内容时停在最后一步
   const currentStep = !hasCharacters ? 1 : !hasActs ? 2 : !hasEpisodes ? 3 : !visuals.length ? 4 : !scenes.length ? 5 : 6
@@ -1791,6 +1807,31 @@ export default function Home() {
         "html",
       )
 
+      if (mode === "delivery" && exportTarget !== "general") {
+        const platformKit = buildPlatformExportKit({
+          title,
+          target: exportTarget,
+          shots,
+          visuals,
+          places,
+          exportedAt,
+          keyframePathByTargetId,
+        })
+        for (const file of platformKit.files) {
+          addText(file.path, file.content, `platform-${file.kind}`)
+        }
+        if (platformKit.preflight.blocking > 0) {
+          warnings.push(
+            `${platformKit.preflight.blocking} 个平台阻断项需要在导出后修正，详见 production/${exportTarget}/preflight.json。`,
+          )
+        }
+        if (platformKit.preflight.warning > 0) {
+          warnings.push(
+            `${platformKit.preflight.warning} 个平台提醒项，详见 production/${exportTarget}/preflight.json。`,
+          )
+        }
+      }
+
       const snapshots = snapshotLists.flatMap((list, kindIndex) =>
         list.map((snapshot) => ({
           id: snapshot.id,
@@ -1895,7 +1936,7 @@ export default function Home() {
       setNotice(
         mode === "backup"
           ? `完整备份已生成：${files.length} 个文件${missing.length ? `，${missing.length} 项缺失` : ""}。`
-          : `交付包已生成：${files.length} 个文件${missing.length ? `，${missing.length} 项缺失` : ""}。`,
+          : `交付包已生成：${files.length} 个文件${missing.length ? `，${missing.length} 项缺失` : ""}；预检 ${exportPreflight.blocking} 个阻断、${exportPreflight.warning} 个提醒。`,
       )
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : "项目包生成失败，请重试")
@@ -2432,6 +2473,9 @@ export default function Home() {
                   onCopyAll={() => { void handleCopyAll() }}
                   onCopyLink={() => { void handleCopyProjectLink() }}
                   onCopyReviewLink={() => { void handleCopyReviewLink() }}
+                  exportTarget={exportTarget}
+                  onExportTargetChange={setExportTarget}
+                  exportPreflight={shots.length > 0 ? exportPreflight : null}
                   copied={copied}
                   exportProgress={exportProgress}
                   importProgress={importProgress}
@@ -2809,6 +2853,9 @@ export default function Home() {
                 onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
                 look={look}
                 episodeCount={episodeCount}
+                visuals={visuals}
+                places={places}
+                onActiveQcChange={setActiveShotQc}
               />
             </StepSection>
 
@@ -3084,6 +3131,7 @@ export default function Home() {
               >
                 <ShotInspector
                   shot={activeShot}
+                  qc={activeShotQc}
                   projectId={projectId}
                   onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
                   look={look}

@@ -12,6 +12,7 @@ import { chargeQuota } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -29,7 +30,9 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
-    chargeQuota(db, resolveRequestIdentity(db, req), "acts")
+    const identity = resolveRequestIdentity(db, req)
+    enforceApiRateLimit(db, req, "model", { identity })
+    chargeQuota(db, identity, "acts")
 
 
     const { system, user } = buildActPrompt(idea, characters, genre, brief)
@@ -41,7 +44,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(ok({ acts }))
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

@@ -2,12 +2,14 @@
 
 import type { Shot } from '@/lib/assets/types'
 import type { GenerationStatus } from '@/lib/generation/types'
+import type { ShotQcResult } from '@/lib/assets/qc'
 
 interface Props {
   shot: Shot
   active: boolean
   thumbnailUrl?: string | null
   taskStatus?: GenerationStatus | null
+  qc?: ShotQcResult | null
   onSelect: (id: string) => void
 }
 
@@ -27,9 +29,16 @@ export default function ShotBoardCard({
   active,
   thumbnailUrl,
   taskStatus,
+  qc,
   onSelect,
 }: Props) {
   const status = statusOf(shot, taskStatus)
+  const codes = new Set(qc?.issues.map((issue) => issue.code) ?? [])
+  const qcTags: string[] = []
+  if (codes.has('missing-anchor') || codes.has('locked-trait')) qcTags.push('缺锚点')
+  if (codes.has('stale-reference')) qcTags.push('旧参考')
+  if (codes.has('missing-reference')) qcTags.push('缺图')
+  if (codes.has('invalid-duration')) qcTags.push('时长不兼容')
   return (
     <button
       type="button"
@@ -68,10 +77,15 @@ export default function ShotBoardCard({
           <i>·</i>
           {shot.params.duration}s
         </span>
+        {qcTags.length > 0 && (
+          <span className="shot-board-qc" aria-label="镜头质检问题">
+            {qcTags.map((tag) => <em key={tag}>{tag}</em>)}
+          </span>
+        )}
       </span>
 
       <span className="shot-board-side">
-        {shot.missingRefFor.length > 0 && <em>缺图 {shot.missingRefFor.length}</em>}
+        {qc?.issues.length ? <em>{qc.issues.length} 项</em> : null}
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <path d="m7.5 4.5 5 5-5 5" />
         </svg>

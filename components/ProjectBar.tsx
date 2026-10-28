@@ -6,6 +6,12 @@
 // 也没法把一个刚跑完的项目改名——这两件事是「多用几次」与「只用一次」的分界。
 import { useEffect, useRef, useState } from 'react'
 import type { ProjectDto } from '@/lib/assets/api'
+import {
+  PLATFORM_EXPORT_TARGETS,
+  platformLabel,
+  type PlatformExportTarget,
+  type PlatformPreflight,
+} from '@/lib/export/platforms'
 import SmoothCollapse from './SmoothCollapse'
 
 interface Props {
@@ -27,6 +33,9 @@ interface Props {
   onCopyAll: () => void
   onCopyLink: () => void
   onCopyReviewLink: () => void
+  exportTarget: PlatformExportTarget
+  onExportTargetChange: (target: PlatformExportTarget) => void
+  exportPreflight?: PlatformPreflight | null
   copied: boolean
   exportProgress?: string | null
   importProgress?: string | null
@@ -55,6 +64,9 @@ export default function ProjectBar({
   onCopyAll,
   onCopyLink,
   onCopyReviewLink,
+  exportTarget,
+  onExportTargetChange,
+  exportPreflight = null,
   copied,
   exportProgress = null,
   importProgress = null,
@@ -138,8 +150,29 @@ export default function ProjectBar({
 
       <SmoothCollapse open={exportOpen}>
         <div className="project-export-menu mt-2 border-t border-surface-line pt-2">
+          <fieldset className="project-export-target">
+            <legend>目标平台</legend>
+            <div role="group" aria-label="交付包目标平台">
+              {PLATFORM_EXPORT_TARGETS.map((target) => (
+                <button
+                  key={target}
+                  type="button"
+                  aria-pressed={exportTarget === target}
+                  onClick={() => onExportTargetChange(target)}
+                  className={exportTarget === target ? 'is-active' : ''}
+                >
+                  {platformLabel(target)}
+                </button>
+              ))}
+            </div>
+            {exportPreflight && (
+              <p className={exportPreflight.blocking > 0 ? 'has-blocking' : ''}>
+                预检：{exportPreflight.blocking} 个阻断项 · {exportPreflight.warning} 个提醒项
+              </p>
+            )}
+          </fieldset>
           <p className="mb-2 text-[10.5px] leading-relaxed text-ink-400">
-            交付包只带已采用图和执行文件；完整备份保留全部版本、任务和历史候选。
+            交付包带已采用图、预检和{platformLabel(exportTarget)}执行文件；完整备份保留全部版本、任务和历史候选。
           </p>
           <div className="project-export-actions flex flex-wrap gap-2">
           <button

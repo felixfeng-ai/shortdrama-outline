@@ -157,18 +157,29 @@ export async function postSse(
 }
 
 /** 服务端：把任意异常翻译成 { body, status }，路由只需包一层 NextResponse */
-export function errorResponse(error: unknown): { body: ApiResponse<never>; status: number } {
+export function errorResponse(error: unknown): {
+  body: ApiResponse<never>
+  status: number
+  headers: Record<string, string>
+} {
   // 输入校验失败
   if (error instanceof InputError) {
-    return { body: fail(error.message), status: 400 }
+    return { body: fail(error.message), status: 400, headers: {} }
   }
   // DeepSeek 相关错误（Key 无效 / 超时 / 解析失败等），message 已经是可以直接展示的中文
   if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
-    return { body: fail(error.message), status: error.status }
+    const retryAfter = 'retryAfterSeconds' in error && typeof error.retryAfterSeconds === 'number'
+      ? String(Math.max(1, Math.ceil(error.retryAfterSeconds)))
+      : null
+    return {
+      body: fail(error.message),
+      status: error.status,
+      headers: retryAfter ? { 'Retry-After': retryAfter } : {},
+    }
   }
   // 剩下的是没预料到的问题：日志留详情，用户只看到一句话
   console.error('[api] 未处理的异常', error)
-  return { body: fail('生成失败，请稍后重试'), status: 500 }
+  return { body: fail('生成失败，请稍后重试'), status: 500, headers: {} }
 }
 
 /** 请求参数不合法。路由里校验失败时抛这个 */

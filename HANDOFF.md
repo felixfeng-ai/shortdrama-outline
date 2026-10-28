@@ -8,10 +8,13 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 路径：`D:\Project\drama-outline`
 - 类型：Next.js 短剧大纲创作工具（App Router + Tailwind），面向竖屏短剧与漫剧
 
-## 当前状态（2026-10-26）
+## 当前状态（2026-10-28）
 
 **云端关键帧 P0 已在本地实现，待浏览器验收，不直接推送。**
 
+- 生产调用风控已覆盖文本生成、场记、图像、导出与导入：SQLite 持久化 IP/账号/全站窗口，429 带 `Retry-After`，超限写不含原始身份的结构化安全日志。
+- 平台交付支持通用、即梦、可灵与结构化 JSON；交付包写入逐镜执行单、`preflight.json` 和稳定 platform manifest，不接平台私有 API。
+- 制作工作台增加镜头级质检：缺锚点、旧参考图、缺参考图与参数问题直接显示在镜头卡；支持仅看问题、确定性修复 Prompt、标记旧参考返修和筛选后批量生成。
 - 角色视觉定妆卡与分镜卡新增 `KeyframePanel`：生成定妆图 / 首帧、运行态、历史版本回选。
 - 地点视觉锚点卡复用 `KeyframePanel` 生成 16:9 空场景图；场景图会作为地点重生成参考，并在镜头首帧参考图预算中补入。缺失地点可直接补建锚点，并先落 `visualPlaces` 快照。
 - 图像服务改为平台托管通义万相，前端不出现 Provider、模型或 API Key；服务端使用 `ALIYUN_DASHSCOPE_API_KEY` 与 `ALIYUN_IMAGE_MODEL`。
@@ -45,7 +48,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md)、[specs/email-login/spec.md](specs/email-login/spec.md) 与 [specs/auth-abuse-hardening/spec.md](specs/auth-abuse-hardening/spec.md)。
+- 规格见 [specs/production-api-guardrails/spec.md](specs/production-api-guardrails/spec.md)、[specs/platform-export-adapters/spec.md](specs/platform-export-adapters/spec.md)、[specs/shot-production-qc/spec.md](specs/shot-production-qc/spec.md)、[specs/production-workbench/spec.md](specs/production-workbench/spec.md)、[specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md)、[specs/email-login/spec.md](specs/email-login/spec.md) 与 [specs/auth-abuse-hardening/spec.md](specs/auth-abuse-hardening/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -63,7 +66,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `531/531` 通过。`npx tsc --noEmit` 通过；生产构建通过；全量测试可执行行覆盖率 `89.18%`，`lib/auth/rate-limit` 为 `100%`，`lib/generation/batch` 为 `100%`，`lib/auth/service` 为 `97.64%`，`lib/auth/email` 为 `96.97%`，`lib/assets/db` 为 `94.96%`。
+- **验证**：当前工作区全量测试 `557/557` 通过。`npx tsc --noEmit` 与生产构建通过；新增逻辑模块覆盖率：`lib/security/api-rate-limit.ts` 与 `lib/assets/qc.ts` 行覆盖 `100%`，`lib/export/platforms.ts` 行覆盖 `94.74%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；邮箱验证码发送、自动填入、登录、HttpOnly 会话与账号页展示均通过；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
 - **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；项目深链已推送 `bbd6df5`；当前会话轮换与设备管理仍在本地等待验收。

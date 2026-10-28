@@ -11,6 +11,7 @@ import { readRecommendedGenres } from '@/lib/prompts'
 import { getDbForRequest } from '@/lib/assets/store'
 import { chargeQuota } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -49,7 +50,9 @@ export async function POST(req: Request) {
 
     // 额度闸门：入参已校验、尚未调用模型
     const db = getDbForRequest()
-    chargeQuota(db, resolveRequestIdentity(db, req), 'ideas')
+    const identity = resolveRequestIdentity(db, req)
+    enforceApiRateLimit(db, req, "model", { identity })
+    chargeQuota(db, identity, 'ideas')
 
     const { system, user } = buildIdeaPrompt(keywords, genre, GENRES)
     // 联想需要发散，温度比人物生成再高一点
@@ -59,7 +62,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(ok({ ideas, genres }))
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

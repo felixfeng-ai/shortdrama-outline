@@ -6,7 +6,12 @@ import BatchGenerationPanel from './BatchGenerationPanel'
 import ShotBoardCard from './ShotBoardCard'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import type { GeneratedAsset, GenerationStatus, GenerationTask } from '@/lib/generation/types'
-import type { Shot } from '@/lib/assets/types'
+import type { Shot, VisualCharacter, VisualPlace } from '@/lib/assets/types'
+import {
+  auditShotProduction,
+  repairShotAnchors,
+  type ShotQcResult,
+} from '@/lib/assets/qc'
 import type { LookBook } from '@/lib/look'
 import {
   buildShotWorkbenchTree,
@@ -24,6 +29,9 @@ interface Props {
   onEnsureProject: () => Promise<string | null>
   look: LookBook
   episodeCount: number
+  visuals: VisualCharacter[]
+  places: VisualPlace[]
+  onActiveQcChange?: (qc: ShotQcResult | null) => void
 }
 
 function setWorkbenchQuery(input: {
@@ -52,20 +60,59 @@ export default function ShotList({
   onEnsureProject,
   look,
   episodeCount,
+  visuals,
+  places,
+  onActiveQcChange,
 }: Props) {
   const [episodeFilter, setEpisodeFilter] = useState<number | null>(null)
   const [sceneFilter, setSceneFilter] = useState<string | null>(null)
+  const [qcFilter, setQcFilter] = useState<'all' | 'issues'>('all')
+  const [qcNotice, setQcNotice] = useState<string | null>(null)
   const [treeOpen, setTreeOpen] = useState(true)
   const [generationAssets, setGenerationAssets] = useState<GeneratedAsset[]>([])
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([])
   const onSelectRef = useRef(onSelect)
 
   const tree = useMemo(() => buildShotWorkbenchTree(shots), [shots])
-  const visibleShots = useMemo(
+  const scopedShots = useMemo(
     () => filterShotsForWorkbench(shots, episodeFilter, sceneFilter),
     [episodeFilter, sceneFilter, shots],
   )
+  const qcResults = useMemo(
+    () => auditShotProduction({
+      shots,
+      visuals,
+      places,
+      assets: generationAssets,
+    }),
+    [generationAssets, places, shots, visuals],
+  )
+  const qcByShotId = useMemo(
+    () => new Map(qcResults.map((result) => [result.shotId, result])),
+    [qcResults],
+  )
+  const visibleShots = useMemo(
+    () => qcFilter === 'issues'
+      ? scopedShots.filter((shot) => qcByShotId.get(shot.id)?.needsRepair)
+      : scopedShots,
+    [qcByShotId, qcFilter, scopedShots],
+  )
   const groups = useMemo(() => groupShotsByEpisode(visibleShots), [visibleShots])
+  const qcIssueShots = useMemo(
+    () => qcResults.filter((result) => result.needsRepair),
+    [qcResults],
+  )
+  const qcCounts = useMemo(() => {
+    return {
+      issueShots: qcIssueShots.length,
+      missingAnchors: qcResults.filter((result) =>
+        result.issues.some((issue) => issue.code === 'missing-anchor' || issue.code === 'locked-trait')).length,
+      staleReferences: qcResults.filter((result) =>
+        result.issues.some((issue) => issue.code === 'stale-reference')).length,
+      missingReferences: qcResults.filter((result) =>
+        result.issues.some((issue) => issue.code === 'missing-reference')).length,
+    }
+  }, [qcIssueShots.length, qcResults])
   const episodeOptions = useMemo(() => {
     const used = new Set(tree.map((group) => group.episode))
     const highest = Math.max(0, Math.floor(episodeCount), episodeFilter ?? 0, ...used)
@@ -100,6 +147,10 @@ export default function ShotList({
   useEffect(() => {
     onSelectRef.current = onSelect
   }, [onSelect])
+
+  useEffect(() => {
+    onActiveQcChange?.(activeShotId ? qcByShotId.get(activeShotId) ?? null : null)
+  }, [activeShotId, onActiveQcChange, qcByShotId])
 
   useEffect(() => {
     const syncFromUrl = () => {
@@ -157,6 +208,49 @@ export default function ShotList({
 
   function update(id: string, patch: Partial<Shot>) {
     onChange(shots.map((shot) => (shot.id === id ? { ...shot, ...patch } : shot)))
+  }
+
+  function repairVisibleAnchors() {
+    const targets = new Set(
+      visibleShots
+        .filter((shot) => {
+          const qc = qcByShotId.get(shot.id)
+          return qc?.issues.some((issue) =>
+            issue.code === 'missing-anchor' || issue.code === 'locked-trait')
+        })
+        .map((shot) => shot.id),
+    )
+    if (targets.size === 0) {
+      setQcNotice('当前范围没有需要补齐的锚点。')
+      return
+    }
+    let changed = 0
+    onChange(shots.map((shot) => {
+      if (!targets.has(shot.id)) return shot
+      const repaired = repairShotAnchors(shot, visuals, places)
+      if (repaired.prompt !== shot.prompt) changed += 1
+      return repaired
+    }))
+    setQcNotice(`已修复 ${changed} 个镜头的 Prompt；已出图镜头已转为需返修。`)
+  }
+
+  function markStaleReferencesForRework() {
+    const targets = new Set(
+      visibleShots
+        .filter((shot) => (qcByShotId.get(shot.id)?.staleReferences.length ?? 0) > 0)
+        .map((shot) => shot.id),
+    )
+    if (targets.size === 0) {
+      setQcNotice('当前范围没有旧参考图。')
+      return
+    }
+    let changed = 0
+    onChange(shots.map((shot) => {
+      if (!targets.has(shot.id) || shot.status === 'rework') return shot
+      changed += 1
+      return { ...shot, status: 'rework' }
+    }))
+    setQcNotice(`已将 ${changed} 个旧参考图镜头标记为需返修。`)
   }
 
   function changeEpisodeFilter(value: string) {
@@ -302,17 +396,66 @@ export default function ShotList({
           </p>
         </div>
 
+        <section className={`shot-qc-bar ${qcCounts.issueShots > 0 ? 'has-issues' : 'is-clear'}`} aria-label="镜头质检汇总">
+          <div className="shot-qc-head">
+            <div className="shot-qc-filter" role="group" aria-label="镜头质检筛选">
+              <button
+                type="button"
+                aria-pressed={qcFilter === 'all'}
+                onClick={() => setQcFilter('all')}
+              >
+                全部镜头
+              </button>
+              <button
+                type="button"
+                aria-pressed={qcFilter === 'issues'}
+                onClick={() => setQcFilter('issues')}
+              >
+                仅看问题 {qcCounts.issueShots > 0 ? qcCounts.issueShots : ''}
+              </button>
+            </div>
+            <p>
+              {qcCounts.issueShots > 0
+                ? `缺锚点 ${qcCounts.missingAnchors} · 旧参考 ${qcCounts.staleReferences} · 缺图 ${qcCounts.missingReferences}`
+                : '质检通过：锚点、参考图和平台参数无异常'}
+            </p>
+          </div>
+          <div className="shot-qc-actions">
+            <button
+              type="button"
+              disabled={qcCounts.missingAnchors === 0}
+              onClick={repairVisibleAnchors}
+            >
+              修复提示词
+            </button>
+            <button
+              type="button"
+              disabled={qcCounts.staleReferences === 0}
+              onClick={markStaleReferencesForRework}
+            >
+              标记旧参考返修
+            </button>
+          </div>
+          {qcNotice && <p className="shot-qc-notice" role="status">{qcNotice}</p>}
+        </section>
+
         {progress && (
           <p role="status" className="shot-board-progress">{progress}</p>
         )}
 
         <BatchGenerationPanel
           scope="shots"
-          title={episodeFilter === null ? '批量生成全剧首帧' : `批量生成${selectedEpisodeLabel}首帧`}
+          title={qcFilter === 'issues'
+            ? `批量返修 ${visibleShots.length} 个问题镜头`
+            : episodeFilter === null
+              ? '批量生成全剧首帧'
+              : `批量生成${selectedEpisodeLabel}首帧`}
           description={
-            episodeFilter === null
-              ? '当前为全剧范围。建议先按集筛选，再分批生成，成本与返修范围更可控。'
-              : '只提交当前筛选内的镜头；每镜仍是独立任务，结果先保存为候选。'
+            qcFilter === 'issues'
+              ? '当前只包含有质检问题的镜头；每镜仍是独立任务，结果先保存为候选。'
+              : episodeFilter === null
+                ? '当前为全剧范围。建议先按集筛选，再分批生成，成本与返修范围更可控。'
+                : '只提交当前筛选内的镜头；每镜仍是独立任务，结果先保存为候选。'
           }
           targets={visibleShots.map((shot) => {
             const prompt = shot.prompt || shot.action || shot.scene
@@ -358,6 +501,7 @@ export default function ShotList({
                           active={shot.id === activeShotId}
                           thumbnailUrl={assetByShot.get(shot.entityId)?.downloadUrl}
                           taskStatus={task?.status as GenerationStatus | undefined}
+                          qc={qcByShotId.get(shot.id)}
                           onSelect={() => selectShot(shot)}
                         />
                       )

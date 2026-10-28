@@ -16,6 +16,7 @@ import { getDbForRequest } from '@/lib/assets/store'
 import { chargeQuota } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
 import { readGenre } from '@/lib/types'
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -106,7 +107,9 @@ export async function POST(req: Request) {
 
     // 额度闸门：入参已校验、尚未调用模型。走 visual 权重（这是一次美术判断）
     const db = getDbForRequest()
-    chargeQuota(db, resolveRequestIdentity(db, req), 'assetMatch')
+    const identity = resolveRequestIdentity(db, req)
+    enforceApiRateLimit(db, req, "model", { identity })
+    chargeQuota(db, identity, 'assetMatch')
 
     const { system, user } = buildAssetMatchPrompt(names, files, genre)
     // 判断归属需要推理但不需要发散，温度压低
@@ -115,7 +118,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(ok({ matches, scanned: files.length, characters: names.length }))
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

@@ -4,9 +4,10 @@ import { InputError, errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import type { ArtifactKind } from "@/lib/assets/types"
 import { createProject, createSnapshot, deleteProject } from "@/lib/assets/repo"
-import { resolveProjectOwner } from "@/lib/auth/request"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { parseProjectPackage } from "@/lib/export/import"
 import type { ProjectPackageManifest } from "@/lib/export/package"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
   completeGenerationTask,
   createGenerationTask,
@@ -207,6 +208,9 @@ export async function POST(req: Request) {
   const ownerId = resolveProjectOwner(db, req)
   let projectId: string | null = null
   try {
+    enforceApiRateLimit(db, req, "import", {
+      identity: resolveRequestIdentity(db, req),
+    })
     const form = await req.formData()
     const raw = form.get("manifest")
     if (typeof raw !== "string") throw new InputError("项目包缺少 manifest")
@@ -251,7 +255,7 @@ export async function POST(req: Request) {
         // 清理失败不覆盖原始错误。
       }
     }
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

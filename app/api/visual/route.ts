@@ -12,6 +12,7 @@ import { persistIfProject } from "@/lib/assets/persist"
 import { chargeQuota } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -30,7 +31,9 @@ export async function POST(req: Request) {
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
     const genre = readGenre(body?.genre)
-    chargeQuota(db, resolveRequestIdentity(db, req), "visual")
+    const identity = resolveRequestIdentity(db, req)
+    enforceApiRateLimit(db, req, "model", { identity })
+    chargeQuota(db, identity, "visual")
 
     const { system, user } = buildVisualPrompt(idea, characters, genre)
     const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(ok({ visualCharacters, imagePrompts }))
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

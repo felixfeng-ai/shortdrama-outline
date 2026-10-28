@@ -5,8 +5,9 @@ import { assertProjectAccess } from "@/lib/assets/access"
 import { getDbForRequest } from "@/lib/assets/store"
 import { latestSnapshot } from "@/lib/assets/repo"
 import { placeGenerationTargetId } from "@/lib/assets/anchors"
-import { resolveProjectOwner } from "@/lib/auth/request"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { readLook } from "@/lib/look"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
   completeGenerationTask,
   cancelGenerationTask,
@@ -171,6 +172,9 @@ export async function POST(req: Request) {
   const db = getDbForRequest()
   const ownerId = resolveProjectOwner(db, req)
   try {
+    enforceApiRateLimit(db, req, "image", {
+      identity: resolveRequestIdentity(db, req),
+    })
     const body = await req.json().catch(() => null)
     const projectId = requiredString(body?.projectId, "缺少 projectId")
     const type = targetType(body?.targetType)
@@ -259,11 +263,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, data: null, error: "已停止等待" }, { status: 499 })
     }
     if (error instanceof InputError || (error instanceof Error && "status" in error)) {
-      const { body, status } = errorResponse(error)
-      return NextResponse.json(body, { status })
+      const { body, status, headers } = errorResponse(error)
+      return NextResponse.json(body, { status, headers })
     }
     const safe = httpError(message || "图像生成失败，请重试", 502)
-    const { body, status } = errorResponse(safe)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(safe)
+    return NextResponse.json(body, { status, headers })
   }
 }

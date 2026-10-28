@@ -15,6 +15,7 @@ import { chargeQuota } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 
 export const runtime = 'nodejs'
 // 生成较慢，放宽函数超时（Vercel 上生效）
@@ -36,7 +37,9 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
-    chargeQuota(db, resolveRequestIdentity(db, req), "characters")
+    const identity = resolveRequestIdentity(db, req)
+    enforceApiRateLimit(db, req, "model", { identity })
+    chargeQuota(db, identity, "characters")
 
 
     const { system, user } =
@@ -61,7 +64,7 @@ export async function POST(req: Request) {
       ok(mode === 'single' ? { characters: [characters[0]] } : { characters }),
     )
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

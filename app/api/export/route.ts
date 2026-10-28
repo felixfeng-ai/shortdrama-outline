@@ -10,11 +10,12 @@ import { listSnapshots } from "@/lib/assets/repo"
 import { ARTIFACT_KINDS, type ArtifactKind, type Shot, type VisualCharacter, type Scene } from "@/lib/assets/types"
 import { buildProjectPackageManifest } from "@/lib/export/package"
 import { assertProjectAccess } from "@/lib/assets/access"
-import { resolveProjectOwner } from "@/lib/auth/request"
+import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { EMPTY_BRIEF } from "@/lib/brief"
 import { EMPTY_LOOK } from "@/lib/look"
 import { listGeneratedAssets, listGenerationTasks } from "@/lib/generation/repo"
 import { keyframeManifestEntry } from "@/lib/generation/export"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -27,6 +28,9 @@ export async function GET(req: Request) {
     if (!projectId) throw new InputError("缺少 projectId")
 
     const db = getDbForRequest()
+    enforceApiRateLimit(db, req, "export", {
+      identity: resolveRequestIdentity(db, req),
+    })
     const project = assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
 
     // 每一类取最新一版，同时保留完整快照供备份读取器使用。
@@ -97,8 +101,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json(ok({ manifest }))
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }
 

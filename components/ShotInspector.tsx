@@ -5,6 +5,7 @@ import CopyButton from './CopyButton'
 import KeyframePanel from './KeyframePanel'
 import { CAMERA_MOVES, SHOT_DURATIONS, SHOT_SIZES, type Shot, type ShotStatus } from '@/lib/assets/types'
 import type { LookBook } from '@/lib/look'
+import type { ShotQcResult } from '@/lib/assets/qc'
 
 interface Props {
   shot: Shot
@@ -12,6 +13,7 @@ interface Props {
   onEnsureProject: () => Promise<string | null>
   look: LookBook
   episodeCount: number
+  qc?: ShotQcResult | null
   onUpdate: (id: string, patch: Partial<Shot>) => void
   onRemove: (id: string) => void
 }
@@ -28,6 +30,7 @@ export default function ShotInspector({
   onEnsureProject,
   look,
   episodeCount,
+  qc,
   onUpdate,
   onRemove,
 }: Props) {
@@ -50,6 +53,22 @@ export default function ShotInspector({
           ))}
         </select>
       </header>
+
+      <section className={`shot-inspector-qc ${qc?.needsRepair ? 'has-issues' : 'is-clear'}`} aria-label="镜头质检">
+        <div>
+          <h4>镜头质检</h4>
+          <span>{qc?.needsRepair ? `${qc.issues.length} 项待处理` : '当前无问题'}</span>
+        </div>
+        {qc?.needsRepair ? (
+          <ul>
+            {qc.issues.map((issue, index) => (
+              <li key={`${issue.code}-${issue.character ?? ''}-${index}`}>{issue.message}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>锚点、参考图版本和平台参数均通过检查。</p>
+        )}
+      </section>
 
       <div className="shot-inspector-fields">
         <label>

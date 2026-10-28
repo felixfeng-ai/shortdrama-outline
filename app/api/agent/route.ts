@@ -13,6 +13,7 @@ import { toWireMessages } from '@/lib/agent/wire'
 import { getDbForRequest } from '@/lib/assets/store'
 import { chargeQuota } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
+import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -41,7 +42,9 @@ export async function POST(req: Request) {
 
     // 额度闸门：入参已校验、尚未调用模型。一次调用 = 1 单位
     const db = getDbForRequest()
-    chargeQuota(db, resolveRequestIdentity(db, req), 'agent')
+    const identity = resolveRequestIdentity(db, req)
+    enforceApiRateLimit(db, req, "assistant", { identity })
+    chargeQuota(db, identity, 'agent')
 
     const withSystem: ToolChatMessage[] = [{ role: 'system', content: SYSTEM }, ...messages]
 
@@ -67,7 +70,7 @@ export async function POST(req: Request) {
       )
     }
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 }

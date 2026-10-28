@@ -24,6 +24,7 @@ import { readActs, readCharacters, readIdea } from "@/lib/validate"
 import { chargeQuota } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
+import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
   planShotBatches,
   shotBatchLabel,
@@ -87,11 +88,18 @@ export async function POST(req: Request) {
     }
     resumeRequested = body?.resume === true
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 
   const db = getDbForRequest()
+  const identity = resolveRequestIdentity(db, req)
+  try {
+    enforceApiRateLimit(db, req, "model", { identity })
+  } catch (error) {
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
+  }
   const sceneRows = scenes as Scene[]
   const signature = checkpointSignature("shots", {
     idea,
@@ -129,10 +137,10 @@ export async function POST(req: Request) {
 
   // 额度闸门：同 episodes，必须在 new ReadableStream 之前；续跑只收尚未完成批次的额度。
   try {
-    chargeQuota(db, resolveRequestIdentity(db, req), "shots", Date.now(), shotUnits)
+    chargeQuota(db, identity, "shots", Date.now(), shotUnits)
   } catch (error) {
-    const { body, status } = errorResponse(error)
-    return NextResponse.json(body, { status })
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
   }
 
   const encoder = new TextEncoder()
