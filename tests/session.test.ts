@@ -50,3 +50,42 @@ test("middleware：localhost 使用稳定开发会话，避免本地项目因浏
   }))
   assert.equal(valid.headers.get("set-cookie"), null)
 })
+
+test("middleware：反向代理到 localhost 时仍按生产域名生成独立会话", () => {
+  const first = middleware(new NextRequest("http://localhost/", {
+    headers: {
+      host: "chenju.work",
+      "x-forwarded-host": "chenju.work",
+      "x-forwarded-proto": "https",
+    },
+  }))
+  const setCookie = first.headers.get("set-cookie") ?? ""
+  assert.match(setCookie, new RegExp(`${SESSION_COOKIE}=anon_`))
+  assert.doesNotMatch(setCookie, new RegExp(LOCAL_SESSION_ID))
+  assert.match(setCookie, /Secure/i)
+})
+
+test("middleware：生产环境持有旧开发会话时自动替换，不能继续共享 owner", () => {
+  const response = middleware(new NextRequest("http://localhost/", {
+    headers: {
+      host: "chenju.work",
+      "x-forwarded-proto": "https",
+      cookie: `${SESSION_COOKIE}=${LOCAL_SESSION_ID}`,
+    },
+  }))
+  const setCookie = response.headers.get("set-cookie") ?? ""
+  assert.match(setCookie, new RegExp(`${SESSION_COOKIE}=anon_`))
+  assert.doesNotMatch(setCookie, new RegExp(LOCAL_SESSION_ID))
+})
+
+test("middleware：生产环境已有的独立会话保持不变", () => {
+  const id = makeSessionId()
+  const response = middleware(new NextRequest("http://localhost/", {
+    headers: {
+      host: "chenju.work",
+      "x-forwarded-proto": "https",
+      cookie: `${SESSION_COOKIE}=${id}`,
+    },
+  }))
+  assert.equal(response.headers.get("set-cookie"), null)
+})
