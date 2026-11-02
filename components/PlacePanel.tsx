@@ -223,7 +223,7 @@ export default function PlacePanel({
 
       <div className="mt-3 ledger-list">
         {places.map((place) => (
-          <article key={place.id} className="ledger-row min-w-0">
+        <article key={place.id} data-canvas-item={place.id} tabIndex={-1} className="ledger-row min-w-0">
             <p className="text-sm font-semibold text-ink-900">{place.name}</p>
             <KeyframePanel
               projectId={projectId}

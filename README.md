@@ -775,7 +775,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 只读项目审阅链接 | 🟡 | 本地功能与测试已完成；仍需提交、部署，并验证匿名访问、7 天过期、重新生成撤销、私有资产不泄露 |
 | 本地目录系统授权 | 🟡 | 扫描、缩略图、中文名挂图和刷新恢复已自动化验证；仍需在真实 Chrome/Edge 的系统目录授权弹窗中完成人工验收 |
 | 多实例与任务队列 | 📋 | 当前 SQLite、额度和检查点按单进程设计；扩容前需要 Postgres、持久队列、Redis 原子限流、任务幂等和多实例恢复 |
-| 运维与可观测性 | 📋 | 数据库自动备份与恢复演练、容量监控、服务告警、崩溃监控、日志检索、故障回滚演练尚未形成正式流程 |
+| 运维与可观测性 | 🟡 | 已有 SQLite `busy_timeout`、一致性数据库快照、生成图片备份、SHA-256 manifest、非覆盖恢复 CLI 和部署前完整备份；系统 cron、异地备份、容量监控、服务告警、崩溃监控和正式恢复演练仍待配置 |
 | 内容安全与合规 | 📋 | AI 内容标识、内容审核、用户举报、隐私授权管理、服务条款与异常内容处置流程尚未完成 |
 | 团队协作 | 📋 | 项目成员、批注、审阅分配、角色权限和操作记录尚未开发；当前仍坚持单创作人、轻账号边界 |
 | 订阅与支付 | 📋 | 套餐、订单、计费、额度充值、退款和发票能力尚未开发 |
@@ -967,6 +967,37 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
 > 同理，`gzip_types` 里**不能**加 `text/event-stream`：压缩同样要攒够数据才能开始。`deploy/nginx-chenju.work.conf` 里的 `gzip_types` 只列了 `text/plain text/css application/javascript application/json application/xml image/svg+xml`，没有 `text/event-stream`，正好安全。
 
 **端口是 3001。** 同一台服务器上还跑着另一个应用、占着 3000，两个不能混用；端口写在 `ecosystem.config.cjs` 的 `args` 里。
+
+### 数据备份与恢复
+
+生产备份会先通过 SQLite `VACUUM INTO` 生成一致性数据库快照，再复制 `generated/` 图片，并写入包含 SHA-256 的 `manifest.json`：
+
+```bash
+cd /opt/chengju
+CHENGJU_DATA_DIR=/opt/chengju/data \
+CHENGJU_BACKUP_KEEP=7 \
+node scripts/backup-data.mjs
+```
+
+默认输出到 `/opt/chengju/data/backups/<时间戳>/`。部署脚本会在生产构建前自动执行一次完整备份；备份失败会中止部署。
+
+建议增加每日定时任务：
+
+```cron
+15 3 * * * cd /opt/chengju && CHENGJU_DATA_DIR=/opt/chengju/data CHENGJU_BACKUP_KEEP=7 node scripts/backup-data.mjs >> logs/backup.log 2>&1
+```
+
+恢复不会直接覆盖生产目录，而是先校验数据库和所有图片哈希，再恢复到新目录：
+
+```bash
+cd /opt/chengju
+CHENGJU_RESTORE_CONFIRM=1 \
+node scripts/restore-data.mjs \
+  /opt/chengju/data/backups/20261028-030000-000 \
+  /opt/chengju/data-restored
+```
+
+检查恢复目录后，停止 PM2 再人工替换数据目录。建议定期把 `data/backups/` 同步到另一台服务器或对象存储；只存在同一块磁盘上的备份无法抵御整盘故障。
 
 ### 手动部署 / 排查
 

@@ -11,8 +11,16 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import type { StepKey } from '@/lib/types'
-import { filterCanvasItems, paginateCanvasItems } from '@/lib/canvas-view'
+import {
+  buildCanvasActionQueue,
+  filterCanvasItems,
+  paginateCanvasItems,
+  summarizeCanvasTasks,
+  type CanvasAction,
+} from '@/lib/canvas-view'
 import type { SnapshotDto } from '@/lib/assets/api'
+import { fetchProjectGenerationAssets } from '@/lib/generation/client'
+import type { GenerationTask } from '@/lib/generation/types'
 
 export type CanvasNodeId = StepKey | 'places'
 
@@ -26,10 +34,13 @@ export interface CanvasEditOption {
 
 export interface CanvasPreviewItem {
   id: string
+  targetId?: string
   title: string
   meta?: string
   note?: string
   missing?: boolean
+  episode?: number
+  scene?: string
   edit?: CanvasEditOption
 }
 
@@ -55,10 +66,12 @@ interface Props {
   counts: Counts
   issues: Partial<Record<StepKey, number>>
   previews: Partial<Record<CanvasNodeId, CanvasPreview>>
+  projectId: string | null
   onEdit: (node: CanvasNodeId, itemId: string, field: string, value: string, mode: 'edit' | 'undo') => Promise<void>
   onLoadVersions: (node: CanvasNodeId) => Promise<SnapshotDto[]>
   onRestoreVersion: (node: CanvasNodeId, payload: unknown) => Promise<void>
   onOpen: (step: StepKey) => void
+  onOpenItem: (node: CanvasNodeId, itemId: string) => void
   onAskAgent: (step: StepKey, label: string) => void
   onClose: () => void
 }
@@ -92,6 +105,15 @@ const BOARD_W = 1200
 const BOARD_H = 420
 const MIN_ZOOM = 0.45
 const MAX_ZOOM = 1.8
+const LIST_NODE_ORDER: CanvasNodeId[] = [
+  'characters',
+  'acts',
+  'episodes',
+  'visuals',
+  'scenes',
+  'places',
+  'shots',
+]
 
 function formatVersionTime(at: number): string {
   return new Date(at).toLocaleString('zh-CN', {
@@ -125,10 +147,12 @@ export default function ProjectCanvas({
   counts,
   issues,
   previews,
+  projectId,
   onEdit,
   onLoadVersions,
   onRestoreVersion,
   onOpen,
+  onOpenItem,
   onAskAgent,
   onClose,
 }: Props) {
@@ -151,6 +175,8 @@ export default function ProjectCanvas({
   const [savingEdit, setSavingEdit] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [previewQuery, setPreviewQuery] = useState('')
+  const [previewEpisode, setPreviewEpisode] = useState<number | null>(null)
+  const [previewScene, setPreviewScene] = useState<string | null>(null)
   const [issuesOnly, setIssuesOnly] = useState(false)
   const [previewPage, setPreviewPage] = useState(0)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -159,6 +185,8 @@ export default function ProjectCanvas({
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [restoreNotice, setRestoreNotice] = useState<string | null>(null)
+  const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([])
+  const [priorityExpanded, setPriorityExpanded] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
@@ -170,11 +198,49 @@ export default function ProjectCanvas({
   editingRef.current = editingItemId
   historyOpenRef.current = historyOpen
   const nodes = nodesOf({ counts, issues })
+  const listNodes = [...nodes].sort(
+    (left, right) => LIST_NODE_ORDER.indexOf(left.id) - LIST_NODE_ORDER.indexOf(right.id),
+  )
+  const taskCounts = useMemo(
+    () => summarizeCanvasTasks(generationTasks.map((task) => ({
+      targetType: task.targetType,
+      targetId: task.targetId,
+      status: task.status,
+    }))),
+    [generationTasks],
+  )
+  const canvasActions = buildCanvasActionQueue(
+    nodes.map((node) => ({
+      id: node.id,
+      label: node.label,
+      issue: node.issue ?? 0,
+      items: previews[node.id]?.items ?? [],
+    })),
+    generationTasks,
+  )
+  const runningTaskCount = Object.values(taskCounts).reduce((sum, count) => sum + (count?.running ?? 0), 0)
+  const failedTaskCount = Object.values(taskCounts).reduce((sum, count) => sum + (count?.failed ?? 0), 0)
   const selectedNode = selected ? nodes.find((node) => node.id === selected) ?? null : null
+  const selectedTask = selected ? taskCounts[selected] : undefined
   const preview = selected ? previews[selected] : undefined
+  const episodeOptions = useMemo(
+    () => [...new Set((preview?.items ?? []).flatMap((item) =>
+      Number.isInteger(item.episode) ? [item.episode!] : []
+    ))].sort((left, right) => left - right),
+    [preview?.items],
+  )
+  const sceneOptions = useMemo(
+    () => [...new Set((preview?.items ?? [])
+      .filter((item) => previewEpisode === null || item.episode === previewEpisode)
+      .flatMap((item) => item.scene ? [item.scene] : []))].sort(),
+    [preview?.items, previewEpisode],
+  )
   const filteredPreviewItems = useMemo(
-    () => filterCanvasItems(preview?.items ?? [], previewQuery, issuesOnly),
-    [preview?.items, previewQuery, issuesOnly],
+    () => filterCanvasItems(preview?.items ?? [], previewQuery, issuesOnly, {
+      episode: previewEpisode,
+      scene: previewScene,
+    }),
+    [preview?.items, previewQuery, issuesOnly, previewEpisode, previewScene],
   )
   const previewPageData = useMemo(
     () => paginateCanvasItems(filteredPreviewItems, previewPage, PREVIEW_PAGE_SIZE),
@@ -195,6 +261,15 @@ export default function ProjectCanvas({
 
   function requestOpenStep(step: StepKey) {
     requestClose(() => openRef.current(step))
+  }
+
+  function openCanvasAction(action: CanvasAction) {
+    const node = action.node as CanvasNodeId
+    if (action.itemId) {
+      requestClose(() => onOpenItem(node, action.itemId!))
+      return
+    }
+    requestOpenStep(node === 'places' ? 'scenes' : node as StepKey)
   }
 
   function fitCanvas() {
@@ -285,6 +360,8 @@ export default function ProjectCanvas({
     setLastSaved(null)
     setSaveError(null)
     setPreviewQuery('')
+    setPreviewEpisode(null)
+    setPreviewScene(null)
     setIssuesOnly(false)
     setPreviewPage(0)
     setHistoryOpen(false)
@@ -375,6 +452,29 @@ export default function ProjectCanvas({
   }, [lastSaved])
 
   useEffect(() => {
+    if (!projectId) {
+      setGenerationTasks([])
+      return
+    }
+    let active = true
+    const load = () => {
+      fetchProjectGenerationAssets(projectId)
+        .then((state) => {
+          if (active) setGenerationTasks(state.tasks)
+        })
+        .catch(() => {
+          if (active) setGenerationTasks([])
+        })
+    }
+    load()
+    window.addEventListener('chengju:generation-updated', load)
+    return () => {
+      active = false
+      window.removeEventListener('chengju:generation-updated', load)
+    }
+  }, [projectId])
+
+  useEffect(() => {
     const refit = () => {
       if (!interactedRef.current) fitCanvas()
     }
@@ -421,6 +521,8 @@ export default function ProjectCanvas({
     setDraft('')
     setLastSaved(null)
     setPreviewQuery('')
+    setPreviewEpisode(null)
+    setPreviewScene(null)
     setIssuesOnly(false)
     setPreviewPage(0)
     setHistoryOpen(false)
@@ -559,7 +661,7 @@ export default function ProjectCanvas({
           </svg>
           项目画布
         </b>
-        <span id="project-canvas-desc">点节点查看内容与缺口，关键字段可直接修改，完整编辑回到工作台</span>
+        <span id="project-canvas-desc">先看优先处理，再点节点查看全貌、版本与关键字段</span>
         <button ref={closeButton} type="button" onClick={() => requestClose()}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m6 6 12 12M18 6 6 18" />
@@ -567,6 +669,57 @@ export default function ProjectCanvas({
           返回工作台
         </button>
       </div>
+
+      <section className={`map-priority ${canvasActions.length ? 'has-issues' : 'is-clear'}`} aria-label="优先处理">
+        <div className="map-priority-head">
+          <span>
+            <i aria-hidden="true" />
+            优先处理
+          </span>
+          <b>{canvasActions.length}</b>
+          {runningTaskCount > 0 && <em>{runningTaskCount} 个任务运行中</em>}
+          {failedTaskCount > 0 && <em className="failed">{failedTaskCount} 个失败</em>}
+          {canvasActions.length > 6 && (
+            <button
+              type="button"
+              className="map-priority-expand"
+              aria-expanded={priorityExpanded}
+              onClick={() => setPriorityExpanded((expanded) => !expanded)}
+            >
+              {priorityExpanded ? '收起' : `展开全部 ${canvasActions.length}`}
+            </button>
+          )}
+        </div>
+        {canvasActions.length > 0 ? (
+          <div className="map-priority-list">
+            {(priorityExpanded ? canvasActions : canvasActions.slice(0, 6)).map((action) => {
+              const nodeLabel = nodes.find((node) => node.id === action.node)?.label ?? action.node
+              return (
+                <button
+                  key={action.key}
+                  type="button"
+                  onClick={() => openCanvasAction(action)}
+                  title={`定位到${nodeLabel}：${action.title}`}
+                >
+                  <span>
+                    <small>{nodeLabel}</small>
+                    <strong>{action.title}</strong>
+                    <em>{action.reason}</em>
+                  </span>
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="m7.5 4.5 5 5-5 5" />
+                  </svg>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="map-priority-clear">
+            <span aria-hidden="true">✓</span>
+            <p>{runningTaskCount > 0 ? '后台任务正在运行，当前没有待处理缺口' : '当前没有待处理项，可以继续检查版本或进入下一步'}</p>
+          </div>
+        )}
+      </section>
 
       <div className="map-workspace">
         <div className="map-map-pane">
@@ -605,15 +758,16 @@ export default function ProjectCanvas({
 
               {nodes.map((n) => {
                 const status = statusOf(n)
+                const task = taskCounts[n.id]
                 return (
                   <button
                     key={n.id}
                     type="button"
-                    className={`map-node ${status} ${n.id === current ? 'current' : ''} ${n.id === selected ? 'selected' : ''}`}
+                    className={`map-node ${status} ${n.id === current ? 'current' : ''} ${n.id === selected ? 'selected' : ''} ${task?.running ? 'is-task-running' : ''} ${task?.failed ? 'has-task-failure' : ''}`}
                     style={{ left: n.x, top: n.y, width: NODE_W, height: NODE_H }}
                     onClick={() => selectNode(n.id)}
                     data-map-node={n.id}
-                    aria-label={`查看${n.label}节点`}
+                    aria-label={`查看${n.label}节点${task?.running ? `，${task.running} 个任务运行中` : ''}${task?.failed ? `，${task.failed} 个失败` : ''}`}
                     aria-pressed={n.id === selected}
                   >
                     <span className="map-node-head">
@@ -624,6 +778,11 @@ export default function ProjectCanvas({
                     <span className="map-node-count">
                       {n.count > 0 ? `${n.count} ${n.unit}` : '未生成'}
                     </span>
+                    {(task?.running || task?.failed) ? (
+                      <span className="map-node-task">
+                        {task.failed > 0 ? `${task.failed} 失败` : `${task.running} 运行中`}
+                      </span>
+                    ) : null}
                     {n.issue ? <span className="map-node-issue">{issueLabel(n)}</span> : null}
                   </button>
                 )
@@ -653,13 +812,14 @@ export default function ProjectCanvas({
 
           {/* 窄屏：同一份数据改成纵向列表，避免缩到看不清 */}
           <ul className="map-list">
-            {nodes.map((n) => {
+            {listNodes.map((n) => {
               const status = statusOf(n)
+              const task = taskCounts[n.id]
               return (
                 <li key={n.id}>
                   <button
                     type="button"
-                    className={`map-row ${status} ${n.id === selected ? 'selected' : ''}`}
+                    className={`map-row ${status} ${n.id === selected ? 'selected' : ''} ${task?.running ? 'is-task-running' : ''} ${task?.failed ? 'has-task-failure' : ''}`}
                     onClick={() => selectNode(n.id)}
                     data-map-node={n.id}
                     aria-pressed={n.id === selected}
@@ -667,6 +827,11 @@ export default function ProjectCanvas({
                     <em>{n.index !== null ? String(n.index).padStart(2, '0') : '—'}</em>
                     <b>{n.label}</b>
                     <span>{n.count > 0 ? `${n.count} ${n.unit}` : '未生成'}</span>
+                    {(task?.running || task?.failed) ? (
+                      <span className="map-row-task">
+                        {task.failed > 0 ? `${task.failed} 失败` : `${task.running} 运行中`}
+                      </span>
+                    ) : null}
                     {n.issue ? <i>{issueLabel(n)}</i> : null}
                   </button>
                 </li>
@@ -717,6 +882,12 @@ export default function ProjectCanvas({
             </div>
 
             {preview?.summary && <p className="map-inspector-summary">{preview.summary}</p>}
+            {(selectedTask?.running || selectedTask?.failed) ? (
+              <div className={`map-inspector-task ${selectedTask.failed ? 'has-failure' : ''}`}>
+                <span>{selectedTask.failed ? `${selectedTask.failed} 个生成任务失败` : `${selectedTask.running} 个生成任务运行中`}</span>
+                <small>{selectedTask.failed ? '定位到具体条目后，在任务中心重试。' : '完成前可以继续处理其他节点。'}</small>
+              </div>
+            ) : null}
             {selectedNode.issue ? (
               <p className="map-inspector-issue">{issueLabel(selectedNode)}，可先在这里补关键字段，其余进入工作台处理。</p>
             ) : null}
@@ -758,8 +929,45 @@ export default function ProjectCanvas({
               </div>
             ) : (
               <>
-            {preview && preview.items.length > PREVIEW_FILTER_MIN && (
+            {preview && (preview.items.length > PREVIEW_FILTER_MIN || selectedNode.id === 'shots') && (
               <div className="canvas-preview-tools">
+                {selectedNode.id === 'shots' && (
+                  <div className="canvas-preview-scope">
+                    <label>
+                      <span>集</span>
+                      <select
+                        value={previewEpisode === null ? 'all' : String(previewEpisode)}
+                        onChange={(event) => {
+                          setPreviewEpisode(event.target.value === 'all' ? null : Number(event.target.value))
+                          setPreviewScene(null)
+                          setPreviewPage(0)
+                        }}
+                        aria-label="按集筛选画布镜头"
+                      >
+                        <option value="all">全部集</option>
+                        {episodeOptions.map((episode) => (
+                          <option key={episode} value={episode}>第 {episode} 集</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>场</span>
+                      <select
+                        value={previewScene ?? 'all'}
+                        onChange={(event) => {
+                          setPreviewScene(event.target.value === 'all' ? null : event.target.value)
+                          setPreviewPage(0)
+                        }}
+                        aria-label="按场次筛选画布镜头"
+                      >
+                        <option value="all">全部场次</option>
+                        {sceneOptions.map((scene) => (
+                          <option key={scene} value={scene}>{scene}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
                 <div className="canvas-preview-search">
                   <label className="sr-only" htmlFor="canvas-preview-search">搜索画布详情</label>
                   <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -830,21 +1038,34 @@ export default function ProjectCanvas({
                         <b>{item.title}</b>
                         {item.missing && <span>待补</span>}
                       </div>
-                      {item.edit && (
+                      <span className="map-preview-actions">
                         <button
                           type="button"
-                          className="map-preview-edit"
-                          data-map-edit={item.id}
-                          onClick={() => startEdit(item)}
-                          aria-label={`编辑${item.title}的${item.edit.label}`}
-                          aria-expanded={editingItemId === item.id}
+                          className="map-preview-locate"
+                          onClick={() => requestClose(() => onOpenItem(selectedNode.id, item.id))}
+                          aria-label={`在工作台定位${item.title}`}
                         >
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="m14.5 5.5 4 4M5 19l3.5-.8L19.2 7.5a1.7 1.7 0 0 0 0-2.4l-.3-.3a1.7 1.7 0 0 0-2.4 0L5.8 15.5 5 19Z" />
+                          定位
+                          <svg viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="m7.5 4.5 5 5-5 5" />
                           </svg>
-                          编辑
                         </button>
-                      )}
+                        {item.edit && (
+                          <button
+                            type="button"
+                            className="map-preview-edit"
+                            data-map-edit={item.id}
+                            onClick={() => startEdit(item)}
+                            aria-label={`编辑${item.title}的${item.edit.label}`}
+                            aria-expanded={editingItemId === item.id}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="m14.5 5.5 4 4M5 19l3.5-.8L19.2 7.5a1.7 1.7 0 0 0 0-2.4l-.3-.3a1.7 1.7 0 0 0-2.4 0L5.8 15.5 5 19Z" />
+                            </svg>
+                            编辑
+                          </button>
+                        )}
+                      </span>
                     </div>
                     {item.meta && <span className="map-preview-meta">{item.meta}</span>}
                     {item.note && <p>{item.note}</p>}
@@ -893,6 +1114,8 @@ export default function ProjectCanvas({
                     type="button"
                     onClick={() => {
                       setPreviewQuery('')
+                      setPreviewEpisode(null)
+                      setPreviewScene(null)
                       setIssuesOnly(false)
                       setPreviewPage(0)
                     }}

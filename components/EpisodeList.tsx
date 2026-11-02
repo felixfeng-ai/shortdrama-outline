@@ -21,6 +21,8 @@ export default function EpisodeList({ episodes, onChange }: Props) {
       {episodes.map((episode) => (
         <article
           key={episode.id}
+          data-canvas-item={episode.id}
+          tabIndex={-1}
           className="ledger-row"
         >
           <div className="mb-2 flex items-start gap-3">

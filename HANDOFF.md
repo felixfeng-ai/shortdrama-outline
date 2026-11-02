@@ -38,6 +38,9 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 新增邮箱验证码登录：邮箱规范化、验证码哈希、5 分钟有效期、单邮箱 60 秒冷却、每小时 5 次上限、5 次尝试上限、匿名项目认领和旧手机号数据库无损迁移均已接入；Web 登录页改为邮箱优先。
 - 生产邮件发送使用 Resend HTTP API，不在前端暴露 Key；`RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 未配置时明确返回 503，发送失败清理本次验证码并返回 502。仍需配置已认证发件域名并完成真实邮箱收件验收。
 - 新增验证码发送风控：邮箱与手机号入口共用 SQLite 持久化窗口，同一 IP 每 10 分钟最多 5 次、每 24 小时最多 20 次，全站每 24 小时最多 200 次；来源只信任 Nginx 写入的 `X-Real-IP`，伪造 `X-Forwarded-For` 不能绕过。
+- 新增生产数据安全流程：SQLite 打开时设置 5 秒 `busy_timeout`；`scripts/backup-data.mjs` 使用 `VACUUM INTO` 做一致性数据库快照，再备份 `generated/` 与逐文件 SHA-256 manifest，默认保留 7 份；`scripts/restore-data.mjs` 只恢复到非空目录以外的新目录，恢复前校验数据库完整性和全部图片哈希。
+- 生产部署脚本已在构建前调用完整备份，备份失败会中止部署。仍需配置系统 cron、异地备份、容量告警和定期恢复演练。
+- 真实恢复演练已通过：本地备份 25 张生成图片、约 10MB；恢复后 SQLite `integrity_check=ok`，40 个项目与 9 个生成资产均可读取，演练临时目录已清理。
 - 新增只读项目审阅链接：项目条生成 7 天 token，仅存哈希；重新生成会撤销旧链接。`/share/:token` 无需登录，只开放六步文本快照，不包含本地图库、生成文件、额度或写接口。
 - 本地联调验证码使用双开关：请求必须来自 localhost/127.0.0.1，且 `AUTH_ALLOW_DEV_CODE=1`；本地 `.env.local` 已写入随机 `AUTH_SECRET`。生产域名即使误开也不会返回开发验证码。
 - 正式短信供应商尚未接入，因此生产环境当前会明确返回“短信登录通道尚未配置”，不会伪造固定验证码。
@@ -48,7 +51,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/production-api-guardrails/spec.md](specs/production-api-guardrails/spec.md)、[specs/platform-export-adapters/spec.md](specs/platform-export-adapters/spec.md)、[specs/shot-production-qc/spec.md](specs/shot-production-qc/spec.md)、[specs/production-workbench/spec.md](specs/production-workbench/spec.md)、[specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md)、[specs/email-login/spec.md](specs/email-login/spec.md) 与 [specs/auth-abuse-hardening/spec.md](specs/auth-abuse-hardening/spec.md)。
+- 规格见 [specs/production-api-guardrails/spec.md](specs/production-api-guardrails/spec.md)、[specs/platform-export-adapters/spec.md](specs/platform-export-adapters/spec.md)、[specs/shot-production-qc/spec.md](specs/shot-production-qc/spec.md)、[specs/production-workbench/spec.md](specs/production-workbench/spec.md)、[specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md)、[specs/email-login/spec.md](specs/email-login/spec.md)、[specs/auth-abuse-hardening/spec.md](specs/auth-abuse-hardening/spec.md) 与 [specs/production-data-safety/spec.md](specs/production-data-safety/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -66,7 +69,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `557/557` 通过。`npx tsc --noEmit` 与生产构建通过；新增逻辑模块覆盖率：`lib/security/api-rate-limit.ts` 与 `lib/assets/qc.ts` 行覆盖 `100%`，`lib/export/platforms.ts` 行覆盖 `94.74%`。
+- **验证**：当前工作区全量测试 `573/573` 通过。`npx tsc --noEmit` 与生产构建通过；全量可执行行覆盖率 `89.42%`，`lib/canvas-view.ts`、`lib/security/api-rate-limit.ts` 与 `lib/assets/qc.ts` 行覆盖 `100%`，`lib/ops/backup.mjs` 行覆盖 `90.10%`，`lib/export/platforms.ts` 行覆盖 `94.74%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；邮箱验证码发送、自动填入、登录、HttpOnly 会话与账号页展示均通过；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
 - **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；项目深链已推送 `bbd6df5`；当前会话轮换与设备管理仍在本地等待验收。
@@ -81,7 +84,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 2. **P1：发布与浏览器能力收口**。发布只读审阅链接；配置生产 Web Push 并完成真实浏览器订阅、通知到达和点击回跳验收；完成真实 Chrome/Edge 的系统目录授权验证。
 3. **P1：App 工作区合并 Web 基线**。App 分支仍落后于当前账号、深链、会话和审阅能力，先合并基线，再开发 Keychain/Keystore、安全 refresh、401 单飞刷新和深链。
 4. **P1：Web/App 同项目联调**。用同一手机号在两端打开同一项目，验证项目列表、refresh 轮换、设备会话撤销、只读审阅和错误恢复。
-5. **P2：多实例、任务队列与可观测性**。正式放量前迁移 Postgres、接入持久队列和 Redis 原子限流，补数据库自动备份与恢复演练、容量监控、告警、崩溃监控和回滚演练。
+5. **P2：多实例、任务队列与可观测性**。正式放量前迁移 Postgres、接入持久队列和 Redis 原子限流；本地一致性备份、图片备份、恢复校验和部署前备份已完成，下一步配置系统 cron、异地备份、容量监控、告警、崩溃监控和回滚演练。
 6. **P3：后置产品能力**。团队协作、订阅支付、内容审核、AI 内容标识、原生推送与商店合规按真实留存和商业验证推进；图生视频与成片时间线继续放在最后。
 
 状态判断以 [README.md](README.md) 的「正式上线缺口」为准：`🟡` 只表示代码完成，不表示生产可用；没有完成生产配置、真实设备和线上验收的项目，不进入“已上线”。

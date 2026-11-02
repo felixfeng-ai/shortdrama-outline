@@ -69,6 +69,13 @@ echo "=== 3/6 校验 .env 仍在 ==="
 # 防止哪天有人手滑把 .env 提交进仓库又被 reset 掉。
 [ -f .env ] || { echo "❌ .env 在代码同步后丢失，中止部署"; exit 1; }
 
+# 新版部署脚本在构建前做完整备份：数据库用一致性快照，generated/ 图片连同
+# SHA-256 manifest 一起保存。备份失败时中止部署，避免无保护地覆盖生产。
+echo "=== 3/6 完整备份数据库与生成图片 ==="
+CHENGJU_APP_VERSION="$(git rev-parse --short HEAD)" \
+CHENGJU_BACKUP_KEEP="${CHENGJU_BACKUP_KEEP:-7}" \
+node scripts/backup-data.mjs
+
 echo "=== 4/6 停服 ==="
 # 🔴 关键：npm run build 会覆盖 .next 目录。若进程还在跑，
 # 它会读到写了一半的构建产物，直接 500。必须「先停 → 再构建 → 再启动」。

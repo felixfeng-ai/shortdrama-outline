@@ -45,6 +45,8 @@ export default function CharacterList({ characters, onChange, onRegenerate, rege
         return (
           <article
             key={character.id}
+            data-canvas-item={character.id}
+            tabIndex={-1}
             className={`relative ledger-row transition-opacity
               ${isRegenerating ? 'opacity-50' : ''}`}
           >

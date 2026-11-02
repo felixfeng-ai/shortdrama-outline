@@ -318,6 +318,8 @@ export default function VisualAnchorPanel({
           <article
             key={vc.id}
             id={`vc-${vc.name}`}
+            data-canvas-item={vc.id}
+            tabIndex={-1}
             className={`ledger-row min-w-0 transition-colors ${
               highlight === vc.name ? "is-active" : ""
             }`}

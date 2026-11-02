@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "backup:data": "node scripts/backup-data.mjs",
+    "restore:data": "node scripts/restore-data.mjs",
     "test": "node tests/run.mjs",
     "dev": "next dev",
     "build": "next build",

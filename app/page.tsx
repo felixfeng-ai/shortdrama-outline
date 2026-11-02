@@ -342,6 +342,11 @@ export default function Home() {
   const [agentUnread, setAgentUnread] = useState(0)
   /** 项目画布：全局节点视图，关键字段可直接修改 */
   const [canvasOpen, setCanvasOpen] = useState(false)
+  const [canvasFocus, setCanvasFocus] = useState<{
+    node: CanvasNodeId
+    itemId: string
+    nonce: number
+  } | null>(null)
   /** 从画布带入场记的问题：只预填，用户确认后才发送 */
   const [agentSeed, setAgentSeed] = useState<{ id: number; text: string } | null>(null)
   /** 用户手动点过 tab 之后，不再自动切换 */
@@ -689,6 +694,7 @@ export default function Home() {
       summary: '定妆锚点会被逐字复用到镜头提示词，决定角色跨镜一致性。',
       items: visuals.map((v) => ({
         id: v.id,
+        targetId: v.entityId ?? v.id,
         title: v.name || '未命名角色',
         meta: v.age || '年龄待补',
         note: visualsBuiltFrom !== charactersSig
@@ -703,6 +709,8 @@ export default function Home() {
       items: scenes.map((s) => ({
         id: s.id,
         title: `第 ${s.number} 场 · ${s.location || '地点待补'}`,
+        episode: s.episode,
+        scene: s.location,
         meta: `${s.timeOfDay || '时间待补'} · ${s.characters.join('、') || '没有标注角色'}`,
         note: s.summary || '这场戏的概要待补',
         missing: !s.location.trim() || !s.summary.trim(),
@@ -713,6 +721,9 @@ export default function Home() {
       summary: '分镜是本轮交付物，缺参考图的镜头会在节点上显式提醒。',
       items: shots.map((s) => ({
         id: s.id,
+        targetId: s.entityId,
+        episode: s.episode > 0 ? s.episode : undefined,
+        scene: s.scene,
         title: `第 ${s.shot} 镜 · ${s.scene || '场景待补'}`,
         meta: `第 ${s.episode || '?'} 集 · ${s.shotSize} · ${s.camera}`,
         note: s.missingRefFor.length
@@ -728,6 +739,7 @@ export default function Home() {
       summary: '地点锚点解决同一空间跨镜漂移，一处地点只保留一份描述。',
       items: places.map((p) => ({
         id: p.id,
+        targetId: placeGenerationTargetId(p.name),
         title: p.name || '未命名地点',
         meta: p.lighting || '光线条件待补',
         note: p.anchor || '地点锚点待补',
@@ -868,6 +880,55 @@ export default function Home() {
     setView(key)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  function openCanvasItem(node: CanvasNodeId, itemId: string) {
+    const step: StepKey = node === 'places' ? 'scenes' : node
+    if (node === 'shots') {
+      const shot = shots.find((item) => item.id === itemId)
+      if (shot) {
+        setActiveShotId(shot.id)
+        setInspectorOpen(true)
+        const url = new URL(window.location.href)
+        if (shot.episode > 0) url.searchParams.set('episode', String(shot.episode))
+        if (shot.scene) url.searchParams.set('scene', shot.scene)
+        url.searchParams.set('shot', shot.id)
+        window.history.replaceState(window.history.state, '', url)
+      }
+    }
+    setCanvasOpen(false)
+    goToStep(step)
+    setCanvasFocus({ node, itemId, nonce: Date.now() })
+  }
+
+  useEffect(() => {
+    if (!canvasFocus) return
+    const targetStep: StepKey = canvasFocus.node === 'places' ? 'scenes' : canvasFocus.node
+    if (view !== targetStep) return
+    let attempts = 0
+    let timer: number | null = null
+    const focusItem = () => {
+      const target = [...document.querySelectorAll<HTMLElement>('[data-canvas-item]')]
+        .find((element) => element.dataset.canvasItem === canvasFocus.itemId)
+      if (target) {
+        target.querySelector<HTMLButtonElement>('.act-shell-head[aria-expanded="false"]')?.click()
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        window.requestAnimationFrame(() => target.focus({ preventScroll: true }))
+        setCanvasFocus(null)
+        return
+      }
+      attempts += 1
+      if (attempts >= 12) {
+        setCanvasFocus(null)
+        setNotice('已打开对应步骤，但没有找到这条内容，可能已被删除。')
+        return
+      }
+      timer = window.setTimeout(focusItem, 60)
+    }
+    timer = window.setTimeout(focusItem, 60)
+    return () => {
+      if (timer !== null) window.clearTimeout(timer)
+    }
+  }, [canvasFocus, view])
 
   /** 项目是 URL 的一等状态：切换写历史，自动恢复和新建则只修正当前记录。 */
   function writeProjectToUrl(projectIdValue: string | null, mode: 'push' | 'replace' = 'replace') {
@@ -2366,6 +2427,7 @@ export default function Home() {
           counts={{ ...canvasCounts, placeGaps: missingPlaces }}
           issues={canvasIssues}
           previews={canvasPreviews}
+          projectId={projectId}
           onEdit={handleCanvasEdit}
           onLoadVersions={loadCanvasVersions}
           onRestoreVersion={restoreCanvasVersion}
@@ -2373,6 +2435,7 @@ export default function Home() {
             setCanvasOpen(false)
             goToStep(step)
           }}
+          onOpenItem={openCanvasItem}
           onAskAgent={askAgentFromCanvas}
           onClose={() => setCanvasOpen(false)}
         />

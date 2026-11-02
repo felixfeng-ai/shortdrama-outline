@@ -43,6 +43,7 @@ export default function ShotBoardCard({
     <button
       type="button"
       data-shot-id={shot.id}
+      data-canvas-item={shot.id}
       aria-pressed={active}
       onClick={() => onSelect(shot.id)}
       className={`shot-board-card ${active ? 'is-active' : ''}`}

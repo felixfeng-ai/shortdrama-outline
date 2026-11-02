@@ -21,7 +21,7 @@ export default function SceneList({ scenes, onChange }: Props) {
   return (
     <div className="ledger-list">
       {scenes.map((scene) => (
-        <article key={scene.id} className="scene-card ledger-row">
+        <article key={scene.id} data-canvas-item={scene.id} tabIndex={-1} className="scene-card ledger-row">
           <header className="scene-card-head">
             <span className="scene-card-number">场 {scene.number}</span>
             <span className="scene-card-type">场次剧本</span>

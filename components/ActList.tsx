@@ -61,6 +61,8 @@ export default function ActList({ acts, onChange }: Props) {
         return (
           <article
             key={act.id}
+            data-canvas-item={act.id}
+            tabIndex={-1}
             className={`actcard ledger-row act-shell ${expanded ? 'is-expanded' : 'is-collapsed'} ${ACCENT[act.key] ?? ACCENT.setup}`}
           >
             <button
