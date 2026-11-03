@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic"
 
 export async function GET(
   _req: Request,
-  context: { params: { token: string } },
+  context: { params: { token: string } | Promise<{ token: string }> },
 ) {
   try {
-    const review = loadProjectShare(getDbForRequest(), context.params.token)
+    const params = await context.params
+    const review = loadProjectShare(getDbForRequest(), params.token)
     if (!review) {
       return NextResponse.json(
         { success: false, data: null, error: "审阅链接已失效" },

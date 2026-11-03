@@ -21,6 +21,8 @@ import AuthButton from '@/components/AuthButton'
 import ReleaseNotice from '@/components/ReleaseNotice'
 import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
+import DecisionPanel from '@/components/DecisionPanel'
+import CanonPanel from '@/components/CanonPanel'
 import LookBookCard from '@/components/LookBookCard'
 import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
@@ -56,6 +58,12 @@ import {
   renameProject,
   deleteProject,
   fetchQuota,
+  fetchProjectContext,
+  fetchProjectMaterials,
+  fetchProjectDecisions,
+  fetchProjectCanon,
+  createProjectDecision,
+  createProjectJudgment,
   loadSampleProject,
   generateVisuals,
   generateScenes,
@@ -64,12 +72,16 @@ import {
   listSnapshots,
   listRefs,
   saveSnapshot,
+  saveProjectContext,
   findImpact,
 } from '@/lib/assets/api'
+import type { ProjectDecisionDto } from '@/lib/assets/api'
+import type { ProjectCanonDto } from '@/lib/assets/api'
 import type { Shot, VisualCharacter, VisualPlace, Scene as AssetScene } from '@/lib/assets/types'
 import { groupAttachments } from '@/lib/assets/attachments'
 import { backfillVisualCharacterEntityIds } from '@/lib/assets/normalize'
 import type { ProjectDto } from '@/lib/assets/api'
+import type { ProjectMaterial } from '@/lib/assets/materials'
 import { ARTIFACT_KINDS, type ArtifactKind } from '@/lib/assets/types'
 import type { SnapshotDto } from '@/lib/assets/api'
 import { auditShots, type ShotAudit } from '@/lib/assets/impact'
@@ -229,6 +241,22 @@ type VariantSession =
   | { step: 'characters'; a: Character[]; b: Character[] }
   | { step: 'acts'; a: Act[]; b: Act[] }
   | { step: 'first-episode'; a: Episode[]; b: Episode[] }
+
+function localJudgmentFromServer(item: {
+  id: string
+  createdAt: number
+  step: string
+  action: string
+  reason: string
+}): JudgmentEntry {
+  return {
+    id: item.id,
+    at: item.createdAt,
+    step: item.step,
+    action: item.action,
+    reason: item.reason,
+  }
+}
 
 export default function Home() {
   // ── 数据（全部存在内存里，没有数据库）──
@@ -390,17 +418,6 @@ export default function Home() {
       // 隐私模式读不到就沿用默认值
     }
   }, [])
-  /* 集数是项目级设置：切项目时优先读这个项目自己存过的值 */
-  useEffect(() => {
-    if (!projectId || episodeProjectRef.current === projectId) return
-    episodeProjectRef.current = projectId
-    try {
-      const saved = Number(window.localStorage.getItem(`chengju:episodes:${projectId}`))
-      if (Number.isFinite(saved) && saved > 0) setEpisodeCount(clampEpisodeCount(saved))
-    } catch {
-      // 读不到就沿用全局默认
-    }
-  }, [projectId])
   useEffect(() => {
     try {
       window.localStorage.setItem('chengju:episode-count', String(episodeCount))
@@ -425,7 +442,10 @@ export default function Home() {
   /** 创作意图卡 + 判断日志：都是项目级资产，P0 先存本地 */
   const [brief, setBrief] = useState<CreativeBrief>(EMPTY_BRIEF)
   const [judgments, setJudgments] = useState<JudgmentEntry[]>([])
+  const [decisions, setDecisions] = useState<ProjectDecisionDto[]>([])
+  const [canon, setCanon] = useState<ProjectCanonDto>({ entities: [], facts: [], issues: [] })
   const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
+  const [contextVersion, setContextVersion] = useState<number | null>(null)
   const [metaPanel, setMetaPanel] = useState<MetaPanel | null>(null)
   const [variantSession, setVariantSession] = useState<VariantSession | null>(null)
   const [variantLoading, setVariantLoading] = useState(false)
@@ -434,22 +454,108 @@ export default function Home() {
   const briefSig = useMemo(() => briefSignature(brief), [brief])
   const lookSig = useMemo(() => lookSignature(look), [look])
   const briefLoadedFor = useRef<string | null>(null)
+  const lastContextSig = useRef('')
+  const contextSaveTimer = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!projectId || briefLoadedFor.current === projectId) return
+    if (!projectId) {
+      briefLoadedFor.current = null
+      setContextVersion(null)
+      setDecisions([])
+      setCanon({ entities: [], facts: [], issues: [] })
+      setJudgments([])
+      return
+    }
+    if (briefLoadedFor.current === projectId) return
+    setContextVersion(null)
+    lastContextSig.current = ''
+    let cancelled = false
+    let localBrief = EMPTY_BRIEF
+    let localLook = EMPTY_LOOK
+    let localEpisodeCount = DEFAULT_EPISODE_COUNT
+    let localJudgments: JudgmentEntry[] = []
     try {
       const briefRaw = window.localStorage.getItem(`chengju:brief:${projectId}`)
       const logRaw = window.localStorage.getItem(`chengju:judgments:${projectId}`)
       const lookRaw = window.localStorage.getItem(`chengju:look:${projectId}`)
-      setBrief(readBrief(briefRaw ? JSON.parse(briefRaw) : null))
-      setJudgments(readJudgments(logRaw ? JSON.parse(logRaw) : null))
-      setLook(readLook(lookRaw ? JSON.parse(lookRaw) : null))
+      const episodeRaw = window.localStorage.getItem(`chengju:episodes:${projectId}`)
+      localBrief = readBrief(briefRaw ? JSON.parse(briefRaw) : null)
+      localLook = readLook(lookRaw ? JSON.parse(lookRaw) : null)
+      localJudgments = readJudgments(logRaw ? JSON.parse(logRaw) : null)
+      const savedEpisode = Number(episodeRaw)
+      if (Number.isFinite(savedEpisode) && savedEpisode > 0) {
+        localEpisodeCount = clampEpisodeCount(savedEpisode)
+      }
+      setBrief(localBrief)
+      setJudgments(localJudgments)
+      setLook(localLook)
+      setEpisodeCount(localEpisodeCount)
+      episodeProjectRef.current = projectId
     } catch {
       setBrief(EMPTY_BRIEF)
       setJudgments([])
       setLook(EMPTY_LOOK)
-    } finally {
-      briefLoadedFor.current = projectId
+    }
+
+    void (async () => {
+      try {
+        const [server, decisionData, canonData] = await Promise.all([
+          fetchProjectContext(projectId),
+          fetchProjectDecisions(projectId),
+          fetchProjectCanon(projectId),
+        ])
+        if (cancelled) return
+        setCanon(canonData)
+        setDecisions(decisionData.decisions)
+        if (decisionData.judgments.length > 0) {
+          setJudgments(decisionData.judgments.slice().reverse().map(localJudgmentFromServer))
+        } else if (localJudgments.length > 0) {
+          void Promise.all(localJudgments.map((item) =>
+            createProjectJudgment(projectId, {
+              step: item.step,
+              action: item.action,
+              reason: item.reason,
+            }).catch(() => null)
+          ))
+        }
+        if (server) {
+          setBrief(server.brief)
+          setLook(server.look)
+          setEpisodeCount(server.episodeCount)
+          setContextVersion(server.version)
+          lastContextSig.current = JSON.stringify([
+            briefSignature(server.brief),
+            lookSignature(server.look),
+            server.episodeCount,
+          ])
+        } else {
+          const migrated = await saveProjectContext(projectId, {
+            brief: localBrief,
+            look: localLook,
+            episodeCount: localEpisodeCount,
+          })
+          if (cancelled) return
+          setContextVersion(migrated.version)
+          lastContextSig.current = JSON.stringify([
+            briefSignature(localBrief),
+            lookSignature(localLook),
+            localEpisodeCount,
+          ])
+        }
+      } catch {
+        if (!cancelled) {
+          setNotice('项目设置暂时从本地恢复，服务端同步稍后重试。')
+        }
+      } finally {
+        if (!cancelled) {
+          briefLoadedFor.current = projectId
+          episodeProjectRef.current = projectId
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
   }, [projectId])
 
@@ -464,8 +570,46 @@ export default function Home() {
     }
   }, [projectId, brief, judgments, look])
 
+  useEffect(() => {
+    if (!projectId || briefLoadedFor.current !== projectId) return
+    const signature = JSON.stringify([briefSig, lookSig, episodeCount])
+    if (signature === lastContextSig.current) return
+    if (contextSaveTimer.current !== null) {
+      window.clearTimeout(contextSaveTimer.current)
+    }
+    contextSaveTimer.current = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const saved = await saveProjectContext(projectId, {
+            brief,
+            look,
+            episodeCount,
+            ...(contextVersion !== null ? { version: contextVersion } : {}),
+          })
+          lastContextSig.current = signature
+          setContextVersion(saved.version)
+        } catch (error) {
+          setNotice(error instanceof Error
+            ? `${error.message}。当前修改已保存在本地。`
+            : '项目设置同步失败，当前修改已保存在本地。')
+        }
+      })()
+    }, 450)
+    return () => {
+      if (contextSaveTimer.current !== null) {
+        window.clearTimeout(contextSaveTimer.current)
+        contextSaveTimer.current = null
+      }
+    }
+  }, [projectId, brief, look, episodeCount, briefSig, lookSig, contextVersion])
+
   const recordJudgment = (step: string, action: string, reason = '') => {
     setJudgments((prev) => appendJudgment(prev, { step, action, reason }))
+    if (projectId) {
+      void createProjectJudgment(projectId, { step, action, reason }).catch(() => {
+        setNotice('判断记录暂时只保存在本地，稍后会自动重试。')
+      })
+    }
   }
 
   /** 一次出两版，让用户选——这是"判断"最直接的落点 */
@@ -1750,7 +1894,7 @@ export default function Home() {
       addEntry(path, enc.encode(content), kind)
 
     try {
-      const [keyframeState, refMetadata, snapshotLists] = await Promise.all([
+      const [keyframeState, refMetadata, snapshotLists, sourceMaterialsRaw] = await Promise.all([
         projectId
           ? fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] }))
           : Promise.resolve({ tasks: [], assets: [] }),
@@ -1758,7 +1902,9 @@ export default function Home() {
         mode === "backup" && projectId
           ? Promise.all(ARTIFACT_KINDS.map((kind) => listSnapshots<unknown>(projectId, kind)))
           : Promise.resolve([]),
+        projectId ? fetchProjectMaterials(projectId, true).catch(() => []) : Promise.resolve([]),
       ])
+      const sourceMaterials = sourceMaterialsRaw as ProjectMaterial[]
       const metadataByKey = new Map(refMetadata.map((ref) => [ref.vaultKey, ref]))
       const refsToExport: Array<Record<string, unknown>> = []
 
@@ -1846,6 +1992,25 @@ export default function Home() {
         keyframeEntries.push(entry)
       }
 
+      addText("ai-provenance.json", JSON.stringify({
+        schema: "chengju.ai-provenance",
+        schemaVersion: 1,
+        generatedAt: exportedAt,
+        notice: "本清单记录项目内 AI 生成图片的来源、模型与提示词，供审阅和追溯。",
+        assets: keyframeEntries.map((entry) => ({
+          id: entry.id,
+          targetType: entry.targetType,
+          targetId: entry.targetId,
+          providerId: entry.providerId,
+          model: entry.model,
+          prompt: entry.prompt,
+          createdAt: entry.createdAt,
+          selectedAt: entry.selectedAt,
+          archivePath: entry.archivePath,
+          included: entry.included,
+        })),
+      }, null, 2), "json")
+
       addText(
         "production/prompts.csv",
         shotsToCsv(shots, { keyframePathByTargetId }),
@@ -1929,9 +2094,10 @@ export default function Home() {
         keyframes: keyframeEntries,
         tasks,
         snapshots,
+        materials: sourceMaterials,
         files,
         warnings,
-      } as const
+      }
 
       let manifest = buildProjectPackageManifest(baseInput)
       let projectBytes = enc.encode(JSON.stringify(manifest, null, 2))
@@ -2106,7 +2272,7 @@ export default function Home() {
       const refsInManifest = localRefs.filter((ref) => ref.included).length
       if (restoredRefs < refsInManifest) warnings.push("部分本地参考图未能恢复到本机图库。")
       setNotice(
-        `已导入「${result.project.title}」：${result.counts.snapshots} 个快照、${result.counts.tasks} 个任务、${result.counts.keyframes} 张生成图、${restoredRefs} 张本地参考图。${warnings.length ? ` ${warnings.slice(0, 2).join(" ")}` : ""}`,
+        `已导入「${result.project.title}」：${result.counts.snapshots} 个快照、${result.counts.tasks} 个任务、${result.counts.keyframes} 张生成图、${result.counts.sources ?? 0} 份项目原文、${restoredRefs} 张本地参考图。${warnings.length ? ` ${warnings.slice(0, 2).join(" ")}` : ""}`,
       )
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : "项目包导入失败，请重试")
@@ -2275,6 +2441,22 @@ export default function Home() {
     hasIdea: idea.trim().length > 0,
     brief,
     judgments,
+    decisions: decisions.slice(0, 20).map((item) => ({
+      id: item.id,
+      step: item.step as StepKey,
+      question: item.question,
+      chosenValue: item.chosenValue,
+      reason: item.reason,
+      status: item.status,
+      locked: item.locked,
+    })),
+    canonIssues: canon.issues.slice(0, 30).map((item) => ({
+      code: item.code,
+      severity: item.severity,
+      entityName: item.entityName,
+      field: item.field,
+      message: item.message,
+    })),
     episodes: episodes.map((e) => ({
       number: e.number,
       title: e.title,
@@ -2302,6 +2484,40 @@ export default function Home() {
   function applyAgentCard(card: { shot: number; target: 'prompt' | 'action'; text: string; summary: string }) {
     setShots((prev) => prev.map((s) => (s.shot === card.shot ? { ...s, [card.target]: card.text } : s)))
     setNotice(`已按助手的建议改写第 ${card.shot} 镜（${card.summary}）。`)
+  }
+
+  async function applyAgentDecision(card: {
+    step: StepKey
+    question: string
+    options: string[]
+    recommended: string
+    reason: string
+  }) {
+    if (!projectId) {
+      setNotice('请先保存项目，再确认创作决策。')
+      return
+    }
+    try {
+      const saved = await createProjectDecision(projectId, {
+        step: card.step,
+        question: card.question,
+        options: card.options,
+        chosenValue: card.recommended,
+        reason: card.reason,
+        status: 'accepted',
+        confidence: 0.8,
+        impact: [card.step],
+      })
+      setDecisions((prev) => [saved, ...prev])
+      setJudgments((prev) => appendJudgment(prev, {
+        step: saved.step,
+        action: `决策：${saved.question}`,
+        reason: saved.reason || saved.chosenValue,
+      }))
+      setNotice(`已记录决策：${saved.question} → ${saved.chosenValue}`)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '决策保存失败，请重试。')
+    }
   }
 
   /** 助手提议重跑某一步 → 切到那一步并触发生成 */
@@ -2386,6 +2602,18 @@ export default function Home() {
           </svg>
           <span>画布</span>
         </button>
+
+        <a
+          href={projectId ? `/skills?project=${encodeURIComponent(projectId)}` : '/skills'}
+          className="h-canvas"
+          title="打开 Skill 创作入口"
+          aria-label="打开 Skill 创作入口"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m12 3 2.4 5.1 5.6.7-4.1 3.9 1.1 5.5L12 15.5l-5 2.7 1.1-5.5L4 8.8l5.6-.7L12 3Z" />
+          </svg>
+          <span>Skill</span>
+        </a>
 
         <span className={`h-run ${anyRunning ? 'busy' : ''}`} aria-live="polite">
           <i aria-hidden="true" />
@@ -2599,6 +2827,8 @@ export default function Home() {
             <WorkMeta
               briefFilled={!isBriefEmpty(brief)}
               todoCount={todoItems.length}
+              decisionCount={decisions.length}
+              canonIssueCount={canon.issues.length}
               logCount={judgments.length}
               active={metaPanel}
               onToggle={(panel) => setMetaPanel(metaPanel === panel ? null : panel)}
@@ -2623,6 +2853,14 @@ export default function Home() {
               entries={judgments}
               onAdd={(reason) => recordJudgment('manual', '手记', reason)}
               onOpenChange={(v) => { if (!v) setMetaPanel(null) }}
+            />
+            <DecisionPanel
+              open={metaPanel === 'decisions'}
+              entries={decisions}
+            />
+            <CanonPanel
+              open={metaPanel === 'canon'}
+              canon={canon}
             />
             </div>
             )}
@@ -3176,6 +3414,7 @@ export default function Home() {
                     : `第 ${viewIndex} 步 · ${stepOf(view)?.nav ?? ''}`
                 }
                 onApplyCard={applyAgentCard}
+                onApplyDecision={(card) => { void applyAgentDecision(card) }}
                 onRegenerate={regenerateByAgent}
                 onOpenStep={(step) => {
                   goToStep(step)

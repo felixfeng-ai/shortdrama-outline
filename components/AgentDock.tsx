@@ -33,6 +33,8 @@ interface Props {
   onNewMessage?: () => void
   /** 用户确认「改写某一镜」后，页面负责写回去 */
   onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => void
+  /** 用户确认「结构化决策」后，页面负责落库 */
+  onApplyDecision: (card: Extract<AgentCard, { kind: 'decision' }>) => void
   /** 用户确认「重新生成某一步」后，页面负责触发 */
   onRegenerate: (step: StepKey) => void
   onOpenStep?: (step: StepKey) => void
@@ -64,9 +66,11 @@ const TOOL_LABEL: Record<string, string> = {
   audit_shots: '查分镜',
   review_episodes: '审分集',
   get_quota: '查额度',
+  get_decisions: '读创作决策',
   search_docs: '查文档',
   propose_shot_edit: '提议改写镜头',
   propose_regenerate: '提议重跑某步',
+  propose_decision: '提议创作决策',
 }
 
 /**
@@ -112,6 +116,7 @@ export default function AgentDock({
   context,
   onNewMessage,
   onApplyCard,
+  onApplyDecision,
   onRegenerate,
   onOpenStep,
   seedPrompt,
@@ -375,16 +380,30 @@ export default function AgentDock({
               return (
                 <div key={i} className="prop agent-line-in">
                   <p className="prop-h">
-                    {line.card.kind === 'shot-edit' ? `待确认：第 ${line.card.shot} 镜 · ${line.card.summary}` : `待确认：重新生成「${line.card.stepLabel}」`}
+                    {line.card.kind === 'shot-edit'
+                      ? `待确认：第 ${line.card.shot} 镜 · ${line.card.summary}`
+                      : line.card.kind === 'decision'
+                        ? `待确认决策：${line.card.stepLabel} · ${line.card.question}`
+                        : `待确认：重新生成「${line.card.stepLabel}」`}
                   </p>
                   <p className="prop-b">
-                    {line.card.kind === 'shot-edit' ? line.card.text : line.card.reason}
+                    {line.card.kind === 'shot-edit'
+                      ? line.card.text
+                      : line.card.kind === 'decision'
+                        ? `推荐「${line.card.recommended}」：${line.card.reason}`
+                        : line.card.reason}
                   </p>
+                  {line.card.kind === 'decision' && (
+                    <p className="prop-b">
+                      候选：{line.card.options.join(' / ')}
+                    </p>
+                  )}
                   <div className="prop-a">
                     <button
                       type="button"
                       onClick={() => {
                         if (line.card.kind === 'shot-edit') onApplyCard(line.card)
+                        else if (line.card.kind === 'decision') onApplyDecision(line.card)
                         else onRegenerate(line.card.step)
                         push({ role: 'note', text: '已按你的确认执行。' })
                       }}

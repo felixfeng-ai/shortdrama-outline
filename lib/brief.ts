@@ -35,10 +35,10 @@ function clean(value: unknown, max = FIELD_LIMIT): string {
 /** 参考片只留 3 个，逗号/顿号/分号/换行都视为分隔符 */
 function cleanReferences(value: unknown): string {
   if (typeof value !== 'string') return ''
-  return value
+  return [...new Set(value
     .split(/[、,，;；\n]/)
     .map((s) => s.trim())
-    .filter(Boolean)
+    .filter(Boolean))]
     .slice(0, 3)
     .join('、')
 }

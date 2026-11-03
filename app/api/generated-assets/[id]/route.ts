@@ -18,10 +18,11 @@ function statusError(message: string, status: number): Error {
 
 export async function GET(
   req: Request,
-  context: { params: { id: string } },
+  context: { params: { id: string } | Promise<{ id: string }> },
 ) {
   try {
-    const id = context.params.id?.trim() || ""
+    const params = await context.params
+    const id = params.id?.trim() || ""
     if (!id) throw statusError("缺少关键帧 id", 400)
     const db = getDbForRequest()
     const asset = findGeneratedAssetById(db, id)
@@ -39,6 +40,9 @@ export async function GET(
         "Content-Length": String(bytes.length),
         "Cache-Control": "private, max-age=3600",
         "X-Content-Type-Options": "nosniff",
+        "X-AI-Generated": "true",
+        "X-AI-Provider": asset.providerId,
+        "X-AI-Model": asset.model,
       },
     })
   } catch (error) {

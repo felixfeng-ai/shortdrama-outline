@@ -3,6 +3,8 @@ import { NextResponse } from "next/server"
 import { InputError, errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import type { ArtifactKind } from "@/lib/assets/types"
+import { saveProjectMaterial } from "@/lib/assets/materials"
+import { saveProjectContext } from "@/lib/assets/project-context"
 import { createProject, createSnapshot, deleteProject } from "@/lib/assets/repo"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { parseProjectPackage } from "@/lib/export/import"
@@ -53,6 +55,14 @@ interface ExportedTask {
   prompt?: string
   status?: string
   error?: string | null
+}
+
+interface ExportedMaterial {
+  name?: string
+  kind?: string
+  mime?: string
+  bytes?: number
+  content?: string
 }
 
 const KIND_ORDER: ArtifactKind[] = [
@@ -203,6 +213,44 @@ function restoreTasks(
   return taskMap
 }
 
+function restoreMaterials(
+  db: ReturnType<typeof getDbForRequest>,
+  projectId: string,
+  ownerId: string,
+  manifest: ProjectPackageManifest,
+): { restored: number; warnings: string[] } {
+  const warnings: string[] = []
+  const materials = Array.isArray(manifest.materials)
+    ? manifest.materials as ExportedMaterial[]
+    : []
+  let restored = 0
+  for (const material of materials) {
+    const name = typeof material?.name === "string" ? material.name.trim() : ""
+    const content = typeof material?.content === "string" ? material.content : ""
+    if (!name || !content) {
+      warnings.push("有一份项目原文缺少名称或正文，已跳过")
+      continue
+    }
+    try {
+      saveProjectMaterial(db, {
+        projectId,
+        ownerId,
+        name,
+        content,
+        mime: typeof material.mime === "string" ? material.mime : "text/plain",
+        bytes: typeof material.bytes === "number" ? material.bytes : undefined,
+        kind: material.kind === "novel" || material.kind === "script" || material.kind === "notes"
+          ? material.kind
+          : undefined,
+      })
+      restored += 1
+    } catch (error) {
+      warnings.push(`${name} 恢复失败：${error instanceof Error ? error.message : "格式不正确"}`)
+    }
+  }
+  return { restored, warnings }
+}
+
 export async function POST(req: Request) {
   const db = getDbForRequest()
   const ownerId = resolveProjectOwner(db, req)
@@ -232,9 +280,15 @@ export async function POST(req: Request) {
       : "导入项目"
     const project = createProject(db, title, ownerId)
     projectId = project.id
+    saveProjectContext(db, project.id, ownerId, {
+      brief: manifest.projectSettings.brief,
+      look: manifest.projectSettings.look,
+      episodeCount: manifest.projectSettings.episodeCount,
+    })
     const restoredSnapshots = restoreSnapshots(db, project.id, manifest)
     const taskMap = restoreTasks(db, project.id, manifest)
     const keyframes = await restoreKeyframes(db, project.id, form, manifest, taskMap)
+    const materials = restoreMaterials(db, project.id, ownerId, manifest)
 
     return NextResponse.json(ok({
       project,
@@ -243,8 +297,9 @@ export async function POST(req: Request) {
         tasks: taskMap.size,
         keyframes: keyframes.restored,
         refs: 0,
+        sources: materials.restored,
       },
-      warnings: [...manifest.warnings, ...keyframes.warnings],
+      warnings: [...manifest.warnings, ...keyframes.warnings, ...materials.warnings],
     }))
   } catch (error) {
     if (projectId) {

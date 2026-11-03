@@ -49,6 +49,7 @@ export interface ProjectPackageManifest<
   TKeyframe = unknown,
   TTask = unknown,
   TSnapshot = unknown,
+  TMaterial = unknown,
 > {
   schema: typeof PROJECT_PACKAGE_SCHEMA
   schemaVersion: typeof PROJECT_PACKAGE_SCHEMA_VERSION
@@ -62,6 +63,7 @@ export interface ProjectPackageManifest<
   keyframes: TKeyframe[]
   tasks: TTask[]
   snapshots: TSnapshot[]
+  materials: TMaterial[]
   files: ProjectExportFile[]
   reportPath: "export-report.json"
   warnings: string[]
@@ -75,6 +77,7 @@ export function buildProjectPackageManifest<
   TKeyframe = unknown,
   TTask = unknown,
   TSnapshot = unknown,
+  TMaterial = unknown,
 >(input: {
   project: TProject
   mode: ProjectExportMode
@@ -86,9 +89,10 @@ export function buildProjectPackageManifest<
   keyframes?: TKeyframe[]
   tasks?: TTask[]
   snapshots?: TSnapshot[]
+  materials?: TMaterial[]
   files?: ProjectExportFile[]
   warnings?: string[]
-}): ProjectPackageManifest<TProject, TStory, TAssets, TRef, TKeyframe, TTask, TSnapshot> {
+}): ProjectPackageManifest<TProject, TStory, TAssets, TRef, TKeyframe, TTask, TSnapshot, TMaterial> {
   return {
     schema: PROJECT_PACKAGE_SCHEMA,
     schemaVersion: PROJECT_PACKAGE_SCHEMA_VERSION,
@@ -102,6 +106,7 @@ export function buildProjectPackageManifest<
     keyframes: input.keyframes ?? [],
     tasks: input.tasks ?? [],
     snapshots: input.snapshots ?? [],
+    materials: input.materials ?? [],
     files: input.files ?? [],
     reportPath: "export-report.json",
     warnings: input.warnings ?? [],

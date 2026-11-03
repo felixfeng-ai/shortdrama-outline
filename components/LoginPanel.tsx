@@ -362,6 +362,10 @@ export default function LoginPanel() {
               <p className="auth-footnote">
                 邮箱仅用于登录和项目归属，不会用于营销邮件。
               </p>
+              <nav className="auth-legal-links" aria-label="隐私与内容规则">
+                <a href="/legal">隐私、条款与内容规则</a>
+                <a href="/report">举报内容</a>
+              </nav>
             </>
           )}
         </div>

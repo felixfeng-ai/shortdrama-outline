@@ -233,10 +233,10 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 
 ### 判断层怎么落地
 
-- **导演意图卡**：核心情绪、目标观众、参考气质和红线，作为人物、三幕、分集、定妆等步骤的统一约束；不填写时不改变旧行为。
+- **导演意图卡**：核心情绪、目标观众、参考气质和红线，作为人物、三幕、分集、定妆等步骤的统一约束；不填写时不改变旧行为。Brief、LookBook 和集数保存在服务端项目上下文，支持跨设备恢复。
 - **A/B 选择**：人物、三幕和第一集可以一次生成两个方向，用户选一版并可选填理由；第一集确定后可从第 2 集续写。
 - **视觉宪法（Look Book）**：色调、光线、镜头语言和禁用元素逐镜注入分镜提示词，和角色锚点互补。
-- **判断日志**：记录“换一个 / 重生成 / 否决”的原因，默认本地保存，只把最近 10 条作为后续生成的上下文。
+- **判断日志**：记录“换一个 / 重生成 / 否决”的原因，同步到服务端项目资产；本地保留缓存，只把最近 10 条作为后续生成的上下文。
 - **节奏曲线与审片**：每集可标 1-5 强度，曲线用于发现中段塌陷；AI 审片只读诊断钩子和平线，不直接改稿。
 
 产品里有几个细节是围绕「判断权在人」做的：
@@ -358,6 +358,12 @@ SQLite + 私有数据目录
 | `generation_tasks` / `generated_assets` | 关键帧任务状态、历史版本、采用状态和私有图片文件 |
 | `text_generation_checkpoints` | 分集/分镜的输入签名、批次游标、已生成内容和稳定 stamp |
 | `users` / `login_codes` / `email_login_codes` / `auth_sessions` | 邮箱或手机号用户、验证码哈希和可撤销会话 |
+| `project_context` | 项目级 Brief、视觉宪法、集数与乐观锁版本 |
+| `project_decisions` | 结构化创作决策、候选方案、理由、状态、锁定和影响范围 |
+| `project_judgments` | 项目级判断日志与决策关联 |
+| `canon_entities` | 项目内角色、地点、道具和关系实体 |
+| `canon_facts` | 实体在指定集数区间内成立的连续性事实 |
+| `schema_migrations` | 数据库迁移版本记录 |
 | `auth_rate_limits` | 验证码发送的 IP、全站窗口起点与计数；跨服务重启保留 |
 | `project_shares` | 只读审阅 token 哈希、有效期、撤销与最后访问时间 |
 | `push_subscriptions` | 当前 owner 的设备推送订阅，endpoint 幂等更新 |
@@ -513,6 +519,12 @@ chengju/
 
 | 方法 | 路径 | 请求体 | 返回 |
 |------|------|--------|------|
+| GET | `/api/projects/[id]/context` | — | 项目 Brief、LookBook、集数和版本；无记录时为 null |
+| PUT | `/api/projects/[id]/context` | `{ brief, look, episodeCount, version? }` | 创建或更新项目上下文；过期 version 返回 409 |
+| GET / POST | `/api/projects/[id]/decisions` | `GET` 无；`POST` 决策对象 | 读取决策与判断日志；创建结构化决策 |
+| PATCH | `/api/projects/[id]/decisions/[decisionId]` | `{ status, chosenValue, reason, locked, unlock? }` | 更新状态；锁定决策需显式 unlock |
+| GET / POST | `/api/projects/[id]/judgments` | `{ step, action, reason? }` | 读取或追加判断日志 |
+| GET / POST | `/api/projects/[id]/canon` | `{ kind, name, field, value, validFromEpisode, validToEpisode }` | 读取 Canon、冲突并创建事实 |
 | POST | `/api/auth/email/request-code` | `{ email }` | 发送邮箱验证码；仅本机开发且显式开启时返回 `devCode` |
 | POST | `/api/auth/email/verify-code` | `{ email, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 Access/Refresh Token |
 | POST | `/api/auth/request-code` | `{ phone }` | 发送登录验证码；仅本机开发且显式开启时返回 `devCode` |
@@ -742,6 +754,9 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 生成任务超时恢复 | ✅ 已完成 | 刷新任务列表时把超过安全时限的 queued/running 任务转为 failed；活跃任务和终态任务不误处理 |
 | 长剧集分批与断点续跑 | ✅ 已完成 | 总集数支持 6–120（默认 30）；分集内部每批 10 集、分镜按场次分批；checkpoint 记录输入签名和游标，失败后从下一批继续 |
 | 分镜按集审阅 | ✅ 已完成 | 分镜按集分组，集头显示镜头数、时长合计、缺图与返修；未标注镜头集中置顶，并可在镜头卡内直接修正集号 |
+| 创作上下文服务端持久化 | ✅ 已完成 | Brief、LookBook、集数进入 `project_context`，带版本迁移、项目归属校验、旧 localStorage 自动迁移与 409 乐观锁 |
+| 结构化决策与判断日志 | ✅ 已完成 | `project_decisions` / `project_judgments` 落库；Agent 可读历史决策并生成待确认决策卡；锁定决策需显式解锁 |
+| Canon 连续性事实 | ✅ 已完成 | 角色认知、人物关系、地点和道具按集数区间建模；重叠区间不同值报 error；Agent 可调用 `audit_canon`，项目状态区提供只读冲突面板 |
 | PWA 安装基础 | ✅ 已完成 | Manifest、Service Worker、离线兜底、条件安装入口、项目与步骤深链和浏览器历史恢复；不缓存 API、个人图片或生成资产 |
 | 只读项目审阅链接 | 🟡 本地完成，待发布 | 7 天有效、重新生成撤销旧链接、无需登录；只开放文本快照，不暴露本地图库、生成文件、额度或任务 |
 | Web Push 生成通知 | 🟡 代码完成，待配置 | 用户授权后推送生成成功/失败，点击回到定妆或分镜；VAPID 私钥只在服务端，生产环境需配置密钥 |

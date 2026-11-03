@@ -29,5 +29,8 @@ export function parseProjectPackage(value: unknown): ProjectPackageManifest {
   for (const key of ["refs", "keyframes", "tasks", "snapshots", "files", "warnings"]) {
     if (!Array.isArray(manifest[key])) throw new Error(`项目包缺少 ${key}`)
   }
+  if (manifest.materials !== undefined && !Array.isArray(manifest.materials)) {
+    throw new Error("项目包原文素材格式不正确")
+  }
   return manifest as unknown as ProjectPackageManifest
 }

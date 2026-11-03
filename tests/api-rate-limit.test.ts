@@ -147,6 +147,7 @@ test("RG4 所有付费和文件入口都声明对应限流策略", () => {
   assert.equal(API_RATE_LIMIT_POLICIES.image.group, "image")
   assert.equal(API_RATE_LIMIT_POLICIES.export.group, "export")
   assert.equal(API_RATE_LIMIT_POLICIES.import.group, "import")
+  assert.equal(API_RATE_LIMIT_POLICIES.material.group, "material")
 })
 
 test("RG5 模型与文件路由都接上限流，且早于额度扣减", () => {
@@ -164,6 +165,7 @@ test("RG5 模型与文件路由都接上限流，且早于额度扣减", () => {
     ["app/api/generations/route.ts", "image"],
     ["app/api/export/route.ts", "export"],
     ["app/api/project-import/route.ts", "import"],
+    ["app/api/projects/[id]/materials/route.ts", "material"],
   ]
 
   for (const [file, group] of routes) {

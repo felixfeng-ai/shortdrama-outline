@@ -10,6 +10,11 @@ import type { JudgmentEntry } from '../judgment-log'
 import { isFlatPacing, pacingHint, pacingSeries } from '../pacing'
 import { reviewEpisodes, reviewShots } from '../project-status'
 import { buildTodoList } from '../todo'
+import {
+  listSourceMaterials,
+  readSourceChunk,
+  type SourceMaterialInput,
+} from '../skills/source-index'
 
 export interface AgentShot {
   shot: number
@@ -24,21 +29,51 @@ export interface AgentShot {
   dialogue: string
 }
 
+export interface AgentDecision {
+  id: string
+  step: StepKey
+  question: string
+  chosenValue: string
+  reason: string
+  status: string
+  locked: boolean
+}
+
+export interface AgentCanonIssue {
+  code: string
+  severity: 'error' | 'warning'
+  entityName: string
+  field: string
+  message: string
+}
+
 export interface AgentState {
   projectTitle: string
   hasIdea: boolean
   brief: CreativeBrief
   judgments: JudgmentEntry[]
+  decisions: AgentDecision[]
+  canonIssues: AgentCanonIssue[]
   episodes: { number: number; title: string; hook: string; intensity?: number }[]
   completed: Record<StepKey, boolean>
   shots: AgentShot[]
   expiredShots: number
   quota: { remaining: number; limit: number; projectsLeft: number } | null
+  sourceMaterials?: SourceMaterialInput[]
 }
 
 export type AgentCard =
   | { kind: 'shot-edit'; shot: number; target: 'prompt' | 'action'; text: string; summary: string }
   | { kind: 'regenerate'; step: StepKey; stepLabel: string; reason: string }
+  | {
+    kind: 'decision'
+    step: StepKey
+    stepLabel: string
+    question: string
+    options: string[]
+    recommended: string
+    reason: string
+  }
 
 export interface ToolResult {
   ok: boolean
@@ -66,6 +101,23 @@ const STEP_LABEL: Record<StepKey, string> = {
 /** 给模型看的工具说明书。schema 是纯数据，前后端都能用（服务端只需它） */
 export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
   {
+    name: 'list_source_materials',
+    description: '列出当前项目保存的小说、剧本和资料原文，以及章节/片段索引。用户要求改编、拆章、提取人物或基于原文创作时先调用。',
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'read_source_chunk',
+    description: '按原文 id 和章节索引读取一段真实原文。每次最多约 6000 字；读取前先用 list_source_materials 获取目录，不要声称未读取的章节已经理解。',
+    parameters: {
+      type: 'object',
+      properties: {
+        materialId: { type: 'string', description: '原文 id，必须来自 list_source_materials' },
+        chunk: { type: 'number', description: '从 0 开始的章节/片段索引' },
+      },
+      required: ['materialId', 'chunk'],
+    },
+  },
+  {
     name: 'get_project_status',
     description: '查当前项目的六步进度（哪一步做了、哪一步没做）。用户问「还有哪些要处理」「做到哪了」时先调它。',
     parameters: { type: 'object', properties: {}, required: [] },
@@ -83,6 +135,16 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
   {
     name: 'get_quota',
     description: '查今日剩余额度，以及还能跑几个完整项目。用户问「还能用几次」时调用。',
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'get_decisions',
+    description: '读取项目最近的结构化决策，尤其是已接受和已锁定的创作方向。回答取舍、避免重复否决方向或提出新方案前先调用。',
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'audit_canon',
+    description: '检查当前项目的 Canon 冲突：角色认知、人物关系、地点和道具状态。只读，不自动修复；提出涉及剧情连续性或人物状态的决策前先调用。',
     parameters: { type: 'object', properties: {}, required: [] },
   },
   {
@@ -118,6 +180,25 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
         reason: { type: 'string', description: '为什么建议重跑，一句话' },
       },
       required: ['step', 'reason'],
+    },
+  },
+  {
+    name: 'propose_decision',
+    description: '提出一条待确认的结构化创作决策。只生成卡片，不直接落库。选项必须互斥、具体，并明确推荐项和理由。',
+    parameters: {
+      type: 'object',
+      properties: {
+        step: { type: 'string', enum: ['characters', 'acts', 'episodes', 'visuals', 'scenes', 'shots'] },
+        question: { type: 'string', description: '需要用户决定的一个明确问题' },
+        options: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '2-6 个互斥候选方案',
+        },
+        recommended: { type: 'string', description: '必须来自 options 的推荐方案' },
+        reason: { type: 'string', description: '推荐理由，不能为空' },
+      },
+      required: ['step', 'question', 'options', 'recommended', 'reason'],
     },
   },
 ]
@@ -179,7 +260,9 @@ export function searchDocs(question: string): { source: string; title: string; t
 }
 
 /** 把状态快照变成一组执行器。快照是只读入参——执行器改不到真东西 */
-export function createToolExecutors(state: AgentState): Record<string, (args: Record<string, unknown>) => ToolResult> {
+export function createToolExecutors(
+  state: AgentState,
+): Record<string, (args: Record<string, unknown>) => ToolResult> {
   const stepLine = (Object.keys(STEP_LABEL) as StepKey[])
     .map((k) => `${STEP_LABEL[k]}${state.completed[k] ? '✓' : '✗'}`)
     .join(' ')
@@ -209,6 +292,11 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
           todos.length > 0 ? `待处理：${todos.map((item) => item.text).join('；')}` : '当前没有待处理项。',
           briefLine,
           logLine,
+          state.decisions.length > 0
+            ? `最近决策：${state.decisions.slice(0, 3).map((item) =>
+                `${item.question}→${item.chosenValue}${item.locked ? '（已锁定）' : ''}`
+              ).join('；')}`
+            : '',
         ].filter(Boolean).join('\n'),
       }
     },
@@ -257,6 +345,58 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
       }
     },
 
+    get_decisions: () => {
+      if (state.decisions.length === 0) {
+        return { ok: true, content: '还没有结构化决策。' }
+      }
+      return {
+        ok: true,
+        content: state.decisions
+          .slice(0, 6)
+          .map((item) =>
+            `[${STEP_LABEL[item.step]}] ${item.question} → ${item.chosenValue || '未选择'}` +
+            `${item.reason ? `：${item.reason}` : ''}` +
+            `${item.locked ? '（已锁定）' : `（${item.status}）`}`
+          )
+          .join('\n'),
+      }
+    },
+
+    audit_canon: () => {
+      if (state.canonIssues.length === 0) {
+        return { ok: true, content: '当前 Canon 没有发现冲突。' }
+      }
+      const errors = state.canonIssues.filter((issue) => issue.severity === 'error')
+      const warnings = state.canonIssues.filter((issue) => issue.severity === 'warning')
+      return {
+        ok: true,
+        content: [
+          `Canon 冲突 ${errors.length} 项，提醒 ${warnings.length} 项。`,
+          ...state.canonIssues.slice(0, 6).map((issue) =>
+            `${issue.severity === 'error' ? '错误' : '提醒'}｜${issue.message}`
+          ),
+        ].join('\n'),
+      }
+    },
+
+    list_source_materials: () => ({
+      ok: true,
+      content: listSourceMaterials(state.sourceMaterials ?? []),
+    }),
+
+    read_source_chunk: (args) => {
+      const materialId = String(args?.materialId ?? '').trim()
+      const chunk = Number(args?.chunk)
+      if (!materialId || !Number.isInteger(chunk) || chunk < 0) {
+        return { ok: false, content: 'materialId 和 chunk 必须是有效的原文 id 与非负整数章节索引。' }
+      }
+      const result = readSourceChunk(state.sourceMaterials ?? [], materialId, chunk)
+      return {
+        ok: result.ok,
+        content: result.ok ? `【${result.title}】\n${result.content}` : result.content,
+      }
+    },
+
     search_docs: (args) => {
       const question = String(args?.question ?? '')
       const hits = searchDocs(question)
@@ -299,6 +439,38 @@ export function createToolExecutors(state: AgentState): Record<string, (args: Re
         ok: true,
         content: `已生成待确认卡片：建议重新生成「${STEP_LABEL[step as StepKey]}」——${reason}（用户点确认后才会触发）`,
         card: { kind: 'regenerate', step: step as StepKey, stepLabel: STEP_LABEL[step as StepKey], reason },
+      }
+    },
+
+    propose_decision: (args) => {
+      const step = String(args?.step ?? '')
+      const question = String(args?.question ?? '').trim()
+      const options = Array.isArray(args?.options)
+        ? args.options.map((item) => String(item).trim()).filter(Boolean).slice(0, 6)
+        : []
+      const recommended = String(args?.recommended ?? '').trim()
+      const reason = String(args?.reason ?? '').trim()
+      if (!(step in STEP_LABEL)) {
+        return { ok: false, content: 'step 必须是六步之一。' }
+      }
+      if (!question) return { ok: false, content: '决策问题不能为空。' }
+      if (options.length < 2) return { ok: false, content: '至少需要两个候选方案。' }
+      if (!options.includes(recommended)) {
+        return { ok: false, content: 'recommended 必须来自 options。' }
+      }
+      if (!reason) return { ok: false, content: '需要说明推荐理由。' }
+      return {
+        ok: true,
+        content: `已生成待确认决策：${question}；推荐「${recommended}」——${reason}`,
+        card: {
+          kind: 'decision',
+          step: step as StepKey,
+          stepLabel: STEP_LABEL[step as StepKey],
+          question,
+          options,
+          recommended,
+          reason,
+        },
       }
     },
   }

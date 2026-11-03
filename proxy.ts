@@ -16,7 +16,7 @@ function hostnameFromRequest(req: NextRequest): string {
   return raw.replace(/:\d+$/, "")
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const existing = req.cookies.get(SESSION_COOKIE)?.value
   const hostname = hostnameFromRequest(req)
   const forwardedProto = firstHeader(req.headers.get("x-forwarded-proto"))

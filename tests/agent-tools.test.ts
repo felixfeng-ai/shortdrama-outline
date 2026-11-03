@@ -15,6 +15,8 @@ function state(over: Partial<AgentState> = {}): AgentState {
     hasIdea: true,
     brief: EMPTY_BRIEF,
     judgments: [],
+    decisions: [],
+    canonIssues: [],
     episodes: [],
     completed: { characters: true, acts: false, episodes: false, visuals: false, scenes: false, shots: false },
     shots: [],
@@ -28,6 +30,26 @@ const shot = (over: Partial<AgentState["shots"][number]> = {}) => ({
   shot: 1, scene: "别墅门外", characters: ["陈默"], missingRefFor: [], status: "todo",
   shotSize: "中景", camera: "固定", prompt: "medium shot", speaker: "", dialogue: "",
   ...over,
+})
+
+test("AT0 原文工具先返回目录，再按章节读取真实内容", async () => {
+  const exec = createToolExecutors(state({
+    sourceMaterials: [{
+      id: "material-1",
+      name: "旧信剧本.txt",
+      kind: "script",
+      characterCount: 60,
+      content: "第一章 雨夜\n陈默站在门口。\n\n第二章 门缝\n苏婉没有开门。",
+    }],
+  }))
+  const catalog = exec.list_source_materials({})
+  assert.equal(catalog.ok, true)
+  assert.match(catalog.content, /旧信剧本/)
+  assert.match(catalog.content, /章节/)
+
+  const chunk = await exec.read_source_chunk({ materialId: "material-1", chunk: 1 })
+  assert.equal(chunk.ok, true)
+  assert.match(chunk.content, /苏婉没有开门/)
 })
 
 test("AT1 每个 schema 都有描述与参数，且与执行器一一对应", () => {

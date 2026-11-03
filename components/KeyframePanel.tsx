@@ -225,12 +225,15 @@ export default function KeyframePanel({
 
       {previewAsset ? (
         <div className="keyframe-asset-summary mt-2.5 min-w-0">
-          <div className={`keyframe-preview keyframe-preview-${aspect} overflow-hidden rounded-chip border border-surface-line bg-surface-deep`}>
+          <div className={`keyframe-preview keyframe-preview-${aspect} relative overflow-hidden rounded-chip border border-surface-line bg-surface-deep`}>
             <img
               src={previewAsset.downloadUrl || `/api/generated-assets/${previewAsset.id}`}
               alt={`${actionLabel}结果`}
               className="h-full w-full object-cover"
             />
+            <span className="absolute left-2 top-2 rounded-chip border border-white/20 bg-black/65 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+              AI 生成
+            </span>
           </div>
           <div className="min-w-0 self-center">
             <p className="text-[10.5px] font-medium text-ink-600">
@@ -289,6 +292,7 @@ export default function KeyframePanel({
               } ${selectingId === asset.id ? 'opacity-50' : ''}`}
             >
               <img src={asset.downloadUrl} alt={`历史版本 ${index + 1}`} className={`${previewClass} h-full w-full object-cover`} />
+              <span className="absolute left-1 top-1 rounded bg-black/65 px-1 py-0.5 text-[7px] text-white">AI</span>
               {asset.selectedAt && (
                 <span className="absolute inset-x-0 bottom-0 bg-done-600/90 py-0.5 text-center text-[8px] font-semibold text-white">
                   已采用

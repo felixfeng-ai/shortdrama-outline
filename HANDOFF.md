@@ -41,6 +41,10 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 新增生产数据安全流程：SQLite 打开时设置 5 秒 `busy_timeout`；`scripts/backup-data.mjs` 使用 `VACUUM INTO` 做一致性数据库快照，再备份 `generated/` 与逐文件 SHA-256 manifest，默认保留 7 份；`scripts/restore-data.mjs` 只恢复到非空目录以外的新目录，恢复前校验数据库完整性和全部图片哈希。
 - 生产部署脚本已在构建前调用完整备份，备份失败会中止部署。仍需配置系统 cron、异地备份、容量告警和定期恢复演练。
 - 真实恢复演练已通过：本地备份 25 张生成图片、约 10MB；恢复后 SQLite `integrity_check=ok`，40 个项目与 9 个生成资产均可读取，演练临时目录已清理。
+- 创作上下文开始迁入服务端：Brief、LookBook、集数写入 `project_context`；新增 `schema_migrations` 编号迁移、项目归属校验、旧 localStorage 首次迁移和 409 乐观锁。判断日志仍暂存本地，等待结构化决策迭代。
+- 结构化决策已落库：新增 `project_decisions` / `project_judgments`，支持候选方案、选择理由、状态、置信度、锁定和影响范围；判断日志同步服务端，旧本地日志首次打开自动迁移。
+- AI 场记新增 `get_decisions` 与 `propose_decision`：能读取已接受/锁定决策生成待确认决策卡，用户确认后落库为 accepted 并写判断日志。
+- Canon 事实已落库：`canon_entities` / `canon_facts` 按实体与集数闭区间保存角色认知、人物关系、地点和道具状态；同字段重叠区间不同值会报连续性冲突，Agent 新增只读 `audit_canon`，项目状态区提供只读 Canon 面板。
 - 新增只读项目审阅链接：项目条生成 7 天 token，仅存哈希；重新生成会撤销旧链接。`/share/:token` 无需登录，只开放六步文本快照，不包含本地图库、生成文件、额度或写接口。
 - 本地联调验证码使用双开关：请求必须来自 localhost/127.0.0.1，且 `AUTH_ALLOW_DEV_CODE=1`；本地 `.env.local` 已写入随机 `AUTH_SECRET`。生产域名即使误开也不会返回开发验证码。
 - 正式短信供应商尚未接入，因此生产环境当前会明确返回“短信登录通道尚未配置”，不会伪造固定验证码。
@@ -51,7 +55,7 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - Web Push 订阅与 Service Worker 等待加入 15 秒超时兜底，浏览器自动化或无痕环境无法完成订阅时不会永久停在忙碌态。
 - 项目与六步共同写入 URL：`?project=<id>&step=visuals` 可直接打开、刷新和分享；项目切换写入历史，前进后退恢复对应项目与步骤，失效或无权项目会安全回退最近项目；项目条提供「复制项目链接」。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
-- 规格见 [specs/production-api-guardrails/spec.md](specs/production-api-guardrails/spec.md)、[specs/platform-export-adapters/spec.md](specs/platform-export-adapters/spec.md)、[specs/shot-production-qc/spec.md](specs/shot-production-qc/spec.md)、[specs/production-workbench/spec.md](specs/production-workbench/spec.md)、[specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md)、[specs/email-login/spec.md](specs/email-login/spec.md)、[specs/auth-abuse-hardening/spec.md](specs/auth-abuse-hardening/spec.md) 与 [specs/production-data-safety/spec.md](specs/production-data-safety/spec.md)。
+- 规格见 [specs/production-api-guardrails/spec.md](specs/production-api-guardrails/spec.md)、[specs/platform-export-adapters/spec.md](specs/platform-export-adapters/spec.md)、[specs/shot-production-qc/spec.md](specs/shot-production-qc/spec.md)、[specs/production-workbench/spec.md](specs/production-workbench/spec.md)、[specs/generation-p0/spec.md](specs/generation-p0/spec.md)、[specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)、[specs/generation-task-recovery/spec.md](specs/generation-task-recovery/spec.md)、[specs/generation-checkpoint/spec.md](specs/generation-checkpoint/spec.md)、[specs/long-series-shots/spec.md](specs/long-series-shots/spec.md)、[specs/workspace-information-hierarchy/spec.md](specs/workspace-information-hierarchy/spec.md)、[specs/web-push/spec.md](specs/web-push/spec.md)、[specs/auth-cross-device/spec.md](specs/auth-cross-device/spec.md)、[specs/auth-session-rotation/spec.md](specs/auth-session-rotation/spec.md)、[specs/project-deep-link/spec.md](specs/project-deep-link/spec.md)、[specs/project-review-share/spec.md](specs/project-review-share/spec.md)、[specs/email-login/spec.md](specs/email-login/spec.md)、[specs/auth-abuse-hardening/spec.md](specs/auth-abuse-hardening/spec.md)、[specs/production-data-safety/spec.md](specs/production-data-safety/spec.md)、[specs/project-context-persistence/spec.md](specs/project-context-persistence/spec.md)、[specs/structured-decisions/spec.md](specs/structured-decisions/spec.md) 与 [specs/canon-facts/spec.md](specs/canon-facts/spec.md)。
 
 **A · Signal Desk 舒适版已上线；P0 关键帧改动在本地等待验收，未推送。** 设计以 [DESIGN.md](DESIGN.md) 为唯一事实源。
 
@@ -69,8 +73,8 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：当前工作区全量测试 `573/573` 通过。`npx tsc --noEmit` 与生产构建通过；全量可执行行覆盖率 `89.42%`，`lib/canvas-view.ts`、`lib/security/api-rate-limit.ts` 与 `lib/assets/qc.ts` 行覆盖 `100%`，`lib/ops/backup.mjs` 行覆盖 `90.10%`，`lib/export/platforms.ts` 行覆盖 `94.74%`。
-- **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；邮箱验证码发送、自动填入、登录、HttpOnly 会话与账号页展示均通过；
+- **验证**：当前工作区全量测试 `590/590` 通过。`npx tsc --noEmit` 与生产构建通过；全量可执行行覆盖率 `89.81%`，`lib/assets/canon.ts` 行覆盖 `91.30%`，`lib/assets/decisions.ts` 行覆盖 `95.77%`，`lib/assets/project-context.ts` 行覆盖 `87.67%`，`lib/canvas-view.ts`、`lib/security/api-rate-limit.ts` 与 `lib/assets/qc.ts` 行覆盖 `100%`。
+- **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；邮箱验证码发送、自动填入、登录、HttpOnly 会话与账号页展示均通过；创作上下文清空本地缓存后可从服务端恢复，旧 localStorage 首次打开会自动迁入 `project_context`；决策面板能显示锁定状态与选择理由，旧本地判断日志在服务端无记录时自动迁入；Canon 面板能按实体聚合事实并显示重叠集数区间的连续性冲突；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用；通知按钮桌面 `99×30`、手机 `40×40`，默认不请求权限，Service Worker 已激活 scope `/`。
 - **基线**：账号、独立登录页、断点续跑和 Web Push 超时兜底已推送 `origin/web-dev`（`5ad0eeb`）；项目深链已推送 `bbd6df5`；当前会话轮换与设备管理仍在本地等待验收。
 - **本地预览**：`http://localhost:3200/?theme=neutral`。

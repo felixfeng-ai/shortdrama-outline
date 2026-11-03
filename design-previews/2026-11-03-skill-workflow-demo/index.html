@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111315">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23c4d98a'/%3E%3Cpath d='M9 8h4l3 9 3-9h4l-5 16h-4L9 8Z' fill='%231b2115'/%3E%3C/svg%3E">
+  <title>成剧 · Skill 创作入口</title>
+  <style>
+    :root {
+      --bg: #111315;
+      --panel: #181a1d;
+      --raised: #202327;
+      --floating: #272b30;
+      --line: rgba(226, 233, 228, .1);
+      --line-strong: rgba(226, 233, 228, .18);
+      --text: #e4e8e4;
+      --text-2: #b8c0bb;
+      --text-3: #858e89;
+      --acid: #c4d98a;
+      --acid-strong: #d4e5aa;
+      --blue: #8eb7e7;
+      --warning: #d58d73;
+      --font-ui: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      min-width: 320px;
+      min-height: 100dvh;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 14px;
+      line-height: 1.6;
+      letter-spacing: 0;
+    }
+    button, textarea, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, textarea:focus-visible, input:focus-visible {
+      outline: 2px solid rgba(196, 217, 138, .8);
+      outline-offset: 2px;
+    }
+    ::selection { background: rgba(196, 217, 138, .22); }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      height: 58px;
+      align-items: center;
+      gap: 18px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(17, 19, 21, .95);
+      backdrop-filter: blur(12px);
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .brand b { font-size: 20px; font-weight: 600; }
+    .brand span {
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      letter-spacing: .14em;
+    }
+    .brand .ai {
+      padding: 1px 5px;
+      border: 1px solid rgba(196, 217, 138, .28);
+      border-radius: 4px;
+      color: var(--acid);
+      font-size: 8px;
+      letter-spacing: 0;
+    }
+    .top-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 10px;
+    }
+    .top-nav a {
+      padding: 5px 9px;
+      border-radius: 5px;
+      color: var(--text-3);
+      font-size: 11px;
+      text-decoration: none;
+    }
+    .top-nav a:hover { background: var(--raised); color: var(--text); }
+    .top-nav a.active { color: var(--text); background: rgba(255, 255, 255, .035); }
+    .top-spacer { flex: 1; }
+    .top-meta {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      white-space: nowrap;
+    }
+    .top-project {
+      max-width: 210px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .top-actions { display: flex; gap: 5px; }
+    .icon-button {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-3);
+    }
+    .icon-button:hover { border-color: var(--line); background: var(--raised); color: var(--text); }
+    .icon-button svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .page {
+      width: min(1220px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 46px 0 150px;
+    }
+    .hero {
+      display: grid;
+      justify-items: center;
+      text-align: center;
+    }
+    .hero-kicker {
+      margin: 0 0 7px;
+      color: var(--acid);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: .12em;
+    }
+    .hero h1 {
+      margin: 0;
+      color: var(--text);
+      font-size: clamp(27px, 3.1vw, 42px);
+      font-weight: 500;
+      line-height: 1.22;
+      text-wrap: balance;
+    }
+    .hero h1 span { color: var(--acid); }
+    .hero > p {
+      max-width: 620px;
+      margin: 9px 0 0;
+      color: var(--text-3);
+      font-size: 12px;
+    }
+    .composer {
+      position: relative;
+      width: min(910px, 100%);
+      margin-top: 22px;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #1a1c1f;
+      box-shadow: 0 24px 70px -55px rgba(0, 0, 0, .9);
+      text-align: left;
+      transition: border-color 180ms var(--ease), background-color 180ms var(--ease);
+    }
+    .composer:focus-within {
+      border-color: rgba(196, 217, 138, .42);
+      background: #1c1f21;
+    }
+    .composer textarea {
+      display: block;
+      width: 100%;
+      min-height: 118px;
+      padding: 20px 21px 10px;
+      resize: none;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    .composer textarea::placeholder { color: var(--text-3); }
+    .composer-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 11px 10px;
+    }
+    .tool-button {
+      display: inline-flex;
+      height: 32px;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 10px;
+    }
+    .tool-button:hover { border-color: var(--line); background: var(--raised); color: var(--text-2); }
+    .tool-button svg {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .selected-skill {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      max-width: 220px;
+      margin-left: 5px;
+      padding: 4px 7px;
+      border: 1px solid rgba(196, 217, 138, .2);
+      border-radius: 999px;
+      background: rgba(196, 217, 138, .055);
+      color: var(--acid);
+      font-size: 9px;
+    }
+    .selected-skill.visible { display: inline-flex; }
+    .selected-skill span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .selected-skill button {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--acid);
+      font-size: 13px;
+      line-height: 1;
+    }
+    .send-button {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      place-items: center;
+      margin-left: auto;
+      border: 1px solid rgba(196, 217, 138, .45);
+      border-radius: 50%;
+      background: var(--acid);
+      color: #1b2115;
+      transition: background-color 150ms, transform 120ms;
+    }
+    .send-button:hover { background: var(--acid-strong); }
+    .send-button:active { transform: scale(.97); }
+    .send-button:disabled { cursor: wait; opacity: .55; }
+    .send-button svg {
+      width: 17px;
+      height: 17px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .quick-prompts {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .quick-prompts button {
+      min-height: 28px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 9.5px;
+    }
+    .quick-prompts button:hover { border-color: rgba(196, 217, 138, .3); color: var(--acid); }
+
+    .catalog {
+      margin-top: 52px;
+    }
+    .catalog-head {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding-bottom: 11px;
+      border-bottom: 1px solid var(--line);
+    }
+    .catalog-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 19px;
+      font-weight: 600;
+    }
+    .library-tabs {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-left: 12px;
+    }
+    .library-tab {
+      align-self: stretch;
+      padding: 0 0 9px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .library-tab.active { border-bottom-color: var(--acid); color: var(--text); }
+    .catalog-search {
+      position: relative;
+      width: min(260px, 30%);
+      margin-left: auto;
+    }
+    .catalog-search svg {
+      position: absolute;
+      top: 50%;
+      left: 10px;
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: var(--text-3);
+      stroke-width: 1.5;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+    .catalog-search input {
+      width: 100%;
+      height: 34px;
+      padding: 0 10px 0 31px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 10.5px;
+    }
+    .catalog-search input::placeholder { color: var(--text-3); }
+    .catalog-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 13px 0 15px;
+    }
+    .filter-button {
+      min-height: 32px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 10px;
+    }
+    .filter-button:hover { border-color: var(--line-strong); color: var(--text-2); }
+    .filter-button.active {
+      border-color: var(--line-strong);
+      background: var(--raised);
+      color: var(--text);
+    }
+    .skill-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .skill-card {
+      position: relative;
+      display: grid;
+      min-width: 0;
+      grid-template-columns: 168px minmax(0, 1fr);
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel);
+      text-align: left;
+      transition:
+        border-color 170ms var(--ease),
+        background-color 170ms var(--ease),
+        transform 120ms var(--ease);
+    }
+    .skill-card:hover {
+      border-color: rgba(196, 217, 138, .28);
+      background: var(--raised);
+    }
+    .skill-card.selected {
+      border-color: rgba(196, 217, 138, .65);
+      box-shadow: inset 0 0 0 1px rgba(196, 217, 138, .12);
+    }
+    .skill-card:active { transform: scale(.993); }
+    .skill-visual {
+      position: relative;
+      min-height: 138px;
+      overflow: hidden;
+      background: #0e1012;
+    }
+    .skill-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: saturate(.82) contrast(1.04) brightness(.78);
+      transition: transform 220ms var(--ease), filter 220ms var(--ease);
+    }
+    .skill-card:hover .skill-visual img {
+      transform: scale(1.025);
+      filter: saturate(.95) contrast(1.04) brightness(.84);
+    }
+    .skill-visual::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 9, 10, .12);
+      pointer-events: none;
+    }
+    .visual-code .skill-visual::after {
+      background:
+        repeating-linear-gradient(90deg, rgba(142, 183, 231, .06) 0 1px, transparent 1px 28px),
+        rgba(7, 9, 10, .2);
+    }
+    .visual-number .skill-visual::after {
+      background:
+        repeating-linear-gradient(0deg, rgba(196, 217, 138, .055) 0 1px, transparent 1px 24px),
+        rgba(7, 9, 10, .27);
+    }
+    .visual-badge {
+      position: absolute;
+      z-index: 2;
+      top: 8px;
+      left: 8px;
+      padding: 2px 6px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 4px;
+      background: rgba(14, 16, 18, .72);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 7.5px;
+      backdrop-filter: blur(5px);
+    }
+    .visual-count {
+      position: absolute;
+      z-index: 2;
+      right: 8px;
+      bottom: 8px;
+      color: rgba(255, 255, 255, .76);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, .9);
+    }
+    .skill-content {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      padding: 13px 13px 11px;
+    }
+    .skill-content h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .skill-content p {
+      display: -webkit-box;
+      margin: 5px 0 0;
+      overflow: hidden;
+      color: var(--text-3);
+      font-size: 10.5px;
+      line-height: 1.55;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+    .skill-meta {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: auto;
+      padding-top: 9px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 8px;
+    }
+    .official-mark {
+      display: grid;
+      width: 16px;
+      height: 16px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--acid);
+      color: #1b2115;
+      font-family: var(--font-ui);
+      font-size: 8px;
+      font-weight: 700;
+    }
+    .skill-meta b { color: var(--text-3); font-weight: 500; }
+    .skill-meta i {
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: var(--text-3);
+    }
+    .skill-arrow {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      opacity: .7;
+    }
+    .catalog-empty {
+      display: none;
+      padding: 42px 16px;
+      border: 1px dashed var(--line);
+      border-radius: 7px;
+      color: var(--text-3);
+      text-align: center;
+      font-size: 11px;
+    }
+    .library-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--text-3);
+      font-size: 9px;
+    }
+    .library-footer span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .library-footer svg {
+      width: 13px;
+      height: 13px;
+      fill: none;
+      stroke: var(--blue);
+      stroke-width: 1.5;
+    }
+
+    .agent-entry {
+      position: fixed;
+      z-index: 40;
+      right: 24px;
+      bottom: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px 7px 7px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: #202327;
+      color: var(--text-2);
+      box-shadow: 0 16px 38px -26px rgba(0, 0, 0, .96);
+      transition: border-color 160ms, background-color 160ms, transform 120ms;
+    }
+    .agent-entry:hover { border-color: rgba(196, 217, 138, .45); background: #25292d; }
+    .agent-entry:active { transform: scale(.98); }
+    .agent-avatar {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--acid);
+      color: #1b2115;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .agent-entry-copy {
+      display: grid;
+      gap: 0;
+      text-align: left;
+    }
+    .agent-entry-copy b { color: var(--text); font-size: 10.5px; font-weight: 600; }
+    .agent-entry-copy span { color: var(--text-3); font-size: 8px; }
+    .agent-entry > i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 3px rgba(142, 183, 231, .08);
+    }
+
+    .agent-scrim {
+      position: fixed;
+      z-index: 45;
+      inset: 0;
+      display: none;
+      background: rgba(5, 7, 8, .52);
+    }
+    .agent-scrim.open { display: block; }
+    .agent-drawer {
+      position: fixed;
+      z-index: 50;
+      top: 0;
+      right: 0;
+      display: flex;
+      width: min(440px, 100vw);
+      height: 100dvh;
+      flex-direction: column;
+      border-left: 1px solid var(--line-strong);
+      background: #171a1d;
+      box-shadow: -30px 0 80px -48px rgba(0, 0, 0, 1);
+      transform: translateX(102%);
+      transition: transform 220ms var(--ease);
+    }
+    .agent-drawer.open { transform: translateX(0); }
+    .agent-head {
+      display: flex;
+      min-height: 58px;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .agent-heading { min-width: 0; flex: 1; }
+    .agent-heading b { display: block; font-size: 12px; font-weight: 600; }
+    .agent-heading span { display: block; color: var(--text-3); font-size: 8.5px; }
+    .agent-ready {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(142, 183, 231, .08);
+      color: var(--blue);
+      font-family: var(--font-mono);
+      font-size: 7.5px;
+    }
+    .agent-close {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-3);
+    }
+    .agent-close:hover { border-color: var(--line); background: var(--raised); color: var(--text); }
+    .agent-close svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+    .agent-context {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 10px 13px 0;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: rgba(142, 183, 231, .03);
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 8.5px;
+    }
+    .agent-context b { color: var(--blue); font-weight: 500; }
+    .agent-messages {
+      min-height: 0;
+      flex: 1;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 14px;
+    }
+    .agent-welcome {
+      display: grid;
+      gap: 9px;
+    }
+    .agent-bubble {
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--raised);
+      color: var(--text-2);
+      font-size: 10.5px;
+      line-height: 1.7;
+    }
+    .agent-bubble b { color: var(--text); font-weight: 600; }
+    .agent-suggestions {
+      display: grid;
+      gap: 5px;
+    }
+    .agent-suggestion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-3);
+      text-align: left;
+      font-size: 9.5px;
+    }
+    .agent-suggestion:hover { border-color: rgba(196, 217, 138, .28); background: var(--raised); color: var(--text-2); }
+    .agent-suggestion span { flex: 1; }
+    .agent-suggestion svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+    .message-user {
+      justify-self: end;
+      max-width: 88%;
+      margin-left: auto;
+      padding: 8px 10px;
+      border-radius: 6px 6px 2px 6px;
+      background: rgba(142, 183, 231, .09);
+      color: var(--text-2);
+      font-size: 10.5px;
+    }
+    .process-block {
+      display: grid;
+      gap: 4px;
+      margin: 11px 0;
+    }
+    .process-row {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr) auto;
+      gap: 6px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 8.5px;
+      opacity: 0;
+      transform: translateY(4px);
+      animation: process-in 180ms var(--ease) forwards;
+    }
+    .process-row i { color: var(--blue); font-style: normal; }
+    .process-row b { color: var(--text-2); font-weight: 500; }
+    .assistant-message {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--raised);
+      color: var(--text-2);
+      font-size: 10.5px;
+      line-height: 1.7;
+    }
+    .assistant-message b { color: var(--text); }
+    .plan-card {
+      margin-top: 9px;
+      padding: 10px;
+      border: 1px solid rgba(213, 141, 115, .22);
+      border-radius: 6px;
+      background: rgba(213, 141, 115, .045);
+    }
+    .plan-card h3 { margin: 0; color: var(--warning); font-size: 10.5px; font-weight: 600; }
+    .plan-card p { margin: 4px 0 8px; color: var(--text-2); font-size: 9.5px; line-height: 1.6; }
+    .plan-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+      padding: 5px 7px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 8.5px;
+    }
+    .plan-row b { color: var(--text-2); font-weight: 500; }
+    .plan-actions { display: flex; gap: 5px; margin-top: 8px; }
+    .plan-actions button {
+      min-height: 30px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--text-3);
+      font-size: 9px;
+    }
+    .plan-actions button.confirm { border-color: rgba(196, 217, 138, .35); color: var(--acid); }
+    .agent-compose {
+      display: flex;
+      gap: 7px;
+      padding: 10px 13px 12px;
+      border-top: 1px solid var(--line);
+    }
+    .agent-compose input {
+      min-width: 0;
+      flex: 1;
+      height: 40px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--raised);
+      color: var(--text);
+      font-size: 10px;
+    }
+    .agent-compose input::placeholder { color: var(--text-3); }
+    .agent-compose button {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border: 0;
+      border-radius: 5px;
+      background: var(--acid);
+      color: #1b2115;
+    }
+    .agent-compose button:disabled { opacity: .55; cursor: wait; }
+    .agent-compose svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .demo-caption {
+      margin: 0;
+      padding: 0 13px 10px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 7.5px;
+    }
+    @keyframes process-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1180px) {
+      .skill-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .skill-card { grid-template-columns: 154px minmax(0, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .top-nav, .top-meta { display: none; }
+      .page { width: min(720px, calc(100% - 32px)); padding-top: 36px; }
+      .skill-grid { grid-template-columns: minmax(0, 1fr); }
+      .skill-card { grid-template-columns: 190px minmax(0, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .topbar { height: 52px; padding: 0 14px; }
+      .brand b { font-size: 18px; }
+      .page { width: calc(100% - 24px); padding: 28px 0 130px; }
+      .hero h1 { font-size: 27px; }
+      .hero > p { font-size: 11px; }
+      .composer { margin-top: 18px; }
+      .composer textarea { min-height: 132px; padding: 16px 15px 8px; font-size: 15px; }
+      .composer-toolbar { flex-wrap: wrap; padding: 7px 9px 9px; }
+      .tool-button span { display: none; }
+      .selected-skill { order: 3; width: calc(100% - 44px); max-width: none; margin: 3px 0 0; }
+      .send-button { width: 42px; height: 42px; }
+      .quick-prompts { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 3px; }
+      .quick-prompts button { flex: 0 0 auto; }
+      .catalog { margin-top: 38px; }
+      .catalog-head { flex-wrap: wrap; gap: 8px 14px; }
+      .catalog-title { font-size: 17px; }
+      .library-tabs { order: 2; width: 100%; margin-left: 0; border-bottom: 1px solid var(--line-soft); }
+      .catalog-search { width: 100%; margin-left: 0; }
+      .catalog-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+      .filter-button { flex: 0 0 auto; min-height: 36px; }
+      .skill-card { grid-template-columns: 1fr; }
+      .skill-visual { min-height: 158px; }
+      .skill-content { min-height: 94px; }
+      .skill-content p { -webkit-line-clamp: 2; }
+      .library-footer { align-items: flex-start; flex-direction: column; gap: 5px; }
+      .agent-entry { right: 12px; bottom: 12px; }
+      .agent-drawer { width: 100vw; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><b>成剧</b><span>VEYAFRAME</span><span class="ai">AI</span></div>
+    <nav class="top-nav" aria-label="主导航">
+      <a href="#" class="active">Skill</a>
+      <a href="#">项目</a>
+      <a href="#">画布</a>
+    </nav>
+    <span class="top-spacer"></span>
+    <div class="top-meta">
+      <span class="top-project">雾港来信 · 第 6 步</span>
+      <span>额度 42 / 65</span>
+      <span>3 个项目</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-button" aria-label="打开项目画布">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8"/></svg>
+      </button>
+      <button class="icon-button" aria-label="账号">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero" aria-labelledby="pageTitle">
+      <p class="hero-kicker">CREATIVE WORKFLOWS</p>
+      <h1 id="pageTitle"><span>/skill</span>：你的短剧创作入口</h1>
+      <p>输入故事想法，或挑一个 Skill 开始。场记会先读取方法和项目，再把下一步交给你确认。</p>
+
+      <form id="composer" class="composer">
+        <label class="sr-only" for="promptInput">输入你的创作灵感或任务</label>
+        <textarea id="promptInput" placeholder="输入你的创作灵感，或从下方挑选一个 Skill 开始"></textarea>
+        <div class="composer-toolbar">
+          <button class="tool-button" type="button" aria-label="添加素材">
+            <svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></svg>
+            <span>素材</span>
+          </button>
+          <button class="tool-button" type="button" aria-label="引用项目资产">
+            <svg viewBox="0 0 20 20"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H16v14H6.5A2.5 2.5 0 0 1 4 14.5v-9Z"/><path d="M4 14.5A2.5 2.5 0 0 1 6.5 12H16"/></svg>
+            <span>项目资产</span>
+          </button>
+          <button class="tool-button" type="button" aria-label="选择技能">
+            <svg viewBox="0 0 20 20"><path d="m10 2.8 2 4.3 4.7.5-3.5 3.2 1 4.6-4.2-2.3-4.2 2.3 1-4.6-3.5-3.2 4.7-.5 2-4.3Z"/></svg>
+            <span>选择 Skill</span>
+          </button>
+          <span id="selectedSkill" class="selected-skill">
+            <span></span>
+            <button type="button" aria-label="取消选择技能">×</button>
+          </span>
+          <button id="sendButton" class="send-button" type="submit" aria-label="发送">
+            <svg viewBox="0 0 20 20"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5"/></svg>
+          </button>
+        </div>
+      </form>
+      <div class="quick-prompts" aria-label="快捷任务">
+        <button type="button" data-quick="把一部 18 章小说整理成 12 集短剧，先做原著圣经和改编计划。">把小说改成 12 集短剧</button>
+        <button type="button" data-quick="检查当前分镜的首尾帧、角色锚点和参考图版本。">检查镜头连续性</button>
+        <button type="button" data-quick="估算 30 集分镜的生成成本，并给出更省的批次顺序。">规划整剧成本</button>
+      </div>
+    </section>
+
+    <section class="catalog" aria-labelledby="catalogTitle">
+      <div class="catalog-head">
+        <h2 id="catalogTitle" class="catalog-title">Skill</h2>
+        <div class="library-tabs" role="tablist" aria-label="技能集合">
+          <button class="library-tab active" role="tab" aria-selected="true" data-library="recommend">推荐</button>
+          <button class="library-tab" role="tab" aria-selected="false" data-library="favorite">收藏</button>
+          <button class="library-tab" role="tab" aria-selected="false" data-library="mine">我的</button>
+        </div>
+        <label class="catalog-search">
+          <span class="sr-only">搜索 Skill</span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="4.5"/><path d="m12 12 4 4"/></svg>
+          <input id="searchInput" type="search" placeholder="搜索 Skill" autocomplete="off">
+        </label>
+      </div>
+      <div class="catalog-filters" aria-label="Skill 分类">
+        <button class="filter-button active" data-category="全部">全部</button>
+        <button class="filter-button" data-category="小说改编">小说改编</button>
+        <button class="filter-button" data-category="短剧开发">短剧开发</button>
+        <button class="filter-button" data-category="视觉一致性">视觉一致性</button>
+        <button class="filter-button" data-category="分镜制作">分镜制作</button>
+        <button class="filter-button" data-category="交付效率">交付效率</button>
+      </div>
+      <div id="skillGrid" class="skill-grid"></div>
+      <div id="catalogEmpty" class="catalog-empty">没有匹配的 Skill，换个关键词或分类。</div>
+      <footer class="library-footer">
+        <span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 3.5 6v4c0 4 2.7 6.2 6.5 7 3.8-.8 6.5-3 6.5-7V6L10 3Z"/><path d="m7.5 10 1.7 1.7 3.5-3.7"/></svg>
+          官方 Skill 经过版本与权限审核，正文只在场记运行时按需加载
+        </span>
+        <span>交互演示 · 非最终实现 · 不连接真实模型</span>
+      </footer>
+    </section>
+  </main>
+
+  <button id="agentEntry" class="agent-entry" type="button" aria-expanded="false" aria-controls="agentDrawer">
+    <span class="agent-avatar">记</span>
+    <span class="agent-entry-copy"><b>问场记</b><span>选技能、查项目或直接开工</span></span>
+    <i aria-hidden="true"></i>
+  </button>
+
+  <div id="agentScrim" class="agent-scrim"></div>
+  <aside id="agentDrawer" class="agent-drawer" aria-label="AI 场记">
+    <header class="agent-head">
+      <span class="agent-avatar">记</span>
+      <span class="agent-heading"><b>AI 场记</b><span>先核对项目，再给计划；写项目前一定问你</span></span>
+      <span id="agentReady" class="agent-ready">READY</span>
+      <button id="agentClose" class="agent-close" type="button" aria-label="关闭场记">
+        <svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg>
+      </button>
+    </header>
+    <div id="agentContext" class="agent-context">正在看 <b>雾港来信</b> · 第 6 步 · 分镜</div>
+    <div id="agentMessages" class="agent-messages">
+      <div class="agent-welcome">
+        <div class="agent-bubble"><b>你可以直接说要完成什么。</b><br>我会先判断需要哪个 Skill，再读取当前项目。没有你的确认，不会改内容或花生图额度。</div>
+        <div class="agent-suggestions">
+          <button class="agent-suggestion" type="button" data-prompt="检查当前分镜的首尾帧和参考图版本。"><span>检查当前镜头连续性</span><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg></button>
+          <button class="agent-suggestion" type="button" data-prompt="检查分集钩子与整体节奏，指出最影响追看的三个问题。"><span>给这一版故事做体检</span><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg></button>
+          <button class="agent-suggestion" type="button" data-prompt="按即梦交付规格检查当前项目，并列出阻断项。"><span>检查即梦交付包</span><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <form id="agentForm" class="agent-compose">
+      <label class="sr-only" for="agentInput">向场记提问</label>
+      <input id="agentInput" placeholder="问项目、挑 Skill，或直接交给场记…" autocomplete="off">
+      <button id="agentSend" type="submit" aria-label="发送">
+        <svg viewBox="0 0 20 20"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5"/></svg>
+      </button>
+    </form>
+    <p class="demo-caption">交互演示 · 非最终实现 · 不连接真实项目或模型</p>
+  </aside>
+
+  <script>
+    const skills = [
+      {
+        id: 'adaptation',
+        title: '小说 / 剧本改编',
+        category: '小说改编',
+        type: '改编',
+        image: 'assets/manor.png',
+        count: '长文本',
+        summary: '拆解章节与人物关系，先把原著圣经和分集计划做对，再进入六步生产。',
+        meta: '多阶段 · 按章节计费',
+        favorite: true,
+        visual: '',
+        prompt: '把一部 18 章小说整理成 12 集短剧，先做原著圣经和改编计划。',
+        result: '已识别 <b>18 个章节</b>、<b>7 个主要人物</b>和 <b>31 个关键事件</b>。建议压缩第 4–6 章，并保留三处核心反转。',
+        plan: ['12 集改编大纲', '人物别名与关系合并', '4 处删改待确认'],
+      },
+      {
+        id: 'story-doctor',
+        title: '故事医生',
+        category: '短剧开发',
+        type: '审校',
+        image: 'assets/story.png',
+        count: '追看率',
+        summary: '检查钩子、节奏、动机和结构塌陷，输出可以跳转到具体集数的修订清单。',
+        meta: '审校 · 1–3 次模型调用',
+        favorite: false,
+        visual: 'visual-code',
+        prompt: '检查分集钩子和节奏，指出最影响追看的三个问题。',
+        result: '发现 <b>3 处结构问题</b>：第 2 集结尾只有总结没有新问题，第 5 集情绪连续下滑，第 8 集反转缺少前置伏笔。',
+        plan: ['第 2 集钩子重写', '第 5 集情绪曲线', '第 8 集伏笔补强'],
+      },
+      {
+        id: 'canon',
+        title: '人物 Canon 检查',
+        category: '视觉一致性',
+        type: '检查',
+        image: 'assets/canon.png',
+        count: '连续性',
+        summary: '核对人物关系、时间线、地点和道具状态，硬冲突先由确定性规则找出来。',
+        meta: '只读 · 低额度',
+        favorite: false,
+        visual: 'visual-code',
+        prompt: '检查人物关系、时间线和道具状态，有没有前后矛盾。',
+        result: '发现 <b>2 个硬冲突</b>：第 4 场两人已经决裂，第 7 场却以旧友相称；林岚的道具在第 9 场提前出现。',
+        plan: ['关系变化时间线', '道具首次出现位置', '冲突修订待确认'],
+      },
+      {
+        id: 'continuity',
+        title: '镜头连续性检查',
+        category: '分镜制作',
+        type: '分镜',
+        image: 'assets/continuity.png',
+        count: '精确定位',
+        summary: '检查首尾帧断点、角色锚点、参考图版本和跨场衔接，生成可逐镜处理的返修队列。',
+        meta: '确定性优先 · 不自动改',
+        favorite: true,
+        visual: 'visual-code',
+        prompt: '检查当前分镜的首尾帧、角色锚点和参考图版本，生成返修计划。',
+        result: '检查 <b>32 个镜头</b>：发现 <b>3 处首尾帧断点</b>、<b>2 张过期参考图</b>，另有 1 个镜头缺林岚的定妆参考。',
+        plan: ['3 镜需要重做衔接', '2 镜参考图过期', '1 镜缺角色参考'],
+      },
+      {
+        id: 'delivery',
+        title: '平台交付预检',
+        category: '交付效率',
+        type: '交付',
+        image: 'assets/delivery.png',
+        count: '即梦 / 可灵',
+        summary: '按目标平台检查时长、画幅、锚点和缺失文件，把阻断项与提醒项直接写进报告。',
+        meta: '纯计算 · 0 模型调用',
+        favorite: false,
+        visual: 'visual-code',
+        prompt: '按即梦交付规格检查当前项目，并列出阻断项。',
+        result: '即梦预检发现 <b>2 个阻断项</b>、<b>5 个提醒项</b>。问题集中在时长档位和缺失参考图，已写入交付包预检报告。',
+        plan: ['2 镜时长不支持', '3 镜缺参考图', '生成即梦执行单'],
+      },
+      {
+        id: 'cost',
+        title: '成本规划',
+        category: '交付效率',
+        type: '预算',
+        image: 'assets/manor.png',
+        count: '批次规划',
+        summary: '估算批次、重试、参考图和整剧成本，先给出更省的执行顺序，不直接生成图片。',
+        meta: '纯计算 · 不生成图片',
+        favorite: true,
+        visual: 'visual-number',
+        prompt: '估算 30 集分镜的生成成本，并给出更省的批次顺序。',
+        result: '当前规模预计需要 <b>4 个生成批次</b>。建议先跑第 1–3 集验证画质，再决定是否采用 10 秒档。',
+        plan: ['试跑 3 集', '锁定参考图版本', '再扩展剩余 27 集'],
+      },
+    ]
+
+    const state = {
+      category: '全部',
+      query: '',
+      library: 'recommend',
+      selectedSkillId: null,
+      busy: false,
+    }
+
+    const skillGrid = document.getElementById('skillGrid')
+    const emptyState = document.getElementById('catalogEmpty')
+    const promptInput = document.getElementById('promptInput')
+    const selectedSkill = document.getElementById('selectedSkill')
+    const composer = document.getElementById('composer')
+    const sendButton = document.getElementById('sendButton')
+    const drawer = document.getElementById('agentDrawer')
+    const scrim = document.getElementById('agentScrim')
+    const agentEntry = document.getElementById('agentEntry')
+    const agentClose = document.getElementById('agentClose')
+    const agentMessages = document.getElementById('agentMessages')
+    const agentForm = document.getElementById('agentForm')
+    const agentInput = document.getElementById('agentInput')
+    const agentSend = document.getElementById('agentSend')
+    const agentReady = document.getElementById('agentReady')
+
+    function currentSkill() {
+      return skills.find((skill) => skill.id === state.selectedSkillId) || null
+    }
+
+    function visibleSkills() {
+      const query = state.query.trim().toLowerCase()
+      return skills.filter((skill) => {
+        if (state.library === 'favorite' && !skill.favorite) return false
+        if (state.library === 'mine') return false
+        if (state.category !== '全部' && skill.category !== state.category) return false
+        return !query || `${skill.title} ${skill.summary} ${skill.category}`.toLowerCase().includes(query)
+      })
+    }
+
+    function renderSkills() {
+      const list = visibleSkills()
+      skillGrid.innerHTML = list.map((skill) => `
+        <button class="skill-card ${skill.visual} ${skill.id === state.selectedSkillId ? 'selected' : ''}" type="button" data-skill="${skill.id}" aria-pressed="${skill.id === state.selectedSkillId}">
+          <span class="skill-visual">
+            <img src="${skill.image}" alt="" loading="lazy">
+            <span class="visual-badge">${skill.type}</span>
+            <span class="visual-count">${skill.count}</span>
+          </span>
+          <span class="skill-content">
+            <h3>${skill.title}</h3>
+            <p>${skill.summary}</p>
+            <span class="skill-meta"><span class="official-mark">V</span><b>官方 Skill</b><i></i><span>${skill.meta}</span></span>
+          </span>
+          <span class="skill-arrow">›</span>
+        </button>
+      `).join('')
+      emptyState.style.display = list.length === 0 ? 'block' : 'none'
+      skillGrid.querySelectorAll('[data-skill]').forEach((button) => {
+        button.addEventListener('click', () => selectSkill(button.dataset.skill))
+      })
+    }
+
+    function selectSkill(id) {
+      state.selectedSkillId = state.selectedSkillId === id ? null : id
+      const skill = currentSkill()
+      renderSkills()
+      if (!skill) {
+        selectedSkill.classList.remove('visible')
+        return
+      }
+      selectedSkill.querySelector('span').textContent = skill.title
+      selectedSkill.classList.add('visible')
+      promptInput.value = skill.prompt
+      promptInput.focus()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    function openAgent() {
+      drawer.classList.add('open')
+      scrim.classList.add('open')
+      agentEntry.setAttribute('aria-expanded', 'true')
+      window.setTimeout(() => agentInput.focus(), 230)
+    }
+
+    function closeAgent() {
+      drawer.classList.remove('open')
+      scrim.classList.remove('open')
+      agentEntry.setAttribute('aria-expanded', 'false')
+      agentEntry.focus()
+    }
+
+    function inferSkill(prompt) {
+      if (/小说|剧本|章节|原著/.test(prompt)) return skills[0]
+      if (/钩子|节奏|故事|结构/.test(prompt)) return skills[1]
+      if (/人物|关系|道具|时间线/.test(prompt)) return skills[2]
+      if (/分镜|首尾帧|参考图|镜头/.test(prompt)) return skills[3]
+      if (/即梦|可灵|导出|交付/.test(prompt)) return skills[4]
+      if (/成本|预算|批次/.test(prompt)) return skills[5]
+      return currentSkill() || skills[1]
+    }
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+    function processRow(mark, title, detail, index) {
+      return `<div class="process-row" style="animation-delay:${index * 55}ms"><i>${mark}</i><b>${title}</b><span>${detail}</span></div>`
+    }
+
+    async function runTask(text) {
+      if (state.busy) return
+      state.busy = true
+      sendButton.disabled = true
+      agentSend.disabled = true
+      agentReady.textContent = 'WORKING'
+      const skill = inferSkill(text)
+      openAgent()
+      agentMessages.innerHTML = `
+        <div class="message-user">${escapeHtml(text)}</div>
+        <div id="processBlock" class="process-block"></div>
+        <div id="agentResult"></div>
+      `
+      const block = document.getElementById('processBlock')
+      const steps = [
+        ['├', `匹配 Skill · ${skill.title}`, '按需加载'],
+        ['├', '读取项目 · 雾港来信', '3 集 · 32 镜'],
+        ['├', '执行检查', skill.meta.includes('0 模型') ? '0 模型调用' : '先规则，后模型'],
+        ['└', '生成待确认计划', '没有直接修改项目'],
+      ]
+      for (let index = 0; index < steps.length; index += 1) {
+        block.insertAdjacentHTML('beforeend', processRow(steps[index][0], steps[index][1], steps[index][2], index))
+        await sleep(240)
+      }
+      document.getElementById('agentResult').innerHTML = `
+        <div class="assistant-message">${skill.result}</div>
+        <div class="plan-card">
+          <h3>待确认 · ${skill.title}</h3>
+          <p>以下动作只会生成计划。你确认后，才进入现有编辑或生成链路。</p>
+          ${skill.plan.map((item, index) => `<div class="plan-row"><span>${item}</span><b>${index === 0 ? '建议先做' : '待确认'}</b></div>`).join('')}
+          <div class="plan-actions">
+            <button class="confirm" type="button" data-confirm>确认计划</button>
+            <button type="button" data-dismiss>忽略</button>
+          </div>
+        </div>
+      `
+      document.querySelector('[data-confirm]')?.addEventListener('click', (event) => {
+        event.currentTarget.textContent = '已确认'
+        event.currentTarget.disabled = true
+      })
+      document.querySelector('[data-dismiss]')?.addEventListener('click', (event) => {
+        event.currentTarget.closest('.plan-card')?.remove()
+      })
+      agentMessages.scrollTop = agentMessages.scrollHeight
+      agentReady.textContent = 'READY'
+      state.busy = false
+      sendButton.disabled = false
+      agentSend.disabled = false
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[char]))
+    }
+
+    document.querySelectorAll('.filter-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.filter-button').forEach((item) => item.classList.remove('active'))
+        button.classList.add('active')
+        state.category = button.dataset.category
+        renderSkills()
+      })
+    })
+
+    document.querySelectorAll('.library-tab').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.library-tab').forEach((item) => {
+          item.classList.remove('active')
+          item.setAttribute('aria-selected', 'false')
+        })
+        button.classList.add('active')
+        button.setAttribute('aria-selected', 'true')
+        state.library = button.dataset.library
+        renderSkills()
+      })
+    })
+
+    document.getElementById('searchInput').addEventListener('input', (event) => {
+      state.query = event.target.value
+      renderSkills()
+    })
+
+    document.querySelectorAll('[data-quick]').forEach((button) => {
+      button.addEventListener('click', () => {
+        promptInput.value = button.dataset.quick
+        promptInput.focus()
+      })
+    })
+
+    selectedSkill.querySelector('button').addEventListener('click', () => {
+      state.selectedSkillId = null
+      selectedSkill.classList.remove('visible')
+      promptInput.value = ''
+      renderSkills()
+      promptInput.focus()
+    })
+
+    composer.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const text = promptInput.value.trim()
+      if (!text) {
+        promptInput.focus()
+        return
+      }
+      runTask(text)
+    })
+
+    agentEntry.addEventListener('click', openAgent)
+    agentClose.addEventListener('click', closeAgent)
+    scrim.addEventListener('click', closeAgent)
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && drawer.classList.contains('open')) closeAgent()
+    })
+
+    document.querySelectorAll('.agent-suggestion').forEach((button) => {
+      button.addEventListener('click', () => runTask(button.dataset.prompt))
+    })
+
+    agentForm.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const text = agentInput.value.trim()
+      if (!text) return
+      agentInput.value = ''
+      runTask(text)
+    })
+
+    renderSkills()
+  </script>
+</body>
+</html>

@@ -38,8 +38,13 @@ export async function patchJson<T>(url: string, body: unknown, signal?: AbortSig
   return sendJson<T>('PATCH', url, body, signal)
 }
 
+/** 客户端：PUT 一个完整 JSON 资源 */
+export async function putJson<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return sendJson<T>('PUT', url, body, signal)
+}
+
 async function sendJson<T>(
-  method: 'POST' | 'PATCH',
+  method: 'POST' | 'PATCH' | 'PUT',
   url: string,
   body: unknown,
   signal?: AbortSignal,

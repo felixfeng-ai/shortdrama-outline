@@ -6,7 +6,7 @@ import { clientIpFromRequest } from "../auth/rate-limit.ts"
 const TEN_MINUTES = 10 * 60_000
 const ONE_DAY = 24 * 60 * 60_000
 
-export type ApiRateLimitGroup = "model" | "assistant" | "image" | "export" | "import"
+export type ApiRateLimitGroup = "model" | "assistant" | "image" | "export" | "import" | "material"
 
 interface ApiRateLimitPolicy {
   group: ApiRateLimitGroup
@@ -57,6 +57,14 @@ export const API_RATE_LIMIT_POLICIES: Record<ApiRateLimitGroup, ApiRateLimitPoli
     ipLimit: { env: "API_IMPORT_IP_10M_LIMIT", fallback: 10, windowMs: TEN_MINUTES },
     identityLimit: { env: "API_IMPORT_IDENTITY_10M_LIMIT", fallback: 5, windowMs: TEN_MINUTES },
     globalLimit: { env: "API_IMPORT_GLOBAL_DAILY_LIMIT", fallback: 200, windowMs: ONE_DAY },
+  },
+  material: {
+    group: "material",
+    label: "项目原文写入",
+    message: "原文写入过于频繁，请稍后再试",
+    ipLimit: { env: "API_MATERIAL_IP_10M_LIMIT", fallback: 20, windowMs: TEN_MINUTES },
+    identityLimit: { env: "API_MATERIAL_IDENTITY_10M_LIMIT", fallback: 12, windowMs: TEN_MINUTES },
+    globalLimit: { env: "API_MATERIAL_GLOBAL_DAILY_LIMIT", fallback: 500, windowMs: ONE_DAY },
   },
 }
 

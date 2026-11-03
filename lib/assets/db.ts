@@ -206,6 +206,162 @@ CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expi
 CREATE INDEX IF NOT EXISTS idx_project_shares_project ON project_shares(project_id, owner_id, expires_at);
 `
 
+const MIGRATIONS: { version: number; name: string; sql: string }[] = [
+  {
+    version: 1,
+    name: "project-context",
+    sql: `
+      CREATE TABLE IF NOT EXISTS project_context (
+        project_id    TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        brief_json    TEXT NOT NULL,
+        look_json     TEXT NOT NULL,
+        episode_count INTEGER NOT NULL,
+        version       INTEGER NOT NULL,
+        updated_by    TEXT,
+        updated_at    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_project_context_updated
+        ON project_context(updated_at);
+    `,
+  },
+  {
+    version: 2,
+    name: "structured-decisions",
+    sql: `
+      CREATE TABLE IF NOT EXISTS project_decisions (
+        id                    TEXT PRIMARY KEY,
+        project_id            TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        step                  TEXT NOT NULL,
+        target_type           TEXT NOT NULL DEFAULT '',
+        target_id             TEXT NOT NULL DEFAULT '',
+        question              TEXT NOT NULL,
+        options_json          TEXT NOT NULL,
+        chosen_value          TEXT NOT NULL DEFAULT '',
+        reason                TEXT NOT NULL DEFAULT '',
+        status                TEXT NOT NULL,
+        confidence            REAL,
+        locked                INTEGER NOT NULL DEFAULT 0,
+        owner_id              TEXT NOT NULL,
+        based_on_snapshot_id  TEXT REFERENCES snapshots(id) ON DELETE SET NULL,
+        impact_json           TEXT NOT NULL DEFAULT '[]',
+        created_at            INTEGER NOT NULL,
+        updated_at            INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS project_judgments (
+        id          TEXT PRIMARY KEY,
+        project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        step        TEXT NOT NULL,
+        action      TEXT NOT NULL,
+        reason      TEXT NOT NULL DEFAULT '',
+        decision_id TEXT REFERENCES project_decisions(id) ON DELETE SET NULL,
+        snapshot_id TEXT REFERENCES snapshots(id) ON DELETE SET NULL,
+        owner_id    TEXT NOT NULL,
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_project_decisions_project
+        ON project_decisions(project_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_project_judgments_project
+        ON project_judgments(project_id, created_at);
+    `,
+  },
+  {
+    version: 3,
+    name: "canon-facts",
+    sql: `
+      -- Canon 实体只保存稳定身份，不复制完整角色/地点快照；
+      -- 同一项目下同一类型和名称只能有一个实体，避免“林远”出现多条身份。
+      CREATE TABLE IF NOT EXISTS canon_entities (
+        id            TEXT PRIMARY KEY,
+        project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        kind          TEXT NOT NULL,
+        name          TEXT NOT NULL,
+        metadata_json TEXT NOT NULL DEFAULT '{}',
+        created_at    INTEGER NOT NULL,
+        updated_at    INTEGER NOT NULL,
+        UNIQUE (project_id, kind, name)
+      );
+
+      -- 一条事实表示某实体在一个集数闭区间内成立的状态。
+      -- 外键级联保证删除项目时不会留下不可归属的 Canon 数据；
+      -- 来源快照删除后只置空引用，事实本身仍保留供审计。
+      CREATE TABLE IF NOT EXISTS canon_facts (
+        id                 TEXT PRIMARY KEY,
+        project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        entity_id          TEXT NOT NULL REFERENCES canon_entities(id) ON DELETE CASCADE,
+        field              TEXT NOT NULL,
+        value              TEXT NOT NULL,
+        valid_from_episode INTEGER NOT NULL,
+        valid_to_episode   INTEGER NOT NULL,
+        source_snapshot_id TEXT REFERENCES snapshots(id) ON DELETE SET NULL,
+        locked             INTEGER NOT NULL DEFAULT 0,
+        created_at         INTEGER NOT NULL,
+        updated_at         INTEGER NOT NULL,
+        UNIQUE (
+          project_id, entity_id, field, value,
+          valid_from_episode, valid_to_episode
+        )
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_canon_entities_project
+        ON canon_entities(project_id, kind, name);
+      CREATE INDEX IF NOT EXISTS idx_canon_facts_project
+        ON canon_facts(project_id, entity_id, field, valid_from_episode);
+    `,
+  },
+  {
+    version: 4,
+    name: "project-materials",
+    sql: `
+      CREATE TABLE IF NOT EXISTS project_materials (
+        id              TEXT PRIMARY KEY,
+        project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        kind            TEXT NOT NULL,
+        mime            TEXT NOT NULL,
+        bytes           INTEGER NOT NULL,
+        content_hash    TEXT NOT NULL,
+        content         TEXT NOT NULL,
+        character_count INTEGER NOT NULL,
+        truncated       INTEGER NOT NULL DEFAULT 0,
+        created_by      TEXT NOT NULL,
+        created_at      INTEGER NOT NULL,
+        updated_at      INTEGER NOT NULL,
+        UNIQUE(project_id, content_hash)
+      );
+      CREATE INDEX IF NOT EXISTS idx_project_materials_project
+        ON project_materials(project_id, updated_at);
+    `,
+  },
+]
+
+function applyMigrations(db: DatabaseSync): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version    INTEGER PRIMARY KEY,
+      name       TEXT NOT NULL,
+      applied_at INTEGER NOT NULL
+    );
+  `)
+  const applied = new Set(
+    (db.prepare("SELECT version FROM schema_migrations").all() as { version: number }[])
+      .map((row) => Number(row.version)),
+  )
+  for (const migration of MIGRATIONS) {
+    if (applied.has(migration.version)) continue
+    db.exec("BEGIN IMMEDIATE")
+    try {
+      db.exec(migration.sql)
+      db.prepare(
+        "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)",
+      ).run(migration.version, migration.name, Date.now())
+      db.exec("COMMIT")
+    } catch (error) {
+      db.exec("ROLLBACK")
+      throw error
+    }
+  }
+}
+
 /**
  * 打开（并在需要时初始化）数据库。
  * - 目录不存在会自动创建
@@ -217,6 +373,7 @@ export function openDb(dbPath: string = defaultDbPath()): DatabaseSync {
   }
   const db = new DatabaseSync(dbPath)
   db.exec(SCHEMA)
+  applyMigrations(db)
   const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[]
   if (!projectColumns.some((column) => column.name === "owner_id")) {
     db.exec("ALTER TABLE projects ADD COLUMN owner_id TEXT")

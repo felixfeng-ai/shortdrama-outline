@@ -6,7 +6,10 @@ import { NextResponse } from "next/server"
 import { InputError, errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { listRefs } from "@/lib/assets/refs"
+import { listProjectMaterials } from "@/lib/assets/materials"
 import { listSnapshots } from "@/lib/assets/repo"
+import { getProjectContext } from "@/lib/assets/project-context"
+import { listProjectJudgments } from "@/lib/assets/decisions"
 import { ARTIFACT_KINDS, type ArtifactKind, type Shot, type VisualCharacter, type Scene } from "@/lib/assets/types"
 import { buildProjectPackageManifest } from "@/lib/export/package"
 import { assertProjectAccess } from "@/lib/assets/access"
@@ -60,6 +63,7 @@ export async function GET(req: Request) {
 
     const idea = latest.idea as { idea?: unknown; genre?: unknown } | undefined
     const episodes = Array.isArray(latest.episodes) ? latest.episodes as unknown[] : []
+    const context = getProjectContext(db, projectId)
     const manifest = buildProjectPackageManifest({
       project: {
         id: project.id,
@@ -71,10 +75,16 @@ export async function GET(req: Request) {
       exportedAt: Date.now(),
       projectSettings: {
         genre: typeof idea?.genre === "string" ? idea.genre : "none",
-        episodeCount: episodes.length,
-        brief: EMPTY_BRIEF,
-        look: EMPTY_LOOK,
-        judgments: [],
+        episodeCount: context?.episodeCount ?? episodes.length,
+        brief: context?.brief ?? EMPTY_BRIEF,
+        look: context?.look ?? EMPTY_LOOK,
+        judgments: listProjectJudgments(db, projectId).map((judgment) => ({
+          id: judgment.id,
+          at: judgment.createdAt,
+          step: judgment.step,
+          action: judgment.action,
+          reason: judgment.reason,
+        })),
       },
       story: {
         idea: typeof idea?.idea === "string" ? idea.idea : "",
@@ -93,6 +103,7 @@ export async function GET(req: Request) {
         keyframeManifestEntry(asset, { archivePath: null, included: false })),
       tasks: listGenerationTasks(db, projectId),
       snapshots,
+      materials: listProjectMaterials(db, projectId),
       files: [],
       warnings: [
         "服务端清单不含本地参考图像素、浏览器本地偏好和图片文件；完整迁移请使用 Web 端“完整备份”。",

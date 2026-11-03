@@ -2,7 +2,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { NextRequest } from "next/server"
 
-import { middleware } from "../middleware.ts"
+import { proxy } from "../proxy.ts"
 import {
   isSessionId,
   LOCAL_SESSION_ID,
@@ -28,7 +28,7 @@ test("匿名会话：非法 Cookie 不被当成 owner", () => {
 })
 
 test("middleware：无会话时设置 HttpOnly、Lax Cookie，有效会话不重复设置", () => {
-  const first = middleware(new NextRequest("https://example.com/"))
+  const first = proxy(new NextRequest("https://example.com/"))
   const setCookie = first.headers.get("set-cookie") ?? ""
   assert.match(setCookie, new RegExp(`${SESSION_COOKIE}=anon_`))
   assert.match(setCookie, /HttpOnly/i)
@@ -36,23 +36,23 @@ test("middleware：无会话时设置 HttpOnly、Lax Cookie，有效会话不重
   assert.match(setCookie, /Secure/i)
 
   const id = makeSessionId()
-  const valid = middleware(new NextRequest("https://example.com/", {
+  const valid = proxy(new NextRequest("https://example.com/", {
     headers: { cookie: `${SESSION_COOKIE}=${id}` },
   }))
   assert.equal(valid.headers.get("set-cookie"), null)
 })
 
 test("middleware：localhost 使用稳定开发会话，避免本地项目因浏览器上下文变化丢失", () => {
-  const first = middleware(new NextRequest("http://localhost/"))
+  const first = proxy(new NextRequest("http://localhost/"))
   assert.match(first.headers.get("set-cookie") ?? "", new RegExp(`${SESSION_COOKIE}=${LOCAL_SESSION_ID}`))
-  const valid = middleware(new NextRequest("http://localhost/", {
+  const valid = proxy(new NextRequest("http://localhost/", {
     headers: { cookie: `${SESSION_COOKIE}=${LOCAL_SESSION_ID}` },
   }))
   assert.equal(valid.headers.get("set-cookie"), null)
 })
 
 test("middleware：反向代理到 localhost 时仍按生产域名生成独立会话", () => {
-  const first = middleware(new NextRequest("http://localhost/", {
+  const first = proxy(new NextRequest("http://localhost/", {
     headers: {
       host: "chenju.work",
       "x-forwarded-host": "chenju.work",
@@ -66,7 +66,7 @@ test("middleware：反向代理到 localhost 时仍按生产域名生成独立�
 })
 
 test("middleware：生产环境持有旧开发会话时自动替换，不能继续共享 owner", () => {
-  const response = middleware(new NextRequest("http://localhost/", {
+  const response = proxy(new NextRequest("http://localhost/", {
     headers: {
       host: "chenju.work",
       "x-forwarded-proto": "https",
@@ -80,7 +80,7 @@ test("middleware：生产环境持有旧开发会话时自动替换，不能继�
 
 test("middleware：生产环境已有的独立会话保持不变", () => {
   const id = makeSessionId()
-  const response = middleware(new NextRequest("http://localhost/", {
+  const response = proxy(new NextRequest("http://localhost/", {
     headers: {
       host: "chenju.work",
       "x-forwarded-proto": "https",

@@ -8,8 +8,7 @@ interface Props {
   onOpenStep?: (step: StepKey) => void
 }
 
-const DOC_HREF = (file: string, anchor: string) =>
-  `https://github.com/felixfeng-ai/shortdrama-outline/blob/main/${file}#${encodeURIComponent(anchor)}`
+const DOCS_REPO = process.env.NEXT_PUBLIC_PROJECT_REPO_URL?.trim().replace(/\/$/, "") ?? ""
 
 const STEP_NAMES = new Set(STEPS.flatMap((step) => [step.nav, step.title]))
 const TOKEN_RE = /((?:README|AGENT)\.md#[^\s，。；、）)]+|核心人物|三幕大纲|分集剧情|视觉定妆|场景|分镜)/g
@@ -22,11 +21,15 @@ export default function AgentRichText({ text, onOpenStep }: Props) {
 
     if (part.startsWith('README.md#') || part.startsWith('AGENT.md#')) {
       const [file, anchor] = part.split('#', 2)
+      if (!DOCS_REPO) {
+        nodes.push(<Fragment key={`${part}-${index}`}>{part}</Fragment>)
+        continue
+      }
       nodes.push(
         <a
           key={`${part}-${index}`}
           className="agent-doc-link"
-          href={DOC_HREF(file, anchor ?? '')}
+          href={`${DOCS_REPO}/blob/main/${file}#${encodeURIComponent(anchor ?? '')}`}
           target="_blank"
           rel="noreferrer"
           title={`打开 ${part}`}

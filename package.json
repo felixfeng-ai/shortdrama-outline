@@ -2,25 +2,29 @@
   "name": "chengju",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "backup:data": "node scripts/backup-data.mjs",
     "restore:data": "node scripts/restore-data.mjs",
     "test": "node tests/run.mjs",
+    "check:prod": "node scripts/check-production-readiness.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
     "dotenv": "^18.0.3",
-    "next": "14.2.15",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "next": "^16.4.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.19",
     "playwright-core": "^1.64.0",
