@@ -69,6 +69,7 @@ echo "=== 3/6 校验 .env 仍在 ==="
 # 防止哪天有人手滑把 .env 提交进仓库又被 reset 掉。
 [ -f .env ] || { echo "❌ .env 在代码同步后丢失，中止部署"; exit 1; }
 echo "=== 3/6 校验生产账号与关键配置 ==="
+node scripts/apply-deploy-env.mjs
 npm run check:prod
 
 # 新版部署脚本在构建前做完整备份：数据库用一致性快照，generated/ 图片连同
