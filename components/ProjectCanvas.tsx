@@ -67,6 +67,8 @@ interface Props {
   issues: Partial<Record<StepKey, number>>
   previews: Partial<Record<CanvasNodeId, CanvasPreview>>
   projectId: string | null
+  projectTitle: string
+  currentStepLabel: string
   onEdit: (node: CanvasNodeId, itemId: string, field: string, value: string, mode: 'edit' | 'undo') => Promise<void>
   onLoadVersions: (node: CanvasNodeId) => Promise<SnapshotDto[]>
   onRestoreVersion: (node: CanvasNodeId, payload: unknown) => Promise<void>
@@ -148,6 +150,8 @@ export default function ProjectCanvas({
   issues,
   previews,
   projectId,
+  projectTitle,
+  currentStepLabel,
   onEdit,
   onLoadVersions,
   onRestoreVersion,
@@ -662,11 +666,16 @@ export default function ProjectCanvas({
           项目画布
         </b>
         <span id="project-canvas-desc">先看优先处理，再点节点查看全貌、版本与关键字段</span>
+        <div className="map-project-context" aria-label={`当前项目 ${projectTitle}，来源步骤 ${currentStepLabel}`}>
+          <strong>{projectTitle}</strong>
+          <i aria-hidden="true">·</i>
+          <span>{currentStepLabel}</span>
+        </div>
         <button ref={closeButton} type="button" onClick={() => requestClose()}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m6 6 12 12M18 6 6 18" />
           </svg>
-          返回工作台
+          <span>返回工作台</span>
         </button>
       </div>
 

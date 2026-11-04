@@ -3,8 +3,8 @@ import type { Metadata } from "next"
 import "./legal.css"
 
 export const metadata: Metadata = {
-  title: "内测条款与隐私说明 · 成剧 VeyaFrame",
-  description: "成剧 VeyaFrame 内测版的数据处理、AI 内容规则、用户权利与举报说明。",
+  title: "内测条款与隐私说明 · VeyaFrame",
+  description: "VeyaFrame 内测版的数据处理、AI 内容规则、用户权利与举报说明。",
 }
 
 const NAV_ITEMS = [

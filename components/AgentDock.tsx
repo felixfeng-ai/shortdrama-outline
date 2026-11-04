@@ -1,6 +1,6 @@
 'use client'
 
-// AI 场记：左下角一个机器人图标，点开是对话窗口（见 AGENT.md）。
+// Veya Agent：左下角一个机器人图标，点开是对话窗口（见 AGENT.md）。
 //
 // 界面上要说清两件事，否则用户不敢用：
 //   1. 它在干什么——每次工具调用都插一行「已读：…」，过程可见；
@@ -377,7 +377,7 @@ export default function AgentDock({
         type="button"
         onClick={() => onOpenChange(!open)}
         aria-expanded={open}
-        title="AI 场记：问项目进度、怎么导出、或让它改某一镜"
+        title="Veya Agent：问项目进度、怎么导出、或让它改某一镜"
         className="agent-fab group fixed bottom-6 left-6 z-40 flex h-12 w-12 items-center justify-center rounded-full
           border border-accent-300 bg-surface-card text-accent-700 shadow-surface
           transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-50 hover:shadow-lift"
@@ -401,7 +401,7 @@ export default function AgentDock({
 
       {(variant === 'docked' || open) && (
         <section
-          aria-label="AI 场记"
+          aria-label="Veya Agent"
           className={variant === 'docked'
             ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
             : 'panel-in fixed bottom-20 left-6 z-40 flex h-[600px] w-[440px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-panel border border-surface-line bg-surface-card shadow-lift'}
@@ -413,20 +413,20 @@ export default function AgentDock({
               className="pointer-events-none absolute inset-x-0 top-0 h-full
                 bg-gradient-to-r from-accent-50 via-accent-50/40 to-transparent"
             />
-            <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-600 font-serif text-[13px] font-bold text-white shadow-surface">
-              记
+            <span className="agent-brand-mark relative h-8 w-8 shrink-0 text-[13px] font-bold">
+              V
             </span>
             <span className="relative min-w-0 flex-1">
-              <span className="block font-serif text-sm font-bold leading-tight text-ink-900">AI 场记</span>
+              <span className="agent-brand-name">Veya Agent</span>
               <span className="block text-xs leading-tight text-ink-400">
-                {busy ? '正在查资料…' : '知道拍到哪了 · 也会替你去改，改前先问你'}
+                {busy ? '正在查资料…' : '剧作与制作 Agent · 会查会改，改前先确认'}
               </span>
             </span>
             {variant === 'floating' && (
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                aria-label="收起场记"
+                aria-label="收起 Veya Agent"
                 className="relative shrink-0 rounded-full p-1.5 text-ink-400 transition-colors hover:bg-surface-soft hover:text-ink-700"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current [stroke-width:1.8] [stroke-linecap:round]">
@@ -437,30 +437,38 @@ export default function AgentDock({
           </header>
 
           {projectId && (
-            <div className="flex items-center gap-1.5 border-b border-surface-line bg-surface-soft/45 px-3 py-2">
-              <select
-                aria-label="切换场记会话"
-                value={activeThreadId ?? ''}
-                disabled={threadBusy}
-                onChange={(event) => {
-                  if (event.target.value) void loadThread(event.target.value)
-                }}
-                className="min-h-8 min-w-0 flex-1 rounded-chip border border-surface-line bg-surface-card px-2 text-[10px] text-ink-600 outline-none focus:border-accent-300"
-              >
-                {!activeThreadId && <option value="">新会话</option>}
-                {threads.map((thread) => (
-                  <option key={thread.id} value={thread.id}>
-                    {thread.title} · {thread.messageCount}
-                  </option>
-                ))}
-              </select>
+            <div className="agent-session-bar">
+              <span className="agent-session-label" aria-hidden="true">会话</span>
+              <span className="agent-session-select-wrap">
+                <select
+                  aria-label="切换 Veya Agent 会话"
+                  value={activeThreadId ?? ''}
+                  disabled={threadBusy}
+                  onChange={(event) => {
+                    if (event.target.value) void loadThread(event.target.value)
+                  }}
+                  className="agent-session-select"
+                >
+                  {!activeThreadId && <option value="">新会话</option>}
+                  {threads.map((thread) => (
+                    <option key={thread.id} value={thread.id}>
+                      {thread.title} · {thread.messageCount}
+                    </option>
+                  ))}
+                </select>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="m4 6 4 4 4-4" />
+                </svg>
+              </span>
               <button
                 type="button"
                 disabled={threadBusy}
                 onClick={() => void newThread()}
-                className="min-h-8 shrink-0 rounded-chip border border-surface-line px-2.5 text-[9px] text-ink-500 hover:border-accent-300 hover:text-accent-700 disabled:opacity-45"
+                className="agent-session-new"
+                aria-label="新建 Veya Agent 会话"
               >
-                + 新会话
+                <span aria-hidden="true">+</span>
+                {threadBusy ? '处理中…' : '新会话'}
               </button>
             </div>
           )}
@@ -480,7 +488,7 @@ export default function AgentDock({
                   现在还有哪些要处理？
                 </button>
                 <div className="agent-answer-bubble">
-                  <span>场记</span>
+                  <span>Veya Agent</span>
                   <p>{missingSummary}</p>
                 </div>
                 <div className="agent-starter-list agent-starter-secondary">
@@ -524,7 +532,7 @@ export default function AgentDock({
               if (line.role === 'assistant') {
                 return (
                   <div key={i} className="msg">
-                    <span className="who gold">场记</span>
+                    <span className="who gold">Veya Agent</span>
                     <div className="msg-body agent-stream-body">
                       <StreamingText
                         text={line.text}
@@ -581,8 +589,8 @@ export default function AgentDock({
                   {(line.card.kind === 'shot-edit' || line.card.kind === 'entity-edit') && editBlocked && (
                     <p className="text-[11px] leading-relaxed text-ink-400" role="status">
                       {editStatus === 'drift'
-                        ? '目标已改动。这条建议基于旧内容，不会覆盖当前文本；请让场记重新读取。'
-                        : '目标已不存在。请让场记重新读取项目后再提议。'}
+                        ? '目标已改动。这条建议基于旧内容，不会覆盖当前文本；请让 Agent 重新读取。'
+                        : '目标已不存在。请让 Agent 重新读取项目后再提议。'}
                     </p>
                   )}
                   <div className="prop-a">
@@ -636,7 +644,7 @@ export default function AgentDock({
             })}
             {busy && (
               <div className="agent-thinking" role="status" aria-live="polite">
-                <span>场记正在核对项目</span>
+                <span>Veya Agent 正在核对项目</span>
                 <span className="agent-thinking-dots" aria-hidden="true">
                   <i /><i /><i />
                 </span>
@@ -659,7 +667,7 @@ export default function AgentDock({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="问进度、怎么导出，或让我改某一镜…"
-              aria-label="向 AI 场记提问"
+              aria-label="向 Veya Agent 提问"
               className="min-w-0 flex-1 rounded-pill border border-surface-line bg-surface-soft px-4 py-2.5 text-xs
                 text-ink-800 placeholder:text-ink-400 focus:border-accent-300 focus:bg-surface-card focus:outline-none"
             />

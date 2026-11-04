@@ -153,3 +153,9 @@
 | `app/api/agent/route.ts` | 校验 + 扣额度 + 调模型，只返回 `{reply}` 或 `{toolCalls}` |
 | `components/AgentDock.tsx` | 场记会话（`variant="docked"` 长在右舱 / `floating` 兼容旧布局）+ 工具轨迹 + propose 卡片 |
 | `lib/quota.ts` | 新增 `agent: 1` |
+
+## 11. 产品更新公告
+
+- 唯一发布数据源是 [`lib/releases.ts`](lib/releases.ts)。新增公告时在数组最上方添加新版本，并同时填写 `version`、北京时间 `publishedAt`、更新标题和条目。
+- 公告已读状态按版本隔离；必须同步提升版本号，否则老用户不会再次看到新内容。
+- 顶栏角标、弹层文案、版本号和时间戳都从该数据源派生，禁止在 `ReleaseNotice` 中另写一份固定文案。

@@ -1,14 +1,15 @@
 'use client'
 
 // 产品更新入口：不再占用首页内容区，只在顶栏留一个带新消息角标的图标。
-// 发布时间可用 NEXT_PUBLIC_RELEASE_AT 覆盖（ISO 字符串，默认北京时间 10-20 17:00）。
 import { useEffect, useRef, useState } from 'react'
 import SmoothCollapse from './SmoothCollapse'
+import {
+  LATEST_PRODUCT_RELEASE,
+  formatReleaseTimestamp,
+} from '@/lib/releases'
 
-const RELEASE_AT = Date.parse(
-  process.env.NEXT_PUBLIC_RELEASE_AT || '2026-10-20T17:00:00+08:00',
-)
-const STORAGE_KEY = 'chengju:notice:h-deck-v1'
+const RELEASE_AT = Date.parse(LATEST_PRODUCT_RELEASE.publishedAt)
+const STORAGE_KEY = `chengju:product-release:${LATEST_PRODUCT_RELEASE.version}`
 
 export default function ReleaseNotice() {
   const [visible, setVisible] = useState(false)
@@ -76,16 +77,28 @@ export default function ReleaseNotice() {
       </button>
 
       <SmoothCollapse open={open}>
-        <div className="release-popover" role="dialog" aria-label="产品更新">
+        <div
+          className="release-popover"
+          role="dialog"
+          aria-label={`产品更新 ${LATEST_PRODUCT_RELEASE.version}`}
+        >
           <div className="release-popover-head">
             <span className="release-dot" aria-hidden="true" />
             <b>产品更新</b>
             <button type="button" onClick={() => setOpen(false)} aria-label="收起更新说明">×</button>
           </div>
-          <p>
-            左边写、右边看。六步流程没变，分镜与 AI 场记并进右侧产出舱；
-            分集可选 10 / 30 / 60 集。已有项目数据不受影响。
-          </p>
+          <div className="release-meta">
+            <span className="release-version">{LATEST_PRODUCT_RELEASE.version}</span>
+            <time dateTime={LATEST_PRODUCT_RELEASE.publishedAt}>
+              {formatReleaseTimestamp(LATEST_PRODUCT_RELEASE.publishedAt)}
+            </time>
+          </div>
+          <p className="release-title">{LATEST_PRODUCT_RELEASE.title}</p>
+          <ul className="release-highlights">
+            {LATEST_PRODUCT_RELEASE.highlights.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
           <button type="button" className="release-dismiss" onClick={dismiss}>
             知道了
           </button>

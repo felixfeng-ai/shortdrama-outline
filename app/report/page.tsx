@@ -3,8 +3,8 @@ import type { Metadata } from "next"
 import "../legal/legal.css"
 
 export const metadata: Metadata = {
-  title: "内容举报 · 成剧 VeyaFrame",
-  description: "向成剧 VeyaFrame 内测团队举报侵权、违法或不当内容。",
+  title: "内容举报 · VeyaFrame",
+  description: "向 VeyaFrame 内测团队举报侵权、违法或不当内容。",
 }
 
 export default function ReportPage() {

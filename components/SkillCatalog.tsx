@@ -16,6 +16,13 @@ import {
 } from '@/lib/assets/api'
 import type { ProjectMaterial } from '@/lib/assets/materials'
 import {
+  canvasHref,
+  readStepQuery,
+  skillsHref,
+  workspaceHref,
+} from '@/lib/app-nav'
+import { STEPS, type StepKey } from '@/lib/types'
+import {
   SKILL_CATALOG,
   filterSkillCatalog,
   type SkillCategory,
@@ -30,7 +37,12 @@ import {
   type IntakeProjectState,
 } from '@/lib/skills/intake'
 import { listSourceMaterials } from '@/lib/skills/source-index'
+import {
+  buildSkillExecutionPlan,
+  recommendSkillsForProject,
+} from '@/lib/skills/plan'
 import SkillAgentDrawer from './SkillAgentDrawer'
+import SkillExecutionPlan from './SkillExecutionPlan'
 import PersonalSkillPanel from './PersonalSkillPanel'
 
 interface SeedPrompt {
@@ -94,6 +106,7 @@ export default function SkillCatalog() {
   })
   const [projects, setProjects] = useState<ProjectDto[]>([])
   const [requestedProjectId, setRequestedProjectId] = useState<string | null>(null)
+  const [returnStep, setReturnStep] = useState<StepKey | null>(null)
   const [quota, setQuota] = useState<QuotaDto | null>(null)
   const [agentOpen, setAgentOpen] = useState(false)
   const [seed, setSeed] = useState<SeedPrompt | null>(null)
@@ -102,6 +115,7 @@ export default function SkillCatalog() {
   const [materials, setMaterials] = useState<ProjectMaterial[]>([])
   const [projectState, setProjectState] = useState<IntakeProjectState>(EMPTY_PROJECT_STATE)
   const [resourcesReady, setResourcesReady] = useState(false)
+  const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(null)
   const [materialBusy, setMaterialBusy] = useState(false)
   const [creatingProject, setCreatingProject] = useState(false)
   const [materialNotice, setMaterialNotice] = useState<string | null>(null)
@@ -115,6 +129,7 @@ export default function SkillCatalog() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     setRequestedProjectId(params.get('project'))
+    setReturnStep(readStepQuery(window.location.search))
     const requestedMode = params.get('mode')
     if (requestedMode && INTAKE_MODES.some((item) => item.id === requestedMode)) {
       setMode(requestedMode as IntakeMode)
@@ -144,6 +159,7 @@ export default function SkillCatalog() {
     setMaterials([])
     setProjectState(EMPTY_PROJECT_STATE)
     setMaterialNotice(null)
+    setResolvedProjectId(null)
     if (!project?.id) {
       setResourcesReady(true)
       return
@@ -171,6 +187,7 @@ export default function SkillCatalog() {
         scenes: payloadCount(latest[5]),
         shots: payloadCount(latest[7]),
       })
+      setResolvedProjectId(project.id)
       setResourcesReady(true)
     })
     return () => {
@@ -186,6 +203,9 @@ export default function SkillCatalog() {
   const closeAgent = useCallback(() => setAgentOpen(false), [])
   const consumeSeed = useCallback(() => setSeed(null), [])
   const modeDefinition = INTAKE_MODES.find((item) => item.id === mode) ?? INTAKE_MODES[0]
+  const returnStepLabel = returnStep
+    ? STEPS.find((step) => step.key === returnStep)?.nav ?? null
+    : null
   const materialCharacters = materials.reduce((sum, material) => sum + material.characterCount, 0)
   const readiness = selectedSkill
     ? assessSkillReadiness(selectedSkill.id, {
@@ -213,6 +233,26 @@ export default function SkillCatalog() {
       ].join('\n\n')
       : '',
   ].filter(Boolean).join('\n')
+  const briefReady = Boolean(intentSummary)
+  const recommendations = useMemo(
+    () => recommendSkillsForProject({
+      mode,
+      state: projectState,
+      query,
+    }),
+    [mode, projectState, query],
+  )
+  const recommendationsReady = !loadingProject && (
+    !project
+    || (resourcesReady && resolvedProjectId === project.id)
+  )
+  const executionPlan = selectedSkill
+    ? buildSkillExecutionPlan(selectedSkill, {
+      state: projectState,
+      projectTitle: project?.title,
+      briefReady,
+    })
+    : null
 
   function chooseSkill(skill: SkillDefinition) {
     if (selectedId === skill.id) {
@@ -222,7 +262,10 @@ export default function SkillCatalog() {
     setSelectedId(skill.id)
     setPrompt(skill.prompt)
     requestAnimationFrame(() => {
-      document.getElementById('skill-prompt')?.focus()
+      document.getElementById('skill-execution-plan')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
     })
   }
 
@@ -363,18 +406,23 @@ export default function SkillCatalog() {
       <header className="topbar">
         <div className="brand"><b>成剧</b><span>VEYAFRAME</span><span className="ai">AI</span></div>
         <nav className="top-nav" aria-label="主导航">
-          <a href={project ? `/skills?project=${encodeURIComponent(project.id)}` : '/skills'} className="active">Skill</a>
-          <a href={project ? `/?project=${encodeURIComponent(project.id)}&step=shots` : '/'}>项目</a>
-          <a href={project ? `/?project=${encodeURIComponent(project.id)}&step=shots` : '/?step=shots'}>画布</a>
+          <a href={skillsHref(project?.id ?? null, returnStep)} className="active" aria-current="page">Skill</a>
+          <a href={workspaceHref(project?.id ?? null, returnStep)}>项目</a>
+          <a href={canvasHref(project?.id ?? null, returnStep)}>画布</a>
         </nav>
         <span className="top-spacer" />
         <div className="top-meta">
           <span className="top-project">{project?.title || (loadingProject ? '读取项目中…' : '还没有项目')}</span>
+          <span>{returnStepLabel ? `步骤 · ${returnStepLabel}` : '项目总览'}</span>
           <span>{quota ? `额度 ${quota.remaining} / ${quota.limit}` : '额度读取中'}</span>
           <span>{projects.length} 个项目</span>
         </div>
         <div className="top-actions">
-          <a className="icon-button" href="/" aria-label="返回项目工作台">
+          <a
+            className="icon-button"
+            href={workspaceHref(project?.id ?? null, returnStep)}
+            aria-label="返回项目工作台"
+          >
             <svg viewBox="0 0 24 24"><path d="M4 12 12 4l8 8M6.5 10v9h11v-9" /></svg>
           </a>
         </div>
@@ -451,7 +499,7 @@ export default function SkillCatalog() {
                 className="tool-button"
                 type="button"
                 aria-label="打开项目资产"
-                onClick={() => { window.location.href = project ? `/?project=${encodeURIComponent(project.id)}&step=visuals` : '/' }}
+                onClick={() => { window.location.href = workspaceHref(project?.id ?? null, 'visuals') }}
               >
                 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H16v14H6.5A2.5 2.5 0 0 1 4 14.5v-9Z" /><path d="M4 14.5A2.5 2.5 0 0 1 6.5 12H16" /></svg>
                 <span>项目资产</span>
@@ -564,11 +612,59 @@ export default function SkillCatalog() {
             </div>
           </div>
 
-          <div className="quick-prompts" aria-label="快捷任务">
-            {QUICK_PROMPTS[mode].map((prompt) => (
-              <button key={prompt} type="button" onClick={() => setPrompt(prompt)}>{prompt}</button>
-            ))}
+          <div className="skill-recommendations" aria-label="为当前项目推荐">
+            <div className="skill-recommendations-head">
+              <span>为当前项目推荐</span>
+              <small>先看计划，再决定是否执行</small>
+            </div>
+            <div className="skill-recommendations-grid">
+              {!recommendationsReady ? (
+                <div className="skill-recommendations-loading" role="status">
+                  正在读取当前项目事实，再匹配 Skill…
+                </div>
+              ) : recommendations.map((recommendation, index) => (
+                <button
+                  key={recommendation.skill.id}
+                  type="button"
+                  className={selectedId === recommendation.skill.id ? 'active' : ''}
+                  aria-pressed={selectedId === recommendation.skill.id}
+                  onClick={() => chooseSkill(recommendation.skill)}
+                >
+                  <span className="skill-recommendation-index">0{index + 1}</span>
+                  <span className="skill-recommendation-copy">
+                    <b>{recommendation.skill.title}</b>
+                    <span>{recommendation.reason}</span>
+                  </span>
+                  <em className={recommendation.readiness.ready ? 'ready' : 'missing'}>
+                    {recommendation.readiness.ready
+                      ? recommendation.skill.meta
+                      : `缺 ${recommendation.readiness.missing.join('、')}`}
+                  </em>
+                </button>
+              ))}
+            </div>
           </div>
+
+          {selectedSkill && executionPlan && (
+            <SkillExecutionPlan
+              skill={selectedSkill}
+              plan={executionPlan}
+              readiness={readiness ?? { ready: true, missing: [] }}
+              quotaRemaining={quota?.remaining ?? null}
+              agentOpen={agentOpen}
+              hasPrompt={Boolean(prompt.trim())}
+              onClose={() => setSelectedId(null)}
+              onStart={() => openAgentWithPrompt(prompt, selectedSkill)}
+            />
+          )}
+
+          {!selectedSkill && (
+            <div className="quick-prompts" aria-label="快捷任务">
+              {QUICK_PROMPTS[mode].map((prompt) => (
+                <button key={prompt} type="button" onClick={() => setPrompt(prompt)}>{prompt}</button>
+              ))}
+            </div>
+          )}
         </section>
 
         <section id="skill-catalog" className="catalog" aria-labelledby="catalogTitle">

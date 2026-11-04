@@ -31,3 +31,43 @@ export function withProjectQuery(search: string, projectId: string | null): stri
   const value = params.toString()
   return value ? `?${value}` : ""
 }
+
+/** 画布是工作台的 URL 状态，刷新与浏览器前进后退都能恢复。 */
+export function readCanvasQuery(search: string): boolean {
+  return searchParams(search).get("view") === "canvas"
+}
+
+export function withCanvasQuery(search: string, open: boolean): string {
+  const params = searchParams(search)
+  if (open) params.set("view", "canvas")
+  else params.delete("view")
+  const value = params.toString()
+  return value ? `?${value}` : ""
+}
+
+function buildHref(pathname: string, params: URLSearchParams): string {
+  const value = params.toString()
+  return value ? `${pathname}?${value}` : pathname
+}
+
+export function workspaceHref(projectId: string | null, step?: StepKey | null): string {
+  const params = new URLSearchParams()
+  if (projectId) params.set("project", projectId)
+  if (step) params.set("step", step)
+  return buildHref("/", params)
+}
+
+export function skillsHref(projectId: string | null, step?: StepKey | null): string {
+  const params = new URLSearchParams()
+  if (projectId) params.set("project", projectId)
+  if (step) params.set("step", step)
+  return buildHref("/skills", params)
+}
+
+export function canvasHref(projectId: string | null, step?: StepKey | null): string {
+  const params = new URLSearchParams()
+  if (projectId) params.set("project", projectId)
+  if (step) params.set("step", step)
+  params.set("view", "canvas")
+  return buildHref("/", params)
+}

@@ -34,7 +34,7 @@ const mono = localFont({
 
 export const metadata: Metadata = {
   // 品牌名在前，描述性关键词留在后面——品牌要靠描述词才被搜到
-  title: '成剧 VeyaFrame · 短剧与漫剧的 AI 分镜台',
+  title: 'VeyaFrame · AI 短剧与漫剧创作工作台',
   description:
     '一句想法，到大纲、分集、定妆与能直接出图的分镜提示词。先定创作契约，再逐镜统一角色与风格；图存在本机，不上传。',
   // 分享到微信/推特要有图，否则只是一行光秃秃的链接
@@ -42,27 +42,27 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
-    siteName: '成剧',
+    siteName: 'VeyaFrame',
     locale: 'zh_CN',
     url: '/',
-    title: '成剧 VeyaFrame · 短剧与漫剧的 AI 分镜台',
+    title: 'VeyaFrame · AI 短剧与漫剧创作工作台',
     description:
       '一句想法，到大纲、分集、定妆与能直接出图的分镜提示词。先定创作契约，再逐镜统一角色与风格；图存在本机，不上传。',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'VeyaFrame 成剧 —— 一句想法，到能出图的分镜' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'VeyaFrame —— AI 短剧与漫剧创作工作台' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: '成剧 VeyaFrame · 短剧与漫剧的 AI 分镜台',
+    title: 'VeyaFrame · AI 短剧与漫剧创作工作台',
     description:
       '一句想法，到大纲、分集、定妆与能直接出图的分镜提示词。先定创作契约，再逐镜统一角色与风格；图存在本机，不上传。',
     images: ['/og.png'],
   },
   manifest: '/manifest.webmanifest',
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  icons: { icon: '/veyaframe-icon.svg', apple: '/veyaframe-icon.svg' },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: '成剧',
+    title: 'VeyaFrame',
   },
 }
 

@@ -209,6 +209,23 @@
 }
 .signal-desk .release-popover-head b { color: var(--signal-text); }
 .signal-desk .release-popover-head button:hover { background: var(--signal-raised); color: var(--signal-text); }
+.signal-desk .release-meta time {
+  color: var(--signal-text-3);
+}
+.signal-desk .release-version {
+  border-color: rgba(196, 217, 138, .26);
+  background: rgba(196, 217, 138, .07);
+  color: var(--signal-acid);
+}
+.signal-desk .release-title {
+  color: var(--signal-text);
+}
+.signal-desk .release-highlights li {
+  color: var(--signal-text-2);
+}
+.signal-desk .release-highlights li::before {
+  background: var(--signal-acid);
+}
 .signal-desk .release-dismiss {
   border-color: var(--signal-line);
   background: var(--signal-raised);
@@ -812,7 +829,7 @@
   background: transparent;
   color: var(--signal-text);
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header {
   min-height: 58px;
   align-items: center;
   padding: 12px 14px !important;
@@ -3818,8 +3835,8 @@
   display: block;
   min-width: 0;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] .agent-stream-wrap,
-.signal-desk .h-deck section[aria-label="AI 场记"] .agent-stream-text {
+.signal-desk .h-deck section[aria-label="Veya Agent"] .agent-stream-wrap,
+.signal-desk .h-deck section[aria-label="Veya Agent"] .agent-stream-text {
   color: var(--signal-text-2);
   font-size: 11.5px;
   line-height: 1.68;
@@ -4469,7 +4486,7 @@
 
 /* 墨块：面板底 + 一圈墨边 + 暖调阴影（墨从纸上浮起来，不是没加载出来的黑块） */
 [data-theme="paper-light-dark-ai"] :is(.cinema, .darkroom),
-[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] {
+[data-theme="paper-light-dark-ai"] section[aria-label="Veya Agent"] {
   background-color: rgb(var(--ai-base));
   background-image: linear-gradient(180deg, rgb(var(--ai-raised)), rgb(var(--ai-base)) 62%);
   box-shadow: inset 0 0 0 1px var(--ai-line), var(--ai-shadow);
@@ -4477,42 +4494,42 @@
 
 /* 墨面上的分隔线：统一成一条暖白细线 */
 [data-theme="paper-light-dark-ai"] :is(.cin-head, .spec),
-[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] :is(header, footer, form),
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+[data-theme="paper-light-dark-ai"] section[aria-label="Veya Agent"] :is(header, footer, form),
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"])
   :is(.border-surface-line, .border-accent-200, .border-accent-200\/70, .border-accent-300) {
   border-color: var(--ai-line);
 }
 
 /* 墨面上的三档文字：主 / 次 / 弱，都比原先亮一档 */
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"])
   :is(.text-ink-900, .text-ink-800, .text-ink-700) {
   color: rgb(var(--ai-fg));
 }
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"])
   :is(.text-ink-600, .text-ink-500) {
   color: rgb(var(--ai-fg-2));
 }
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"])
   :is(.text-ink-400, .text-ink-300) {
   color: rgb(var(--ai-fg-3));
 }
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"]) .font-serif {
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"]) .font-serif {
   color: rgb(var(--ai-fg));
 }
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"])
   :is(.text-accent-800, .text-accent-700) {
   color: rgb(var(--ai-hot));
 }
 
 /* 墨面里的浅色块：卡面换成抬起块，浅红换成暖红 */
-[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] .bg-surface-card {
+[data-theme="paper-light-dark-ai"] section[aria-label="Veya Agent"] .bg-surface-card {
   background-color: rgb(var(--ai-raised));
 }
-[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] .bg-surface-soft {
+[data-theme="paper-light-dark-ai"] section[aria-label="Veya Agent"] .bg-surface-soft {
   background-color: rgb(var(--ai-base));
 }
 /* 场记面板内部本身是不透明墨块，浅红可以走半透明薄雾 */
-[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"]
+[data-theme="paper-light-dark-ai"] section[aria-label="Veya Agent"]
   :is(.bg-accent-50, .bg-accent-50\/50, .bg-accent-50\/60, .bg-accent-100\/80) {
   background-color: var(--ai-hot-wash);
 }
@@ -4528,7 +4545,7 @@
   场记头部的朱砂渐晕：浅粉渐晕落在暖墨上会发灰，换成暖红。
   直接覆盖 background-image，不跟 --tw-gradient-* 变量纠缠。
 */
-[data-theme="paper-light-dark-ai"] section[aria-label="AI 场记"] .bg-gradient-to-r.from-accent-50 {
+[data-theme="paper-light-dark-ai"] section[aria-label="Veya Agent"] .bg-gradient-to-r.from-accent-50 {
   background-image: linear-gradient(
     to right,
     var(--ai-hot-wash),
@@ -4538,11 +4555,11 @@
 }
 
 /* 输入：暗底上用墨上文字，占位降到第三档但仍看得清 */
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"])
   :is(input, textarea) {
   color: rgb(var(--ai-fg));
 }
-[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="AI 场记"])
+[data-theme="paper-light-dark-ai"] :is(.ai-surface, section[aria-label="Veya Agent"])
   :is(input, textarea)::placeholder {
   color: rgb(var(--ai-fg-3));
 }
@@ -5085,7 +5102,7 @@
   top: calc(100% + 10px);
   right: 0;
   z-index: 60;
-  width: min(340px, calc(100vw - 24px));
+  width: min(380px, calc(100vw - 24px));
   padding: 14px;
   border: 1px solid rgb(var(--c-surface-line));
   border-radius: 12px;
@@ -5115,7 +5132,64 @@
   border-radius: 50%;
   background: rgb(var(--c-accent-600));
 }
+.release-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 12px;
+}
+.release-version {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 999px;
+  padding: 0 7px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+.release-meta time {
+  color: rgb(var(--c-ink-400));
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
 .release-popover p { margin: 9px 0 12px; }
+.release-popover .release-title {
+  margin: 11px 0 8px;
+  color: rgb(var(--c-ink-800));
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.release-highlights {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 13px;
+  padding: 0;
+  list-style: none;
+}
+.release-highlights li {
+  position: relative;
+  padding-left: 12px;
+  color: rgb(var(--c-ink-600));
+  font-size: 11px;
+  line-height: 1.65;
+}
+.release-highlights li::before {
+  position: absolute;
+  top: .62em;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgb(var(--c-accent-600));
+  content: "";
+}
 .release-dismiss {
   padding: 6px 11px;
   border: 1px solid rgb(var(--c-surface-line));
@@ -5655,7 +5729,7 @@
   stroke-width: 1.7;
   stroke-linecap: round;
 }
-.map-bar span {
+.map-bar > span {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -5663,6 +5737,39 @@
   font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.map-project-context {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 270px;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid rgba(20, 20, 20, 0.09);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.48);
+  color: rgb(var(--c-ink-500));
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+}
+.map-project-context strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(var(--c-ink-700));
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-project-context > span {
+  flex: 0 0 auto;
+  color: rgb(var(--c-ink-400));
+}
+.map-project-context i {
+  flex: 0 0 auto;
+  color: rgb(var(--c-ink-300));
+  font-style: normal;
 }
 .map-bar button {
   display: inline-flex;
@@ -6767,7 +6874,10 @@
   .h-canvas span { display: none; }
   .map-overlay { padding: 14px 16px 30px; }
   .map-bar { gap: 8px; }
-  .map-bar span { display: none; }
+  .map-bar > span { display: none; }
+  .map-project-context { flex: 1 1 130px; max-width: none; }
+  .map-project-context strong { max-width: 88px; }
+  .map-bar button span { display: none; }
   .map-bar button { padding: 0 8px; }
   .map-priority-head { flex-wrap: wrap; }
   .map-priority-list {
@@ -6837,7 +6947,7 @@
   box-shadow: none;
   border-top: 1px solid var(--ai-line);
 }
-.h-deck section[aria-label="AI 场记"] {
+.h-deck section[aria-label="Veya Agent"] {
   flex: 1;
   min-height: 0;
   border: 0;
@@ -6848,7 +6958,7 @@
 }
 
 /* ── 舱内场记：说话人段落、等宽轨迹、提案卡 ───────────────── */
-.h-deck section[aria-label="AI 场记"] .deck-ctx {
+.h-deck section[aria-label="Veya Agent"] .deck-ctx {
   margin: 9px 16px 0;
   padding: 5px 8px;
   border: 1px solid rgba(227, 184, 127, 0.26);
@@ -6858,45 +6968,45 @@
   font-size: 10.5px;
   color: #c9a878;
 }
-.h-deck section[aria-label="AI 场记"] .deck-ctx b {
+.h-deck section[aria-label="Veya Agent"] .deck-ctx b {
   color: #e3b87f;
   font-weight: 500;
 }
-.h-deck section[aria-label="AI 场记"] .msg {
+.h-deck section[aria-label="Veya Agent"] .msg {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 9px;
   align-items: baseline;
 }
-.h-deck section[aria-label="AI 场记"] .who {
+.h-deck section[aria-label="Veya Agent"] .who {
   font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10px;
   color: #7d7468;
 }
-.h-deck section[aria-label="AI 场记"] .who.gold { color: #e3b87f; }
-.h-deck section[aria-label="AI 场记"] .msg p,
-.h-deck section[aria-label="AI 场记"] .msg-body p {
+.h-deck section[aria-label="Veya Agent"] .who.gold { color: #e3b87f; }
+.h-deck section[aria-label="Veya Agent"] .msg p,
+.h-deck section[aria-label="Veya Agent"] .msg-body p {
   font-size: 12px;
   line-height: 1.65;
   color: #cfc8bd;
 }
-.h-deck section[aria-label="AI 场记"] .msg-body {
+.h-deck section[aria-label="Veya Agent"] .msg-body {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
-.h-deck section[aria-label="AI 场记"] .msg-note {
+.h-deck section[aria-label="Veya Agent"] .msg-note {
   padding-left: 43px;
   font-size: 11px;
   line-height: 1.6;
   color: #8a8177;
 }
-.h-deck section[aria-label="AI 场记"] .trail {
+.h-deck section[aria-label="Veya Agent"] .trail {
   display: flex;
   flex-direction: column;
   padding-left: 43px;
 }
-.h-deck section[aria-label="AI 场记"] .trail-row {
+.h-deck section[aria-label="Veya Agent"] .trail-row {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -6909,13 +7019,13 @@
   font-size: 10.5px;
   color: #8a8177;
 }
-.h-deck section[aria-label="AI 场记"] .trail-row:disabled { opacity: 1; }
-.h-deck section[aria-label="AI 场记"] .trail-mark { color: #5f5852; }
-.h-deck section[aria-label="AI 场记"] .trail-more {
+.h-deck section[aria-label="Veya Agent"] .trail-row:disabled { opacity: 1; }
+.h-deck section[aria-label="Veya Agent"] .trail-mark { color: #5f5852; }
+.h-deck section[aria-label="Veya Agent"] .trail-more {
   margin-left: auto;
   color: #8a8177;
 }
-.h-deck section[aria-label="AI 场记"] .trail-detail {
+.h-deck section[aria-label="Veya Agent"] .trail-detail {
   margin: 4px 0 2px;
   padding: 6px 8px;
   border-radius: 4px;
@@ -6926,47 +7036,47 @@
   white-space: pre-wrap;
   color: #8a8177;
 }
-.h-deck section[aria-label="AI 场记"] .prop {
+.h-deck section[aria-label="Veya Agent"] .prop {
   padding: 9px 10px;
   border: 1px solid rgba(227, 184, 127, 0.24);
   border-radius: 6px;
   background: rgba(227, 184, 127, 0.05);
 }
-.h-deck section[aria-label="AI 场记"] .prop-h {
+.h-deck section[aria-label="Veya Agent"] .prop-h {
   font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
   color: #e3b87f;
 }
-.h-deck section[aria-label="AI 场记"] .prop-b {
+.h-deck section[aria-label="Veya Agent"] .prop-b {
   margin-top: 5px;
   font-size: 11.5px;
   line-height: 1.55;
   color: #cfc8bd;
 }
-.h-deck section[aria-label="AI 场记"] .prop-a {
+.h-deck section[aria-label="Veya Agent"] .prop-a {
   display: flex;
   gap: 7px;
   margin-top: 8px;
 }
-.h-deck section[aria-label="AI 场记"] .prop-a button {
+.h-deck section[aria-label="Veya Agent"] .prop-a button {
   border-radius: 4px;
   padding: 4px 10px;
   font-size: 10px;
 }
-.h-deck section[aria-label="AI 场记"] .prop-a .ok {
+.h-deck section[aria-label="Veya Agent"] .prop-a .ok {
   background: #e3b87f;
   color: #241d16;
   font-weight: 600;
 }
-.h-deck section[aria-label="AI 场记"] .prop-a .no {
+.h-deck section[aria-label="Veya Agent"] .prop-a .no {
   border: 1px solid rgba(255, 236, 214, 0.16);
   color: #a79e92;
 }
 
 /* 输入行走终端语言：› 前缀 + 方角发送键 */
-.h-deck section[aria-label="AI 场记"] form { position: relative; }
-.h-deck section[aria-label="AI 场记"] form::before {
+.h-deck section[aria-label="Veya Agent"] form { position: relative; }
+.h-deck section[aria-label="Veya Agent"] form::before {
   content: "›";
   position: absolute;
   left: 14px;
@@ -6977,17 +7087,17 @@
   color: #e3b87f;
   pointer-events: none;
 }
-.h-deck section[aria-label="AI 场记"] form input {
+.h-deck section[aria-label="Veya Agent"] form input {
   padding-left: 26px;
   border-radius: 6px;
   background: rgba(255, 236, 214, 0.04);
   border-color: rgba(255, 236, 214, 0.16);
   color: #f0ebe2;
 }
-.h-deck section[aria-label="AI 场记"] form input::placeholder {
+.h-deck section[aria-label="Veya Agent"] form input::placeholder {
   color: #7d7468;
 }
-.h-deck section[aria-label="AI 场记"] form button[type="submit"] {
+.h-deck section[aria-label="Veya Agent"] form button[type="submit"] {
   border-radius: 5px;
 }
 
@@ -7305,6 +7415,14 @@
   background: #101419;
   border-bottom-color: var(--signal-line);
 }
+.signal-desk .map-project-context {
+  border-color: var(--signal-line);
+  background: var(--signal-raised);
+  color: var(--signal-text-3);
+}
+.signal-desk .map-project-context strong { color: var(--signal-text-2); }
+.signal-desk .map-project-context > span { color: var(--signal-text-3); }
+.signal-desk .map-project-context i { color: var(--signal-text-3); }
 .signal-desk .map-bar button,
 .signal-desk .map-inspector-close {
   border-color: var(--signal-line);
@@ -7569,15 +7687,15 @@
 .signal-desk .h-deck-body {
   color: var(--signal-text-2);
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header {
   min-height: 58px;
   padding: 12px 14px !important;
   background: transparent !important;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header > span[aria-hidden="true"] {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header > span[aria-hidden="true"] {
   background: none !important;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header > span:nth-child(2) {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header > span:nth-child(2) {
   border: 1px solid color-mix(in srgb, var(--signal-warning) 30%, var(--signal-line));
   border-radius: 7px;
   background: color-mix(in srgb, var(--signal-warning) 9%, var(--signal-raised));
@@ -7587,13 +7705,13 @@
   font-weight: 600;
   box-shadow: none;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header :is(.font-serif, b) {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header :is(.font-serif, b) {
   font-family: inherit;
   font-size: 12.5px;
   font-weight: 500;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header small,
-.signal-desk .h-deck section[aria-label="AI 场记"] > header .text-ink-400 {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header small,
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header .text-ink-400 {
   color: var(--signal-text-3) !important;
   font-size: 10px;
 }
@@ -7625,19 +7743,19 @@
   color: var(--signal-text-2);
   font-weight: 500;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > div[class*="overflow-y-auto"] {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > div[class*="overflow-y-auto"] {
   padding: 14px !important;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] form {
+.signal-desk .h-deck section[aria-label="Veya Agent"] form {
   gap: 8px;
   padding: 10px 12px !important;
   border-top-color: var(--signal-line) !important;
   background: var(--signal-panel);
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] form::before {
+.signal-desk .h-deck section[aria-label="Veya Agent"] form::before {
   display: none;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] form input {
+.signal-desk .h-deck section[aria-label="Veya Agent"] form input {
   min-height: 40px;
   padding: 0 11px !important;
   border: 1px solid var(--signal-line-soft);
@@ -7646,10 +7764,10 @@
   color: var(--signal-text);
   font-size: 11.5px;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] form input::placeholder {
+.signal-desk .h-deck section[aria-label="Veya Agent"] form input::placeholder {
   color: var(--signal-text-3);
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] form button[type="submit"] {
+.signal-desk .h-deck section[aria-label="Veya Agent"] form button[type="submit"] {
   width: 30px;
   height: 30px;
   border: 1px solid color-mix(in srgb, var(--signal-acid) 45%, var(--signal-line));
@@ -7658,7 +7776,7 @@
   background-image: none !important;
   color: #1b2115 !important;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > p {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > p {
   padding: 0 14px 10px !important;
   color: var(--signal-text-3) !important;
   font-size: 9.5px !important;
@@ -8274,10 +8392,103 @@
 .signal-desk .signal-overview {
   margin-top: 14px;
 }
+.signal-desk .signal-command {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--signal-line);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .018), transparent 62%),
+    var(--signal-raised);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .018);
+}
+.signal-desk .signal-command > div {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+  padding: 12px 14px;
+}
+.signal-desk .signal-command > div + div {
+  border-left: 1px solid var(--signal-line-soft);
+}
+.signal-desk .signal-command-current {
+  background:
+    linear-gradient(90deg, rgba(142, 183, 231, .045), transparent 72%);
+}
+.signal-desk .signal-command-blocker.has-blocker {
+  background:
+    linear-gradient(90deg, rgba(213, 141, 115, .055), transparent 72%);
+}
+.signal-desk .signal-command-next {
+  background:
+    linear-gradient(90deg, rgba(196, 217, 138, .04), transparent 72%);
+}
+.signal-desk .signal-command-label {
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: .05em;
+}
+.signal-desk .signal-command-current strong {
+  overflow-wrap: anywhere;
+  color: var(--signal-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.signal-desk .signal-command p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--signal-text-2);
+  font-size: 10.5px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.signal-desk .signal-command-detail {
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+.signal-desk .signal-command-action {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 1px;
+  border: 1px solid color-mix(in srgb, var(--signal-acid) 26%, var(--signal-line));
+  border-radius: 5px;
+  background: rgba(196, 217, 138, .07);
+  padding: 0 9px;
+  color: var(--signal-acid);
+  font-size: 9.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    transform 120ms cubic-bezier(.23, 1, .32, 1),
+    border-color 150ms cubic-bezier(.23, 1, .32, 1),
+    background-color 150ms cubic-bezier(.23, 1, .32, 1);
+}
+.signal-desk .signal-command-action:active {
+  transform: scale(.98);
+}
+.signal-desk .signal-command-action:focus-visible {
+  outline: 2px solid rgba(142, 183, 231, .76);
+  outline-offset: 2px;
+}
 .signal-desk .signal-flow {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 5px;
+  margin-top: 13px;
 }
 .signal-desk .signal-flow button {
   min-width: 0;
@@ -8305,48 +8516,6 @@
 .signal-desk .signal-flow button:disabled {
   cursor: not-allowed;
   opacity: .42;
-}
-.signal-desk .signal-pulse-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 10px;
-  margin-top: 12px;
-}
-.signal-desk .signal-pulse-card {
-  min-width: 0;
-  padding: 11px 12px;
-  border: 1px solid var(--signal-line);
-  border-radius: 7px;
-  background: var(--signal-raised);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .015);
-}
-.signal-desk .signal-pulse-card h3 {
-  margin: 0 0 7px;
-  color: var(--signal-text-2);
-  font-size: 10.5px;
-  font-weight: 500;
-}
-.signal-desk .signal-pulse-card dl {
-  margin: 0;
-}
-.signal-desk .signal-pulse-card dl > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
-  border-top: 1px solid var(--signal-line-soft);
-}
-.signal-desk .signal-pulse-card dt {
-  color: var(--signal-text-3);
-  font-size: 9.5px;
-}
-.signal-desk .signal-pulse-card dd {
-  margin: 0;
-  color: var(--signal-text);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
 }
 
 .signal-desk .h-deck {
@@ -8378,15 +8547,15 @@
 .signal-desk .h-deck-meta {
   display: none;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header {
   min-height: 92px;
   align-items: flex-start;
   padding: 38px 16px 14px !important;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header > span:nth-child(2) {
-  display: none;
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header > span:nth-child(2) {
+  display: grid;
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header :is(.font-serif, b) {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header :is(.font-serif, b) {
   color: var(--signal-text);
   font-size: 12.5px !important;
 }
@@ -8439,10 +8608,170 @@
 .signal-desk .agent-starter-secondary .agent-starter-head {
   padding-top: 14px;
 }
+.signal-desk .agent-session-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--signal-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .014), transparent),
+    rgba(16, 20, 24, .62);
+}
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header > .agent-brand-mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(196, 217, 138, .3);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .06), transparent),
+    rgba(196, 217, 138, .1);
+  color: var(--signal-acid);
+  font-family: var(--font-latin), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+}
+.signal-desk .agent-brand-name {
+  display: block;
+  color: var(--signal-text);
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+.signal-desk .agent-session-label {
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8.5px;
+  letter-spacing: .04em;
+}
+.signal-desk .agent-session-select-wrap {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+.signal-desk .agent-session-select {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  appearance: none;
+  border: 1px solid var(--signal-line);
+  border-radius: 6px;
+  background: #151a1e;
+  padding: 0 29px 0 10px;
+  color: var(--signal-text-2);
+  color-scheme: dark;
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-size: 10.5px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition:
+    border-color 150ms cubic-bezier(.23, 1, .32, 1),
+    background-color 150ms cubic-bezier(.23, 1, .32, 1),
+    color 150ms cubic-bezier(.23, 1, .32, 1);
+}
+.signal-desk .agent-session-select-wrap > svg {
+  position: absolute;
+  right: 9px;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--signal-text-3);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.signal-desk .agent-session-new {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(196, 217, 138, .2);
+  border-radius: 6px;
+  background: rgba(196, 217, 138, .065);
+  padding: 0 10px;
+  color: var(--signal-acid);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 120ms cubic-bezier(.23, 1, .32, 1),
+    border-color 150ms cubic-bezier(.23, 1, .32, 1),
+    background-color 150ms cubic-bezier(.23, 1, .32, 1);
+}
+.signal-desk .agent-session-new > span {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+}
+.signal-desk .agent-session-select:disabled,
+.signal-desk .agent-session-new:disabled {
+  cursor: wait;
+  opacity: .48;
+}
+.signal-desk .agent-session-select:active,
+.signal-desk .agent-session-new:active:not(:disabled) {
+  transform: scale(.98);
+}
+.signal-desk .agent-session-select:focus-visible,
+.signal-desk .agent-session-new:focus-visible {
+  outline: 2px solid rgba(142, 183, 231, .76);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .signal-desk .signal-command-action:hover {
+    border-color: rgba(196, 217, 138, .46);
+    background: rgba(196, 217, 138, .11);
+  }
+  .signal-desk .agent-session-select:hover:not(:disabled) {
+    border-color: var(--signal-line-strong, rgba(213, 224, 228, .18));
+    background: var(--signal-raised);
+    color: var(--signal-text);
+  }
+  .signal-desk .agent-session-new:hover:not(:disabled) {
+    border-color: rgba(196, 217, 138, .34);
+    background: rgba(196, 217, 138, .1);
+  }
+}
+@media (max-width: 520px) {
+  .signal-desk .agent-session-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+  .signal-desk .agent-session-label {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .signal-desk .agent-session-select,
+  .signal-desk .agent-session-new {
+    transition: none;
+  }
+}
 
 @media (max-width: 1180px) {
-  .signal-desk .signal-pulse-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .signal-desk .signal-command {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .signal-desk .signal-command-current {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid var(--signal-line-soft);
+  }
+  .signal-desk .signal-command-blocker {
+    border-left: 0 !important;
   }
 }
 @media (max-width: 920px) {
@@ -8477,6 +8806,21 @@
   .signal-desk .signal-flow button {
     min-width: 48px;
     flex: 0 0 48px;
+  }
+}
+@media (max-width: 640px) {
+  .signal-desk .signal-command {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .signal-desk .signal-command-current {
+    grid-column: auto;
+  }
+  .signal-desk .signal-command > div + div {
+    border-top: 1px solid var(--signal-line-soft);
+    border-left: 0;
+  }
+  .signal-desk .signal-command-action {
+    min-height: 44px;
   }
 }
 
@@ -8527,11 +8871,16 @@
   background: transparent;
   color: var(--signal-text);
 }
-.signal-desk .h-deck section[aria-label="AI 场记"] > header {
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header {
   min-height: 58px;
   align-items: center;
   padding: 12px 14px !important;
 }
 @media (max-width: 920px) {
   .signal-desk .signal-rail { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .signal-desk .signal-command-action {
+    transition: none;
+  }
 }

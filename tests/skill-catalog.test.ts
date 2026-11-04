@@ -47,7 +47,7 @@ test("SKILL4 正式页面复用真实 Agent，而不是静态假对话", () => {
   assert.ok(agent.includes("runAgentLoop"))
   assert.ok(agent.includes("createToolExecutors"))
   assert.ok(agent.includes("/api/agent"))
-  assert.ok(app.includes("/skills?project="))
+  assert.ok(app.includes("skillsHref(projectId, view)"))
   assert.ok(catalog.includes("requestedProjectId"))
   assert.ok(catalog.includes("new URLSearchParams(window.location.search)"))
   assert.ok(catalog.includes("<span>Skill</span>"))

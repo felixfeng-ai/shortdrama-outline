@@ -162,8 +162,11 @@ import {
   type PlatformExportTarget,
 } from '@/lib/export/platforms'
 import {
+  readCanvasQuery,
   readProjectQuery,
   readStepQuery,
+  skillsHref,
+  withCanvasQuery,
   withProjectQuery,
   withStepQuery,
 } from '@/lib/app-nav'
@@ -377,11 +380,12 @@ export default function Home() {
   }, [projectId])
   useEffect(() => {
     let cancelled = false
-    const syncViewFromUrl = () => {
+    const syncRouteFromUrl = () => {
       setView(readStepQuery(window.location.search) ?? 'characters')
+      setCanvasOpen(readCanvasQuery(window.location.search))
     }
     const syncFromPopState = () => {
-      syncViewFromUrl()
+      syncRouteFromUrl()
       const targetProjectId = readProjectQuery(window.location.search)
       if (targetProjectId === projectIdRef.current) return
       if (!targetProjectId) {
@@ -397,7 +401,7 @@ export default function Home() {
         setNotice(restored ? null : '这个项目还没有内容，可以从故事灵感开始写。')
       })()
     }
-    syncViewFromUrl()
+    syncRouteFromUrl()
     window.addEventListener('popstate', syncFromPopState)
     return () => {
       cancelled = true
@@ -1243,13 +1247,51 @@ export default function Home() {
    */
   const canJump = () => true
 
+  /** 画布是工作台 URL 的一等状态：打开时 push，关闭时回到上一条工作台记录。 */
+  const openCanvas = () => {
+    if (canvasOpen) return
+    const search = withCanvasQuery(window.location.search, true)
+    const href = `${window.location.pathname}${search}${window.location.hash}`
+    const previous = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state
+      : {}
+    window.history.pushState({ ...previous, canvasEntry: true }, '', href)
+    setCanvasOpen(true)
+  }
+
+  const closeCanvas = () => {
+    if (!canvasOpen) return
+    const state = window.history.state
+    if (state && typeof state === 'object' && state.canvasEntry) {
+      window.history.back()
+      return
+    }
+    const search = withCanvasQuery(window.location.search, false)
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}${window.location.hash}`)
+    setCanvasOpen(false)
+  }
+
   /** 点左栏/窄屏步骤条：切到那一步，并把页面滚回顶部 */
   const goToStep = (key: StepKey) => {
+    const nextSearch = withCanvasQuery(withStepQuery(window.location.search, key), false)
+    const previous = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state
+      : {}
     if (key !== view) {
-      const search = withStepQuery(window.location.search, key)
-      window.history.pushState({ step: key }, '', `${window.location.pathname}${search}${window.location.hash}`)
+      window.history.pushState(
+        { ...previous, step: key, canvasEntry: false },
+        '',
+        `${window.location.pathname}${nextSearch}${window.location.hash}`,
+      )
+    } else {
+      window.history.replaceState(
+        { ...previous, canvasEntry: false },
+        '',
+        `${window.location.pathname}${nextSearch}${window.location.hash}`,
+      )
     }
     setView(key)
+    setCanvasOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -1267,7 +1309,6 @@ export default function Home() {
         window.history.replaceState(window.history.state, '', url)
       }
     }
-    setCanvasOpen(false)
     goToStep(step)
     setCanvasFocus({ node, itemId, nonce: Date.now() })
   }
@@ -1318,6 +1359,10 @@ export default function Home() {
 
   /** 左栏高亮的是「正在看的那一步」，不是「该做哪一步」 */
   const viewIndex = STEPS.find((s) => s.key === view)?.index ?? currentStep
+  const canvasProjectTitle = projects.find((item) => item.id === projectId)?.title
+    || idea.trim().slice(0, 24)
+    || '未命名项目'
+  const canvasStepLabel = STEPS.find((step) => step.key === view)?.nav ?? '核心人物'
 
   /**
    * 一步做完之后给一句下一步提示：主线的下一站 + 顺手能去的资产步骤。
@@ -3081,7 +3126,6 @@ export default function Home() {
   /** 画布节点 → 对应步骤 + 场记，问题预先带入但不自动发送 */
   function askAgentFromCanvas(step: StepKey, label: string) {
     tabTouched.current = true
-    setCanvasOpen(false)
     setDeckOpen(true)
     setAgentOpen(true)
     goToStep(step)
@@ -3103,6 +3147,20 @@ export default function Home() {
       </svg>
       <p className="text-xs leading-relaxed text-accent-800">{text}</p>
     </div>
+  )
+
+  const signalOverview = (
+    <SignalOverview
+      current={viewIndex}
+      currentStep={currentStep}
+      completed={stepCompleted}
+      onJump={goToStep}
+      canJump={canJump}
+      todoItems={todoItems}
+      hasIdea={idea.trim().length > 0}
+      shotDone={shots.filter((shot) => shot.status === 'done').length}
+      shotTotal={shots.length}
+    />
   )
 
   return (
@@ -3133,7 +3191,7 @@ export default function Home() {
         <button
           type="button"
           className="h-canvas"
-          onClick={() => setCanvasOpen(true)}
+          onClick={() => openCanvas()}
           title="查看六步项目画布"
           aria-label="打开项目画布"
         >
@@ -3147,7 +3205,7 @@ export default function Home() {
         </button>
 
         <a
-          href={projectId ? `/skills?project=${encodeURIComponent(projectId)}` : '/skills'}
+          href={skillsHref(projectId, view)}
           className="h-canvas"
           title="打开 Skill 创作入口"
           aria-label="打开 Skill 创作入口"
@@ -3199,16 +3257,17 @@ export default function Home() {
           issues={canvasIssues}
           previews={canvasPreviews}
           projectId={projectId}
+          projectTitle={canvasProjectTitle}
+          currentStepLabel={canvasStepLabel}
           onEdit={handleCanvasEdit}
           onLoadVersions={loadCanvasVersions}
           onRestoreVersion={restoreCanvasVersion}
           onOpen={(step) => {
-            setCanvasOpen(false)
             goToStep(step)
           }}
           onOpenItem={openCanvasItem}
           onAskAgent={askAgentFromCanvas}
-          onClose={() => setCanvasOpen(false)}
+          onClose={() => closeCanvas()}
         />
       )}
 
@@ -3218,7 +3277,7 @@ export default function Home() {
           <button
             type="button"
             className="signal-rail-canvas"
-            onClick={() => setCanvasOpen(true)}
+            onClick={() => openCanvas()}
             title="打开项目画布"
             aria-label="打开项目画布"
           >
@@ -3342,6 +3401,8 @@ export default function Home() {
                   />
                 </div>
               </div>
+              {!firstRun && signalOverview}
+
               <IdeaPanel
               key={view === 'characters' ? 'characters' : view}
               idea={idea}
@@ -3357,15 +3418,7 @@ export default function Home() {
               allowGenerate={view === 'characters'}
             />
 
-            <SignalOverview
-              current={viewIndex}
-              completed={stepCompleted}
-              onJump={goToStep}
-              canJump={canJump}
-              todoCount={todoItems.length}
-              shotDone={shots.filter((shot) => shot.status === 'done').length}
-              shotTotal={shots.length}
-            />
+            {firstRun && signalOverview}
 
           <div className="mt-5 space-y-4">
             {/*
@@ -3938,7 +3991,7 @@ export default function Home() {
                 setAgentOpen(true)
               }}
             >
-              场记
+              Agent
               {!agentOpen && agentUnread > 0 && (
                 <span className="h-deck-badge" aria-label={`${agentUnread} 条新消息`}>
                   {agentUnread > 9 ? '9+' : agentUnread}

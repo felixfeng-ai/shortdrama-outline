@@ -20,6 +20,7 @@ import type { ProjectMaterial } from '@/lib/assets/materials'
 import { runContinuitySkill, runDeterministicSkill } from '@/lib/skills/client'
 import type { ContinuityReport } from '@/lib/skills/continuity'
 import type { DeterministicSkillReport } from '@/lib/skills/deterministic'
+import { maxModelCallsForSkill } from '@/lib/skills/plan'
 import ContinuityReportCard from './ContinuityReportCard'
 import DeterministicSkillReportCard from './DeterministicSkillReportCard'
 
@@ -336,6 +337,7 @@ export default function SkillAgentDrawer({
       skill ? `[使用 Skill：${skill.title}]\n${text}` : text,
       contextToSend,
     ].filter(Boolean).join('\n\n')
+    const skillModelLimit = skill ? maxModelCallsForSkill(skill.id) : 0
     const steps: ProcessStep[] = []
     const updateSteps = (next: ProcessStep[]) => {
       setProcessSteps([...next])
@@ -369,7 +371,7 @@ export default function SkillAgentDrawer({
           updateSteps([{
             id: uniqueId('skill'),
             label: '确定性 Runner 暂不可用',
-            detail: '已转交场记继续处理',
+            detail: '已转交Agent继续处理',
           }])
         }
       }
@@ -404,7 +406,7 @@ export default function SkillAgentDrawer({
           updateSteps([{
             id: uniqueId('skill'),
             label: '确定性 Runner 暂不可用',
-            detail: '已转交场记继续处理',
+            detail: '已转交Agent继续处理',
           }])
         }
       }
@@ -420,6 +422,7 @@ export default function SkillAgentDrawer({
           return { reply: data.reply, toolCalls: data.toolCalls }
         },
         executors: createToolExecutors(state),
+        maxModelCalls: skillModelLimit > 0 ? skillModelLimit : undefined,
         onEvent: (event: LoopEvent) => {
           if (event.type === 'tool-call') {
             steps.push({
@@ -438,7 +441,7 @@ export default function SkillAgentDrawer({
         },
       })
       historyRef.current = [...historyRef.current, ...result.messages]
-      const finalText = result.messages[result.messages.length - 1]?.content ?? '场记没有返回内容'
+      const finalText = result.messages[result.messages.length - 1]?.content ?? 'Agent没有返回内容'
       setLines((current) => [
         ...current,
         { id: uniqueId('assistant'), role: 'assistant', text: finalText },
@@ -450,7 +453,7 @@ export default function SkillAgentDrawer({
         {
           id: uniqueId('note'),
           role: 'note',
-          text: error instanceof Error ? error.message : '场记暂时没有回应，请稍后重试',
+          text: error instanceof Error ? error.message : 'Agent暂时没有回应，请稍后重试',
         },
       ])
     } finally {
@@ -495,18 +498,18 @@ export default function SkillAgentDrawer({
         className={`agent-drawer ${open ? 'open' : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-label="AI 场记"
+        aria-label="Veya Agent"
         aria-hidden={!open}
         tabIndex={-1}
       >
         <header className="agent-head">
-          <span className="agent-avatar">记</span>
+          <span className="agent-avatar">V</span>
           <span className="agent-heading">
-            <b>AI 场记</b>
+            <b>Veya Agent</b>
             <span>{ready ? '已读取当前项目，写项目前一定问你' : '正在读取当前项目…'}</span>
           </span>
           <span className="agent-ready">{busy ? 'WORKING' : ready ? 'READY' : 'LOADING'}</span>
-          <button className="agent-close" type="button" onClick={onClose} aria-label="关闭场记">
+          <button className="agent-close" type="button" onClick={onClose} aria-label="关闭 Agent">
             <svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15" /></svg>
           </button>
         </header>
@@ -603,23 +606,23 @@ export default function SkillAgentDrawer({
             </div>
           )}
           {degraded && <div className="agent-bubble">本次模型不支持工具调用，只能基于对话上下文回答。</div>}
-          {busy && <div className="agent-bubble">场记正在核对项目…</div>}
+          {busy && <div className="agent-bubble">Agent正在核对项目…</div>}
         </div>
         <form className="agent-compose" onSubmit={(event) => { event.preventDefault(); void send() }}>
-          <label className="sr-only" htmlFor="skill-agent-input">向场记提问</label>
+          <label className="sr-only" htmlFor="skill-agent-input">向Agent提问</label>
           <input
             ref={inputRef}
             id="skill-agent-input"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="问项目、挑 Skill，或直接交给场记…"
+            placeholder="问项目、挑 Skill，或直接交给Agent…"
             disabled={busy}
           />
           <button type="submit" disabled={busy || !input.trim()} aria-label="发送">
             <svg viewBox="0 0 20 20"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5" /></svg>
           </button>
         </form>
-        <p className="demo-caption">场记调用平台 Skill 与项目工具 · 写入操作需另行确认</p>
+        <p className="demo-caption">Agent调用平台 Skill 与项目工具 · 写入操作需另行确认</p>
       </aside>
     </>
   )

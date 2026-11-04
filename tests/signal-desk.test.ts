@@ -59,7 +59,7 @@ test("SDA4 整体换肤不能删掉核心入口", () => {
   assert.ok(projectSrc.includes("导出交付包"), "项目交付入口丢失")
   assert.ok(projectSrc.includes("导出完整备份"), "项目备份入口丢失")
   assert.ok(ideaSrc.includes("生成 · 核心人物"), "核心生成入口丢失")
-  assert.ok(agentSrc.includes("AI 场记"), "场记身份丢失")
+  assert.ok(agentSrc.includes("Veya Agent"), "场记身份丢失")
 })
 
 test("SDA5 深色主题里的警告提示和半透明代码块必须压暗", () => {
@@ -111,13 +111,15 @@ test("SDA10 窄屏 AI 抽屉必须占满视口，不继承桌面固定宽度", (
   )
 })
 
-test("SDA11 首页主区必须包含 STORY COMMAND、六步轨道与两张项目状态卡", () => {
+test("SDA11 首页主区必须包含 STORY COMMAND、六步轨道与当前任务决策区", () => {
   assert.ok(ideaSrc.includes("STORY COMMAND"), "故事主卡缺少 STORY COMMAND 标识")
   assert.ok(ideaSrc.includes("story-tools-toggle"), "灵感助手没有可展开入口")
   assert.ok(pageSrc.includes("<SignalOverview"), "首页没有挂载六步与项目状态总览")
   assert.ok(overviewSrc.includes("signal-flow"), "缺少图片 demo 的六步轨道")
-  assert.ok(overviewSrc.includes("项目脉搏"), "缺少项目脉搏卡")
-  assert.ok(overviewSrc.includes("最近动作"), "缺少最近动作卡")
+  assert.ok(overviewSrc.includes("signal-command"), "缺少当前任务决策区")
+  assert.ok(overviewSrc.includes("当前任务"), "缺少当前任务")
+  assert.ok(overviewSrc.includes("阻塞"), "缺少阻塞状态")
+  assert.ok(overviewSrc.includes("下一步"), "缺少下一步动作")
 })
 
 test("SDA12 场记空态必须呈现提问气泡和可读的项目判断", () => {
