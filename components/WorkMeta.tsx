@@ -3,7 +3,8 @@
 // 项目状态条：项目 / 意图 / 待办 / 判断收成一行，点哪段展开哪段。
 // 目的是让"可选项"不再各自占一行，把视觉主角留给想法与当前步骤。
 
-export type MetaPanel = 'brief' | 'todo' | 'decisions' | 'canon' | 'log' | 'audit' | 'compliance'
+export type MetaPanel =
+  | 'brief' | 'todo' | 'decisions' | 'canon' | 'log' | 'audit' | 'compliance' | 'ledger'
 
 interface Props {
   briefFilled: boolean
@@ -13,6 +14,7 @@ interface Props {
   logCount: number
   auditCount: number
   complianceCount: number
+  ledgerCount: number
   active: MetaPanel | null
   onToggle: (panel: MetaPanel) => void
 }
@@ -25,6 +27,7 @@ export default function WorkMeta({
   logCount,
   auditCount,
   complianceCount,
+  ledgerCount,
   active,
   onToggle,
 }: Props) {
@@ -82,6 +85,15 @@ export default function WorkMeta({
         onClick={() => onToggle('compliance')}
       >
         合规预检 {complianceCount}
+      </button>
+      <span className="workmeta-sep" aria-hidden="true">·</span>
+      <button
+        type="button"
+        className={active === 'ledger' ? 'on' : ''}
+        aria-expanded={active === 'ledger'}
+        onClick={() => onToggle('ledger')}
+      >
+        生产台账 {ledgerCount}
       </button>
       <span className="workmeta-sep" aria-hidden="true">·</span>
       <button

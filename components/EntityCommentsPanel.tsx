@@ -23,6 +23,19 @@ const TYPE_LABEL: Record<EntityCommentTarget, string> = {
   shot: '镜头',
 }
 
+function memberLabel(authorId: string): string {
+  return `成员 ${authorId.trim().slice(-4) || '未知'}`
+}
+
+function commentTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function EntityCommentsPanel({
   projectId,
   entities,
@@ -156,9 +169,14 @@ export default function EntityCommentsPanel({
                   key={comment.id}
                   className="flex items-start justify-between gap-2 border-b border-surface-line/70 py-2 last:border-b-0"
                 >
-                  <p className={`min-w-0 text-[10px] leading-relaxed ${comment.status === 'resolved' ? 'text-ink-300 line-through' : 'text-ink-600'}`}>
-                    {comment.body}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-[9px] text-ink-400">
+                      {memberLabel(comment.authorId)} · {commentTime(comment.createdAt)}
+                    </p>
+                    <p className={`mt-0.5 text-[10px] leading-relaxed ${comment.status === 'resolved' ? 'text-ink-300 line-through' : 'text-ink-600'}`}>
+                      {comment.body}
+                    </p>
+                  </div>
                   {comment.status === 'open' && (
                     <button
                       type="button"

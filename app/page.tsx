@@ -32,6 +32,7 @@ import PacingCurve from '@/components/PacingCurve'
 import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
 import CreativeAuditPanel from '@/components/CreativeAuditPanel'
 import CompliancePanel from '@/components/CompliancePanel'
+import ProductionLedgerPanel from '@/components/ProductionLedgerPanel'
 import TodoPanel from '@/components/TodoPanel'
 import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
 import { buildTodoList } from '@/lib/todo'
@@ -48,6 +49,7 @@ import { EMPTY_LOOK, isLookEmpty, lookSignature, readLook, type LookBook } from 
 import { buildProjectStatus } from '@/lib/project-status'
 import { auditCreativeQuality } from '@/lib/creative-audit'
 import { auditCompliance } from '@/lib/compliance'
+import { buildProductionLedger, productionLedgerCsv } from '@/lib/production-ledger'
 import { STEP_COST } from '@/lib/model-pricing'
 import { forecastQuota } from '@/lib/quota-forecast'
 import { buildAiExportDisclosure } from '@/lib/export/ai-disclosure'
@@ -107,6 +109,7 @@ import type { ProjectMaterial } from '@/lib/assets/materials'
 import { ARTIFACT_KINDS, type ArtifactKind } from '@/lib/assets/types'
 import type { SnapshotDto } from '@/lib/assets/api'
 import { auditShots, type ShotAudit } from '@/lib/assets/impact'
+import { auditShotProduction } from '@/lib/assets/qc'
 import {
   detectVaultMode,
   loadDirectoryHandle,
@@ -167,6 +170,7 @@ import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import { fetchLocalizationBackup } from '@/lib/localization/client'
 import { keyframeManifestEntry } from '@/lib/generation/export'
+import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
 import {
   MIN_IDEA_LENGTH,
   GENRES,
@@ -513,6 +517,8 @@ export default function Home() {
   const [projectSkill, setProjectSkill] = useState<ProjectSkillBinding | null>(null)
   const [entityComments, setEntityComments] = useState<EntityComment[]>([])
   const [projectMaterials, setProjectMaterials] = useState<ProjectMaterial[]>([])
+  const [productionTasks, setProductionTasks] = useState<GenerationTask[]>([])
+  const [productionAssets, setProductionAssets] = useState<GeneratedAsset[]>([])
   const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
   const [contextVersion, setContextVersion] = useState<number | null>(null)
   const [metaPanel, setMetaPanel] = useState<MetaPanel | null>(null)
@@ -533,6 +539,8 @@ export default function Home() {
       setDecisions([])
       setCanon({ entities: [], facts: [], issues: [] })
       setProjectMaterials([])
+      setProductionTasks([])
+      setProductionAssets([])
       setJudgments([])
       return
     }
@@ -569,18 +577,21 @@ export default function Home() {
 
     void (async () => {
       try {
-        const [server, decisionData, canonData, skillBinding, commentData, materialData] = await Promise.all([
+        const [server, decisionData, canonData, skillBinding, commentData, materialData, generationData] = await Promise.all([
           fetchProjectContext(projectId),
           fetchProjectDecisions(projectId),
           fetchProjectCanon(projectId),
           fetchProjectSkill(projectId).catch(() => null),
           fetchProjectComments(projectId).catch(() => []),
           fetchProjectMaterials(projectId, false).catch(() => []),
+          fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] })),
         ])
         if (cancelled) return
         setProjectSkill(skillBinding)
         setEntityComments(commentData)
         setProjectMaterials(materialData)
+        setProductionTasks(generationData.tasks)
+        setProductionAssets(generationData.assets)
         setCanon(canonData)
         setDecisions(decisionData.decisions)
         if (decisionData.judgments.length > 0) {
@@ -2258,6 +2269,23 @@ export default function Home() {
         "html",
       )
 
+      const exportLedger = buildProductionLedger({
+        projectTitle: title,
+        generatedAt: exportedAt,
+        shots,
+        qc: auditShotProduction({
+          shots,
+          visuals,
+          places,
+          assets: keyframeState.assets,
+        }),
+        comments: entityComments,
+        tasks: keyframeState.tasks,
+        assets: keyframeState.assets,
+      })
+      addText("production/ledger.csv", productionLedgerCsv(exportLedger), "csv")
+      addText("production/ledger.json", JSON.stringify(exportLedger, null, 2), "json")
+
       if (mode === "delivery" && exportTarget !== "general") {
         const platformKit = buildPlatformExportKit({
           title,
@@ -2362,6 +2390,8 @@ export default function Home() {
         "manifest.json：轻量索引",
         "export-report.json：成功、缺失与提醒",
         "production/：CSV、执行单与首尾帧衔接",
+        "production/ledger.csv：逐镜生产台账",
+        "production/ledger.json：结构化生产台账",
         "storyboard/index.html：离线分镜审阅",
         "references/：本地参考图（不上传）",
         "generated/selected/：当前采用生成图",
@@ -2694,6 +2724,27 @@ export default function Home() {
       sourceMaterials: projectMaterials,
     }),
     [characters, episodes, idea, projectId, projectMaterials, projects, shots],
+  )
+  const productionQc = useMemo(
+    () => auditShotProduction({
+      shots,
+      visuals,
+      places,
+      assets: productionAssets,
+    }),
+    [places, productionAssets, shots, visuals],
+  )
+  const productionLedger = useMemo(
+    () => buildProductionLedger({
+      projectTitle: projects.find((item) => item.id === projectId)?.title ?? idea.trim().slice(0, 40),
+      generatedAt: Date.now(),
+      shots,
+      qc: productionQc,
+      comments: entityComments,
+      tasks: productionTasks,
+      assets: productionAssets,
+    }),
+    [entityComments, idea, projectId, productionAssets, productionQc, productionTasks, projects, shots],
   )
 
   const agentState: AgentState = {
@@ -3330,6 +3381,7 @@ export default function Home() {
               logCount={judgments.length}
               auditCount={creativeAudit.counts.total}
               complianceCount={complianceAudit.counts.total}
+              ledgerCount={productionLedger.rows.length}
               active={metaPanel}
               onToggle={(panel) => setMetaPanel(metaPanel === panel ? null : panel)}
             />
@@ -3340,6 +3392,10 @@ export default function Home() {
             <CompliancePanel
               open={metaPanel === 'compliance'}
               result={complianceAudit}
+            />
+            <ProductionLedgerPanel
+              open={metaPanel === 'ledger'}
+              ledger={productionLedger}
             />
             {projectId && !firstRun && (
               <EntityCommentsPanel
