@@ -30,6 +30,7 @@ import LookBookCard from '@/components/LookBookCard'
 import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
 import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
+import CreativeAuditPanel from '@/components/CreativeAuditPanel'
 import TodoPanel from '@/components/TodoPanel'
 import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
 import { buildTodoList } from '@/lib/todo'
@@ -44,6 +45,7 @@ import { EMPTY_BRIEF, briefSignature, isBriefEmpty, readBrief, type CreativeBrie
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
 import { EMPTY_LOOK, isLookEmpty, lookSignature, readLook, type LookBook } from '@/lib/look'
 import { buildProjectStatus } from '@/lib/project-status'
+import { auditCreativeQuality } from '@/lib/creative-audit'
 import {
   buildVariantDecisionInput,
   type VariantChoiceOption,
@@ -2642,6 +2644,11 @@ export default function Home() {
    * 只读快照是刻意的：工具拿到的是一份拷贝，它改不到真东西——
    * 「agent 不会擅自改稿」这条不只是提示词里的约定，是数据结构上的事实。
    */
+  const creativeAudit = useMemo(
+    () => auditCreativeQuality({ brief, characters, episodes }),
+    [brief, characters, episodes],
+  )
+
   const agentState: AgentState = {
     projectTitle: projects.find((p) => p.id === projectId)?.title ?? idea.trim().slice(0, 20),
     hasIdea: idea.trim().length > 0,
@@ -2662,6 +2669,11 @@ export default function Home() {
       entityName: item.entityName,
       field: item.field,
       message: item.message,
+    })),
+    characters: characters.map((item) => ({
+      name: item.name,
+      motivation: item.motivation,
+      arc: item.arc,
     })),
     skill: projectSkill
       ? {
@@ -2698,6 +2710,7 @@ export default function Home() {
     episodes: episodes.map((e) => ({
       number: e.number,
       title: e.title,
+      synopsis: e.synopsis,
       hook: e.hook,
       intensity: e.intensity,
     })),
@@ -3203,8 +3216,13 @@ export default function Home() {
               decisionCount={decisions.length}
               canonIssueCount={canon.issues.length}
               logCount={judgments.length}
+              auditCount={creativeAudit.counts.total}
               active={metaPanel}
               onToggle={(panel) => setMetaPanel(metaPanel === panel ? null : panel)}
+            />
+            <CreativeAuditPanel
+              open={metaPanel === 'audit'}
+              result={creativeAudit}
             />
             {projectId && !firstRun && (
               <EntityCommentsPanel

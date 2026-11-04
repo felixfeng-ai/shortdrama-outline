@@ -9,6 +9,7 @@ import type { CreativeBrief } from '../brief'
 import type { JudgmentEntry } from '../judgment-log'
 import { isFlatPacing, pacingHint, pacingSeries } from '../pacing'
 import { reviewEpisodes, reviewShots } from '../project-status'
+import { auditCreativeQuality } from '../creative-audit'
 import { buildTodoList } from '../todo'
 import {
   listSourceMaterials,
@@ -114,7 +115,14 @@ export interface AgentState {
   localizationContext?: AgentLocalizationContext | null
   localizationAudit?: AgentLocalizationAudit | null
   localizationEntities?: AgentLocalizationEntity[]
-  episodes: { number: number; title: string; hook: string; intensity?: number }[]
+  characters?: { name: string; motivation: string; arc: string }[]
+  episodes: {
+    number: number
+    title: string
+    synopsis?: string
+    hook: string
+    intensity?: number
+  }[]
   completed: Record<StepKey, boolean>
   shots: AgentShot[]
   expiredShots: number
@@ -276,7 +284,7 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
   },
   {
     name: 'review_episodes',
-    description: '只读审片：检查分集的钩子是否缺失/过短，以及整体节奏曲线是否是一条平线。回答「这一版好不好」时用，不要直接改内容。',
+    description: '只读审片：检查分集钩子、节奏、模板化表达、人物动机和创作契约红线。回答「这一版好不好」时用，不要直接改内容。',
     parameters: { type: 'object', properties: {}, required: [] },
   },
   {
@@ -628,6 +636,23 @@ export function createToolExecutors(
         parts.push(`${short.length} 集钩子少于 20 字（第 ${short.map((e) => e.number).slice(0, 5).join('、')} 集）`)
       }
       parts.push(isFlatPacing(series) ? '强度几乎是一条平线，中段容易掉' : pacingHint(series))
+      const quality = auditCreativeQuality({
+        brief: state.brief,
+        characters: state.characters ?? [],
+        episodes: eps,
+      })
+      const extra = quality.issues.filter((issue) =>
+        issue.code !== 'empty-hook'
+        && issue.code !== 'short-hook'
+        && issue.code !== 'flat-pacing'
+      )
+      if (extra.length > 0) {
+        parts.push(`创作体检：${extra.slice(0, 6).map((issue) =>
+          `${issue.title}（证据：${issue.evidence}）`
+        ).join('；')}`)
+      } else {
+        parts.push('创作体检未发现其他确定性问题')
+      }
       return { ok: true, content: parts.filter(Boolean).join('；') + '。' }
     },
 
