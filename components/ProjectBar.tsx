@@ -9,6 +9,7 @@ import type { ProjectDto } from '@/lib/assets/api'
 import {
   PLATFORM_EXPORT_TARGETS,
   platformLabel,
+  platformProfile,
   type PlatformExportTarget,
   type PlatformPreflight,
 } from '@/lib/export/platforms'
@@ -89,6 +90,7 @@ export default function ProjectBar({
 
   const current = projects.find((p) => p.id === currentId) ?? null
   const title = current?.title ?? (hasContent ? '未保存的新项目' : '还没有项目')
+  const profile = platformProfile(exportTarget)
 
   const startRename = () => {
     if (!current) return
@@ -180,6 +182,14 @@ export default function ProjectBar({
               </p>
             )}
           </fieldset>
+          <div className="mb-2 rounded-chip border border-surface-line bg-surface-soft px-2.5 py-2">
+            <p className="text-[10.5px] leading-relaxed text-ink-500">{profile.summary}</p>
+            <ol className="mt-1 grid gap-0.5 text-[10px] leading-relaxed text-ink-400">
+              {profile.steps.map((step, index) => (
+                <li key={step}>{index + 1}. {step}</li>
+              ))}
+            </ol>
+          </div>
           <p className="mb-2 text-[10.5px] leading-relaxed text-ink-400">
             交付包带已采用图、预检和{platformLabel(exportTarget)}执行文件；完整备份保留全部版本、任务和历史候选。
           </p>
