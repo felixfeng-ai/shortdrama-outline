@@ -7,6 +7,10 @@ import { latestSnapshot, listProjects } from '@/lib/assets/repo'
 import { resolveProjectOwner, resolveRequestIdentity } from '@/lib/auth/request'
 import { buildMobileContext } from '@/lib/mobile-context'
 import { FULL_PROJECT_COST, getQuota } from '@/lib/quota'
+import {
+  listGenerationTasks,
+  reconcileStaleGenerationTasks,
+} from '@/lib/generation/repo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,6 +33,7 @@ export async function GET(req: Request) {
           ]),
         )
       : {}
+    if (active) reconcileStaleGenerationTasks(db, active.id)
     const quota = getQuota(db, resolveRequestIdentity(db, req))
 
     return NextResponse.json(
@@ -44,6 +49,7 @@ export async function GET(req: Request) {
           },
           now: Date.now(),
           activeProjectId: active?.id,
+          tasks: active ? listGenerationTasks(db, active.id) : [],
         }),
       ),
     )

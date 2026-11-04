@@ -10,6 +10,7 @@ import {
   removePushSubscription,
   type StoredPushSubscription,
 } from "./repo.ts"
+import { sendNativePushToOwner, type NativePushData } from "./native.ts"
 
 export interface PushSendResult {
   sent: number
@@ -78,10 +79,31 @@ export async function notifyGenerationFinished(
     targetType: "character" | "place" | "shot"
     status: "queued" | "running" | "succeeded" | "failed" | "canceled"
     error?: string | null
+    projectId?: string
+    targetId?: string
+    assetId?: string | null
+    targetLabel?: string
   },
   options: PushSendOptions = {},
 ): Promise<PushSendResult> {
   const payload = buildGenerationNotification(input)
   if (!payload) return { sent: 0, failed: 0, removed: 0 }
-  return sendPushToOwner(db, ownerId, payload, options)
+  const nativeData: NativePushData | null = input.projectId && input.targetId
+    ? {
+        projectId: input.projectId,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        assetId: input.assetId ?? null,
+        targetLabel: input.targetLabel,
+      }
+    : null
+  const [web, native] = await Promise.all([
+    sendPushToOwner(db, ownerId, payload, options),
+    nativeData ? sendNativePushToOwner(db, ownerId, payload, nativeData) : Promise.resolve({ sent: 0, failed: 0, removed: 0 }),
+  ])
+  return {
+    sent: web.sent + native.sent,
+    failed: web.failed + native.failed,
+    removed: web.removed + native.removed,
+  }
 }

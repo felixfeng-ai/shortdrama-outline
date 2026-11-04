@@ -44,6 +44,11 @@ import { EMPTY_BRIEF, briefSignature, isBriefEmpty, readBrief, type CreativeBrie
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
 import { EMPTY_LOOK, isLookEmpty, lookSignature, readLook, type LookBook } from '@/lib/look'
 import { buildProjectStatus } from '@/lib/project-status'
+import {
+  buildVariantDecisionInput,
+  type VariantChoiceOption,
+  type VariantChoiceStep,
+} from '@/lib/variant-decision'
 import AgentDock from '@/components/AgentDock'
 import type { AgentCard, AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
@@ -248,9 +253,9 @@ const CANVAS_ARTIFACT_KIND: Record<CanvasNodeId, ArtifactKind> = {
 }
 
 type VariantSession =
-  | { step: 'characters'; a: Character[]; b: Character[] }
-  | { step: 'acts'; a: Act[]; b: Act[] }
-  | { step: 'first-episode'; a: Episode[]; b: Episode[] }
+  | { step: 'characters'; a: Character[]; b: Character[]; projectId: string | null; isNewProject: boolean }
+  | { step: 'acts'; a: Act[]; b: Act[]; projectId: string | null; isNewProject: boolean }
+  | { step: 'first-episode'; a: Episode[]; b: Episode[]; projectId: string | null; isNewProject: boolean }
 
 function localJudgmentFromServer(item: {
   id: string
@@ -266,6 +271,49 @@ function localJudgmentFromServer(item: {
     action: item.action,
     reason: item.reason,
   }
+}
+
+function variantChoiceOptions(session: VariantSession): VariantChoiceOption[] {
+  if (session.step === 'characters') {
+    return [
+      {
+        id: 'A',
+        strategy: 'contract',
+        summary: session.a.map((item) => `${item.name}：${item.motivation}`).join('；'),
+      },
+      {
+        id: 'B',
+        strategy: 'conflict',
+        summary: session.b.map((item) => `${item.name}：${item.motivation}`).join('；'),
+      },
+    ]
+  }
+  if (session.step === 'acts') {
+    return [
+      {
+        id: 'A',
+        strategy: 'contract',
+        summary: session.a.map((item) => `${item.title}：${item.summary}`).join('；'),
+      },
+      {
+        id: 'B',
+        strategy: 'conflict',
+        summary: session.b.map((item) => `${item.title}：${item.summary}`).join('；'),
+      },
+    ]
+  }
+  return [
+    {
+      id: 'A',
+      strategy: 'contract',
+      summary: `${session.a[0].title}；钩子：${session.a[0].hook}`,
+    },
+    {
+      id: 'B',
+      strategy: 'conflict',
+      summary: `${session.b[0].title}；钩子：${session.b[0].hook}`,
+    },
+  ]
 }
 
 export default function Home() {
@@ -634,21 +682,63 @@ export default function Home() {
     setVariantLoading(true)
     setErrors((e) => ({ ...e, [step]: null }))
     try {
+      const isNewProject = !projectId
       const pid = await ensureProject(idea.trim().slice(0, 20))
       if (step === 'characters') {
-        const base = { idea: idea.trim(), genre: genre.id, projectId: pid, brief }
+        const base = {
+          idea: idea.trim(),
+          genre: genre.id,
+          projectId: pid,
+          brief,
+          comparison: true,
+        }
         const [a, b] = await Promise.all([
-          postJson<{ characters: Character[] }>('/api/characters', { ...base, variant: 'A' }),
-          postJson<{ characters: Character[] }>('/api/characters', { ...base, variant: 'B' }),
+          postJson<{ characters: Character[] }>('/api/characters', {
+            ...base,
+            variant: 'A',
+            variantStrategy: 'contract',
+          }),
+          postJson<{ characters: Character[] }>('/api/characters', {
+            ...base,
+            variant: 'B',
+            variantStrategy: 'conflict',
+          }),
         ])
-        setVariantSession({ step, a: a.characters, b: b.characters })
+        setVariantSession({
+          step,
+          a: a.characters,
+          b: b.characters,
+          projectId: pid,
+          isNewProject,
+        })
       } else {
-        const base = { idea: idea.trim(), genre: genre.id, characters, projectId: pid, brief }
+        const base = {
+          idea: idea.trim(),
+          genre: genre.id,
+          characters,
+          projectId: pid,
+          brief,
+          comparison: true,
+        }
         const [a, b] = await Promise.all([
-          postJson<{ acts: Act[] }>('/api/acts', { ...base, variant: 'A' }),
-          postJson<{ acts: Act[] }>('/api/acts', { ...base, variant: 'B' }),
+          postJson<{ acts: Act[] }>('/api/acts', {
+            ...base,
+            variant: 'A',
+            variantStrategy: 'contract',
+          }),
+          postJson<{ acts: Act[] }>('/api/acts', {
+            ...base,
+            variant: 'B',
+            variantStrategy: 'conflict',
+          }),
         ])
-        setVariantSession({ step, a: a.acts, b: b.acts })
+        setVariantSession({
+          step,
+          a: a.acts,
+          b: b.acts,
+          projectId: pid,
+          isNewProject,
+        })
       }
       setQuotaRefreshKey((n) => n + 1)
     } catch (error) {
@@ -661,25 +751,103 @@ export default function Home() {
     }
   }
 
-  const pickVariant = (id: 'A' | 'B', reason: string) => {
+  const pickVariant = async (id: 'A' | 'B', reason: string) => {
     const session = variantSession
-    if (!session) return
-    if (session.step === 'first-episode') {
-      const chosen = id === 'A' ? session.a[0] : session.b[0]
-      setEpisodeSeed(chosen)
-      setEpisodes([chosen])
-      recordJudgment('episodes', `选定第一集 ${id} 版`, reason)
-      setVariantSession(null)
+    if (!session || variantLoading) return
+    const step: VariantChoiceStep =
+      session.step === 'characters'
+        ? 'characters'
+        : session.step === 'acts'
+          ? 'acts'
+          : 'episodes'
+    const stepLabel =
+      session.step === 'characters'
+        ? '核心人物'
+        : session.step === 'acts'
+          ? '三幕大纲'
+          : '第一集'
+
+    setVariantLoading(true)
+    try {
+      if (session.projectId) {
+        if (session.step === 'characters' && session.isNewProject) {
+          await saveSnapshot(session.projectId, 'idea', {
+            idea: idea.trim(),
+            genre: genre.id,
+          })
+        }
+        await saveSnapshot(
+          session.projectId,
+          step,
+          id === 'A' ? session.a : session.b,
+        )
+      }
+    } catch (error) {
+      setNotice(error instanceof Error
+        ? `选中版本保存失败：${error.message}`
+        : '选中版本保存失败，请重试。')
+      setVariantLoading(false)
       return
     }
-    if (session.step === 'characters') {
-      setCharacters(id === 'A' ? session.a : session.b)
+
+    const decisionInput = buildVariantDecisionInput({
+      step,
+      stepLabel,
+      chosen: id,
+      options: variantChoiceOptions(session),
+      reason,
+    })
+
+    if (session.step === 'first-episode') {
+      const chosen = id === 'A' ? session.a : session.b
+      const episode = chosen[0]
+      setEpisodeSeed(episode)
+      setEpisodes([episode])
+    } else if (session.step === 'characters') {
+      const chosen = id === 'A' ? session.a : session.b
+      setCharacters(chosen)
     } else {
-      setActs(id === 'A' ? session.a : session.b)
+      const chosen = id === 'A' ? session.a : session.b
+      setActs(chosen)
       setActsBuiltFrom(`${charactersSig}|${briefSig}`)
     }
-    recordJudgment(session.step, `选定 ${id} 版`, reason)
+
+    if (session.projectId) {
+      let saved = null
+      for (let attempt = 0; attempt < 2 && !saved; attempt += 1) {
+        try {
+          saved = await createProjectDecision(session.projectId, decisionInput)
+        } catch {
+          if (attempt === 0) {
+            await new Promise((resolve) => window.setTimeout(resolve, 350))
+          }
+        }
+      }
+      if (saved) {
+        setDecisions((prev) => [saved!, ...prev.filter((item) => item.id !== saved!.id)])
+        setJudgments((prev) => appendJudgment(prev, {
+          step: saved!.step,
+          action: `决策：${saved!.question}`,
+          reason: saved!.reason || saved!.chosenValue,
+        }))
+        setNotice(`已选 ${id} · ${decisionInput.chosenValue.split(' · ')[1] || stepLabel}`)
+      } else {
+        setJudgments((prev) => appendJudgment(prev, {
+          step,
+          action: `选择 ${id} · ${decisionInput.options[id === 'A' ? 0 : 1]}`,
+          reason,
+        }))
+        setNotice('选中版本已保存；判断记忆保存失败，可稍后重试。')
+      }
+    } else {
+      setJudgments((prev) => appendJudgment(prev, {
+        step,
+        action: `选择 ${id} · ${decisionInput.options[id === 'A' ? 0 : 1]}`,
+        reason,
+      }))
+    }
     setVariantSession(null)
+    setVariantLoading(false)
   }
 
   /** 第一集开两个方向：各生成 1 集，选定后从第 2 集接着写 */
@@ -688,8 +856,9 @@ export default function Home() {
     setVariantLoading(true)
     setErrors((e) => ({ ...e, episodes: null }))
     try {
+      const isNewProject = !projectId
       const pid = await ensureProject(idea.trim().slice(0, 20))
-      const call = (variant: 'A' | 'B') =>
+      const call = (variant: 'A' | 'B', variantStrategy: 'contract' | 'conflict') =>
         new Promise<Episode>((resolve, reject) => {
           let last: Episode | null = null
           void postSse(
@@ -704,7 +873,9 @@ export default function Home() {
               start: 1,
               total: episodeCount,
               preview: true,
+              comparison: true,
               variant,
+              variantStrategy,
               brief,
             },
             (event, data) => {
@@ -717,8 +888,17 @@ export default function Home() {
             },
           ).catch(reject)
         })
-      const [a, b] = await Promise.all([call('A'), call('B')])
-      setVariantSession({ step: 'first-episode', a: [a], b: [b] })
+      const [a, b] = await Promise.all([
+        call('A', 'contract'),
+        call('B', 'conflict'),
+      ])
+      setVariantSession({
+        step: 'first-episode',
+        a: [a],
+        b: [b],
+        projectId: pid,
+        isNewProject,
+      })
       setQuotaRefreshKey((n) => n + 1)
     } catch (error) {
       setErrors((e) => ({
@@ -2895,11 +3075,13 @@ export default function Home() {
                   ? [
                       {
                         id: 'A' as const,
+                        direction: '稳守契约',
                         title: `${variantSession.a.length} 个角色`,
                         lines: variantSession.a.map((c) => `${c.name} · ${c.motivation}`),
                       },
                       {
                         id: 'B' as const,
+                        direction: '强化冲突',
                         title: `${variantSession.b.length} 个角色`,
                         lines: variantSession.b.map((c) => `${c.name} · ${c.motivation}`),
                       },
@@ -2908,11 +3090,13 @@ export default function Home() {
                     ? [
                       {
                         id: 'A' as const,
+                        direction: '稳守契约',
                         title: '三幕 A',
                         lines: variantSession.a.map((a) => `${a.title}：${a.summary.slice(0, 50)}`),
                       },
                       {
                         id: 'B' as const,
+                        direction: '强化冲突',
                         title: '三幕 B',
                         lines: variantSession.b.map((a) => `${a.title}：${a.summary.slice(0, 50)}`),
                       },
@@ -2920,16 +3104,19 @@ export default function Home() {
                     : [
                         {
                           id: 'A' as const,
+                          direction: '稳守契约',
                           title: `第 1 集 · ${variantSession.a[0].title}`,
                           lines: [variantSession.a[0].synopsis, `钩子：${variantSession.a[0].hook}`],
                         },
                         {
                           id: 'B' as const,
+                          direction: '强化冲突',
                           title: `第 1 集 · ${variantSession.b[0].title}`,
                           lines: [variantSession.b[0].synopsis, `钩子：${variantSession.b[0].hook}`],
                         },
                       ]
               }
+              busy={variantLoading}
               onPick={pickVariant}
               onCancel={() => setVariantSession(null)}
             />

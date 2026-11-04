@@ -35,6 +35,12 @@ import {
   loadTextGenerationCheckpoint,
   saveTextGenerationCheckpoint,
 } from "@/lib/generation/checkpoint"
+import { listProjectDecisions, listProjectJudgments } from "@/lib/assets/decisions"
+import {
+  buildVariantMemoryBlock,
+  readVariantStrategy,
+  variantPromptBlock,
+} from "@/lib/variant-decision"
 
 export const runtime = 'nodejs'
 // 长集数要分多批写（60 集约 6 批），给足时间
@@ -53,6 +59,8 @@ export async function POST(req: Request) {
   let total: number
   let preview: boolean
   let variant: 'A' | 'B'
+  let variantStrategy: ReturnType<typeof readVariantStrategy>
+  let comparison: boolean
   let resumeRequested: boolean
   try {
     const body = await req.json().catch(() => null)
@@ -69,6 +77,8 @@ export async function POST(req: Request) {
     total = readEpisodeCount(body?.total ?? start + count - 1, start + count - 1)
     preview = body?.preview === true
     variant = body?.variant === 'B' ? 'B' : 'A'
+    variantStrategy = readVariantStrategy(body?.variantStrategy)
+    comparison = body?.comparison === true
     resumeRequested = body?.resume === true
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
@@ -77,6 +87,13 @@ export async function POST(req: Request) {
 
   const db = getDbForRequest()
   const identity = resolveRequestIdentity(db, req)
+  const memory = projectId
+    ? buildVariantMemoryBlock(
+      'episodes',
+      listProjectDecisions(db, projectId, 20),
+      listProjectJudgments(db, projectId, 20),
+    )
+    : ''
   try {
     enforceApiRateLimit(db, req, "model", { identity })
   } catch (error) {
@@ -93,6 +110,7 @@ export async function POST(req: Request) {
     total,
     brief,
     variant,
+    variantStrategy,
     preview,
   })
   const checkpoint = projectId && resumeRequested
@@ -170,11 +188,14 @@ export async function POST(req: Request) {
               .map((e) => `${e.number}. ${e.title}：${e.synopsis.slice(0, 60)}`)
               .join('\n'),
           })
+          const systemWithMemory = system
+            + (comparison ? variantPromptBlock(variantStrategy) : '')
+            + memory
 
           let buffer = ''
           let emitted = 0
 
-          for await (const delta of streamChat(system, user, {
+          for await (const delta of streamChat(systemWithMemory, user, {
             temperature: variant === 'B' ? 0.7 : 0.85,
             maxTokens: episodeTokenBudget(batchCount),
             signal: req.signal,
@@ -212,7 +233,9 @@ export async function POST(req: Request) {
         }
 
         // 落快照放在流末尾：中途失败不写半份分集，恢复出来的必须是一份完整的分集
-        persistIfProject(db, projectId, 'episodes', finalEpisodes, { kinds: ['acts'] })
+        if (!comparison && !preview) {
+          persistIfProject(db, projectId, 'episodes', finalEpisodes, { kinds: ['acts'] })
+        }
         if (projectId && !preview) clearTextGenerationCheckpoint(db, projectId, 'episodes')
         send('done', { episodes: finalEpisodes })
         finish()

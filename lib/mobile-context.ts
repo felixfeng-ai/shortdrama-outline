@@ -1,5 +1,16 @@
-import type { ArtifactKind } from './assets/types.ts'
+import type {
+  ArtifactKind,
+  Shot,
+  VisualCharacter,
+  VisualPlace,
+} from './assets/types.ts'
 import type { Project } from './assets/repo.ts'
+import { generationTaskTargetLabel } from './generation/task-view.ts'
+import type {
+  GenerationStatus,
+  GenerationTargetType,
+  GenerationTask,
+} from './generation/types.ts'
 
 export interface MobileContextQuota {
   remaining: number
@@ -36,12 +47,26 @@ export interface MobileContextHero {
   evidence: string
 }
 
+export interface MobileContextTask {
+  id: string
+  targetType: GenerationTargetType
+  targetId: string
+  targetLabel: string
+  status: GenerationStatus
+  error: string | null
+  assetId: string | null
+  createdAt: number
+  startedAt: number | null
+  finishedAt: number | null
+}
+
 export interface MobileContextData {
   activeProject: MobileContextProject | null
   projects: MobileContextProject[]
   totalProjects: number
   hero: MobileContextHero | null
   quota: MobileContextQuota
+  tasks: MobileContextTask[]
 }
 
 type SnapshotPayloads = Partial<Record<ArtifactKind, unknown>>
@@ -157,10 +182,11 @@ export function buildMobileContext(input: {
   quota: MobileContextQuota
   now: number
   activeProjectId?: string | null
+  tasks?: readonly GenerationTask[]
 }): MobileContextData {
   const { projects, snapshots, quota, now } = input
   if (projects.length === 0) {
-    return { activeProject: null, projects: [], totalProjects: 0, hero: null, quota }
+    return { activeProject: null, projects: [], totalProjects: 0, hero: null, quota, tasks: [] }
   }
 
   const active = input.activeProjectId
@@ -184,6 +210,26 @@ export function buildMobileContext(input: {
   }
   const hero = buildHero(active, snapshots, shotCount)
   if (hero) activeProject.episode = `第 ${hero.episodeNumber} 集`
+  const tasks = (input.tasks ?? [])
+    .filter((task) => task.projectId === active.id)
+    .slice(0, 50)
+    .map((task): MobileContextTask => ({
+      id: task.id,
+      targetType: task.targetType,
+      targetId: task.targetId,
+      targetLabel: generationTaskTargetLabel(
+        task,
+        readArray(snapshots.visualCharacters) as unknown as VisualCharacter[],
+        readArray(snapshots.shots) as unknown as Shot[],
+        readArray(snapshots.visualPlaces) as unknown as VisualPlace[],
+      ),
+      status: task.status,
+      error: task.error,
+      assetId: task.assetId,
+      createdAt: task.createdAt,
+      startedAt: task.startedAt,
+      finishedAt: task.finishedAt,
+    }))
 
   return {
     activeProject,
@@ -193,5 +239,6 @@ export function buildMobileContext(input: {
     totalProjects: projects.length,
     hero,
     quota,
+    tasks,
   }
 }

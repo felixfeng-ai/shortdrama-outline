@@ -112,6 +112,10 @@ async function notifyGeneration(
     targetType: GenerationTargetType
     status: "succeeded" | "failed"
     error?: string
+    projectId?: string
+    targetId?: string
+    assetId?: string | null
+    targetLabel?: string
   },
 ): Promise<void> {
   const send = notifyGenerationFinished(db, ownerId, input).catch(() => undefined)
@@ -168,6 +172,8 @@ export async function POST(req: Request) {
   let notification: {
     taskId: string
     targetType: GenerationTargetType
+    projectId: string
+    targetId: string
   } | null = null
   const db = getDbForRequest()
   const ownerId = resolveProjectOwner(db, req)
@@ -207,7 +213,7 @@ export async function POST(req: Request) {
       prompt: effectivePrompt,
     })
     taskId = task.id
-    notification = { taskId: task.id, targetType: type }
+    notification = { taskId: task.id, targetType: type, projectId, targetId }
     markGenerationTaskRunning(db, task.id)
 
     const image = await runImageGeneration({
@@ -235,6 +241,7 @@ export async function POST(req: Request) {
     await notifyGeneration(db, ownerId, {
       ...notification,
       status: "succeeded",
+      assetId: completed.assetId,
     })
     return NextResponse.json(ok({
       task: completed,

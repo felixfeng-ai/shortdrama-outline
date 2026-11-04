@@ -538,6 +538,9 @@ export function claimAnonymousProjects(
     const pushSubscriptions = db.prepare(
       "UPDATE push_subscriptions SET owner_id = ?, updated_at = ? WHERE owner_id = ?",
     ).run(userId, Date.now(), anonymousOwnerId)
+    db.prepare(
+      "UPDATE mobile_push_tokens SET owner_id = ?, updated_at = ? WHERE owner_id = ?",
+    ).run(userId, Date.now(), anonymousOwnerId)
     db.exec("COMMIT")
     return {
       projects: Number(projects.changes),

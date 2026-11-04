@@ -590,10 +590,16 @@ export default function LocalizePage() {
   return (
     <main className="localize-page">
       <header className="localize-topbar">
-        <a href={`/?project=${encodeURIComponent(projectId)}&step=episodes`}>← 工作台</a>
-        <div>
-          <b>{projectTitle} · 海外版</b>
-          <span>{activeBranch?.name} / {activeBranch?.locale}</span>
+        <a className="localize-back" href={`/?project=${encodeURIComponent(projectId)}&step=episodes`}>
+          <span aria-hidden="true">←</span>
+          <b>工作台</b>
+        </a>
+        <div className="localize-project-lockup">
+          <span className="localize-brand-mark" aria-hidden="true">V</span>
+          <div>
+            <b>{projectTitle}</b>
+            <span>海外本地化 · {activeBranch?.name} / {activeBranch?.locale}</span>
+          </div>
         </div>
         <span className={`localize-status ${audit?.blocking ? 'has-blocking' : ''}`}>
           {audit ? `${audit.blocking} 阻断 · ${audit.warning} 提醒` : '尚未审计'}
@@ -601,47 +607,95 @@ export default function LocalizePage() {
       </header>
 
       <div className="localize-layout">
-        <aside className="localize-branches">
-          <p>MARKETS</p>
-          {branches.map((branch) => (
-            <button
-              key={branch.id}
-              type="button"
-              className={branch.id === activeBranchId ? 'active' : ''}
-              onClick={() => setActiveBranchId(branch.id)}
-            >
-              <b>{branch.name}</b>
-              <span>{branch.locale} · {branch.market}</span>
+        <aside className="localize-sidebar">
+          <div className="localize-sidebar-brand">
+            <p>MARKETS</p>
+            <b>海外工作区</b>
+            <span>{branches.length} 个市场版本 · 基线分集 v{sourceSnapshot?.version ?? '-'}</span>
+          </div>
+          <div className="localize-branches" aria-label="海外市场分支">
+            {branches.map((branch) => (
+              <button
+                key={branch.id}
+                type="button"
+                className={branch.id === activeBranchId ? 'active' : ''}
+                onClick={() => setActiveBranchId(branch.id)}
+              >
+                <span className="localize-branch-dot" aria-hidden="true" />
+                <span>
+                  <b>{branch.name}</b>
+                  <small>{branch.locale} · {branch.market}</small>
+                </span>
+              </button>
+            ))}
+            <button type="button" className="localize-add" onClick={() => setShowCreate(true)}>
+              + 新建市场分支
             </button>
-          ))}
-          <button type="button" className="localize-add" onClick={() => setShowCreate(true)}>
-            + 新建市场分支
-          </button>
+          </div>
+
+          <nav className="localize-tabs" aria-label="本地化步骤">
+            {SECTIONS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={section === item.id ? 'active' : ''}
+                aria-current={section === item.id ? 'step' : undefined}
+                onClick={() => setSection(item.id)}
+              >
+                <b>{item.label}</b>
+                <span>{item.hint}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="localize-sidebar-foot">
+            <span>当前市场</span>
+            <b>{activeProfile.label}</b>
+            <small>{context ? `Context v${context.version}` : 'Context 待保存'}</small>
+          </div>
         </aside>
 
-        <nav className="localize-tabs" aria-label="本地化步骤">
-          {SECTIONS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={section === item.id ? 'active' : ''}
-              onClick={() => setSection(item.id)}
-            >
-              <b>{item.label}</b>
-              <span>{item.hint}</span>
-            </button>
-          ))}
-        </nav>
-
         <section className="localize-content">
+          <div className="localize-context-strip" aria-label="当前本地化状态">
+            <div>
+              <span>目标市场</span>
+              <b>{activeProfile.label}</b>
+              <small>{activeProfile.locale}</small>
+            </div>
+            <div>
+              <span>本地化分集</span>
+              <b>{candidates.length}</b>
+              <small>共 {sourceEpisodes.length} 集原文</small>
+            </div>
+            <div>
+              <span>术语与 Canon</span>
+              <b>{glossary.length} / {canonFacts.length}</b>
+              <small>{canonIssues.length > 0 ? `${canonIssues.length} 项待确认` : '未发现冲突'}</small>
+            </div>
+            <div className={audit?.blocking ? 'has-blocking' : ''}>
+              <span>交付状态</span>
+              <b>{audit ? (audit.blocking > 0 ? '需处理' : '可交付') : '未审计'}</b>
+              <small>{audit ? `${audit.blocking} 阻断 · ${audit.warning} 提醒` : '先运行本地化审计'}</small>
+            </div>
+          </div>
           {notice && <p className="localize-notice" role="status" aria-live="polite">{notice}</p>}
           {progress && <p className="localize-progress">{progress}</p>}
 
+          <div className="localize-section-stage" key={section}>
           {section === 'market' && (
             <div className="localize-panel">
               <div className="localize-panel-head">
-                <div><p>MARKET PROFILE</p><h1>目标市场与改编约束</h1></div>
-                <button type="button" disabled={busy} onClick={() => void saveContext()}>保存市场设定</button>
+                <div>
+                  <p>MARKET PROFILE</p>
+                  <h1>目标市场与改编约束</h1>
+                  <span>这些设置决定模型如何理解文化语境、台词长度和目标平台。</span>
+                </div>
+                <div className="localize-panel-tools">
+                  <span className={context ? 'is-saved' : ''}>
+                    {context ? `已保存 · v${context.version}` : '尚未保存'}
+                  </span>
+                  <button type="button" className="primary" disabled={busy} onClick={() => void saveContext()}>保存市场设定</button>
+                </div>
               </div>
               <div className="localize-form-grid">
                 <label><span>市场</span><select value={marketCode} onChange={(event) => {
@@ -650,13 +704,13 @@ export default function LocalizePage() {
                   setPlatforms(profile.platforms)
                   setRating(profile.defaultRating)
                   setSubtitleDraft(defaultSubtitles(profile))
-                }}>{MARKET_PROFILES.map((profile) => <option key={profile.code} value={profile.code}>{profile.label} · {profile.locale}</option>)}</select></label>
-                <label><span>内容评级</span><input value={rating} onChange={(event) => setRating(event.target.value)} /></label>
-                <label className="wide"><span>目标平台</span><input value={platforms.join('、')} onChange={(event) => setPlatforms(event.target.value.split(/[、,，]/).map((item) => item.trim()).filter(Boolean))} /></label>
-                <label><span>目标观众</span><input value={briefDraft.audience} onChange={(event) => setBriefDraft((current) => ({ ...current, audience: event.target.value }))} placeholder="例如：北美 25-35 女性" /></label>
-                <label><span>核心情绪</span><input value={briefDraft.emotion} onChange={(event) => setBriefDraft((current) => ({ ...current, emotion: event.target.value }))} /></label>
-                <label className="wide"><span>改编策略</span><textarea rows={4} value={briefDraft.strategy} onChange={(event) => setBriefDraft((current) => ({ ...current, strategy: event.target.value }))} /></label>
-                <label className="wide"><span>红线 · 一行一条</span><textarea rows={3} value={briefDraft.redlines} onChange={(event) => setBriefDraft((current) => ({ ...current, redlines: event.target.value }))} /></label>
+                }}>{MARKET_PROFILES.map((profile) => <option key={profile.code} value={profile.code}>{profile.label} · {profile.locale}</option>)}</select><small>切换市场会载入默认平台、评级和字幕速度。</small></label>
+                <label><span>内容评级</span><input value={rating} onChange={(event) => setRating(event.target.value)} /><small>用于市场红线和内容提示。</small></label>
+                <label className="wide"><span>目标平台</span><input value={platforms.join('、')} onChange={(event) => setPlatforms(event.target.value.split(/[、,，]/).map((item) => item.trim()).filter(Boolean))} /><small>多个平台用顿号分隔，交付时写入平台规格。</small></label>
+                <label><span>目标观众</span><input value={briefDraft.audience} onChange={(event) => setBriefDraft((current) => ({ ...current, audience: event.target.value }))} placeholder="例如：北美 25–35 女性" /><small>谁会被这部剧留下来。</small></label>
+                <label><span>核心情绪</span><input value={briefDraft.emotion} onChange={(event) => setBriefDraft((current) => ({ ...current, emotion: event.target.value }))} /><small>观众应持续感到什么。</small></label>
+                <label className="wide"><span>改编策略</span><textarea rows={4} value={briefDraft.strategy} onChange={(event) => setBriefDraft((current) => ({ ...current, strategy: event.target.value }))} /><small>写具体改写方法，不写泛泛的风格形容词。</small></label>
+                <label className="wide"><span>红线 · 一行一条</span><textarea rows={3} value={briefDraft.redlines} onChange={(event) => setBriefDraft((current) => ({ ...current, redlines: event.target.value }))} /><small>命中后会阻断交付，需要人工确认或改写。</small></label>
               </div>
             </div>
           )}
@@ -828,6 +882,7 @@ export default function LocalizePage() {
               </div>
             </div>
           )}
+          </div>
         </section>
       </div>
 

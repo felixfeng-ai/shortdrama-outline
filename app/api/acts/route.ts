@@ -13,6 +13,12 @@ import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
+import { listProjectDecisions, listProjectJudgments } from "@/lib/assets/decisions"
+import {
+  buildVariantMemoryBlock,
+  readVariantStrategy,
+  variantPromptBlock,
+} from "@/lib/variant-decision"
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -30,17 +36,32 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
+    const variantStrategy = readVariantStrategy(body?.variantStrategy)
+    const comparison = body?.comparison === true
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
     chargeQuota(db, identity, "acts")
 
 
     const { system, user } = buildActPrompt(idea, characters, genre, brief)
-    const raw = await chatJson<unknown>(system, user, { temperature: variant === 'B' ? 0.5 : 0.8 })
+    const memory = projectId
+      ? buildVariantMemoryBlock(
+        'acts',
+        listProjectDecisions(db, projectId, 20),
+        listProjectJudgments(db, projectId, 20),
+      )
+      : ''
+    const raw = await chatJson<unknown>(
+      system + (comparison ? variantPromptBlock(variantStrategy) : '') + memory,
+      user,
+      { temperature: variant === 'B' ? 0.5 : 0.8 },
+    )
     const acts = normalizeActs(raw)
 
     // 落快照，血缘指向人物那一版；刷新后要靠它把大纲恢复出来
-    persistIfProject(db, projectId, 'acts', acts, { kinds: ['characters'] })
+    if (!comparison) {
+      persistIfProject(db, projectId, 'acts', acts, { kinds: ['characters'] })
+    }
 
     return NextResponse.json(ok({ acts }))
   } catch (error) {

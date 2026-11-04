@@ -16,6 +16,12 @@ import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
+import { listProjectDecisions, listProjectJudgments } from "@/lib/assets/decisions"
+import {
+  buildVariantMemoryBlock,
+  readVariantStrategy,
+  variantPromptBlock,
+} from "@/lib/variant-decision"
 
 export const runtime = 'nodejs'
 // 生成较慢，放宽函数超时（Vercel 上生效）
@@ -37,6 +43,8 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const brief = readBrief(body?.brief)
     const variant = body?.variant === 'B' ? 'B' : 'A'
+    const variantStrategy = readVariantStrategy(body?.variantStrategy)
+    const comparison = body?.comparison === true
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
     chargeQuota(db, identity, "characters")
@@ -46,9 +54,21 @@ export async function POST(req: Request) {
       mode === 'single'
         ? buildSingleCharacterPrompt(idea, existing, genre, brief)
         : buildCharacterPrompt(idea, genre, brief)
+    const memory = projectId
+      ? buildVariantMemoryBlock(
+        'characters',
+        listProjectDecisions(db, projectId, 20),
+        listProjectJudgments(db, projectId, 20),
+      )
+      : ''
+    const systemWithMemory = system
+      + (comparison ? variantPromptBlock(variantStrategy) : '')
+      + memory
 
     // 人物设定需要想象力，温度调高一些
-    const raw = await chatJson<unknown>(system, user, { temperature: variant === 'B' ? 0.7 : 1.0 })
+    const raw = await chatJson<unknown>(systemWithMemory, user, {
+      temperature: variant === 'B' ? 0.7 : 1.0,
+    })
     const characters = normalizeCharacters(raw)
 
     /*
@@ -57,8 +77,10 @@ export async function POST(req: Request) {
       恢复项目时输入框里的那句话就能填回去，不用让用户重打。
       落库失败不影响生成结果（persistIfProject 内部兜住）。
     */
-    persistIfProject(db, projectId, 'idea', { idea, genre: genre.id }, { kinds: [] })
-    persistIfProject(db, projectId, 'characters', characters, { kinds: ['idea'] })
+    if (!comparison) {
+      persistIfProject(db, projectId, 'idea', { idea, genre: genre.id }, { kinds: [] })
+      persistIfProject(db, projectId, 'characters', characters, { kinds: ['idea'] })
+    }
 
     return NextResponse.json(
       ok(mode === 'single' ? { characters: [characters[0]] } : { characters }),

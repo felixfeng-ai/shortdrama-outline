@@ -5305,6 +5305,20 @@
   font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11px;
 }
+.variant-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.variant-direction {
+  padding: 2px 7px;
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 999px;
+  background: rgb(var(--c-surface-soft));
+  color: rgb(var(--c-ink-600));
+  font-size: 11px;
+  font-weight: 500;
+}
 .variant-title { margin: 0; font-size: 12.5px; font-weight: 600; color: rgb(var(--c-ink-800)); }
 .variant-lines {
   flex: 1;
@@ -5326,6 +5340,11 @@
   font-size: 12px;
   font-weight: 600;
 }
+.variant-pick:disabled,
+.variants-cancel:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
 .variants-reason {
   width: 100%;
   padding: 6px 9px;
@@ -5337,6 +5356,61 @@
 }
 @media (max-width: 720px) {
   .variants-grid { grid-template-columns: 1fr; }
+}
+
+/* Signal Desk：比较面板跟随工作台，不再用白底继承浅色文本 */
+.signal-desk .variants {
+  border-color: var(--signal-line-strong, rgba(213, 224, 228, .18));
+  background: var(--signal-panel);
+}
+.signal-desk .variants-head {
+  border-bottom-color: var(--signal-line);
+}
+.signal-desk .variants-head b {
+  color: var(--signal-text);
+}
+.signal-desk .variants-sub,
+.signal-desk .variant-lines {
+  color: var(--signal-text-3);
+}
+.signal-desk .variant {
+  border-color: var(--signal-line);
+  background: var(--signal-raised);
+}
+.signal-desk .variant-badge {
+  background: var(--signal-acid);
+  color: #1b2115;
+}
+.signal-desk .variant-direction {
+  border-color: var(--signal-line);
+  background: var(--signal-panel);
+  color: var(--signal-text-2);
+}
+.signal-desk .variant-title {
+  color: var(--signal-text);
+}
+.signal-desk .variant-pick {
+  min-height: 36px;
+  border-color: color-mix(in srgb, var(--signal-acid) 42%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-acid) 10%, var(--signal-panel));
+  color: var(--signal-acid);
+}
+.signal-desk .variant-pick:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--signal-acid) 16%, var(--signal-panel));
+}
+.signal-desk .variants-reason {
+  min-height: 38px;
+  border-color: var(--signal-line);
+  background: var(--signal-raised);
+  color: var(--signal-text);
+}
+.signal-desk .variants-reason::placeholder {
+  color: var(--signal-text-3);
+}
+.signal-desk .variants-cancel {
+  min-height: 34px;
+  border-color: var(--signal-line);
+  color: var(--signal-text-2);
 }
 
 /* ── 节奏曲线 ── */
