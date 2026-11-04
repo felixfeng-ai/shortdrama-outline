@@ -1,5 +1,6 @@
 // 分集集数的唯一事实源：UI、prompt、批次规划、额度都从这里取。
 // 之前 10 这个数字散在 prompt / normalize / validate 三处，改一处就会漏。
+import { STEP_COST } from "./model-pricing.ts"
 
 export const MIN_EPISODE_COUNT = 6
 export const MAX_EPISODE_COUNT = 120
@@ -68,7 +69,8 @@ export function episodeTimeEstimate(count: number): string {
  * 一部完整项目的额度：其余五步固定 10 单位（人物 1 + 三幕 1 + 定妆 2 + 场景 2 + 分镜 4），
  * 分集按批次累加。10 集 = 13（与历史口径一致），30 集 = 19，60 集 = 28。
  */
-export const FIXED_STEPS_UNITS = 10
+export const FIXED_STEPS_UNITS = STEP_COST.characters + STEP_COST.acts
+  + STEP_COST.visual + STEP_COST.scenes + STEP_COST.shots
 
 export function projectQuotaUnits(count: number): number {
   return FIXED_STEPS_UNITS + episodeQuotaUnits(count)

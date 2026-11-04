@@ -11,35 +11,10 @@
 //   4. 所有判定都是「先查再扣」，超限直接拒绝，不进入模型调用
 import type { DatabaseSync } from "node:sqlite"
 import { ownerFromRequest } from "./session.ts"
+import { FULL_PROJECT_COST, STEP_COST } from "./model-pricing.ts"
 
-/** 每个生成步骤的「权重」——一次调用大概烧多少 token 的比例 */
-export const STEP_COST: Record<string, number> = {
-  // 入口处的关键词联想：输出只有 3 句短文本，成本很低，但要计一次数
-  ideas: 1,
-  // AI 认图：只送文件名字符串，输出是一组短配对，比一次定妆便宜
-  assetMatch: 1,
-  // 放映厅的 AI 助手：一次只改一镜的短问答，成本与联想同级
-  assistant: 1,
-  // 场记（ReAct）：按「一次模型往返」计 1 单位，循环上限由 AGENT.md 定死为 6
-  agent: 1,
-  characters: 1,
-  acts: 1,
-  episodes: 3,   // 每 10 集一批；长集数按 batch 数累加（见 episodeQuotaUnits）
-  visual: 2,     // 定妆 + 定妆图提示词，两次调用
-  scenes: 2,
-  shots: 4,      // 每镜带锚点，输出最大
-}
-
-/**
- * 一个完整项目（六步工作流全走一遍）的额度消耗。
- *
- * 注意：这里必须排除 ideas —— 它是入口的辅助联想，不属于六步流程。
- * 若直接用 Object.values 求和，新增任何辅助步骤都会悄悄抬高
- * 「一个完整项目多少钱」这个对外承诺。
- */
-export const FULL_PROJECT_COST = [
-  "characters", "acts", "episodes", "visual", "scenes", "shots",
-].reduce((sum, step) => sum + (STEP_COST[step] ?? 0), 0) // 13
+// 兼容既有调用方：价格表已抽到纯模块，服务端继续从这里取同一口径。
+export { FULL_PROJECT_COST, STEP_COST }
 
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name]

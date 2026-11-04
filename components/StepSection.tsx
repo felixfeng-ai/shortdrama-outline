@@ -34,6 +34,8 @@ interface Props {
   onNext?: () => void
   /** 长任务的成本 / 耗时预期，放在主按钮旁边 */
   actionHint?: string
+  /** 额度不足时提前禁用，避免发出必然被 429 拒绝的请求 */
+  quotaBlocked?: boolean
   /**
    * 是否显示这一步。一页只放当前步骤（点左栏切换），
    * 传 false 时整段不渲染——它不是被藏起来，而是真的不在 DOM 里。
@@ -71,6 +73,7 @@ export default function StepSection({
   nextLabel,
   onNext,
   actionHint,
+  quotaBlocked = false,
 }: Props) {
   if (!visible) return null
 
@@ -79,7 +82,7 @@ export default function StepSection({
   // 但已经拿到的部分必须立刻渲染，不能再压着骨架屏
   const isStreaming = status === 'streaming'
   const isBusy = isLoading || isStreaming
-  const disabled = isBusy || locked
+  const disabled = isBusy || locked || quotaBlocked
 
   const isAsset = layer === 'asset'
 
@@ -124,7 +127,12 @@ export default function StepSection({
             </button>
           )}
           {actionHint && (
-            <span className="text-[11px] text-ink-400">{actionHint}</span>
+            <span
+              role={quotaBlocked ? 'status' : undefined}
+              className={`text-[11px] ${quotaBlocked ? 'text-accent-700' : 'text-ink-400'}`}
+            >
+              {actionHint}
+            </span>
           )}
           <button
             type="button"

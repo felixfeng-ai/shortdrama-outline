@@ -46,6 +46,8 @@ import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgmen
 import { EMPTY_LOOK, isLookEmpty, lookSignature, readLook, type LookBook } from '@/lib/look'
 import { buildProjectStatus } from '@/lib/project-status'
 import { auditCreativeQuality } from '@/lib/creative-audit'
+import { STEP_COST } from '@/lib/model-pricing'
+import { forecastQuota } from '@/lib/quota-forecast'
 import {
   buildVariantDecisionInput,
   type VariantChoiceOption,
@@ -963,6 +965,14 @@ export default function Home() {
   const hasActs = acts.length > 0
   const hasEpisodes = episodes.length > 0
   const hasResult = hasCharacters || hasActs || hasEpisodes || visuals.length > 0 || shots.length > 0
+  const quotaRemaining = agentQuota?.remaining ?? null
+  const charactersQuote = forecastQuota(STEP_COST.characters, quotaRemaining)
+  const actsQuote = forecastQuota(STEP_COST.acts, quotaRemaining)
+  const episodesQuote = forecastQuota(episodeQuotaUnits(episodeCount), quotaRemaining)
+  const visualsQuote = forecastQuota(STEP_COST.visual, quotaRemaining)
+  const scenesQuote = forecastQuota(STEP_COST.scenes, quotaRemaining)
+  const shotsQuote = forecastQuota(STEP_COST.shots, quotaRemaining)
+  const variantQuote = forecastQuota(2, quotaRemaining)
   const exportPreflight = useMemo(
     () => preflightPlatformExport(shots, {
       target: exportTarget,
@@ -3359,13 +3369,15 @@ export default function Home() {
               actionLabel="生成人物"
               onGenerate={generateCharacters}
               skeletonVariant="characters"
+              actionHint={charactersQuote.label}
+              quotaBlocked={!charactersQuote.affordable}
               extraAction={
                 <>
                   <button
                     type="button"
                     onClick={() => { void requestVariants('characters') }}
-                    disabled={variantLoading || status.characters === 'loading'}
-                    title="一次生成两版人物，消耗 2 单位"
+                    disabled={variantLoading || status.characters === 'loading' || !variantQuote.affordable}
+                    title={`一次生成两版人物 · ${variantQuote.label}`}
                     className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-2 text-xs font-medium text-accent-700
                       transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -3414,12 +3426,14 @@ export default function Home() {
               actionLabel="三幕大纲"
               onGenerate={generateActs}
               skeletonVariant="acts"
+              actionHint={actsQuote.label}
+              quotaBlocked={!actsQuote.affordable}
               extraAction={
                 <button
                   type="button"
                   onClick={() => { void requestVariants('acts') }}
-                  disabled={variantLoading || status.acts === 'loading'}
-                  title="一次生成两版三幕大纲，消耗 2 单位"
+                  disabled={variantLoading || status.acts === 'loading' || !variantQuote.affordable}
+                  title={`一次生成两版三幕大纲 · ${variantQuote.label}`}
                   className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-2 text-xs font-medium text-accent-700
                     transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -3448,7 +3462,8 @@ export default function Home() {
               actionLabel="分集"
               onGenerate={generateEpisodes}
               skeletonVariant="episodes"
-              actionHint={`${episodeCount} 集 · 约 ${episodeQuotaUnits(episodeCount)} 单位 · ${episodeTimeEstimate(episodeCount)}`}
+              actionHint={`${episodesQuote.label} · ${episodeCount} 集 · ${episodeTimeEstimate(episodeCount)}`}
+              quotaBlocked={!episodesQuote.affordable}
             >
               <EpisodeCountPicker
                 value={episodeCount}
@@ -3460,8 +3475,8 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => { void requestFirstEpisodes() }}
-                  disabled={variantLoading || !hasActs}
-                  title="各生成 1 集第一集方向，共消耗 2 单位"
+                  disabled={variantLoading || !hasActs || !variantQuote.affordable}
+                  title={`各生成 1 集第一集方向 · ${variantQuote.label}`}
                   className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-1.5 text-[11.5px] font-medium text-accent-700
                     transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -3495,6 +3510,8 @@ export default function Home() {
               actionLabel="视觉定妆"
               onGenerate={generateVisualAnchors}
               skeletonVariant="characters"
+              actionHint={visualsQuote.label}
+              quotaBlocked={!visualsQuote.affordable}
             >
               <LookBookCard value={look} onChange={setLook} />
               {visuals.length > 0 && (
@@ -3542,6 +3559,8 @@ export default function Home() {
               actionLabel="场次剧本"
               onGenerate={generateSceneList}
               skeletonVariant="acts"
+              actionHint={scenesQuote.label}
+              quotaBlocked={!scenesQuote.affordable}
             >
               {/* 地点锚点排在场次前面：它由场次这次调用一起产出，但作用范围是全剧 */}
               <PlacePanel
@@ -3578,6 +3597,8 @@ export default function Home() {
               actionLabel="分镜"
               onGenerate={generateShotList}
               skeletonVariant="episodes"
+              actionHint={shotsQuote.label}
+              quotaBlocked={!shotsQuote.affordable}
             >
               {shots.length > 0 && (
                 <VersionBar
