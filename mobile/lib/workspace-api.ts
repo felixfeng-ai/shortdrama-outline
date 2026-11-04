@@ -1,4 +1,5 @@
 import { PROJECTS, activeProject, type ProjectSummary } from './app-data.ts';
+import { fetchWithRetry } from './network.ts';
 
 export const workspaceApiBaseUrl = resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_URL);
 
@@ -139,11 +140,11 @@ export async function fetchWorkspace(
 
   let response: Response;
   try {
-    response = await fetchImpl(`${root}/api/mobile/context${query}`, {
+    response = await fetchWithRetry(`${root}/api/mobile/context${query}`, {
       credentials: 'include',
       headers: { Accept: 'application/json' },
       signal,
-    });
+    }, { fetchImpl });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw error;
     throw new Error('无法连接工作区，请检查网络后重试');

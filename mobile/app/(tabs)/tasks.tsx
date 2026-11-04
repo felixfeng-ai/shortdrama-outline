@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -75,6 +76,7 @@ const STATUS_META: Record<
 function syncCopy(status: WorkspaceSyncStatus): string {
   if (status === 'loading') return '同步中';
   if (status === 'synced') return '已同步';
+  if (status === 'cached') return '使用缓存';
   if (status === 'error') return '同步失败';
   return '本地预览';
 }
@@ -99,6 +101,13 @@ export default function TasksScreen() {
       return () => clearInterval(timer);
     }, [active, refresh]),
   );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') refresh();
+    });
+    return () => subscription.remove();
+  }, [refresh]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

@@ -26,8 +26,13 @@ import {
   loadSelectedProjectId,
   saveSelectedProjectId,
 } from './project-selection.ts';
+import {
+  loadWorkspaceCache,
+  saveWorkspaceCache,
+} from './workspace-cache.ts';
+import { trackEvent } from './analytics-service.ts';
 
-export type WorkspaceSyncStatus = 'loading' | 'synced' | 'demo' | 'error';
+export type WorkspaceSyncStatus = 'loading' | 'synced' | 'cached' | 'demo' | 'error';
 
 interface WorkspaceState {
   data: WorkspaceData;
@@ -50,6 +55,7 @@ function errorMessage(error: unknown): string {
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { status: authStatus, user, authorizedFetch } = useAuth();
   const controllerRef = useRef<AbortController | null>(null);
+  const cachedProjectRef = useRef<string | null>(null);
   const [data, setData] = useState<WorkspaceData>(demoWorkspace);
   const [status, setStatus] = useState<WorkspaceSyncStatus>(
     workspaceApiBaseUrl ? 'loading' : 'demo',
@@ -81,6 +87,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (controller.signal.aborted) return;
         setData(next);
         setStatus('synced');
+        cachedProjectRef.current = projectId;
+        void saveWorkspaceCache(projectId, next);
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
@@ -91,7 +99,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           });
           return;
         }
-        setStatus('error');
+        const cacheMatches = cachedProjectRef.current === projectId
+          || (projectId === null && cachedProjectRef.current === null);
+        setStatus(cacheMatches ? 'cached' : 'error');
         setError(errorMessage(reason));
       });
   }, [authorizedFetch]);
@@ -102,8 +112,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void loadSelectedProjectId().then((projectId) => {
+    void Promise.all([loadSelectedProjectId(), loadWorkspaceCache()]).then(([projectId, cache]) => {
       if (!active) return;
+      if (cache && (!projectId || cache.projectId === projectId)) {
+        setData(cache.data);
+        setStatus('cached');
+        cachedProjectRef.current = cache.projectId;
+      }
       setSelectedProjectId(projectId);
       setSelectionReady(true);
     });
@@ -128,6 +143,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (!workspaceApiBaseUrl) throw new Error('尚未配置工作区地址');
     const project = await createWorkspaceProject(workspaceApiBaseUrl, title, authorizedFetch);
     await selectProject(project.id);
+    void trackEvent('project_created', { projectId: project.id, result: 'success' }, '/projects');
     return project;
   }, [authorizedFetch, selectProject]);
 

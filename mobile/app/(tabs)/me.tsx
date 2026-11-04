@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -22,6 +22,10 @@ import {
 import { colors, fonts, spacing, type } from '@/constants/tokens';
 import { useAuth } from '@/lib/auth-store';
 import {
+  initializeAnalytics,
+  setAnalyticsEnabled,
+} from '@/lib/analytics-service';
+import {
   disableNativeNotifications,
   enableNativeNotifications,
   notificationPermission,
@@ -35,6 +39,7 @@ export default function MeScreen() {
     'checking' | 'granted' | 'denied' | 'idle' | 'loading' | 'error' | 'unsupported'
   >('checking');
   const [pushToken, setPushToken] = useState('');
+  const [analyticsOn, setAnalyticsOn] = useState(false);
   const quota = data.quota;
   const progress = quota.limit > 0 ? Math.round((quota.used / quota.limit) * 100) : 0;
   useEffect(() => {
@@ -57,6 +62,10 @@ export default function MeScreen() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    void initializeAnalytics().then(setAnalyticsOn);
   }, []);
 
   async function onEnableNotifications() {
@@ -116,6 +125,31 @@ export default function MeScreen() {
       label: '隐私与数据',
       value: '导出、注销与数据说明',
       onPress: () => router.push('/account/data'),
+    },
+    {
+      key: 'legal',
+      icon: 'file-text',
+      label: '法律与 AI 说明',
+      value: '隐私 · 条款 · 生成标识',
+      onPress: () => router.push('/legal'),
+    },
+    {
+      key: 'report',
+      icon: 'flag',
+      label: '内容举报',
+      value: '侵权、违法与不当内容',
+      onPress: () => router.push('/report'),
+    },
+    {
+      key: 'analytics',
+      icon: 'activity',
+      label: '匿名体验分析',
+      value: analyticsOn ? '已开启 · 不采集创作正文' : '已关闭',
+      onPress: () => {
+        const next = !analyticsOn;
+        setAnalyticsOn(next);
+        void setAnalyticsEnabled(next);
+      },
     },
     { key: 'ai-label', icon: 'file-text', label: 'AI 内容标识', value: '导出时自动附加' },
   ] as const;
@@ -216,7 +250,20 @@ export default function MeScreen() {
                     <Text style={styles.settingLabel}>{item.label}</Text>
                     <Text style={styles.settingValue}>{item.value}</Text>
                   </View>
-                  <Feather name="chevron-right" size={17} color={colors.textMuted} />
+                  {item.key === 'analytics' ? (
+                    <Switch
+                      accessibilityLabel="匿名体验分析"
+                      value={analyticsOn}
+                      onValueChange={(next) => {
+                        setAnalyticsOn(next);
+                        void setAnalyticsEnabled(next);
+                      }}
+                      trackColor={{ false: colors.lineStrong, true: colors.info }}
+                      thumbColor={colors.surface}
+                    />
+                  ) : (
+                    <Feather name="chevron-right" size={17} color={colors.textMuted} />
+                  )}
                 </Pressable>
                 {index < settings.length - 1 ? <Divider /> : null}
               </View>
@@ -224,8 +271,8 @@ export default function MeScreen() {
           </Panel>
 
           <View style={styles.legalRow}>
-            <Text style={styles.legalText}>用户协议</Text>
-            <Text style={styles.legalText}>隐私政策</Text>
+            <Pressable onPress={() => router.push('/legal')}><Text style={styles.legalText}>用户协议</Text></Pressable>
+            <Pressable onPress={() => router.push('/legal')}><Text style={styles.legalText}>隐私政策</Text></Pressable>
             <Pressable onPress={() => router.push('/account/data')}>
               <Text style={styles.legalText}>删除账号</Text>
             </Pressable>

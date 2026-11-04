@@ -43,6 +43,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "check:store": "node scripts/store-readiness.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test lib/*.test.ts"
   },

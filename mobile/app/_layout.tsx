@@ -7,11 +7,13 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { NotificationBridge } from '@/components/notification-bridge';
+import { AppErrorBoundary } from '@/components/app-error-boundary';
+import { AnalyticsBridge } from '@/components/analytics-bridge';
 import { colors } from '@/constants/tokens';
 import { AuthProvider } from '@/lib/auth-store';
 import { WorkspaceProvider } from '@/lib/workspace-store';
 
-export { ErrorBoundary } from 'expo-router';
+export const ErrorBoundary = AppErrorBoundary;
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -57,6 +59,7 @@ export default function RootLayout() {
               },
             }}>
             <NotificationBridge />
+            <AnalyticsBridge />
             <Stack
               screenOptions={{
                 headerShown: false,

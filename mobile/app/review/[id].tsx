@@ -202,12 +202,26 @@ export default function ReviewScreen() {
             <Kicker>ASSET REVIEW</Kicker>
             <Text numberOfLines={1} style={styles.topTitle}>{targetLabel}</Text>
           </View>
-          <IconButton
-            icon="refresh-cw"
-            label="刷新审片"
-            active={loading}
-            onPress={load}
-          />
+          <View style={styles.topActions}>
+            <IconButton
+              icon="flag"
+              label="举报当前资产"
+              onPress={() => router.push({
+                pathname: '/report',
+                params: {
+                  projectId,
+                  targetType: 'asset',
+                  targetId: preferredId,
+                },
+              })}
+            />
+            <IconButton
+              icon="refresh-cw"
+              label="刷新审片"
+              active={loading}
+              onPress={load}
+            />
+          </View>
         </View>
 
         {loading && !current ? (
@@ -406,6 +420,10 @@ const styles = StyleSheet.create({
   topCopy: {
     flex: 1,
     minWidth: 0,
+  },
+  topActions: {
+    flexDirection: 'row',
+    gap: spacing.xxs,
   },
   topTitle: {
     color: colors.text,

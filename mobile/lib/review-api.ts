@@ -1,5 +1,6 @@
 import { resolveApiBaseUrl } from './workspace-api.ts';
 import type { WorkspaceTaskTargetType } from './workspace-api.ts';
+import { fetchWithRetry } from './network.ts';
 
 export interface ReviewTask {
   id: string;
@@ -132,11 +133,11 @@ export async function fetchReviewState(
   const params = new URLSearchParams({ projectId, targetType, targetId });
   let response: Response;
   try {
-    response = await fetchImpl(`${root}/api/generations?${params.toString()}`, {
+    response = await fetchWithRetry(`${root}/api/generations?${params.toString()}`, {
       credentials: 'include',
       headers: { Accept: 'application/json' },
       signal,
-    });
+    }, { fetchImpl });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw error;
     throw new Error('无法连接审片服务，请检查网络后重试');

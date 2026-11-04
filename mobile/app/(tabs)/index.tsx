@@ -52,6 +52,8 @@ export default function AgentHomeScreen() {
       ? '同步中'
       : status === 'synced'
         ? '已同步'
+        : status === 'cached'
+          ? '使用缓存 · 重试'
         : status === 'error'
           ? '同步失败 · 重试'
           : '本地草稿';

@@ -26,6 +26,7 @@ import {
   saveAuthSession,
 } from './auth-storage.ts';
 import { workspaceApiBaseUrl } from './workspace-api.ts';
+import { trackEvent } from './analytics-service.ts';
 
 export type AuthStatus = 'loading' | 'anonymous' | 'authenticated';
 
@@ -157,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         deviceName,
       );
       await applyCredentials(toStored(result));
+      void trackEvent('login_success', { result: 'success' }, '/login');
       return result;
     },
     [applyCredentials],
