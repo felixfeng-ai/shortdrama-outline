@@ -23,6 +23,9 @@ import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
 import DecisionPanel from '@/components/DecisionPanel'
 import CanonPanel from '@/components/CanonPanel'
+import EntityCommentsPanel from '@/components/EntityCommentsPanel'
+import AssetLibraryPanel, { type AssetLibrarySource } from '@/components/AssetLibraryPanel'
+import ProjectBranchPanel from '@/components/ProjectBranchPanel'
 import LookBookCard from '@/components/LookBookCard'
 import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
@@ -39,10 +42,10 @@ import {
 } from '@/lib/episodes'
 import { EMPTY_BRIEF, briefSignature, isBriefEmpty, readBrief, type CreativeBrief } from '@/lib/brief'
 import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgment-log'
-import { EMPTY_LOOK, lookSignature, readLook, type LookBook } from '@/lib/look'
+import { EMPTY_LOOK, isLookEmpty, lookSignature, readLook, type LookBook } from '@/lib/look'
 import { buildProjectStatus } from '@/lib/project-status'
 import AgentDock from '@/components/AgentDock'
-import type { AgentState } from '@/lib/agent/tools'
+import type { AgentCard, AgentState } from '@/lib/agent/tools'
 import ShotList from '@/components/ShotList'
 import ShotInspector from '@/components/ShotInspector'
 import SceneList from '@/components/SceneList'
@@ -62,6 +65,9 @@ import {
   fetchProjectMaterials,
   fetchProjectDecisions,
   fetchProjectCanon,
+  fetchProjectSkill,
+  fetchProjectComments,
+  updateProjectComment,
   createProjectDecision,
   createProjectJudgment,
   loadSampleProject,
@@ -77,6 +83,9 @@ import {
 } from '@/lib/assets/api'
 import type { ProjectDecisionDto } from '@/lib/assets/api'
 import type { ProjectCanonDto } from '@/lib/assets/api'
+import type { ProjectSkillBinding } from '@/lib/skills/personal'
+import type { EntityComment } from '@/lib/entity-comments'
+import type { ReusableAsset } from '@/lib/assets/library'
 import type { Shot, VisualCharacter, VisualPlace, Scene as AssetScene } from '@/lib/assets/types'
 import { groupAttachments } from '@/lib/assets/attachments'
 import { backfillVisualCharacterEntityIds } from '@/lib/assets/normalize'
@@ -444,6 +453,8 @@ export default function Home() {
   const [judgments, setJudgments] = useState<JudgmentEntry[]>([])
   const [decisions, setDecisions] = useState<ProjectDecisionDto[]>([])
   const [canon, setCanon] = useState<ProjectCanonDto>({ entities: [], facts: [], issues: [] })
+  const [projectSkill, setProjectSkill] = useState<ProjectSkillBinding | null>(null)
+  const [entityComments, setEntityComments] = useState<EntityComment[]>([])
   const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
   const [contextVersion, setContextVersion] = useState<number | null>(null)
   const [metaPanel, setMetaPanel] = useState<MetaPanel | null>(null)
@@ -499,12 +510,16 @@ export default function Home() {
 
     void (async () => {
       try {
-        const [server, decisionData, canonData] = await Promise.all([
+        const [server, decisionData, canonData, skillBinding, commentData] = await Promise.all([
           fetchProjectContext(projectId),
           fetchProjectDecisions(projectId),
           fetchProjectCanon(projectId),
+          fetchProjectSkill(projectId).catch(() => null),
+          fetchProjectComments(projectId).catch(() => []),
         ])
         if (cancelled) return
+        setProjectSkill(skillBinding)
+        setEntityComments(commentData)
         setCanon(canonData)
         setDecisions(decisionData.decisions)
         if (decisionData.judgments.length > 0) {
@@ -2457,6 +2472,38 @@ export default function Home() {
       field: item.field,
       message: item.message,
     })),
+    skill: projectSkill
+      ? {
+          id: projectSkill.skillId,
+          name: projectSkill.name,
+          version: projectSkill.skillVersion,
+          summary: projectSkill.summary,
+          stageRules: projectSkill.stageRules,
+          acceptance: projectSkill.acceptance,
+        }
+      : null,
+    entities: [
+      ...characters.map((item) => ({ type: 'character' as const, id: item.id, name: item.name })),
+      ...places.map((item) => ({ type: 'place' as const, id: item.id, name: item.name })),
+      ...episodes.map((item) => ({
+        type: 'episode' as const,
+        id: item.id,
+        name: `第 ${item.number} 集 · ${item.title}`,
+      })),
+      ...shots.map((item) => ({
+        type: 'shot' as const,
+        id: item.entityId || item.id,
+        name: `第 ${item.episode || '?'} 集 · 第 ${item.shot} 镜 · ${item.scene || '未命名场景'}`,
+      })),
+    ],
+    entityComments: entityComments.map((item) => ({
+      id: item.id,
+      targetType: item.targetType,
+      targetId: item.targetId,
+      targetName: item.targetName,
+      body: item.body,
+      status: item.status,
+    })),
     episodes: episodes.map((e) => ({
       number: e.number,
       title: e.title,
@@ -2480,10 +2527,138 @@ export default function Home() {
     quota: agentQuota,
   }
 
+  const librarySources: AssetLibrarySource[] = [
+    ...characters.map((item) => ({
+      key: `character:${item.id}`,
+      assetType: 'character' as const,
+      name: item.name,
+      sourceAssetId: item.id,
+      content: {
+        name: item.name,
+        identity: item.identity,
+        personality: item.personality,
+        motivation: item.motivation,
+        arc: item.arc,
+      },
+    })),
+    ...places.map((item) => ({
+      key: `place:${item.id}`,
+      assetType: 'place' as const,
+      name: item.name,
+      sourceAssetId: item.id,
+      content: {
+        name: item.name,
+        space: item.space,
+        props: item.props,
+        lighting: item.lighting,
+        grade: item.grade,
+        anchor: item.anchor,
+      },
+    })),
+    ...(!isBriefEmpty(brief) || !isLookEmpty(look)
+      ? [{
+          key: 'look:current',
+          assetType: 'look' as const,
+          name: '当前项目视觉宪法',
+          sourceAssetId: 'look:current',
+          content: {
+            look,
+            intent: brief,
+          },
+        }]
+      : []),
+  ]
+
+  function reuseLibraryAsset(asset: ReusableAsset) {
+    if (asset.assetType === 'character') {
+      const content = asset.content
+      const name = String(content.name || asset.name).trim()
+      if (!name) {
+        setNotice('这个角色资产没有有效名称，无法复用。')
+        return
+      }
+      const reused: Character = {
+        id: String(content.id || asset.sourceAssetId || asset.id),
+        name,
+        identity: String(content.identity || ''),
+        personality: String(content.personality || ''),
+        motivation: String(content.motivation || ''),
+        arc: String(content.arc || ''),
+      }
+      setCharacters((prev) => {
+        const index = prev.findIndex((item) => item.name === name)
+        return index >= 0
+          ? prev.map((item, i) => i === index ? { ...reused, id: item.id } : item)
+          : [...prev, reused]
+      })
+    } else if (asset.assetType === 'place') {
+      const content = asset.content
+      const name = String(content.name || asset.name).trim()
+      if (!name) {
+        setNotice('这个地点资产没有有效名称，无法复用。')
+        return
+      }
+      const reused: VisualPlace = {
+        id: String(content.id || asset.sourceAssetId || asset.id),
+        name,
+        space: String(content.space || ''),
+        props: String(content.props || ''),
+        lighting: String(content.lighting || ''),
+        grade: String(content.grade || ''),
+        anchor: String(content.anchor || ''),
+      }
+      setPlaces((prev) => {
+        const index = prev.findIndex((item) => item.name === name)
+        return index >= 0
+          ? prev.map((item, i) => i === index ? { ...reused, id: item.id } : item)
+          : [...prev, reused]
+      })
+    } else {
+      const content = asset.content
+      if (content.look && typeof content.look === 'object') setLook(readLook(content.look))
+      if (content.intent && typeof content.intent === 'object') setBrief(readBrief(content.intent))
+    }
+    setNotice(`已把「${asset.name}」v${asset.version} 复用到当前项目。`)
+  }
+
   /** 助手提议改写某一镜 → 用户确认后才真正写回（同放映厅那条「应用到本镜」） */
   function applyAgentCard(card: { shot: number; target: 'prompt' | 'action'; text: string; summary: string }) {
     setShots((prev) => prev.map((s) => (s.shot === card.shot ? { ...s, [card.target]: card.text } : s)))
     setNotice(`已按助手的建议改写第 ${card.shot} 镜（${card.summary}）。`)
+  }
+
+  async function applyAgentEntityCard(card: Extract<AgentCard, { kind: 'entity-edit' }>) {
+    if (card.targetType === 'character') {
+      setCharacters((prev) => prev.map((item) =>
+        item.id === card.targetId ? { ...item, personality: card.text } : item
+      ))
+    } else if (card.targetType === 'place') {
+      setPlaces((prev) => prev.map((item) =>
+        item.id === card.targetId ? { ...item, space: card.text } : item
+      ))
+    } else if (card.targetType === 'episode') {
+      setEpisodes((prev) => prev.map((item) =>
+        item.id === card.targetId ? { ...item, synopsis: card.text } : item
+      ))
+    } else {
+      setShots((prev) => prev.map((item) =>
+        (item.entityId || item.id) === card.targetId ? { ...item, action: card.text } : item
+      ))
+    }
+    const related = entityComments.find((comment) =>
+      comment.status === 'open'
+      && comment.targetType === card.targetType
+      && comment.targetId === card.targetId
+    )
+    if (projectId && related) {
+      try {
+        const updated = await updateProjectComment(projectId, related.id, { status: 'resolved' })
+        setEntityComments((prev) => prev.map((item) => item.id === updated.id ? updated : item))
+      } catch {
+        // 正文已经按用户确认写入；批注状态失败不能反向撤销这次确认。
+      }
+    }
+    setNotice(`已按批注修改「${card.targetName}」（${card.summary}）。`)
   }
 
   async function applyAgentDecision(card: {
@@ -2833,6 +3008,25 @@ export default function Home() {
               active={metaPanel}
               onToggle={(panel) => setMetaPanel(metaPanel === panel ? null : panel)}
             />
+            {projectId && !firstRun && (
+              <EntityCommentsPanel
+                projectId={projectId}
+                entities={agentState.entities ?? []}
+                comments={entityComments}
+                onCreated={(comment) => setEntityComments((prev) => [comment, ...prev])}
+                onUpdated={(comment) => setEntityComments((prev) =>
+                  prev.map((item) => item.id === comment.id ? comment : item)
+                )}
+              />
+            )}
+            {projectId && !firstRun && (
+              <AssetLibraryPanel
+                projectId={projectId}
+                sources={librarySources}
+                onReuse={reuseLibraryAsset}
+              />
+            )}
+            {projectId && !firstRun && <ProjectBranchPanel projectId={projectId} />}
             <BriefCard
               headless
               open={metaPanel === 'brief'}
@@ -3414,8 +3608,10 @@ export default function Home() {
                     : `第 ${viewIndex} 步 · ${stepOf(view)?.nav ?? ''}`
                 }
                 onApplyCard={applyAgentCard}
+                onApplyEntityCard={(card) => { void applyAgentEntityCard(card) }}
                 onApplyDecision={(card) => { void applyAgentDecision(card) }}
                 onRegenerate={regenerateByAgent}
+                projectId={projectId}
                 onOpenStep={(step) => {
                   goToStep(step)
                   if (window.matchMedia('(max-width: 920px)').matches) setDeckOpen(false)

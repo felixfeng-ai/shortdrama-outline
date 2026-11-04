@@ -367,6 +367,12 @@ SQLite + 私有数据目录
 | `auth_rate_limits` | 验证码发送的 IP、全站窗口起点与计数；跨服务重启保留 |
 | `project_shares` | 只读审阅 token 哈希、有效期、撤销与最后访问时间 |
 | `push_subscriptions` | 当前 owner 的设备推送订阅，endpoint 幂等更新 |
+| `personal_skills` / `personal_skill_versions` | 个人创作方法主表与不可变版本；项目只绑定明确版本 |
+| `project_skill_bindings` | 项目采用的 Skill 版本与采用人，避免升级 Skill 后历史项目被静默改写 |
+| `entity_comments` | 锚定角色、地点、分集或镜头稳定 id 的批注与处理状态 |
+| `reusable_assets` | 跨项目角色、地点和视觉宪法文本资产；剔除图片二进制与本地路径 |
+| `project_agent_threads` / `project_agent_messages` | 同项目多会话与消息隔离，项目事实仍共享 |
+| `project_branches` | 从真实快照创建的分支记录与基线血缘 |
 | `usage_log` | 按身份、步骤、日期的额度流水与全站熔断依据 |
 
 **为什么是 DeepSeek**，只看两条：
@@ -525,6 +531,17 @@ chengju/
 | PATCH | `/api/projects/[id]/decisions/[decisionId]` | `{ status, chosenValue, reason, locked, unlock? }` | 更新状态；锁定决策需显式 unlock |
 | GET / POST | `/api/projects/[id]/judgments` | `{ step, action, reason? }` | 读取或追加判断日志 |
 | GET / POST | `/api/projects/[id]/canon` | `{ kind, name, field, value, validFromEpisode, validToEpisode }` | 读取 Canon、冲突并创建事实 |
+| GET / POST | `/api/personal-skills` | `POST` 名称、主文档、验收标准等 | 列举或创建个人 Skill v1 |
+| POST | `/api/personal-skills/[id]/versions` | 新一版主文档、规则与验收标准 | 发布不可变新版本 |
+| GET / PUT | `/api/projects/[id]/skill` | `{ skillId, version }` | 读取或绑定项目采用的 Skill 版本；变化写判断日志 |
+| GET / POST | `/api/projects/[id]/comments` | `{ targetType, targetId, body }` | 按稳定实体读取或创建批注 |
+| PATCH | `/api/projects/[id]/comments/[commentId]` | `{ status, body? }` | 处理或更新批注 |
+| GET / POST | `/api/asset-library` | `{ projectId, assetType, name, sourceAssetId, content }` | 跨项目保存角色、地点、视觉宪法文本资产 |
+| GET / POST | `/api/projects/[id]/threads` | `{ title? }` | 列举或新建项目 Agent 会话 |
+| GET | `/api/projects/[id]/threads/[threadId]` | — | 读取单个会话和消息 |
+| POST | `/api/projects/[id]/threads/[threadId]/messages` | `{ role, content }` | 追加用户或 Agent 消息 |
+| GET / POST | `/api/projects/[id]/branches` | `{ name, baseSnapshotId, note? }` | 读取或创建版本分支记录 |
+| POST | `/api/mcp` | MCP JSON-RPC：`initialize`、`tools/list`、`tools/call` | 仅提供项目摘要和只读能力，不开放写入 |
 | POST | `/api/auth/email/request-code` | `{ email }` | 发送邮箱验证码；仅本机开发且显式开启时返回 `devCode` |
 | POST | `/api/auth/email/verify-code` | `{ email, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 Access/Refresh Token |
 | POST | `/api/auth/request-code` | `{ phone }` | 发送登录验证码；仅本机开发且显式开启时返回 `devCode` |
@@ -750,13 +767,18 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 项目生成任务中心 | ✅ 已完成 | 汇总等待、运行、成功、失败与取消任务；支持目标去重、单条重试和确认后串行批量重试 |
 | 分镜制作工作台 | ✅ 已完成 | 集场镜树、镜头卡流、右侧检查器；桌面与手机共用同一镜头数据 |
 | 镜头生产质检与批量返修 | ✅ 已完成 | 镜头卡直接标出缺锚点、旧参考、缺图与参数问题；可筛选问题镜头、确定性修复 Prompt 并进入批量返修 |
-| 平台导出适配层 | ✅ 已完成 | 通用、即梦、可灵和结构化 JSON 四种交付目标；生成逐镜执行单、预检报告与稳定 manifest，不接平台私有 API |
+| 平台导出适配层 | ✅ 已完成 | 通用、即梦、可灵、剪映和结构化 JSON 五种目标；剪映输出镜头顺序、台词字幕表和稳定 manifest，不伪造私有 `.draft` 工程，不接平台私有 API |
 | 生成任务超时恢复 | ✅ 已完成 | 刷新任务列表时把超过安全时限的 queued/running 任务转为 failed；活跃任务和终态任务不误处理 |
 | 长剧集分批与断点续跑 | ✅ 已完成 | 总集数支持 6–120（默认 30）；分集内部每批 10 集、分镜按场次分批；checkpoint 记录输入签名和游标，失败后从下一批继续 |
 | 分镜按集审阅 | ✅ 已完成 | 分镜按集分组，集头显示镜头数、时长合计、缺图与返修；未标注镜头集中置顶，并可在镜头卡内直接修正集号 |
 | 创作上下文服务端持久化 | ✅ 已完成 | Brief、LookBook、集数进入 `project_context`，带版本迁移、项目归属校验、旧 localStorage 自动迁移与 409 乐观锁 |
 | 结构化决策与判断日志 | ✅ 已完成 | `project_decisions` / `project_judgments` 落库；Agent 可读历史决策并生成待确认决策卡；锁定决策需显式解锁 |
 | Canon 连续性事实 | ✅ 已完成 | 角色认知、人物关系、地点和道具按集数区间建模；重叠区间不同值报 error；Agent 可调用 `audit_canon`，项目状态区提供只读冲突面板 |
+| Skill 2.0 个人方法包 | ✅ 已完成 | 个人 Skill 支持主文档、参考、阶段规则和验收标准；发版不可变，项目绑定明确版本，变化写判断日志；Agent 可读当前方法 |
+| 实体级批注与受控修改 | ✅ 已完成 | 批注锚定角色、地点、分集和镜头稳定 id；Agent 读评论后只生成待确认修改卡，确认后写回对应字段并解决相关批注 |
+| 跨项目资产库 | ✅ 已完成 | 角色、地点和视觉宪法可按 owner 跨项目复用；同名保存递增版本，服务端递归剔除图片二进制与本地路径 |
+| 多会话与版本分支 | ✅ 已完成 | 同项目可建多个 Agent 会话，消息隔离、项目事实共享；可从真实快照创建带基线版本的分支记录 |
+| MCP 只读连接 | ✅ 已完成 | `/api/mcp` 提供 initialize、tools/list 与项目摘要读取；不开放远程写、图片路径、密钥或其它 owner 数据 |
 | PWA 安装基础 | ✅ 已完成 | Manifest、Service Worker、离线兜底、条件安装入口、项目与步骤深链和浏览器历史恢复；不缓存 API、个人图片或生成资产 |
 | 只读项目审阅链接 | 🟡 本地完成，待发布 | 7 天有效、重新生成撤销旧链接、无需登录；只开放文本快照，不暴露本地图库、生成文件、额度或任务 |
 | Web Push 生成通知 | 🟡 代码完成，待配置 | 用户授权后推送生成成功/失败，点击回到定妆或分镜；VAPID 私钥只在服务端，生产环境需配置密钥 |
@@ -792,7 +814,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 多实例与任务队列 | 📋 | 当前 SQLite、额度和检查点按单进程设计；扩容前需要 Postgres、持久队列、Redis 原子限流、任务幂等和多实例恢复 |
 | 运维与可观测性 | 🟡 | 已有 SQLite `busy_timeout`、一致性数据库快照、生成图片备份、SHA-256 manifest、非覆盖恢复 CLI 和部署前完整备份；系统 cron、异地备份、容量监控、服务告警、崩溃监控和正式恢复演练仍待配置 |
 | 内容安全与合规 | 📋 | AI 内容标识、内容审核、用户举报、隐私授权管理、服务条款与异常内容处置流程尚未完成 |
-| 团队协作 | 📋 | 项目成员、批注、审阅分配、角色权限和操作记录尚未开发；当前仍坚持单创作人、轻账号边界 |
+| 团队协作 | 🟡 | 个人实体批注、多 Agent 会话和版本分支已完成；项目成员、审批分配、角色权限和团队操作记录仍待开发 |
 | 订阅与支付 | 📋 | 套餐、订单、计费、额度充值、退款和发票能力尚未开发 |
 | 原生 App | 📋 | Web/PWA 已具备；原生工作区仍需合并当前 Web 基线，并补 Keychain/Keystore、401 单飞刷新、深链、原生推送、相机/相册和离线草稿 |
 | 图生视频与成片时间线 | 📋 | 当前只到角色定妆图和镜头首帧；图生视频、视频拼接和成片时间线留到最后，不与本轮 P0 上线阻塞项混排 |

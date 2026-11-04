@@ -31,6 +31,7 @@ import {
 } from '@/lib/skills/intake'
 import { listSourceMaterials } from '@/lib/skills/source-index'
 import SkillAgentDrawer from './SkillAgentDrawer'
+import PersonalSkillPanel from './PersonalSkillPanel'
 
 interface SeedPrompt {
   id: number
@@ -649,6 +650,7 @@ export default function SkillCatalog() {
             <a href="/report">举报内容</a>
           </nav>
         </section>
+        <PersonalSkillPanel projectId={project?.id ?? null} />
       </main>
 
       <button

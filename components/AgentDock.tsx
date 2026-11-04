@@ -10,6 +10,12 @@
 // 哪条不行、下一场接哪"的人——它就是干这个的，不是通用聊天框。
 import { useEffect, useRef, useState } from 'react'
 import { postJson } from '@/lib/api'
+import {
+  appendProjectThreadMessage,
+  createProjectThread,
+  fetchProjectThread,
+  listProjectThreads,
+} from '@/lib/assets/api'
 import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
 import { createToolExecutors, type AgentCard, type AgentState } from '@/lib/agent/tools'
 import { STEPS, type StepKey } from '@/lib/types'
@@ -33,11 +39,15 @@ interface Props {
   onNewMessage?: () => void
   /** 用户确认「改写某一镜」后，页面负责写回去 */
   onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => void
+  /** 用户确认实体级建议后，页面按稳定实体 id 写回对应字段 */
+  onApplyEntityCard: (card: Extract<AgentCard, { kind: 'entity-edit' }>) => void
   /** 用户确认「结构化决策」后，页面负责落库 */
   onApplyDecision: (card: Extract<AgentCard, { kind: 'decision' }>) => void
   /** 用户确认「重新生成某一步」后，页面负责触发 */
   onRegenerate: (step: StepKey) => void
   onOpenStep?: (step: StepKey) => void
+  /** 多会话必须挂在项目下；未保存项目时仍允许本地单会话。 */
+  projectId?: string | null
   /** 从画布等入口带入的问题；只预填，不自动发送 */
   seedPrompt?: { id: number; text: string } | null
 }
@@ -67,8 +77,10 @@ const TOOL_LABEL: Record<string, string> = {
   review_episodes: '审分集',
   get_quota: '查额度',
   get_decisions: '读创作决策',
+  get_entity_comments: '读实体批注',
   search_docs: '查文档',
   propose_shot_edit: '提议改写镜头',
+  propose_entity_edit: '提议修改实体',
   propose_regenerate: '提议重跑某步',
   propose_decision: '提议创作决策',
 }
@@ -116,12 +128,17 @@ export default function AgentDock({
   context,
   onNewMessage,
   onApplyCard,
+  onApplyEntityCard,
   onApplyDecision,
   onRegenerate,
   onOpenStep,
   seedPrompt,
+  projectId,
 }: Props) {
   const [lines, setLines] = useState<Line[]>([])
+  const [threads, setThreads] = useState<Array<{ id: string; title: string; messageCount: number }>>([])
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
+  const [threadBusy, setThreadBusy] = useState(false)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [degraded, setDegraded] = useState(false)
@@ -132,6 +149,68 @@ export default function AgentDock({
   const missingSummary = missingSteps.length > 0
     ? `还有 ${missingSteps.length} 个步骤未完成：${missingSteps.slice(0, 2).map((step) => step.short).join('、')}。我可以直接带你过去。`
     : '六步产物已经齐了。我可以继续帮你审分镜、查返修或整理导出清单。'
+
+  async function loadThread(threadId: string) {
+    if (!projectId) return
+    setThreadBusy(true)
+    try {
+      const thread = await fetchProjectThread(projectId, threadId)
+      setActiveThreadId(thread.id)
+      setLines((thread.messages ?? [])
+        .filter((message) => message.role === 'user' || message.role === 'assistant')
+        .map((message) => ({
+          role: message.role as 'user' | 'assistant',
+          text: message.content,
+        })))
+    } catch (error) {
+      push({ role: 'note', text: error instanceof Error ? error.message : '会话读取失败' })
+    } finally {
+      setThreadBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!projectId) {
+      setThreads([])
+      setActiveThreadId(null)
+      setLines([])
+      return
+    }
+    setLines([])
+    setActiveThreadId(null)
+    let active = true
+    listProjectThreads(projectId)
+      .then((items) => {
+        if (!active) return
+        setThreads(items)
+        if (items[0]) void loadThread(items[0].id)
+      })
+      .catch(() => {
+        if (active) setThreads([])
+      })
+    return () => {
+      active = false
+    }
+    // loadThread 依赖同一个 projectId；这里只响应项目切换。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
+  async function newThread() {
+    if (!projectId || threadBusy) return
+    setThreadBusy(true)
+    try {
+      const thread = await createProjectThread(projectId)
+      setThreads((current) => [{ ...thread, messageCount: 0 }, ...current])
+      setActiveThreadId(thread.id)
+      setLines([])
+      setDegraded(false)
+      requestAnimationFrame(() => inputRef.current?.focus())
+    } catch (error) {
+      push({ role: 'note', text: error instanceof Error ? error.message : '新建会话失败' })
+    } finally {
+      setThreadBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!seedPrompt) return
@@ -182,6 +261,25 @@ export default function AgentDock({
     setBusy(true)
     setInput('')
     push({ role: 'user', text })
+    let threadId = activeThreadId
+    if (projectId) {
+      try {
+        if (!threadId) {
+          const thread = await createProjectThread(projectId, text.slice(0, 24))
+          threadId = thread.id
+          setThreads((current) => [{ ...thread, messageCount: 0 }, ...current])
+          setActiveThreadId(thread.id)
+        }
+        await appendProjectThreadMessage(projectId, threadId, { role: 'user', content: text })
+        setThreads((current) => current.map((thread) =>
+          thread.id === threadId
+            ? { ...thread, messageCount: thread.messageCount + 1 }
+            : thread
+        ))
+      } catch {
+        // 会话持久化失败不能阻止本轮问答；界面上仍保留本地消息。
+      }
+    }
 
     // 把显示用的对话压成协议消息；工具消息按 AGENT.md 的约定回填
     const toMessages = (): AgentMessage[] =>
@@ -216,7 +314,20 @@ export default function AgentDock({
           }
         },
       })
-      push({ role: 'assistant', text: result.messages[result.messages.length - 1].content })
+      const answer = result.messages[result.messages.length - 1].content
+      push({ role: 'assistant', text: answer })
+      if (projectId && threadId) {
+        void appendProjectThreadMessage(projectId, threadId, {
+          role: 'assistant',
+          content: answer,
+        }).then(() => {
+          setThreads((current) => current.map((thread) =>
+            thread.id === threadId
+              ? { ...thread, messageCount: thread.messageCount + 1 }
+              : thread
+          ))
+        }).catch(() => {})
+      }
       for (const card of result.cards) push({ role: 'card', card })
     } catch (error) {
       push({ role: 'note', text: error instanceof Error ? error.message : '这次没能回答，稍后再试' })
@@ -294,6 +405,35 @@ export default function AgentDock({
               </button>
             )}
           </header>
+
+          {projectId && (
+            <div className="flex items-center gap-1.5 border-b border-surface-line bg-surface-soft/45 px-3 py-2">
+              <select
+                aria-label="切换场记会话"
+                value={activeThreadId ?? ''}
+                disabled={threadBusy}
+                onChange={(event) => {
+                  if (event.target.value) void loadThread(event.target.value)
+                }}
+                className="min-h-8 min-w-0 flex-1 rounded-chip border border-surface-line bg-surface-card px-2 text-[10px] text-ink-600 outline-none focus:border-accent-300"
+              >
+                {!activeThreadId && <option value="">新会话</option>}
+                {threads.map((thread) => (
+                  <option key={thread.id} value={thread.id}>
+                    {thread.title} · {thread.messageCount}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={threadBusy}
+                onClick={() => void newThread()}
+                className="min-h-8 shrink-0 rounded-chip border border-surface-line px-2.5 text-[9px] text-ink-500 hover:border-accent-300 hover:text-accent-700 disabled:opacity-45"
+              >
+                + 新会话
+              </button>
+            </div>
+          )}
 
           {variant === 'docked' && context && (
             <div className="deck-ctx">正在看 <b>{context}</b></div>
@@ -382,6 +522,8 @@ export default function AgentDock({
                   <p className="prop-h">
                     {line.card.kind === 'shot-edit'
                       ? `待确认：第 ${line.card.shot} 镜 · ${line.card.summary}`
+                      : line.card.kind === 'entity-edit'
+                        ? `待确认：${line.card.targetName} · ${line.card.summary}`
                       : line.card.kind === 'decision'
                         ? `待确认决策：${line.card.stepLabel} · ${line.card.question}`
                         : `待确认：重新生成「${line.card.stepLabel}」`}
@@ -389,6 +531,8 @@ export default function AgentDock({
                   <p className="prop-b">
                     {line.card.kind === 'shot-edit'
                       ? line.card.text
+                      : line.card.kind === 'entity-edit'
+                        ? line.card.text
                       : line.card.kind === 'decision'
                         ? `推荐「${line.card.recommended}」：${line.card.reason}`
                         : line.card.reason}
@@ -403,6 +547,7 @@ export default function AgentDock({
                       type="button"
                       onClick={() => {
                         if (line.card.kind === 'shot-edit') onApplyCard(line.card)
+                        else if (line.card.kind === 'entity-edit') onApplyEntityCard(line.card)
                         else if (line.card.kind === 'decision') onApplyDecision(line.card)
                         else onRegenerate(line.card.step)
                         push({ role: 'note', text: '已按你的确认执行。' })

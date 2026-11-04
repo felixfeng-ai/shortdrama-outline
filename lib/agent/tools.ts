@@ -47,6 +47,30 @@ export interface AgentCanonIssue {
   message: string
 }
 
+export interface AgentSkillContext {
+  id: string
+  name: string
+  version: number
+  summary: string
+  stageRules: Record<string, string>
+  acceptance: string[]
+}
+
+export interface AgentEntity {
+  type: 'character' | 'place' | 'episode' | 'shot'
+  id: string
+  name: string
+}
+
+export interface AgentEntityComment {
+  id: string
+  targetType: AgentEntity['type']
+  targetId: string
+  targetName: string
+  body: string
+  status: 'open' | 'resolved'
+}
+
 export interface AgentState {
   projectTitle: string
   hasIdea: boolean
@@ -54,6 +78,9 @@ export interface AgentState {
   judgments: JudgmentEntry[]
   decisions: AgentDecision[]
   canonIssues: AgentCanonIssue[]
+  skill?: AgentSkillContext | null
+  entities?: AgentEntity[]
+  entityComments?: AgentEntityComment[]
   episodes: { number: number; title: string; hook: string; intensity?: number }[]
   completed: Record<StepKey, boolean>
   shots: AgentShot[]
@@ -64,6 +91,15 @@ export interface AgentState {
 
 export type AgentCard =
   | { kind: 'shot-edit'; shot: number; target: 'prompt' | 'action'; text: string; summary: string }
+  | {
+    kind: 'entity-edit'
+    targetType: AgentEntity['type']
+    targetId: string
+    targetName: string
+    field: 'personality' | 'space' | 'synopsis' | 'action'
+    text: string
+    summary: string
+  }
   | { kind: 'regenerate'; step: StepKey; stepLabel: string; reason: string }
   | {
     kind: 'decision'
@@ -100,6 +136,46 @@ const STEP_LABEL: Record<StepKey, string> = {
 
 /** 给模型看的工具说明书。schema 是纯数据，前后端都能用（服务端只需它） */
 export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
+  {
+    name: 'get_active_skill',
+    description: '读取当前项目采用的个人创作方法（Skill）及其版本、阶段规则和验收标准。用户问创作标准、下一步怎么做或为什么这样判断时先调用；Skill 只是方法，不是项目事实。',
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'get_entity_comments',
+    description: '读取当前项目中角色、地点、分集或镜头的批注。用户要求根据批注修改时先调用；只返回评论和实体身份，不读取或修改正文快照。',
+    parameters: {
+      type: 'object',
+      properties: {
+        targetType: {
+          type: 'string',
+          enum: ['character', 'place', 'episode', 'shot'],
+          description: '可选：只看某类实体',
+        },
+        targetId: { type: 'string', description: '可选：只看某个实体，必须与 targetType 同时提供' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'propose_entity_edit',
+    description: '针对角色、地点、分集或镜头生成一条待确认修改卡。只提议，不直接写入；targetId 必须来自当前项目实体。',
+    parameters: {
+      type: 'object',
+      properties: {
+        targetType: { type: 'string', enum: ['character', 'place', 'episode', 'shot'] },
+        targetId: { type: 'string', description: '当前项目的稳定实体 id' },
+        field: {
+          type: 'string',
+          enum: ['personality', 'space', 'synopsis', 'action'],
+          description: '可选：角色性格、地点空间、分集梗概或镜头动作；省略时按实体类型选择默认字段',
+        },
+        newText: { type: 'string', description: '建议替换或补充的完整文本' },
+        summary: { type: 'string', description: '一句话说明要改什么' },
+      },
+      required: ['targetType', 'targetId', 'newText', 'summary'],
+    },
+  },
   {
     name: 'list_source_materials',
     description: '列出当前项目保存的小说、剧本和资料原文，以及章节/片段索引。用户要求改编、拆章、提取人物或基于原文创作时先调用。',
@@ -268,6 +344,82 @@ export function createToolExecutors(
     .join(' ')
 
   return {
+    get_active_skill: () => {
+      const skill = state.skill
+      if (!skill) {
+        return { ok: true, content: '当前项目没有绑定个人 Skill；按六步工作流和项目事实执行。' }
+      }
+      return {
+        ok: true,
+        content: [
+          `当前 Skill：${skill.name} · v${skill.version}`,
+          skill.summary ? `摘要：${skill.summary}` : '',
+          Object.keys(skill.stageRules).length > 0
+            ? `阶段规则：${Object.entries(skill.stageRules)
+                .map(([stage, rule]) => `${stage}=${rule}`)
+                .join('；')}`
+            : '',
+          skill.acceptance.length > 0 ? `验收：${skill.acceptance.join('；')}` : '',
+          '注意：Skill 是创作方法，不能替代项目当前快照、Canon 或用户确认。',
+        ].filter(Boolean).join('\n'),
+      }
+    },
+    get_entity_comments: (args) => {
+      const targetType = String(args?.targetType ?? '')
+      const targetId = String(args?.targetId ?? '')
+      if (targetId && !targetType) return { ok: false, content: 'targetId 必须和 targetType 一起使用。' }
+      const comments = (state.entityComments ?? []).filter((comment) =>
+        (!targetType || comment.targetType === targetType)
+        && (!targetId || comment.targetId === targetId)
+      )
+      if (comments.length === 0) return { ok: true, content: '当前筛选条件下没有批注。' }
+      return {
+        ok: true,
+        content: comments.map((comment) =>
+          `${comment.status === 'open' ? '待处理' : '已解决'}｜${comment.targetName}｜${comment.body}`
+        ).join('\n'),
+      }
+    },
+    propose_entity_edit: (args) => {
+      const targetType = String(args?.targetType ?? '')
+      const targetId = String(args?.targetId ?? '').trim()
+      const newText = String(args?.newText ?? '').trim()
+      const summary = String(args?.summary ?? '').trim()
+      const rawField = String(args?.field ?? '')
+      const allowed = new Set<AgentEntity['type']>(['character', 'place', 'episode', 'shot'])
+      if (!allowed.has(targetType as AgentEntity['type'])) {
+        return { ok: false, content: 'targetType 只能是 character / place / episode / shot。' }
+      }
+      if (!targetId) return { ok: false, content: 'targetId 不能为空。' }
+      const entity = (state.entities ?? []).find((item) =>
+        item.type === targetType && item.id === targetId
+      )
+      if (!entity) return { ok: false, content: `当前项目没有该${targetType}实体，不要编 id。` }
+      if (!newText || !summary) return { ok: false, content: 'newText 和 summary 都不能为空。' }
+      const fields = new Set(['personality', 'space', 'synopsis', 'action'])
+      const defaultField = entity.type === 'character'
+        ? 'personality'
+        : entity.type === 'place'
+          ? 'space'
+          : entity.type === 'episode'
+            ? 'synopsis'
+            : 'action'
+      const field = (rawField || defaultField) as 'personality' | 'space' | 'synopsis' | 'action'
+      if (!fields.has(field)) return { ok: false, content: 'field 不合法。' }
+      return {
+        ok: true,
+        content: `已生成待确认卡片：${entity.name} · ${summary}（用户确认后才会写入）`,
+        card: {
+          kind: 'entity-edit',
+          targetType: entity.type,
+          targetId: entity.id,
+          targetName: entity.name,
+          field,
+          text: newText,
+          summary,
+        },
+      }
+    },
     get_project_status: () => {
       const b = state.brief
       const todos = buildTodoList({

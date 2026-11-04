@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { isSessionId, LOCAL_SESSION_ID, makeSessionId, SESSION_COOKIE } from "./lib/session"
+import { corsHeaders, isAllowedOrigin, isLoopbackHost } from "./lib/cors"
 
 function firstHeader(value: string | null): string {
   return value?.split(",")[0]?.trim().toLowerCase() ?? ""
@@ -16,7 +17,26 @@ function hostnameFromRequest(req: NextRequest): string {
   return raw.replace(/:\d+$/, "")
 }
 
+function withCors(response: NextResponse, origin: string | null): NextResponse {
+  if (!origin) return response
+  for (const [key, value] of Object.entries(corsHeaders(origin))) {
+    response.headers.set(key, value)
+  }
+  return response
+}
+
 export function proxy(req: NextRequest) {
+  const isApi = req.nextUrl.pathname.startsWith("/api/")
+  const requestOrigin = req.headers.get("origin")
+  const originAllowed =
+    isAllowedOrigin(requestOrigin, process.env) ||
+    (isLoopbackHost(req.nextUrl.hostname) &&
+      isAllowedOrigin(requestOrigin, { NODE_ENV: "development" }))
+  const origin = isApi && originAllowed ? requestOrigin : null
+  if (isApi && req.method === "OPTIONS") {
+    return withCors(new NextResponse(null, { status: 204 }), origin)
+  }
+
   const existing = req.cookies.get(SESSION_COOKIE)?.value
   const hostname = hostnameFromRequest(req)
   const forwardedProto = firstHeader(req.headers.get("x-forwarded-proto"))
@@ -24,8 +44,10 @@ export function proxy(req: NextRequest) {
   const localHostname = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
   // 生产 Nginx 也可能把上游地址解析成 localhost；公网 HTTPS 必须优先于主机名。
   const local = localHostname && !https
-  if (local && existing === LOCAL_SESSION_ID) return NextResponse.next()
-  if (!local && isSessionId(existing) && existing !== LOCAL_SESSION_ID) return NextResponse.next()
+  if (local && existing === LOCAL_SESSION_ID) return withCors(NextResponse.next(), origin)
+  if (!local && isSessionId(existing) && existing !== LOCAL_SESSION_ID) {
+    return withCors(NextResponse.next(), origin)
+  }
 
   const sessionId = local ? LOCAL_SESSION_ID : makeSessionId()
   const requestHeaders = new Headers(req.headers)
@@ -42,7 +64,7 @@ export function proxy(req: NextRequest) {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   })
-  return response
+  return withCors(response, origin)
 }
 
 export const config = {

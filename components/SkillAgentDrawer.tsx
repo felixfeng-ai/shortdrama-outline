@@ -417,7 +417,17 @@ export default function SkillAgentDrawer({
   }
 
   function openWorkspace(card: AgentCard) {
-    const step = card.kind === 'decision' ? card.step : card.kind === 'regenerate' ? card.step : 'shots'
+    const step = card.kind === 'decision' || card.kind === 'regenerate'
+      ? card.step
+      : card.kind === 'entity-edit'
+        ? card.targetType === 'character'
+          ? 'characters'
+          : card.targetType === 'place'
+            ? 'scenes'
+            : card.targetType === 'episode'
+              ? 'episodes'
+              : 'shots'
+        : 'shots'
     const params = new URLSearchParams({ step })
     if (projectId) params.set('project', projectId)
     window.location.href = `/?${params.toString()}`
@@ -506,10 +516,18 @@ export default function SkillAgentDrawer({
             }
             return (
               <div key={line.id} className="plan-card">
-                <h3>待确认 · {line.card.kind === 'shot-edit' ? `第 ${line.card.shot} 镜` : line.card.stepLabel}</h3>
+                <h3>
+                  待确认 · {line.card.kind === 'shot-edit'
+                    ? `第 ${line.card.shot} 镜`
+                    : line.card.kind === 'entity-edit'
+                      ? line.card.targetName
+                      : line.card.stepLabel}
+                </h3>
                 <p>
                   {line.card.kind === 'shot-edit'
                     ? line.card.summary
+                    : line.card.kind === 'entity-edit'
+                      ? line.card.summary
                     : line.card.kind === 'regenerate'
                       ? line.card.reason
                       : line.card.question}

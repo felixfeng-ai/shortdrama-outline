@@ -47,12 +47,13 @@ function shot(over: Partial<Shot> = {}): Shot {
   }
 }
 
-test("PLAT1 目标只能是通用、即梦、可灵和结构化 JSON", () => {
-  assert.deepEqual([...PLATFORM_EXPORT_TARGETS], ["general", "jimeng", "kling", "json"])
+test("PLAT1 目标只能是通用、即梦、可灵、剪映和结构化 JSON", () => {
+  assert.deepEqual([...PLATFORM_EXPORT_TARGETS], ["general", "jimeng", "kling", "jianying", "json"])
   assert.equal(readPlatformExportTarget("jimeng"), "jimeng")
   assert.equal(readPlatformExportTarget("unknown"), "general")
   assert.equal(platformLabel("jimeng"), "即梦")
   assert.equal(platformLabel("kling"), "可灵")
+  assert.equal(platformLabel("jianying"), "剪映")
 })
 
 test("PLAT2 预检逐镜报告参数、锚点、缺图和末镜首尾帧错误", () => {

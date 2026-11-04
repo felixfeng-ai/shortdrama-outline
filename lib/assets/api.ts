@@ -5,6 +5,24 @@ import type { CreativeBrief } from "@/lib/brief"
 import type { LookBook } from "@/lib/look"
 import type { ArtifactKind, RefImageMeta, Shot, VisualCharacter, Scene, VisualPlace } from "@/lib/assets/types"
 import type { ProjectMaterial, ProjectMaterialKind } from "@/lib/assets/materials"
+import type {
+  PersonalSkill,
+  ProjectSkillBinding,
+} from "@/lib/skills/personal"
+import type {
+  EntityComment,
+  EntityCommentTarget,
+} from "@/lib/entity-comments"
+import type {
+  ReusableAsset,
+  ReusableAssetType,
+} from "@/lib/assets/library"
+import type {
+  AgentMessageRole,
+  ProjectAgentMessage,
+  ProjectAgentThread,
+  ProjectBranch,
+} from "@/lib/project-collaboration"
 
 export interface ProjectDto {
   id: string
@@ -203,6 +221,193 @@ export async function createProjectJudgment(
     `/api/projects/${encodeURIComponent(projectId)}/judgments`,
     input,
   ).then((data) => data.judgment)
+}
+
+export async function fetchPersonalSkills(): Promise<PersonalSkill[]> {
+  const response = await fetch("/api/personal-skills", { cache: "no-store" })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.error || "个人 Skill 读取失败")
+  }
+  return payload.data.skills as PersonalSkill[]
+}
+
+export async function createPersonalSkill(input: {
+  name: string
+  summary?: string
+  mainDoc: string
+  references?: string[]
+  stageRules?: Record<string, string>
+  acceptance?: string[]
+}): Promise<PersonalSkill> {
+  return postJson<{ skill: PersonalSkill }>("/api/personal-skills", input)
+    .then((data) => data.skill)
+}
+
+export async function publishPersonalSkillVersion(
+  skillId: string,
+  input: {
+    name: string
+    summary?: string
+    mainDoc: string
+    references?: string[]
+    stageRules?: Record<string, string>
+    acceptance?: string[]
+    changeNote?: string
+  },
+): Promise<PersonalSkill> {
+  return postJson<{ skill: PersonalSkill }>(
+    `/api/personal-skills/${encodeURIComponent(skillId)}/versions`,
+    input,
+  ).then((data) => data.skill)
+}
+
+export async function fetchProjectSkill(projectId: string): Promise<ProjectSkillBinding | null> {
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/skill`,
+    { cache: "no-store" },
+  )
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.error || "项目 Skill 读取失败")
+  }
+  return payload.data.binding as ProjectSkillBinding | null
+}
+
+export async function applyProjectSkill(
+  projectId: string,
+  skillId: string,
+  version: number,
+): Promise<ProjectSkillBinding> {
+  return putJson<{ binding: ProjectSkillBinding }>(
+    `/api/projects/${encodeURIComponent(projectId)}/skill`,
+    { skillId, version },
+  ).then((data) => data.binding)
+}
+
+export async function fetchProjectComments(
+  projectId: string,
+  filter: { targetType?: EntityCommentTarget; targetId?: string } = {},
+): Promise<EntityComment[]> {
+  const query = new URLSearchParams()
+  if (filter.targetType) query.set("targetType", filter.targetType)
+  if (filter.targetId) query.set("targetId", filter.targetId)
+  const suffix = query.toString() ? `?${query.toString()}` : ""
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/comments${suffix}`,
+    { cache: "no-store" },
+  )
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.error || "项目批注读取失败")
+  }
+  return payload.data.comments as EntityComment[]
+}
+
+export async function createProjectComment(
+  projectId: string,
+  input: { targetType: EntityCommentTarget; targetId: string; body: string },
+): Promise<EntityComment> {
+  return postJson<{ comment: EntityComment }>(
+    `/api/projects/${encodeURIComponent(projectId)}/comments`,
+    input,
+  ).then((data) => data.comment)
+}
+
+export async function updateProjectComment(
+  projectId: string,
+  commentId: string,
+  input: { status?: "open" | "resolved"; body?: string },
+): Promise<EntityComment> {
+  return patchJson<{ comment: EntityComment }>(
+    `/api/projects/${encodeURIComponent(projectId)}/comments/${encodeURIComponent(commentId)}`,
+    input,
+  ).then((data) => data.comment)
+}
+
+export async function listReusableAssets(assetType?: ReusableAssetType): Promise<ReusableAsset[]> {
+  const suffix = assetType ? `?assetType=${encodeURIComponent(assetType)}` : ""
+  const response = await fetch(`/api/asset-library${suffix}`, { cache: "no-store" })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.error || "跨项目资产读取失败")
+  }
+  return payload.data.assets as ReusableAsset[]
+}
+
+export async function saveReusableAsset(input: {
+  projectId: string
+  assetType: ReusableAssetType
+  name: string
+  sourceAssetId?: string
+  content: Record<string, unknown>
+}): Promise<ReusableAsset> {
+  return postJson<{ asset: ReusableAsset }>("/api/asset-library", input)
+    .then((data) => data.asset)
+}
+
+export async function listProjectThreads(projectId: string): Promise<ProjectAgentThread[]> {
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/threads`,
+    { cache: "no-store" },
+  )
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success) throw new Error(payload?.error || "会话列表读取失败")
+  return payload.data.threads as ProjectAgentThread[]
+}
+
+export async function createProjectThread(
+  projectId: string,
+  title?: string,
+): Promise<ProjectAgentThread> {
+  return postJson<{ thread: ProjectAgentThread }>(
+    `/api/projects/${encodeURIComponent(projectId)}/threads`,
+    { title },
+  ).then((data) => data.thread)
+}
+
+export async function fetchProjectThread(
+  projectId: string,
+  threadId: string,
+): Promise<ProjectAgentThread> {
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/threads/${encodeURIComponent(threadId)}`,
+    { cache: "no-store" },
+  )
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success) throw new Error(payload?.error || "会话读取失败")
+  return payload.data.thread as ProjectAgentThread
+}
+
+export async function appendProjectThreadMessage(
+  projectId: string,
+  threadId: string,
+  input: { role: AgentMessageRole; content: string },
+): Promise<ProjectAgentMessage> {
+  return postJson<{ message: ProjectAgentMessage }>(
+    `/api/projects/${encodeURIComponent(projectId)}/threads/${encodeURIComponent(threadId)}/messages`,
+    input,
+  ).then((data) => data.message)
+}
+
+export async function listProjectBranches(projectId: string): Promise<ProjectBranch[]> {
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/branches`,
+    { cache: "no-store" },
+  )
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success) throw new Error(payload?.error || "版本分支读取失败")
+  return payload.data.branches as ProjectBranch[]
+}
+
+export async function createProjectBranch(
+  projectId: string,
+  input: { name: string; baseSnapshotId: string; note?: string },
+): Promise<ProjectBranch> {
+  return postJson<{ branch: ProjectBranch }>(
+    `/api/projects/${encodeURIComponent(projectId)}/branches`,
+    input,
+  ).then((data) => data.branch)
 }
 
 export async function fetchProjectCanon(projectId: string): Promise<ProjectCanonDto> {

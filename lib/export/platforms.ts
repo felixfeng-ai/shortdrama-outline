@@ -6,8 +6,9 @@ import {
 } from "../assets/types.ts"
 import { missingLockedTraits, visualTraitLabel } from "../assets/anchors.ts"
 import { shotsToCsv, shotsToWorkList } from "../assets/export.ts"
+import { buildJianyingDelivery } from "./jianying.ts"
 
-export const PLATFORM_EXPORT_TARGETS = ["general", "jimeng", "kling", "json"] as const
+export const PLATFORM_EXPORT_TARGETS = ["general", "jimeng", "kling", "jianying", "json"] as const
 export type PlatformExportTarget = (typeof PLATFORM_EXPORT_TARGETS)[number]
 
 export type PlatformPreflightCode =
@@ -78,6 +79,7 @@ const PLATFORM_LABELS: Record<PlatformExportTarget, string> = {
   general: "通用",
   jimeng: "即梦",
   kling: "可灵",
+  jianying: "剪映",
   json: "结构化 JSON",
 }
 
@@ -221,6 +223,7 @@ function firstFrameInstruction(
   if (keyframePath) return `首帧：${keyframePath}（项目已采用图）`
   if (target === "jimeng") return "首帧：先在即梦生成或上传本镜首帧图"
   if (target === "kling") return "首帧：先在可灵准备本镜首帧图"
+  if (target === "jianying") return "首帧：使用本镜已采用图；没有时先回到关键帧生成"
   return "首帧：使用本镜已采用关键帧；没有时先生成"
 }
 
@@ -269,6 +272,8 @@ function buildPlatformWorkList(
     ? "用法：按镜准备首帧；需要衔接时启用首尾帧模式，尾帧来自上一镜成片末帧。"
     : input.target === "jimeng"
       ? "用法：按镜复制提示词并准备参考图；需要衔接时使用首尾帧，尾帧来自上一镜成片末帧。"
+      : input.target === "jianying"
+        ? "用法：按 shot-order.csv 顺序把已采用关键帧放入剪映；台词以 dialogue.csv 为准。"
       : "用法：供下游工具或自动化脚本读取；本文件不是任何平台的私有 API 请求体。"
   const head = [
     `${input.title} · ${platform}执行清单`,
@@ -369,6 +374,15 @@ export function buildPlatformExportKit(input: {
       kind: "json",
       content: JSON.stringify(manifest, null, 2),
     })
+  }
+  if (target === "jianying") {
+    const delivery = buildJianyingDelivery({
+      title: input.title,
+      shots: input.shots,
+      exportedAt,
+      keyframePathByTargetId,
+    })
+    files.push(...delivery.files)
   }
   return {
     target,

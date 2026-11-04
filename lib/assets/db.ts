@@ -332,6 +332,142 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON project_materials(project_id, updated_at);
     `,
   },
+  {
+    version: 5,
+    name: "personal-skills",
+    sql: `
+      -- 个人 Skill 保存的是“创作方法”，不是某个项目的剧情内容。
+      -- 版本单独成表：编辑 Skill 必须生成新版本，否则已绑定项目会悄悄换规则。
+      CREATE TABLE IF NOT EXISTS personal_skills (
+        id              TEXT PRIMARY KEY,
+        owner_id        TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        summary         TEXT NOT NULL DEFAULT '',
+        current_version INTEGER NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'active',
+        created_at      INTEGER NOT NULL,
+        updated_at      INTEGER NOT NULL,
+        UNIQUE(owner_id, name)
+      );
+
+      CREATE TABLE IF NOT EXISTS personal_skill_versions (
+        id               TEXT PRIMARY KEY,
+        skill_id         TEXT NOT NULL REFERENCES personal_skills(id) ON DELETE CASCADE,
+        version          INTEGER NOT NULL,
+        main_doc         TEXT NOT NULL,
+        references_json  TEXT NOT NULL DEFAULT '[]',
+        stage_rules_json TEXT NOT NULL DEFAULT '{}',
+        acceptance_json  TEXT NOT NULL DEFAULT '[]',
+        change_note      TEXT NOT NULL DEFAULT '',
+        created_at       INTEGER NOT NULL,
+        UNIQUE(skill_id, version)
+      );
+
+      -- 项目只保存“采用哪个 Skill 的哪个版本”。
+      -- 这样 Skill 后续升级不会改变历史项目，重放时仍能解释当时的规则。
+      CREATE TABLE IF NOT EXISTS project_skill_bindings (
+        project_id    TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        skill_id      TEXT NOT NULL REFERENCES personal_skills(id) ON DELETE RESTRICT,
+        skill_version INTEGER NOT NULL,
+        applied_by    TEXT NOT NULL,
+        applied_at    INTEGER NOT NULL,
+        FOREIGN KEY(skill_id, skill_version)
+          REFERENCES personal_skill_versions(skill_id, version) ON DELETE RESTRICT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_personal_skills_owner
+        ON personal_skills(owner_id, status, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_personal_skill_versions_skill
+        ON personal_skill_versions(skill_id, version);
+    `,
+  },
+  {
+    version: 6,
+    name: "entity-comments",
+    sql: `
+      -- 评论只锚定稳定实体 id，不保存“第几段文字”这类位置。
+      -- 剧情文本会改，文字位置会漂移；稳定 id 才能让评论继续指向原对象。
+      CREATE TABLE IF NOT EXISTS entity_comments (
+        id          TEXT PRIMARY KEY,
+        project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        target_type TEXT NOT NULL,
+        target_id   TEXT NOT NULL,
+        target_name TEXT NOT NULL,
+        body        TEXT NOT NULL,
+        status      TEXT NOT NULL DEFAULT 'open',
+        author_id   TEXT NOT NULL,
+        created_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL,
+        resolved_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_entity_comments_project
+        ON entity_comments(project_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_entity_comments_target
+        ON entity_comments(project_id, target_type, target_id, status);
+    `,
+  },
+  {
+    version: 7,
+    name: "reusable-asset-library",
+    sql: `
+      -- 跨项目资产只保存文字、引用和来源身份，不保存图片二进制或本地路径。
+      -- 同名同类型采用版本递增，确保用户复用的是明确的一版，而不是被静默覆盖。
+      CREATE TABLE IF NOT EXISTS reusable_assets (
+        id                TEXT PRIMARY KEY,
+        owner_id          TEXT NOT NULL,
+        asset_type        TEXT NOT NULL,
+        name              TEXT NOT NULL,
+        source_project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+        source_asset_id   TEXT NOT NULL DEFAULT '',
+        content_json      TEXT NOT NULL,
+        version           INTEGER NOT NULL,
+        created_at        INTEGER NOT NULL,
+        updated_at        INTEGER NOT NULL,
+        UNIQUE(owner_id, asset_type, name)
+      );
+      CREATE INDEX IF NOT EXISTS idx_reusable_assets_owner
+        ON reusable_assets(owner_id, asset_type, updated_at);
+    `,
+  },
+  {
+    version: 8,
+    name: "project-collaboration",
+    sql: `
+      -- 会话属于项目和 owner，但消息不复制项目快照；因此多个会话看到的是同一项目事实。
+      CREATE TABLE IF NOT EXISTS project_agent_threads (
+        id         TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        owner_id   TEXT NOT NULL,
+        title      TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS project_agent_messages (
+        id         TEXT PRIMARY KEY,
+        thread_id  TEXT NOT NULL REFERENCES project_agent_threads(id) ON DELETE CASCADE,
+        role       TEXT NOT NULL,
+        content    TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      -- 分支第一阶段只记录“从哪一版分叉”和目的，不复制快照内容。
+      -- 这样不会制造两套难以同步的真相；后续真正分支时再按基线快照物化。
+      CREATE TABLE IF NOT EXISTS project_branches (
+        id                TEXT PRIMARY KEY,
+        project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        owner_id          TEXT NOT NULL,
+        name              TEXT NOT NULL,
+        base_snapshot_id  TEXT NOT NULL REFERENCES snapshots(id) ON DELETE RESTRICT,
+        note              TEXT NOT NULL DEFAULT '',
+        created_at        INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_project_agent_threads_project
+        ON project_agent_threads(project_id, owner_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_project_agent_messages_thread
+        ON project_agent_messages(thread_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_project_branches_project
+        ON project_branches(project_id, owner_id, created_at);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

@@ -10,6 +10,7 @@ import { InputError, errorResponse, ok } from '@/lib/api'
 import { AiError, chatWithTools, chatJson, type ToolChatMessage } from '@/lib/deepseek'
 import { AGENT_TOOL_SCHEMAS } from '@/lib/agent/tools'
 import { toWireMessages } from '@/lib/agent/wire'
+import { AGENT_SYSTEM_PROMPT } from '@/lib/agent/system'
 import { getDbForRequest } from '@/lib/assets/store'
 import { chargeQuota } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
@@ -17,26 +18,6 @@ import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
-
-/** 场记的人格与纪律（工具怎么用写在 schema 的 description 里） */
-const SYSTEM = `你是「成剧」里的 AI 场记：熟悉这部剧的进度、镜头与素材，也熟悉这个工具怎么用。
-说话像剧组里那位靠谱的老场记——干脆、具体、不绕弯子，不喊"您好"，不说"希望对你有帮助"。
-
-## 纪律
-1. 中文回答，直接给结论，不要客套。默认 80 字以内，操作步骤类可以更长。
-2. 涉及「项目里现在是什么情况」的问题，**先调工具查**，不要凭印象猜。
-3. 涉及「怎么做」的问题（导出、拿去出图平台、批量出图、首尾帧衔接、额度），
-   必须先调 search_docs，并在回答里带上出处。
-4. 你**不能直接修改任何内容**：要改某一镜就用 propose_shot_edit，
-   要重跑某一步就用 propose_regenerate。这两者只会生成待确认卡片，用户点了才生效。
-   在回答里说清你提议了什么，不要假装已经改好。
-5. 工具没查到的就说没查到，不要编。用户问的与这个项目无关时，简单说明你能帮什么即可。
-6. 回答创作取舍（这一版好不好、要不要换方向）时，先调 get_project_status、get_decisions
-   和 audit_canon，读取「创作意图」「最近的判断」「已接受/锁定的决策」与 Canon 冲突；
-   涉及分集钩子或节奏时再调 review_episodes。不要重复推荐用户已经否决过的方向；
-   需要用户拍板时用 propose_decision 生成待确认卡。
-7. 涉及小说、剧本或其他项目原文时，先调 list_source_materials 看章节目录，再用
-   read_source_chunk 分批读取。不能因为只看过开头或摘要，就声称读完了整份原文。`
 
 export async function POST(req: Request) {
   try {
@@ -50,7 +31,10 @@ export async function POST(req: Request) {
     enforceApiRateLimit(db, req, "assistant", { identity })
     chargeQuota(db, identity, 'agent')
 
-    const withSystem: ToolChatMessage[] = [{ role: 'system', content: SYSTEM }, ...messages]
+    const withSystem: ToolChatMessage[] = [
+      { role: 'system', content: AGENT_SYSTEM_PROMPT },
+      ...messages,
+    ]
 
     try {
       const result = await chatWithTools(withSystem, AGENT_TOOL_SCHEMAS, { temperature: 0.5 })
