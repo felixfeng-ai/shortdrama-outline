@@ -125,6 +125,8 @@ export function deleteAccountData(
     db.prepare("DELETE FROM push_subscriptions WHERE owner_id = ?").run(userId)
     db.prepare("DELETE FROM mobile_push_tokens WHERE owner_id = ?").run(userId)
     db.prepare("DELETE FROM billing_transactions WHERE owner_id = ?").run(userId)
+    db.prepare("DELETE FROM content_reports WHERE reporter_id = ?").run(userId)
+    db.prepare("DELETE FROM app_analytics_events WHERE owner_id = ?").run(userId)
     if (user.email) {
       db.prepare("DELETE FROM email_login_codes WHERE email = ?").run(user.email)
     }

@@ -209,6 +209,29 @@ CREATE TABLE IF NOT EXISTS billing_transactions (
   UNIQUE(owner_id, transaction_id)
 );
 
+CREATE TABLE IF NOT EXISTS content_reports (
+  id           TEXT PRIMARY KEY,
+  reporter_id  TEXT NOT NULL,
+  project_id   TEXT,
+  target_type  TEXT NOT NULL,
+  target_id    TEXT NOT NULL,
+  reason       TEXT NOT NULL,
+  detail       TEXT NOT NULL DEFAULT '',
+  status       TEXT NOT NULL DEFAULT 'pending',
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_analytics_events (
+  id              TEXT PRIMARY KEY,
+  owner_id        TEXT NOT NULL,
+  install_id      TEXT NOT NULL,
+  event_name      TEXT NOT NULL,
+  path            TEXT NOT NULL DEFAULT '',
+  properties_json TEXT NOT NULL DEFAULT '{}',
+  created_at      INTEGER NOT NULL
+);
+
 -- 长文本分批生成断点：每个项目、每种产物只保留最新一份，不进入正式版本血缘。
 CREATE TABLE IF NOT EXISTS text_generation_checkpoints (
   project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -228,6 +251,8 @@ CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(proj
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_owner ON push_subscriptions(owner_id);
 CREATE INDEX IF NOT EXISTS idx_mobile_push_tokens_owner ON mobile_push_tokens(owner_id);
 CREATE INDEX IF NOT EXISTS idx_billing_transactions_owner ON billing_transactions(owner_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_content_reports_reporter ON content_reports(reporter_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_app_analytics_events_owner ON app_analytics_events(owner_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_login_codes_phone ON login_codes(phone, created_at);
 CREATE INDEX IF NOT EXISTS idx_email_login_codes_email ON email_login_codes(email, created_at);
 CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_updated ON auth_rate_limits(updated_at);
