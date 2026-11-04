@@ -53,6 +53,7 @@ import {
 } from '@/lib/variant-decision'
 import AgentDock from '@/components/AgentDock'
 import type { AgentCard, AgentState } from '@/lib/agent/tools'
+import { applyTextFieldEdit } from '@/lib/agent/edits'
 import ShotList from '@/components/ShotList'
 import ShotInspector from '@/components/ShotInspector'
 import SceneList from '@/components/SceneList'
@@ -2686,17 +2687,29 @@ export default function Home() {
         }
       : null,
     entities: [
-      ...characters.map((item) => ({ type: 'character' as const, id: item.id, name: item.name })),
-      ...places.map((item) => ({ type: 'place' as const, id: item.id, name: item.name })),
+      ...characters.map((item) => ({
+        type: 'character' as const,
+        id: item.id,
+        name: item.name,
+        fields: { personality: item.personality },
+      })),
+      ...places.map((item) => ({
+        type: 'place' as const,
+        id: item.id,
+        name: item.name,
+        fields: { space: item.space },
+      })),
       ...episodes.map((item) => ({
         type: 'episode' as const,
         id: item.id,
         name: `第 ${item.number} 集 · ${item.title}`,
+        fields: { synopsis: item.synopsis },
       })),
       ...shots.map((item) => ({
         type: 'shot' as const,
         id: item.entityId || item.id,
         name: `第 ${item.episode || '?'} 集 · 第 ${item.shot} 镜 · ${item.scene || '未命名场景'}`,
+        fields: { action: item.action },
       })),
     ],
     entityComments: entityComments.map((item) => ({
@@ -2716,6 +2729,8 @@ export default function Home() {
     })),
     completed: stepCompleted,
     shots: shots.map((s) => ({
+      targetId: s.entityId || s.id,
+      episode: s.episode,
       shot: s.shot,
       scene: s.scene,
       characters: s.characters,
@@ -2724,6 +2739,7 @@ export default function Home() {
       shotSize: s.shotSize,
       camera: s.camera,
       prompt: s.prompt,
+      action: s.action,
       speaker: s.speaker ?? '',
       dialogue: s.dialogue ?? '',
     })),
@@ -2825,29 +2841,77 @@ export default function Home() {
     setNotice(`已把「${asset.name}」v${asset.version} 复用到当前项目。`)
   }
 
-  /** 助手提议改写某一镜 → 用户确认后才真正写回（同放映厅那条「应用到本镜」） */
-  function applyAgentCard(card: { shot: number; target: 'prompt' | 'action'; text: string; summary: string }) {
-    setShots((prev) => prev.map((s) => (s.shot === card.shot ? { ...s, [card.target]: card.text } : s)))
-    setNotice(`已按助手的建议改写第 ${card.shot} 镜（${card.summary}）。`)
+  /** 助手提议改写某一镜 → 按稳定 ID 写回；目标正文已漂移时拒绝覆盖 */
+  function applyAgentCard(card: Extract<AgentCard, { kind: 'shot-edit' }>) {
+    const result = applyTextFieldEdit(shots, {
+      targetId: card.targetId,
+      field: card.target,
+      expectedText: card.expectedText,
+      newText: card.text,
+      getId: (shot) => shot.entityId || shot.id,
+      label: card.targetLabel,
+    })
+    if (result.status !== 'current') {
+      setNotice(result.message)
+      return { ok: false, message: result.message }
+    }
+    setShots(result.items)
+    const message = `${result.message}（${card.summary}）`
+    setNotice(message)
+    return { ok: true, message }
   }
 
   async function applyAgentEntityCard(card: Extract<AgentCard, { kind: 'entity-edit' }>) {
+    let result: { status: 'current' | 'drift' | 'missing'; message: string } | null = null
     if (card.targetType === 'character') {
-      setCharacters((prev) => prev.map((item) =>
-        item.id === card.targetId ? { ...item, personality: card.text } : item
-      ))
+      const next = applyTextFieldEdit(characters, {
+        targetId: card.targetId,
+        field: card.field,
+        expectedText: card.expectedText,
+        newText: card.text,
+        getId: (item) => item.id,
+        label: card.targetName,
+      })
+      result = next
+      if (next.status === 'current') setCharacters(next.items)
     } else if (card.targetType === 'place') {
-      setPlaces((prev) => prev.map((item) =>
-        item.id === card.targetId ? { ...item, space: card.text } : item
-      ))
+      const next = applyTextFieldEdit(places, {
+        targetId: card.targetId,
+        field: card.field,
+        expectedText: card.expectedText,
+        newText: card.text,
+        getId: (item) => item.id,
+        label: card.targetName,
+      })
+      result = next
+      if (next.status === 'current') setPlaces(next.items)
     } else if (card.targetType === 'episode') {
-      setEpisodes((prev) => prev.map((item) =>
-        item.id === card.targetId ? { ...item, synopsis: card.text } : item
-      ))
+      const next = applyTextFieldEdit(episodes, {
+        targetId: card.targetId,
+        field: card.field,
+        expectedText: card.expectedText,
+        newText: card.text,
+        getId: (item) => item.id,
+        label: card.targetName,
+      })
+      result = next
+      if (next.status === 'current') setEpisodes(next.items)
     } else {
-      setShots((prev) => prev.map((item) =>
-        (item.entityId || item.id) === card.targetId ? { ...item, action: card.text } : item
-      ))
+      const next = applyTextFieldEdit(shots, {
+        targetId: card.targetId,
+        field: card.field,
+        expectedText: card.expectedText,
+        newText: card.text,
+        getId: (item) => item.entityId || item.id,
+        label: card.targetName,
+      })
+      result = next
+      if (next.status === 'current') setShots(next.items)
+    }
+    if (!result || result.status !== 'current') {
+      const message = result?.message ?? '目标已不存在，本次没有写入。'
+      setNotice(message)
+      return { ok: false, message }
     }
     const related = entityComments.find((comment) =>
       comment.status === 'open'
@@ -2862,7 +2926,9 @@ export default function Home() {
         // 正文已经按用户确认写入；批注状态失败不能反向撤销这次确认。
       }
     }
-    setNotice(`已按批注修改「${card.targetName}」（${card.summary}）。`)
+    const message = `${result.message}（${card.summary}）`
+    setNotice(message)
+    return { ok: true, message }
   }
 
   async function applyAgentDecision(card: {
@@ -3824,7 +3890,7 @@ export default function Home() {
                     : `第 ${viewIndex} 步 · ${stepOf(view)?.nav ?? ''}`
                 }
                 onApplyCard={applyAgentCard}
-                onApplyEntityCard={(card) => { void applyAgentEntityCard(card) }}
+                onApplyEntityCard={applyAgentEntityCard}
                 onApplyDecision={(card) => { void applyAgentDecision(card) }}
                 onRegenerate={regenerateByAgent}
                 projectId={projectId}

@@ -18,6 +18,9 @@ import {
 } from '../skills/source-index'
 
 export interface AgentShot {
+  /** 跨版本稳定目标；修改镜头必须用它，不能依赖可变的展示镜号。 */
+  targetId: string
+  episode: number
   shot: number
   scene: string
   characters: string[]
@@ -26,6 +29,7 @@ export interface AgentShot {
   shotSize: string
   camera: string
   prompt: string
+  action: string
   speaker: string
   dialogue: string
 }
@@ -61,7 +65,11 @@ export interface AgentEntity {
   type: 'character' | 'place' | 'episode' | 'shot'
   id: string
   name: string
+  /** 提案生成时用于漂移检测的当前字段原文。 */
+  fields?: Partial<Record<AgentEditableField, string>>
 }
+
+export type AgentEditableField = 'personality' | 'space' | 'synopsis' | 'action'
 
 export interface AgentEntityComment {
   id: string
@@ -131,13 +139,24 @@ export interface AgentState {
 }
 
 export type AgentCard =
-  | { kind: 'shot-edit'; shot: number; target: 'prompt' | 'action'; text: string; summary: string }
+  | {
+    kind: 'shot-edit'
+    targetId: string
+    shot: number
+    episode: number
+    targetLabel: string
+    target: 'prompt' | 'action'
+    expectedText: string
+    text: string
+    summary: string
+  }
   | {
     kind: 'entity-edit'
     targetType: AgentEntity['type']
     targetId: string
     targetName: string
-    field: 'personality' | 'space' | 'synopsis' | 'action'
+    field: AgentEditableField
+    expectedText: string
     text: string
     summary: string
   }
@@ -278,6 +297,21 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
     parameters: { type: 'object', properties: {}, required: [] },
   },
   {
+    name: 'list_edit_targets',
+    description: '列出当前项目可修改实体的稳定 targetId 与可读名称。修改角色、地点、分集或镜头前必须先调用，不能拿展示序号或名称猜目标。',
+    parameters: {
+      type: 'object',
+      properties: {
+        targetType: {
+          type: 'string',
+          enum: ['character', 'place', 'episode', 'shot'],
+          description: '可选：只看某一类实体',
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'audit_shots',
     description: '查分镜的健康状况：共几镜、几镜缺参考图（含镜号与角色名）、几镜提示词掉了角色锚点、几镜标了返修。',
     parameters: { type: 'object', properties: {}, required: [] },
@@ -313,16 +347,16 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
   },
   {
     name: 'propose_shot_edit',
-    description: '提议改写某一镜的提示词或动作。**只生成待确认卡片，不会直接修改**。改画面（光线/构图/氛围/景别）用 target=prompt；只改剧情动作用 target=action。',
+    description: '提议改写某一镜的提示词或动作。**只生成待确认卡片，不会直接修改**。targetId 必须来自 list_edit_targets；改画面（光线/构图/氛围/景别）用 target=prompt，只改剧情动作用 target=action。',
     parameters: {
       type: 'object',
       properties: {
-        shot: { type: 'number', description: '镜号（必须是当前项目里真实存在的镜号）' },
+        targetId: { type: 'string', description: '当前项目镜头的稳定 targetId' },
         target: { type: 'string', enum: ['prompt', 'action'] },
         newText: { type: 'string', description: '改写后的完整文本（prompt 用英文，action 用中文）' },
         summary: { type: 'string', description: '一句话说明改了什么，给用户确认时看' },
       },
-      required: ['shot', 'target', 'newText'],
+      required: ['targetId', 'target', 'newText'],
     },
   },
   {
@@ -507,7 +541,6 @@ export function createToolExecutors(
       )
       if (!entity) return { ok: false, content: `当前项目没有该${targetType}实体，不要编 id。` }
       if (!newText || !summary) return { ok: false, content: 'newText 和 summary 都不能为空。' }
-      const fields = new Set(['personality', 'space', 'synopsis', 'action'])
       const defaultField = entity.type === 'character'
         ? 'personality'
         : entity.type === 'place'
@@ -515,8 +548,17 @@ export function createToolExecutors(
           : entity.type === 'episode'
             ? 'synopsis'
             : 'action'
-      const field = (rawField || defaultField) as 'personality' | 'space' | 'synopsis' | 'action'
-      if (!fields.has(field)) return { ok: false, content: 'field 不合法。' }
+      const field = (rawField || defaultField) as AgentEditableField
+      const allowedField = entity.type === 'character'
+        ? 'personality'
+        : entity.type === 'place'
+          ? 'space'
+          : entity.type === 'episode'
+            ? 'synopsis'
+            : 'action'
+      if (field !== allowedField) {
+        return { ok: false, content: `当前${targetType}实体只能修改 ${allowedField}。` }
+      }
       return {
         ok: true,
         content: `已生成待确认卡片：${entity.name} · ${summary}（用户确认后才会写入）`,
@@ -526,6 +568,7 @@ export function createToolExecutors(
           targetId: entity.id,
           targetName: entity.name,
           field,
+          expectedText: entity.fields?.[field] ?? '',
           text: newText,
           summary,
         },
@@ -600,6 +643,28 @@ export function createToolExecutors(
               ).join('；')}`
             : '',
         ].filter(Boolean).join('\n'),
+      }
+    },
+
+    list_edit_targets: (args) => {
+      const rawType = String(args?.targetType ?? '')
+      const allowed = new Set<AgentEntity['type']>(['character', 'place', 'episode', 'shot'])
+      if (rawType && !allowed.has(rawType as AgentEntity['type'])) {
+        return { ok: false, content: 'targetType 只能是 character / place / episode / shot。' }
+      }
+      const entities = (state.entities ?? []).filter((entity) =>
+        !rawType || entity.type === rawType
+      )
+      if (entities.length === 0) {
+        return { ok: true, content: rawType ? `当前项目没有${rawType}实体。` : '当前项目没有可修改实体。' }
+      }
+      return {
+        ok: true,
+        content: entities
+          .slice(0, 40)
+          .map((entity) => `${entity.id}｜${entity.type}｜${entity.name}`)
+          .concat(entities.length > 40 ? [`另有 ${entities.length - 40} 个目标未展开。`] : [])
+          .join('\n'),
       }
     },
 
@@ -729,21 +794,36 @@ export function createToolExecutors(
     },
 
     propose_shot_edit: (args) => {
-      const shotNo = Number(args?.shot)
+      const targetId = String(args?.targetId ?? '').trim()
       const target = String(args?.target ?? '')
       const newText = String(args?.newText ?? '').trim()
-      if (!state.shots.some((s) => s.shot === shotNo)) {
-        return { ok: false, content: `没有第 ${shotNo} 镜（当前项目共 ${state.shots.length} 镜），不要编镜号。` }
+      if (!targetId) {
+        return { ok: false, content: 'targetId 不能为空；先调用 list_edit_targets 获取稳定镜头 ID。' }
+      }
+      const shot = state.shots.find((item) => item.targetId === targetId)
+      if (!shot) {
+        return { ok: false, content: `当前项目没有镜头 ${targetId}，不要编 targetId。` }
       }
       if (target !== 'prompt' && target !== 'action') {
         return { ok: false, content: 'target 只能是 prompt 或 action。' }
       }
       if (!newText) return { ok: false, content: '改写后的文本不能为空。' }
       const summary = String(args?.summary ?? '').trim() || (target === 'prompt' ? '改写本镜提示词' : '改写本镜动作')
+      const targetLabel = `第 ${shot.episode || '?'} 集 · 第 ${shot.shot} 镜 · ${shot.scene || '未命名场景'}`
       return {
         ok: true,
-        content: `已生成待确认卡片：第 ${shotNo} 镜 · ${summary}（用户点确认后才会写入，我没有直接改）`,
-        card: { kind: 'shot-edit', shot: shotNo, target, text: newText, summary },
+        content: `已生成待确认卡片：${targetLabel} · ${summary}（用户点确认后才会写入，我没有直接改）`,
+        card: {
+          kind: 'shot-edit',
+          targetId,
+          shot: shot.shot,
+          episode: shot.episode,
+          targetLabel,
+          target,
+          expectedText: shot[target],
+          text: newText,
+          summary,
+        },
       }
     },
 

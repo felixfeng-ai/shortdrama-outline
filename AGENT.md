@@ -59,7 +59,7 @@
 - 服务端需要工具的 schema 才能交给模型，所以 **schema 与执行器放同一个模块**
   `lib/agent/tools.ts`（schema 是纯数据，可以安全地给服务端用）。
 
-## 4. 工具集（共 7 个，全部只读或提议）
+## 4. 工具集（全部只读或提议）
 
 > 返回值一律**压缩成中文短句**，不要回原始 JSON：省 token，也让模型少说废话。
 
@@ -70,12 +70,17 @@
 | `review_episodes()` | — | 「共 30 集；2 集没有钩子（第 6、11 集）；强度最低在第 2 集，最高在第 1 集」 |
 | `get_quota()` | — | 「今日剩余 38/65 单位，按 10 集/部估算还能跑 2 部」 |
 | `search_docs(question)` | 自然语言问题 | 3 条片段 + **每条的出处**（`README.md#导出`、`AGENT.md#工具集`…） |
-| `propose_shot_edit(shotId, target, newText)` | target ∈ prompt/action | 一张待确认卡片（**不落库**），用户点确认才写入那张镜卡 |
+| `list_edit_targets(targetType?)` | 可选四类实体 | 当前项目真实可修改目标的稳定 `targetId` 与可读名称 |
+| `propose_shot_edit(targetId, target, newText)` | target ∈ prompt/action | 一张待确认卡片（**不落库**），用户点确认才写入那张镜卡 |
 | `propose_regenerate(step, reason)` | step ∈ 六步 | 一张待确认卡片（**不落库**），用户点确认才触发该步生成 |
 
 **`propose_*` 的硬规矩**：函数名以 propose 开头、**永不写库**、只返回结构化卡片。
 前端渲染成卡片，用户点「确认」后走既有链路（写字段 / 调生成接口）。
 这条是版本与血缘不被打散的唯一保障。
+
+**精准修改的硬规矩**：具体实体只能按 `targetId` 定位，不能拿名称、集号或展示镜号猜。
+提案同时记录目标字段当时的 `expectedText`；用户确认时若目标不存在或正文已经改动，
+系统拒绝覆盖并要求重新读取。移动端继续保留 `baseSnapshotId` 冲突保护。
 
 **`search_docs` 必须给出处**：本地检索仓库自带文档（README 的导出与用法、批量出图步骤、
 首尾帧衔接说明、平台中立口径）。没有出处的回答对创作者等于噪音。文档不大，分块 + 关键词检索即可，

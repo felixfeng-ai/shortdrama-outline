@@ -893,8 +893,14 @@ export default function LocalizePage() {
         onOpenChange={setAgentOpen}
         projectId={projectId}
         context={activeBranch ? `${activeBranch.name} · ${activeBranch.locale}` : '海外本地化'}
-        onApplyCard={() => {}}
-        onApplyEntityCard={() => {}}
+        onApplyCard={() => ({
+          ok: false,
+          message: '请回到主工作台确认镜头修改，本地化工作区不会覆盖原文。',
+        })}
+        onApplyEntityCard={async () => ({
+          ok: false,
+          message: '请回到主工作台确认实体修改，本地化工作区不会覆盖原文。',
+        })}
         onApplyLocalization={applyLocalizationCard}
         onApplyDecision={() => {}}
         onRegenerate={() => {}}

@@ -27,8 +27,9 @@ function state(over: Partial<AgentState> = {}): AgentState {
 }
 
 const shot = (over: Partial<AgentState["shots"][number]> = {}) => ({
-  shot: 1, scene: "别墅门外", characters: ["陈默"], missingRefFor: [], status: "todo",
-  shotSize: "中景", camera: "固定", prompt: "medium shot", speaker: "", dialogue: "",
+  targetId: "shot-e-0", episode: 1, shot: 1, scene: "别墅门外", characters: ["陈默"],
+  missingRefFor: [], status: "todo", shotSize: "中景", camera: "固定",
+  prompt: "medium shot", action: "陈默敲门", speaker: "", dialogue: "",
   ...over,
 })
 
@@ -128,19 +129,19 @@ test("AT5 文档检索：每条片段都带出处，没命中时不硬编", () =
 })
 
 test("AT6 propose_shot_edit 只出卡片，绝不改任何东西", () => {
-  const s = state({ shots: [shot({ shot: 2 })] })
+  const s = state({ shots: [shot({ targetId: "shot-e-1", shot: 2 })] })
   const before = JSON.stringify(s)
-  const r = createToolExecutors(s).propose_shot_edit({ shot: 2, target: "prompt", newText: "heavy rain, CHEN MO" })
+  const r = createToolExecutors(s).propose_shot_edit({ targetId: "shot-e-1", target: "prompt", newText: "heavy rain, CHEN MO" })
   assert.equal(r.ok, true)
   assert.equal(r.card?.kind, "shot-edit")
   assert.equal(JSON.stringify(s), before, "propose 必须无副作用")
 })
 
-test("AT6b propose_shot_edit 的镜头号必须真实存在，目标类型必须合法", () => {
-  const exec = createToolExecutors(state({ shots: [shot({ shot: 1 })] }))
-  assert.equal(exec.propose_shot_edit({ shot: 99, target: "prompt", newText: "x" }).ok, false)
-  assert.equal(exec.propose_shot_edit({ shot: 1, target: "prompt", newText: "" }).ok, false, "空文本不该提议")
-  assert.equal(exec.propose_shot_edit({ shot: 1, target: "everything", newText: "x" }).ok, false)
+test("AT6b propose_shot_edit 的稳定 ID 必须真实存在，目标类型必须合法", () => {
+  const exec = createToolExecutors(state({ shots: [shot({ targetId: "shot-e-0", shot: 1 })] }))
+  assert.equal(exec.propose_shot_edit({ targetId: "missing", target: "prompt", newText: "x" }).ok, false)
+  assert.equal(exec.propose_shot_edit({ targetId: "shot-e-0", target: "prompt", newText: "" }).ok, false, "空文本不该提议")
+  assert.equal(exec.propose_shot_edit({ targetId: "shot-e-0", target: "everything", newText: "x" }).ok, false)
 })
 
 test("AT7 propose_regenerate 只出卡片；非法步骤被拒", () => {

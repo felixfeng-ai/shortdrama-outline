@@ -174,9 +174,41 @@ export default function SkillAgentDrawer({
           field: issue.field,
           message: issue.message,
         })),
+        characters: characters.map((character) => ({
+          name: character.name,
+          motivation: character.motivation,
+          arc: character.arc,
+        })),
+        entities: [
+          ...characters.map((character) => ({
+            type: 'character' as const,
+            id: character.id,
+            name: character.name,
+            fields: { personality: character.personality },
+          })),
+          ...places.map((place) => ({
+            type: 'place' as const,
+            id: place.id,
+            name: place.name,
+            fields: { space: place.space },
+          })),
+          ...episodes.map((episode) => ({
+            type: 'episode' as const,
+            id: episode.id,
+            name: `第 ${episode.number} 集 · ${episode.title}`,
+            fields: { synopsis: episode.synopsis },
+          })),
+          ...shots.map((shot) => ({
+            type: 'shot' as const,
+            id: shot.entityId || shot.id,
+            name: `第 ${shot.episode || '?'} 集 · 第 ${shot.shot} 镜 · ${shot.scene || '未命名场景'}`,
+            fields: { action: shot.action },
+          })),
+        ],
         episodes: episodes.map((episode) => ({
           number: episode.number,
           title: episode.title,
+          synopsis: episode.synopsis,
           hook: episode.hook,
           intensity: episode.intensity,
         })),
@@ -189,6 +221,8 @@ export default function SkillAgentDrawer({
           shots: shots.length > 0,
         },
         shots: shots.map((shot) => ({
+          targetId: shot.entityId || shot.id,
+          episode: shot.episode,
           shot: shot.shot,
           scene: shot.scene,
           characters: shot.characters,
@@ -197,6 +231,7 @@ export default function SkillAgentDrawer({
           shotSize: shot.shotSize,
           camera: shot.camera,
           prompt: shot.prompt,
+          action: shot.action,
           speaker: shot.speaker,
           dialogue: shot.dialogue,
         })),
@@ -531,7 +566,7 @@ export default function SkillAgentDrawer({
               <div key={line.id} className="plan-card">
                 <h3>
                   待确认 · {line.card.kind === 'shot-edit'
-                    ? `第 ${line.card.shot} 镜`
+                    ? line.card.targetLabel
                     : line.card.kind === 'entity-edit'
                       ? line.card.targetName
                       : line.card.kind === 'localization-edit'

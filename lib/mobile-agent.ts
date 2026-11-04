@@ -59,6 +59,7 @@ export function buildMobileAgentState(input: {
   const episodes = readArray(snapshots.episodes)
   const visuals = readArray(snapshots.visualCharacters)
   const scenes = readArray(snapshots.scenes)
+  const places = readArray(snapshots.visualPlaces)
   const shots = readArray(snapshots.shots)
 
   return {
@@ -68,9 +69,41 @@ export function buildMobileAgentState(input: {
     judgments: [],
     decisions: [],
     canonIssues: [],
+    characters: characters.map((character) => ({
+      name: readText(character.name),
+      motivation: readText(character.motivation),
+      arc: readText(character.arc),
+    })),
+    entities: [
+      ...characters.map((character) => ({
+        type: 'character' as const,
+        id: readText(character.id),
+        name: readText(character.name),
+        fields: { personality: readText(character.personality) },
+      })).filter((entity) => entity.id),
+      ...places.map((place) => ({
+        type: 'place' as const,
+        id: readText(place.id),
+        name: readText(place.name),
+        fields: { space: readText(place.space) },
+      })).filter((entity) => entity.id),
+      ...episodes.map((episode) => ({
+        type: 'episode' as const,
+        id: readText(episode.id),
+        name: `第 ${readNumber(episode.number)} 集 · ${readText(episode.title)}`,
+        fields: { synopsis: readText(episode.synopsis) },
+      })).filter((entity) => entity.id),
+      ...shots.map((shot) => ({
+        type: 'shot' as const,
+        id: readText(shot.entityId) || readText(shot.id),
+        name: `第 ${readNumber(shot.episode) || '?'} 集 · 第 ${readNumber(shot.shot)} 镜 · ${readText(shot.scene) || '未命名场景'}`,
+        fields: { action: readText(shot.action) },
+      })).filter((entity) => entity.id),
+    ],
     episodes: episodes.map((episode) => ({
       number: readNumber(episode.number),
       title: readText(episode.title),
+      synopsis: readText(episode.synopsis),
       hook: readText(episode.hook),
       intensity: Number.isFinite(Number(episode.intensity)) ? Number(episode.intensity) : undefined,
     })),
@@ -83,6 +116,8 @@ export function buildMobileAgentState(input: {
       shots: shots.length > 0,
     },
     shots: shots.map((shot) => ({
+      targetId: readText(shot.entityId) || readText(shot.id),
+      episode: readNumber(shot.episode),
       shot: readNumber(shot.shot),
       scene: readText(shot.scene),
       characters: readStringArray(shot.characters),
@@ -91,6 +126,7 @@ export function buildMobileAgentState(input: {
       shotSize: readText(shot.shotSize),
       camera: readText(shot.camera),
       prompt: readText(shot.prompt),
+      action: readText(shot.action),
       speaker: readText(shot.speaker),
       dialogue: readText(shot.dialogue),
     })),

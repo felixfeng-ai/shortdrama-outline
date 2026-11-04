@@ -28,6 +28,7 @@ export async function POST(req: Request) {
         snapshotId: result.snapshot.id,
         version: result.snapshot.version,
         shot: result.shot.shot,
+        targetId: edit.targetId ?? result.shot.entityId ?? result.shot.id,
         target: edit.target,
       }),
     )

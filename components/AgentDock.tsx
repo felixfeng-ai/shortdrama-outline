@@ -18,6 +18,7 @@ import {
 } from '@/lib/assets/api'
 import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
 import { createToolExecutors, type AgentCard, type AgentState } from '@/lib/agent/tools'
+import { inspectEditTarget, type EditTargetStatus } from '@/lib/agent/edits'
 import { STEPS, type StepKey } from '@/lib/types'
 import SmoothCollapse from './SmoothCollapse'
 import StreamingText from './StreamingText'
@@ -38,9 +39,15 @@ interface Props {
   /** 一轮回答结束（含失败说明）时通知外层，用来点亮未读角标 */
   onNewMessage?: () => void
   /** 用户确认「改写某一镜」后，页面负责写回去 */
-  onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => void
+  onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => {
+    ok: boolean
+    message: string
+  }
   /** 用户确认实体级建议后，页面按稳定实体 id 写回对应字段 */
-  onApplyEntityCard: (card: Extract<AgentCard, { kind: 'entity-edit' }>) => void
+  onApplyEntityCard: (card: Extract<AgentCard, { kind: 'entity-edit' }>) => Promise<{
+    ok: boolean
+    message: string
+  }>
   /** 海外工作区确认本地化修改 */
   onApplyLocalization?: (card: Extract<AgentCard, { kind: 'localization-edit' }>) => void
   /** 用户确认「结构化决策」后，页面负责落库 */
@@ -75,6 +82,7 @@ type Line =
 
 const TOOL_LABEL: Record<string, string> = {
   get_project_status: '读项目状态',
+  list_edit_targets: '读可修改目标',
   audit_shots: '查分镜',
   review_episodes: '审分集',
   get_quota: '查额度',
@@ -88,6 +96,22 @@ const TOOL_LABEL: Record<string, string> = {
   propose_localization_edit: '提议本地化修改',
   propose_regenerate: '提议重跑某步',
   propose_decision: '提议创作决策',
+}
+
+function inspectCardTarget(card: AgentCard, state: AgentState): EditTargetStatus {
+  if (card.kind === 'shot-edit') {
+    const shot = state.shots.find((item) => item.targetId === card.targetId)
+    if (!shot) return 'missing'
+    return inspectEditTarget(shot[card.target], card.expectedText)
+  }
+  if (card.kind === 'entity-edit') {
+    const entity = state.entities?.find((item) =>
+      item.type === card.targetType && item.id === card.targetId
+    )
+    if (!entity) return 'missing'
+    return inspectEditTarget(entity.fields?.[card.field], card.expectedText)
+  }
+  return 'current'
 }
 
 /**
@@ -523,11 +547,13 @@ export default function AgentDock({
                 )
               }
               // 待确认卡片：用户点了才真正改
+              const editStatus = inspectCardTarget(line.card, state)
+              const editBlocked = editStatus !== 'current'
               return (
                 <div key={i} className="prop agent-line-in">
                   <p className="prop-h">
                     {line.card.kind === 'shot-edit'
-                      ? `待确认：第 ${line.card.shot} 镜 · ${line.card.summary}`
+                      ? `待确认：${line.card.targetLabel} · ${line.card.summary}`
                       : line.card.kind === 'entity-edit'
                         ? `待确认：${line.card.targetName} · ${line.card.summary}`
                         : line.card.kind === 'localization-edit'
@@ -552,23 +578,50 @@ export default function AgentDock({
                       候选：{line.card.options.join(' / ')}
                     </p>
                   )}
+                  {(line.card.kind === 'shot-edit' || line.card.kind === 'entity-edit') && editBlocked && (
+                    <p className="text-[11px] leading-relaxed text-ink-400" role="status">
+                      {editStatus === 'drift'
+                        ? '目标已改动。这条建议基于旧内容，不会覆盖当前文本；请让场记重新读取。'
+                        : '目标已不存在。请让场记重新读取项目后再提议。'}
+                    </p>
+                  )}
                   <div className="prop-a">
                     <button
                       type="button"
+                      disabled={editBlocked}
                       onClick={() => {
-                        if (line.card.kind === 'shot-edit') onApplyCard(line.card)
-                        else if (line.card.kind === 'entity-edit') onApplyEntityCard(line.card)
-                        else if (line.card.kind === 'localization-edit') {
-                          if (onApplyLocalization) onApplyLocalization(line.card)
-                          else push({ role: 'note', text: '请在海外本地化工作区确认这条修改。' })
-                        }
-                        else if (line.card.kind === 'decision') onApplyDecision(line.card)
-                        else onRegenerate(line.card.step)
-                        push({ role: 'note', text: '已按你的确认执行。' })
+                        void (async () => {
+                          if (line.card.kind === 'shot-edit') {
+                            const result = onApplyCard(line.card)
+                            if (result.ok) {
+                              setLines((current) => current.filter((item) =>
+                                !(item.role === 'card' && item.card === line.card)
+                              ))
+                            }
+                            push({ role: 'note', text: result.message })
+                          } else if (line.card.kind === 'entity-edit') {
+                            const result = await onApplyEntityCard(line.card)
+                            if (result.ok) {
+                              setLines((current) => current.filter((item) =>
+                                !(item.role === 'card' && item.card === line.card)
+                              ))
+                            }
+                            push({ role: 'note', text: result.message })
+                          } else if (line.card.kind === 'localization-edit') {
+                            if (onApplyLocalization) onApplyLocalization(line.card)
+                            else push({ role: 'note', text: '请在海外本地化工作区确认这条修改。' })
+                          } else if (line.card.kind === 'decision') {
+                            onApplyDecision(line.card)
+                            push({ role: 'note', text: '已提交这条创作决策。' })
+                          } else {
+                            onRegenerate(line.card.step)
+                            push({ role: 'note', text: '已按你的确认重跑该步骤。' })
+                          }
+                        })()
                       }}
-                      className="ok"
+                      className="ok disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      确认
+                      {editBlocked ? '需重新读取' : '确认'}
                     </button>
                     <button
                       type="button"

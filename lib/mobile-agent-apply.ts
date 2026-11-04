@@ -2,11 +2,15 @@ import type { DatabaseSync } from 'node:sqlite'
 
 import { latestSnapshot, type Snapshot } from './assets/repo.ts'
 import { persistEditedArtifact } from './assets/persist.ts'
+import { inspectEditTarget } from './agent/edits.ts'
 
 export type MobileShotEditTarget = 'prompt' | 'action'
 
 export interface MobileShotEdit {
-  shot: number
+  /** 新客户端优先使用稳定 ID；保留 shot 仅用于旧 App 兼容。 */
+  targetId?: string
+  shot?: number
+  expectedText?: string
   target: MobileShotEditTarget
   text: string
   summary: string
@@ -24,8 +28,11 @@ function readText(value: unknown, max: number): string {
 
 export function readMobileShotEdit(value: unknown): MobileShotEdit {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const targetId = readText(source.targetId, 160)
   const shot = Number(source.shot)
-  if (!Number.isInteger(shot) || shot < 1) throw inputError('要修改的镜头不存在')
+  if (!targetId && (!Number.isInteger(shot) || shot < 1)) {
+    throw inputError('要修改的镜头不存在')
+  }
   const target = String(source.target ?? '')
   if (target !== 'prompt' && target !== 'action') {
     throw inputError('修改目标只能是 prompt 或 action')
@@ -36,7 +43,10 @@ export function readMobileShotEdit(value: unknown): MobileShotEdit {
     throw inputError('改写内容过长')
   }
   return {
-    shot,
+    ...(targetId ? { targetId } : { shot }),
+    ...(typeof source.expectedText === 'string'
+      ? { expectedText: source.expectedText }
+      : {}),
     target,
     text,
     summary: readText(source.summary, 120) || (target === 'prompt' ? '改写本镜提示词' : '改写本镜动作'),
@@ -52,8 +62,30 @@ export function applyShotEdit(
     throw inputError('分镜数据包含无法识别的项目，已停止写回')
   }
   const shots = payload as Record<string, unknown>[]
-  const index = shots.findIndex((shot) => Number(shot.shot) === edit.shot)
-  if (index < 0) throw inputError(`第 ${edit.shot} 镜不存在`)
+  const index = edit.targetId
+    ? shots.findIndex((shot) =>
+        String(shot.entityId ?? '') === edit.targetId
+        || String(shot.id ?? '') === edit.targetId
+      )
+    : shots.findIndex((shot) => Number(shot.shot) === edit.shot)
+  if (index < 0) {
+    throw inputError(edit.targetId
+      ? '目标镜头已不存在，请重新读取项目'
+      : `第 ${edit.shot} 镜不存在`, 409)
+  }
+
+  if (edit.targetId && edit.expectedText !== undefined) {
+    const status = inspectEditTarget(
+      typeof shots[index][edit.target] === 'string'
+        ? String(shots[index][edit.target])
+        : undefined,
+      edit.expectedText,
+    )
+    if (status === 'missing') throw inputError('目标字段已不存在，请重新读取项目', 409)
+    if (status === 'drift') {
+      throw inputError('目标已改动，旧建议未覆盖当前文本，请重新读取后再写回', 409)
+    }
+  }
 
   const updated = shots.map((shot, shotIndex) =>
     shotIndex === index ? { ...shot, [edit.target]: edit.text } : shot,
