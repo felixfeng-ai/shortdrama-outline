@@ -4718,6 +4718,1136 @@
     color: #1b2115;
   }
 }
+
+/* ── 已安装 PWA 的 App 外壳（只在 ?app= 入口挂载） ── */
+.mobile-app-shell {
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--signal-bg);
+  color: var(--signal-text);
+  padding-top: env(safe-area-inset-top);
+  overscroll-behavior: contain;
+}
+
+.mobile-app-shell button {
+  font: inherit;
+  touch-action: manipulation;
+}
+
+.mobile-app-shell button:focus-visible {
+  outline: 2px solid var(--signal-acid);
+  outline-offset: 2px;
+}
+
+.mobile-app-top {
+  min-height: 64px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--signal-line);
+  background: var(--signal-bg);
+}
+
+.mobile-app-brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-app-brand > span {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--signal-acid);
+  color: #161b10;
+  font: 700 18px/1 var(--font-latin), sans-serif;
+}
+
+.mobile-app-brand > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.mobile-app-brand b {
+  font-size: 17px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.mobile-app-brand small {
+  color: var(--signal-text-3);
+  font-size: 8px;
+  line-height: 1.2;
+  letter-spacing: .08em;
+}
+
+.mobile-app-workspace {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--signal-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--signal-text-2);
+  font-size: 12px !important;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.mobile-app-workspace:active {
+  background: var(--signal-raised);
+  color: var(--signal-text);
+}
+
+.mobile-app-workspace svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.mobile-app-main {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mobile-app-pane {
+  min-height: 0;
+}
+
+.mobile-app-pane[hidden] {
+  display: none !important;
+}
+
+.mobile-app-agent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 8px;
+}
+
+.mobile-app-hero {
+  flex: 0 0 auto;
+  padding: 14px;
+  border: 1px solid var(--signal-line);
+  border-radius: 12px;
+  background: var(--signal-panel);
+}
+
+.mobile-app-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mobile-app-hero-head p,
+.mobile-app-section-head p {
+  margin: 0 0 4px;
+  color: var(--signal-text-3);
+  font-size: 9px;
+  line-height: 1.2;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.mobile-app-hero-head h2,
+.mobile-app-section-head h2 {
+  margin: 0;
+  color: var(--signal-text);
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.mobile-app-hero-head > span {
+  flex: 0 0 auto;
+  color: var(--signal-acid);
+  font: 500 13px/1 var(--font-mono), monospace;
+}
+
+.mobile-app-progress {
+  height: 3px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--signal-raised);
+}
+
+.mobile-app-progress > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--signal-acid);
+  transition: width 220ms ease;
+}
+
+.mobile-app-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.mobile-app-facts > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding-right: 8px;
+  border-right: 1px solid var(--signal-line-soft);
+}
+
+.mobile-app-facts > div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.mobile-app-facts dt {
+  color: var(--signal-text-3);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.mobile-app-facts dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--signal-text-2);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-app-next {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 8px 9px;
+  border: 1px solid rgba(196, 217, 138, .22);
+  border-radius: 9px;
+  background: rgba(196, 217, 138, .055);
+  color: var(--signal-text);
+  text-align: left;
+}
+
+.mobile-app-next > span {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(196, 217, 138, .12);
+  color: var(--signal-acid);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.mobile-app-next > b {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.mobile-app-next > svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--signal-text-3);
+  stroke-width: 1.5;
+}
+
+.mobile-app-agent-dock {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--signal-line);
+  border-radius: 12px;
+  background: var(--signal-panel);
+}
+
+.mobile-app-agent-dock > section {
+  width: 100%;
+}
+
+.mobile-app-section {
+  height: 100%;
+  padding: 18px 16px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mobile-app-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.mobile-app-section-head > span {
+  max-width: 48%;
+  overflow: hidden;
+  color: var(--signal-text-3);
+  font-size: 11px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-app-current-project {
+  width: 100%;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
+  align-content: center;
+  gap: 4px 10px;
+  padding: 14px;
+  border: 1px solid rgba(196, 217, 138, .28);
+  border-radius: 10px;
+  background: rgba(196, 217, 138, .065);
+  color: var(--signal-text);
+  text-align: left;
+}
+
+.mobile-app-current-project > span {
+  grid-column: 1;
+  color: var(--signal-acid);
+  font-size: 9px;
+  line-height: 1.3;
+  letter-spacing: .06em;
+}
+
+.mobile-app-current-project > strong {
+  grid-column: 1;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-app-current-project > small {
+  grid-column: 1;
+  color: var(--signal-text-3);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.mobile-app-current-project > svg {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--signal-text-3);
+  stroke-width: 1.5;
+}
+
+.mobile-app-project-list {
+  display: grid;
+  gap: 1px;
+  margin-top: 16px;
+  border-top: 1px solid var(--signal-line-soft);
+}
+
+.mobile-app-project-list > button {
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--signal-line-soft);
+  background: transparent;
+  color: var(--signal-text);
+  text-align: left;
+  transition: background-color 160ms ease;
+}
+
+.mobile-app-project-list > button:active {
+  background: var(--signal-raised);
+}
+
+.mobile-app-project-list > button.is-current {
+  background: rgba(196, 217, 138, .05);
+}
+
+.mobile-app-project-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--signal-line);
+  border-radius: 8px;
+  background: var(--signal-raised);
+  color: var(--signal-text-2);
+  font-size: 13px;
+}
+
+.mobile-app-project-list > button.is-current .mobile-app-project-mark {
+  border-color: rgba(196, 217, 138, .25);
+  background: rgba(196, 217, 138, .1);
+  color: var(--signal-acid);
+}
+
+.mobile-app-project-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.mobile-app-project-copy b {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-app-project-copy small {
+  color: var(--signal-text-3);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.mobile-app-project-state {
+  color: var(--signal-text-3);
+  font-size: 10px;
+}
+
+.mobile-app-project-list > button.is-current .mobile-app-project-state {
+  color: var(--signal-acid);
+}
+
+.mobile-app-empty {
+  min-height: 120px;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.mobile-app-empty b {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mobile-app-empty p {
+  margin: 0;
+  color: var(--signal-text-3);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.mobile-app-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.mobile-app-actions button {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--signal-line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--signal-text-2);
+  font-size: 12px;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.mobile-app-actions button:active {
+  background: var(--signal-raised);
+  color: var(--signal-text);
+}
+
+.mobile-app-actions button.primary {
+  grid-column: 1 / -1;
+  border-color: transparent;
+  background: var(--signal-acid);
+  color: #161b10;
+  font-weight: 600;
+}
+
+.mobile-app-task-empty {
+  padding: 16px;
+  border: 1px solid var(--signal-line);
+  border-radius: 10px;
+  background: var(--signal-panel);
+  color: var(--signal-text-2);
+}
+
+.mobile-app-task-empty b {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mobile-app-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--signal-line);
+  border-radius: 10px;
+  background: var(--signal-panel);
+}
+
+.mobile-app-account > span {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--signal-acid);
+  color: #161b10;
+  font: 700 19px/1 var(--font-latin), sans-serif;
+}
+
+.mobile-app-account > div {
+  min-width: 0;
+}
+
+.mobile-app-account b {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.mobile-app-account p {
+  margin: 3px 0 0;
+  color: var(--signal-text-3);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.mobile-app-install {
+  margin-top: 12px;
+}
+
+.mobile-app-settings {
+  margin: 18px 0 0;
+  border-top: 1px solid var(--signal-line-soft);
+}
+
+.mobile-app-settings > div {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--signal-line-soft);
+}
+
+.mobile-app-settings dt {
+  color: var(--signal-text-2);
+  font-size: 12px;
+}
+
+.mobile-app-settings dd {
+  margin: 0;
+  color: var(--signal-text-3);
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.mobile-app-nav {
+  min-height: calc(64px + env(safe-area-inset-bottom));
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--signal-line);
+  background: var(--signal-bg);
+}
+
+.mobile-app-nav button {
+  position: relative;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--signal-text-3);
+  font-size: 9px !important;
+  line-height: 1.1;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.mobile-app-nav button:active {
+  background: var(--signal-raised);
+}
+
+.mobile-app-nav button.is-current {
+  background: rgba(196, 217, 138, .075);
+  color: var(--signal-acid);
+}
+
+.mobile-app-nav svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mobile-app-nav-badge {
+  position: absolute;
+  top: 3px;
+  right: calc(50% - 22px);
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 2px solid var(--signal-bg);
+  border-radius: 999px;
+  background: var(--signal-warning);
+  color: #17120f;
+  font: 600 9px/1 var(--font-mono), monospace;
+}
+
+.mobile-app-notification-control {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--signal-line);
+  border-radius: 10px;
+  background: var(--signal-panel);
+}
+
+.mobile-app-notification-control > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.mobile-app-notification-control b {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.mobile-app-notification-control small {
+  color: var(--signal-text-3);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.mobile-app-notification-control > button {
+  flex: 0 0 auto;
+  min-width: 112px;
+  padding: 0 12px;
+  border: 1px solid rgba(196, 217, 138, .28);
+  border-radius: 8px;
+  background: rgba(196, 217, 138, .08);
+  color: var(--signal-acid);
+  font-size: 11px;
+}
+
+.mobile-app-notification-control > span {
+  flex: 0 0 auto;
+  color: var(--signal-text-3);
+  font-size: 10px;
+}
+
+.mobile-app-notification-control > span.is-on {
+  color: var(--signal-acid);
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .mobile-app-top {
+    min-height: 54px;
+  }
+
+  .mobile-app-hero {
+    padding: 10px 12px;
+  }
+
+  .mobile-app-facts,
+  .mobile-app-next {
+    margin-top: 8px;
+  }
+
+  .mobile-app-nav {
+    min-height: calc(56px + env(safe-area-inset-bottom));
+    padding-top: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-app-shell *,
+  .mobile-app-shell *::before,
+  .mobile-app-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+.mobile-review {
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
+.mobile-review-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.mobile-review-head p {
+  margin: 0 0 4px;
+  color: var(--signal-text-3);
+  font-size: 9px;
+  line-height: 1.2;
+  letter-spacing: .1em;
+}
+
+.mobile-review-head h2 {
+  margin: 0;
+  color: var(--signal-text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.mobile-review-head > span {
+  color: var(--signal-text-3);
+  font-size: 10px;
+}
+
+.mobile-review-rail {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  padding: 1px 1px 5px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.mobile-review-rail::-webkit-scrollbar,
+.mobile-review-versions::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-review-card {
+  width: 132px;
+  flex: 0 0 132px;
+  display: grid;
+  grid-template-rows: 112px auto;
+  gap: 8px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--signal-line);
+  border-radius: 9px;
+  background: var(--signal-panel);
+  color: var(--signal-text);
+  text-align: left;
+  touch-action: manipulation;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.mobile-review-card:active {
+  border-color: rgba(196, 217, 138, .32);
+  background: var(--signal-raised);
+}
+
+.mobile-review-card > img {
+  display: block;
+  width: 100%;
+  height: 112px;
+  object-fit: cover;
+  background: #0d1012;
+}
+
+.mobile-review-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 0 9px 9px;
+}
+
+.mobile-review-card-copy b,
+.mobile-review-card-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-review-card-copy b {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.mobile-review-card-copy small {
+  color: var(--signal-text-3);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.mobile-review-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--signal-bg);
+  color: var(--signal-text);
+  overscroll-behavior: contain;
+}
+
+.mobile-review-overlay button,
+.mobile-review-overlay a {
+  touch-action: manipulation;
+}
+
+.mobile-review-overlay button:focus-visible,
+.mobile-review-overlay a:focus-visible {
+  outline: 2px solid var(--signal-acid);
+  outline-offset: 2px;
+}
+
+.mobile-review-overlay-head {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 14px 8px 16px;
+  border-bottom: 1px solid var(--signal-line);
+}
+
+.mobile-review-overlay-head > div {
+  min-width: 0;
+}
+
+.mobile-review-overlay-head p {
+  margin: 0 0 3px;
+  overflow: hidden;
+  color: var(--signal-text-3);
+  font-size: 9px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-review-overlay-head h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--signal-text);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-review-overlay-head > button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--signal-line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--signal-text-2);
+}
+
+.mobile-review-overlay-head > button:active {
+  background: var(--signal-raised);
+}
+
+.mobile-review-overlay-head svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.mobile-review-stage {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px 0;
+}
+
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+}
+
+.mobile-review-versions {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 11vw 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.mobile-review-versions figure {
+  width: min(78vw, 360px);
+  flex: 0 0 min(78vw, 360px);
+  margin: 0;
+  overflow: hidden;
+  scroll-snap-align: center;
+  border: 1px solid var(--signal-line);
+  border-radius: 12px;
+  background: #0d1012;
+  opacity: .55;
+  transition: opacity 180ms ease, border-color 180ms ease;
+}
+
+.mobile-review-versions figure.is-active {
+  border-color: rgba(196, 217, 138, .36);
+  opacity: 1;
+}
+
+.mobile-review-versions figure > img {
+  display: block;
+  width: 100%;
+  height: min(52dvh, 520px);
+  object-fit: contain;
+  background: #0d1012;
+}
+
+.mobile-review-versions figcaption {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--signal-line-soft);
+  background: var(--signal-panel);
+  color: var(--signal-text-3);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.mobile-review-versions figcaption > span:first-child {
+  color: var(--signal-text-2);
+  font-family: var(--font-mono), monospace;
+}
+
+.mobile-review-thumbs {
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  padding: 9px 16px 10px;
+  overflow-x: auto;
+  border-top: 1px solid var(--signal-line-soft);
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.mobile-review-thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-review-thumbs > button {
+  position: relative;
+  width: 48px;
+  height: 64px;
+  flex: 0 0 48px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--signal-line);
+  border-radius: 7px;
+  background: var(--signal-panel);
+}
+
+.mobile-review-thumbs > button.is-active {
+  border-color: var(--signal-acid);
+}
+
+.mobile-review-thumbs img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-review-thumbs button > span {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--signal-bg);
+  border-radius: 50%;
+  background: var(--signal-acid);
+}
+
+.mobile-review-footer {
+  display: grid;
+  gap: 10px;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--signal-line);
+  background: var(--signal-panel);
+}
+
+.mobile-review-meta {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mobile-review-meta b {
+  color: var(--signal-text);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.mobile-review-meta span {
+  overflow: hidden;
+  color: var(--signal-text-3);
+  font: 9px/1.35 var(--font-mono), monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-review-actions {
+  display: grid;
+  grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr);
+  gap: 8px;
+}
+
+.mobile-review-actions a,
+.mobile-review-actions button {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.mobile-review-actions a {
+  border: 1px solid var(--signal-line);
+  color: var(--signal-text-2);
+  text-decoration: none;
+}
+
+.mobile-review-actions button {
+  border: 1px solid transparent;
+  background: var(--signal-acid);
+  color: #161b10;
+}
+
+.mobile-review-actions button:disabled {
+  cursor: default;
+  border-color: var(--signal-line);
+  background: var(--signal-raised);
+  color: var(--signal-text-3);
+}
+
+.mobile-review-footer > p {
+  margin: 0;
+  color: var(--signal-warning);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (max-height: 620px) and (orientation: landscape) {
+  .mobile-review-overlay-head {
+    min-height: 54px;
+  }
+
+  .mobile-review-versions figure > img {
+    height: 42dvh;
+  }
+
+  .mobile-review-thumbs {
+    display: none;
+  }
+
+  .mobile-review-footer {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, .8fr);
+    align-items: center;
+  }
+
+  .mobile-review-meta {
+    display: grid;
+    gap: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-review *,
+  .mobile-review *::before,
+  .mobile-review *::after,
+  .mobile-review-overlay *,
+  .mobile-review-overlay *::before,
+  .mobile-review-overlay *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
 @media (max-width: 620px) {
   .signal-desk .h-quota,
   .signal-desk .h-run,

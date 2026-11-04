@@ -7,7 +7,7 @@ import { PWA_MANIFEST } from "../lib/pwa.ts"
 test("P1.1 Manifest 具备安装所需字段和 SVG 图标", () => {
   assert.equal(PWA_MANIFEST.name, "成剧 VeyaFrame")
   assert.equal(PWA_MANIFEST.short_name, "成剧")
-  assert.equal(PWA_MANIFEST.start_url, "/")
+  assert.equal(PWA_MANIFEST.start_url, "/?app=agent")
   assert.equal(PWA_MANIFEST.display, "standalone")
   assert.equal(PWA_MANIFEST.background_color, "#13171A")
   assert.equal(PWA_MANIFEST.theme_color, "#13171A")

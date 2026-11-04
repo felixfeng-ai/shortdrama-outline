@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chengju-shell-v1'
+const CACHE_NAME = 'chengju-shell-v2'
 const SHELL = ['/offline.html', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', (event) => {
@@ -58,4 +58,20 @@ self.addEventListener('fetch', (event) => {
       }),
     )
   }
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL('/?app=tasks', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(async (clients) => {
+        const existing = clients.find((client) => new URL(client.url).origin === self.location.origin)
+        if (existing) {
+          await existing.navigate(target).catch(() => {})
+          return existing.focus()
+        }
+        return self.clients.openWindow(target)
+      }),
+  )
 })

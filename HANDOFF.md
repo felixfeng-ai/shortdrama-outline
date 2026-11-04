@@ -5,7 +5,7 @@
 App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见 [APP.md](APP.md)。
 
 ## 项目
-- 路径：`D:\Project\drama-outline`
+- App 分支路径：`D:\Project\drama-outline-app`
 - 类型：Next.js 短剧大纲创作工具（App Router + Tailwind），面向竖屏短剧与漫剧
 
 ## 当前状态（2026-10-23）
@@ -25,6 +25,10 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - 新增项目级生成任务中心：默认收起，汇总等待/运行/成功/失败/取消；最新失败或取消任务可单条重试，多项需确认后串行批量重试。
 - PWA 基础已落地：Manifest、Service Worker、离线页、静态缓存和条件安装按钮；API 与生成资产明确绕过缓存。
 - 六步支持 URL 深链：`?step=visuals` 可刷新恢复，步骤切换写入历史并支持前进后退；Manifest 提供人物、定妆、分镜快捷方式。
+- App 模式已落地：安装后的 PWA 从 `/?app=agent` 启动，底部提供 Agent、项目、任务、我的四入口；默认场记首页复用现有 AgentDock、项目恢复、生成任务中心和额度，普通手机浏览器与桌面端仍进入六步工作台。
+- App URL 支持 `?app=agent|projects|tasks|me`，切页签保留 `step`、`theme` 等参数；工作台按钮会移除 `app` 参数并回到现有六步页面。
+- App 模式只在 `max-width: 920px` 启用，使用 `100dvh`、上下安全区与 48px 触控目标；规格见 [specs/mobile-app-shell/spec.md](specs/mobile-app-shell/spec.md)。
+- 任务页已接入手机端关键帧审片：按角色/镜头聚合生成资产，横向巡视，全屏 scroll-snap 比较版本，可直接采用与下载；采用继续复用 `/api/generations`，空项目不占位。规格见 [specs/mobile-keyframe-review/spec.md](specs/mobile-keyframe-review/spec.md)。
 - 测试生成目录按进程 PID 隔离；测试结束时由外层 runner 清理临时数据库与本轮生成目录，避免并行测试互删 `data/tmp`，也解决 Windows SQLite 句柄未释放时的清理残留。
 - 规格见 [specs/generation-p0/spec.md](specs/generation-p0/spec.md) 与 [specs/generation-reference-images/spec.md](specs/generation-reference-images/spec.md)。
 
@@ -44,10 +48,10 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 - **窄屏状态色**：顶栏步骤的当前/完成/不可用状态、AI 抽屉抓手与快捷入口均使用 Signal Desk 深浅层级，
   不继承旧浅色主题；灵感助手在单列布局中下移但不会隐藏。
 - **动效**：项目菜单、灵感助手、公告、创作意图、待办、判断日志、视觉宪法、三幕、分镜、影响明细和场记过程统一使用 `SmoothCollapse`；画布进入与返回使用 220ms 淡入/下沉过渡，退出动画结束后再卸载；统一 `prefers-reduced-motion` 兜底。
-- **验证**：全量测试 `418/418`；`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `95.79%`。
+- **验证**：全量测试 `414/414`；`npx tsc --noEmit` 通过；生产构建通过；`lib/generation` 可执行行覆盖率 `95.79%`，手机审片分组逻辑行覆盖率 `100%`。
 - **浏览器验收**：桌面 `1440×900` 与手机 `390×844` 均无页面横向溢出、无大面积亮块、无控制台错误；
   桌面与手机六步逐页切换通过，画布、公告、项目菜单、导出入口和 AI 抽屉可用。
-- **本地预览**：`http://localhost:3200/?theme=neutral`。用户确认前不要推送。
+- **本地预览**：App 模式为 `http://localhost:3201/?app=agent`；Web 工作台为 `http://localhost:3200/?theme=neutral`。用户确认前不要推送。
 - **真实通义验证**：用户提供的可用 Key 已写入服务端 `.env.local`；真实生成成功，任务为 `succeeded`，输出 PNG 为 720×1280，约 1.06MB，已落库并成为当前采用关键帧。
 - **执行顺序调整**：图生视频成本较高，放到最后；先完成视觉一致性、任务管理和低成本音频/协作基础。
 

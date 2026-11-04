@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "成剧",
+    "slug": "veyaframe",
+    "version": "1.0.0",
+    "description": "面向短剧与漫剧创作者的 AI 创作、分镜与审片 Agent。",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "veyaframe",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "work.chenju.veyaframe"
+    },
+    "android": {
+      "package": "work.chenju.veyaframe",
+      "adaptiveIcon": {
+        "backgroundColor": "#FCFBF8",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FCFBF8"
+        }
+      ],
+      "expo-image",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

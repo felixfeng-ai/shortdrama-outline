@@ -2,7 +2,7 @@ export const PWA_MANIFEST = {
   name: "成剧 VeyaFrame",
   short_name: "成剧",
   description: "短剧与漫剧的 AI 分镜台",
-  start_url: "/",
+  start_url: "/?app=agent",
   scope: "/",
   display: "standalone",
   orientation: "portrait-primary",

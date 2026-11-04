@@ -25,6 +25,7 @@ import PacingCurve from '@/components/PacingCurve'
 import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
 import TodoPanel from '@/components/TodoPanel'
 import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
+import MobileAppShell from '@/components/MobileAppShell'
 import { buildTodoList } from '@/lib/todo'
 import {
   DEFAULT_EPISODE_COUNT,
@@ -99,7 +100,14 @@ import {
   downloadBlob,
 } from '@/lib/assets/export'
 import { postJson, postSse, isAbortError } from '@/lib/api'
-import { readStepQuery, withStepQuery } from '@/lib/app-nav'
+import {
+  readAppTabQuery,
+  readStepQuery,
+  withAppTabQuery,
+  withStepQuery,
+  withoutAppTabQuery,
+  type AppTab,
+} from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import {
@@ -245,13 +253,23 @@ export default function Home() {
    * 点左栏（或窄屏步骤条）切换。生成状态都在这之外，切换不会打断正在跑的任务。
    */
   const [view, setView] = useState<StepKey>('characters')
+  /** 已安装 PWA 的四个 App 入口；普通网页保持 null。 */
+  const [appTab, setAppTab] = useState<AppTab | null>(null)
+  const appMode = appTab !== null
   useEffect(() => {
-    const syncStepFromUrl = () => {
-      setView(readStepQuery(window.location.search) ?? 'characters')
+    const narrow = window.matchMedia('(max-width: 920px)')
+    const syncFromUrl = () => {
+      const search = window.location.search
+      setView(readStepQuery(search) ?? 'characters')
+      setAppTab(narrow.matches ? readAppTabQuery(search) : null)
     }
-    syncStepFromUrl()
-    window.addEventListener('popstate', syncStepFromUrl)
-    return () => window.removeEventListener('popstate', syncStepFromUrl)
+    syncFromUrl()
+    window.addEventListener('popstate', syncFromUrl)
+    narrow.addEventListener('change', syncFromUrl)
+    return () => {
+      window.removeEventListener('popstate', syncFromUrl)
+      narrow.removeEventListener('change', syncFromUrl)
+    }
   }, [])
   // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
   const [impact, setImpact] = useState<({ affected: number } & ShotAudit) | null>(null)
@@ -1418,9 +1436,12 @@ export default function Home() {
       if (cancelled) return
       setProjects(list)
       if (list.length === 0) return
-      const restored = await loadProject(list[0].id).catch(() => false)
+      const searchParams = new URLSearchParams(window.location.search)
+      const requestedProjectId = searchParams.get("project")
+      const target = list.find((project) => project.id === requestedProjectId) ?? list[0]
+      const restored = await loadProject(target.id).catch(() => false)
       if (cancelled) return
-      if (restored) setNotice(`已恢复上次的项目「${list[0].title}」，可以接着往下做。`)
+      if (restored) setNotice(`已恢复上次的项目「${target.title}」，可以接着往下做。`)
     })()
     return () => { cancelled = true }
     // 只在挂载时跑一次；依赖的 setter 都是稳定的
@@ -1807,6 +1828,30 @@ export default function Home() {
     })
   }
 
+  /** App 四入口共用同一个 URL 契约，前进后退也能恢复页签。 */
+  function changeAppTab(tab: AppTab) {
+    if (tab === appTab) return
+    const search = withAppTabQuery(window.location.search, tab)
+    window.history.pushState({ app: tab, step: view }, '', `${window.location.pathname}${search}${window.location.hash}`)
+    setAppTab(tab)
+    setDeckOpen(false)
+  }
+
+  /** 从 App 外壳进入工作台；可选直接落到某个步骤。 */
+  function openWorkbench(step?: StepKey) {
+    let search = withoutAppTabQuery(window.location.search)
+    const target = step ?? view
+    if (step && step !== view) search = withStepQuery(search, step)
+    window.history.pushState(
+      { step: target },
+      '',
+      `${window.location.pathname}${search}${window.location.hash}`,
+    )
+    setAppTab(null)
+    setView(target)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   // 过期提示条
   const staleNotice = (text: string) => (
     <div className="mb-4 flex items-start gap-2 rounded-card border border-accent-200 bg-accent-50 px-3.5 py-2.5">
@@ -1820,6 +1865,36 @@ export default function Home() {
       <p className="text-xs leading-relaxed text-accent-800">{text}</p>
     </div>
   )
+
+  if (appMode) {
+    return (
+      <MobileAppShell
+        tab={appTab}
+        projects={projects}
+        currentId={projectId}
+        hasContent={hasResult}
+        completed={stepCompleted}
+        currentStep={stepOf(view)?.nav ?? '核心人物'}
+        todoItems={todoItems}
+        projectId={projectId}
+        visuals={visuals}
+        shots={shots}
+        look={look}
+        agentState={agentState}
+        quotaRefreshKey={quotaRefreshKey}
+        episodeCount={episodeCount}
+        seedPrompt={agentSeed}
+        onTabChange={changeAppTab}
+        onOpenWorkbench={() => openWorkbench()}
+        onOpenStep={(step) => openWorkbench(step)}
+        onSwitchProject={(id) => { void handleSwitchProject(id) }}
+        onNewProject={handleNewProject}
+        onLoadSample={() => { void handleLoadSample() }}
+        onApplyCard={applyAgentCard}
+        onRegenerate={regenerateByAgent}
+      />
+    )
+  }
 
   return (
     <div className="min-h-screen">

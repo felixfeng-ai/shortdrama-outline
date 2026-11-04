@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import SmoothCollapse from './SmoothCollapse'
 import type { Shot, VisualCharacter } from '@/lib/assets/types'
@@ -23,6 +23,8 @@ interface Props {
   visuals: VisualCharacter[]
   shots: Shot[]
   look: LookBook
+  empty?: ReactNode
+  onTasksChange?: (tasks: GenerationTask[]) => void
 }
 
 const STATUS: Record<GenerationStatus, { label: string; dot: string; text: string }> = {
@@ -37,7 +39,14 @@ function notifyUpdated() {
   window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
 }
 
-export default function GenerationTaskPanel({ projectId, visuals, shots, look }: Props) {
+export default function GenerationTaskPanel({
+  projectId,
+  visuals,
+  shots,
+  look,
+  empty = null,
+  onTasksChange,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [tasks, setTasks] = useState<GenerationTask[]>([])
   const [assets, setAssets] = useState<GeneratedAsset[]>([])
@@ -75,6 +84,10 @@ export default function GenerationTaskPanel({ projectId, visuals, shots, look }:
       window.removeEventListener('chengju:generation-updated', onUpdate)
     }
   }, [projectId])
+
+  useEffect(() => {
+    onTasksChange?.(tasks)
+  }, [onTasksChange, tasks])
 
   const summary = useMemo(() => summarizeGenerationTasks(tasks), [tasks])
   const retryable = useMemo(() => selectRetryableTasks(tasks), [tasks])
@@ -145,7 +158,7 @@ export default function GenerationTaskPanel({ projectId, visuals, shots, look }:
     }
   }
 
-  if (!projectId || tasks.length === 0) return null
+  if (!projectId || tasks.length === 0) return empty
 
   return (
     <div className="generation-task-center">
