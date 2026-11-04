@@ -69,7 +69,13 @@ ${roster}
 
 // ── 场次剧本 ───────────────────────────────────────────────────
 
-export function buildScenePrompt(idea: string, characters: Character[], episodes: Episode[], genre?: Genre) {
+export function buildScenePrompt(
+  idea: string,
+  characters: Character[],
+  episodes: Episode[],
+  genre?: Genre,
+  brief?: CreativeBrief,
+) {
   const roster = characters.map((c) => `- ${c.name}（${c.identity}）`).join("\n")
   const epList = episodes
     .map((e) => `第 ${e.number} 集《${e.title}》：${e.synopsis}`)
@@ -136,7 +142,7 @@ ${roster}
 ${epList}
 
 请把这些剧情拆成场次。`
-  return { system, user }
+  return { system: system + briefPromptBlock(brief), user }
 }
 
 // ── 分镜 ───────────────────────────────────────────────────────

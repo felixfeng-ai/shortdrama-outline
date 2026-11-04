@@ -28,6 +28,7 @@ test("B1 空意图不产生任何 prompt 片段", () => {
 
 test("B2 填写的字段进入 prompt 块", () => {
   const block = briefPromptBlock({
+    ...EMPTY_BRIEF,
     emotion: "克制",
     audience: "25-35 女性",
     references: "小偷家族、步履不停",
@@ -37,7 +38,7 @@ test("B2 填写的字段进入 prompt 块", () => {
   assert.match(block, /目标观众：25-35 女性/)
   assert.match(block, /参考气质：小偷家族、步履不停/)
   assert.match(block, /不要变成：不要爽剧式打脸/)
-  assert.match(block, /倾向，不覆盖结构要求/)
+  assert.match(block, /倾向，不覆盖硬结构要求/)
 })
 
 test("B3 参考片最多保留 3 个，按顿号归一", () => {
@@ -69,7 +70,11 @@ test("B5 空意图时三步 prompt 与不传完全一致", () => {
 })
 
 test("B6 有意图时三步 prompt 都带上约束", () => {
-  const brief = { emotion: "克制", audience: "25-35 女性", references: "", redline: "" }
+  const brief = {
+    ...EMPTY_BRIEF,
+    emotion: "克制",
+    audience: "25-35 女性",
+  }
   assert.match(buildCharacterPrompt("快递员", undefined, brief).system, /核心情绪：克制/)
   assert.match(buildActPrompt("快递员", characters, undefined, brief).system, /目标观众：25-35 女性/)
   assert.match(buildEpisodePrompt("快递员", characters, acts, undefined, { brief }).system, /核心情绪：克制/)

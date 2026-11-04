@@ -40,7 +40,15 @@ test("G7.2 manifest 保留关键帧元数据，但不泄露服务器 storageKey"
     projectSettings: {
       genre: "none",
       episodeCount: 0,
-      brief: { emotion: "", audience: "", references: "", redline: "" },
+      brief: {
+        premise: "",
+        payoff: "",
+        destination: "",
+        emotion: "",
+        audience: "",
+        references: "",
+        redline: "",
+      },
       look: { palette: "", light: "", lens: "", banned: "" },
       judgments: [],
     },

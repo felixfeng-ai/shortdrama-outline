@@ -1806,6 +1806,7 @@ export default function Home() {
         characters,
         episodes,
         genre.id,
+        brief,
         abortRef.current?.signal,
       ),
       (data) => {

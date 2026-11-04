@@ -4,9 +4,10 @@ import fs from "node:fs"
 
 import { POST as postSample } from "../app/api/sample/route.ts"
 import { GET as getSnapshots } from "../app/api/snapshots/route.ts"
-import { __resetDbForTests } from "../lib/assets/store.ts"
+import { __resetDbForTests, getDbForRequest } from "../lib/assets/store.ts"
 import { ARTIFACT_KINDS } from "../lib/assets/types.ts"
 import { hasAllAnchors } from "../lib/assets/anchors.ts"
+import { getProjectContext } from "../lib/assets/project-context.ts"
 import { SAMPLE_SHOTS, SAMPLE_VISUALS } from "../lib/sample.ts"
 
 // ── S 示例项目 ──
@@ -50,4 +51,18 @@ test("S3 载入示例不消耗额度（不调模型、不扣分）", () => {
   const src = fs.readFileSync("app/api/sample/route.ts", "utf8")
   assert.ok(!src.includes("chargeQuota"), "示例是本地数据，不该走额度闸门")
   assert.ok(!src.includes("chatJson") && !src.includes("chatWithTools"), "示例不该调用模型")
+})
+
+test("S4 示例项目自带一份可用的创作契约 V2", async () => {
+  __resetDbForTests(":memory:")
+  const res = await postSample(new Request("http://localhost/api/sample", { method: "POST" }))
+  const payload = await res.json()
+  const projectId = payload.data.project.id as string
+  const context = getProjectContext(getDbForRequest(), projectId)
+
+  assert.ok(context, "示例项目缺少项目上下文")
+  assert.match(context.brief.premise, /快递员/)
+  assert.match(context.brief.payoff, /七桩交易|真相|代价/)
+  assert.match(context.brief.destination, /选择|放弃|道歉|真相/)
+  assert.equal(context.brief.audience, "25-35 女性")
 })

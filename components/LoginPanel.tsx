@@ -188,7 +188,7 @@ export default function LoginPanel() {
             再把镜头<span className="auth-title-accent">生成</span>。
           </h1>
           <p className="auth-lede">
-            人物、场次、分镜和创作意图在同一条项目链里。改一处，看得见影响；换设备，也能接着写。
+            人物、场次、分镜和创作契约在同一条项目链里。改一处，看得见影响；换设备，也能接着写。
           </p>
         </div>
 

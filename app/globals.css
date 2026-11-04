@@ -867,8 +867,11 @@
   font-weight: 600;
 }
 .signal-desk .auth-brand-cn {
-  color: var(--signal-text-3);
-  font-size: 11px;
+  color: var(--signal-text-2);
+  font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
 }
 .signal-desk .auth-back {
   display: inline-flex;
@@ -1477,8 +1480,11 @@
   font-weight: 600;
 }
 .signal-desk .review-brand em {
-  color: var(--signal-text-3);
-  font-size: 10.5px;
+  color: var(--signal-text-2);
+  font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
   font-style: normal;
 }
 .signal-desk .review-badge {
@@ -4500,22 +4506,25 @@
   backdrop-filter: blur(10px) saturate(1.05);
 }
 .h-brand {
-  font-size: 17px;
+  font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   line-height: 1;
   color: rgb(var(--c-ink-900));
 }
-.h-lockup { display: inline-flex; align-items: baseline; gap: 7px; min-width: 0; }
+.h-lockup { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
 .h-wordmark {
-  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  font-weight: 500;
+  letter-spacing: 0.16em;
   line-height: 1;
   color: rgb(var(--c-ink-400));
   text-transform: uppercase;
   white-space: nowrap;
+  padding-left: 10px;
+  border-left: 1px solid rgb(var(--c-surface-line-2));
 }
 .h-ai {
   display: inline-flex;
@@ -5149,8 +5158,29 @@
   font-size: 12px;
   color: rgb(var(--c-ink-800));
 }
+.brief-row textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 7px 8px;
+  resize: vertical;
+  border: 1px solid rgb(var(--c-surface-line));
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgb(var(--c-ink-800));
+}
+.brief-row-stacked {
+  align-items: flex-start;
+}
+.brief-row-stacked .brief-label {
+  padding-top: 8px;
+}
 .brief-actions { display: flex; align-items: center; gap: 10px; }
 .brief-hint { flex: 1; font-size: 10.5px; color: rgb(var(--c-ink-400)); }
+.brief-hint.is-ready { color: rgb(var(--c-done-700)); }
 .brief-actions button {
   padding: 5px 14px;
   border: 0;
@@ -7248,9 +7278,16 @@
   backdrop-filter: blur(14px);
 }
 .signal-desk .h-wordmark {
-  color: var(--signal-text-3);
-  font-size: 8px;
-  letter-spacing: .14em;
+  color: var(--signal-text-2);
+  border-left-color: var(--signal-line);
+  font-size: 8.5px;
+  letter-spacing: .16em;
+}
+.signal-desk .h-lockup .h-brand {
+  font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: .05em;
 }
 .signal-desk .h-slogan,
 .signal-desk .h-quota,

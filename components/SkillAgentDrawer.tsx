@@ -55,7 +55,15 @@ interface ProcessStep {
   detail: string
 }
 
-const EMPTY_BRIEF = { emotion: '', audience: '', references: '', redline: '' }
+const EMPTY_BRIEF = {
+  premise: '',
+  payoff: '',
+  destination: '',
+  emotion: '',
+  audience: '',
+  references: '',
+  redline: '',
+}
 
 function blankState(projectTitle: string): AgentState {
   return {

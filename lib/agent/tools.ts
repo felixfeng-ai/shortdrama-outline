@@ -428,8 +428,17 @@ export function createToolExecutors(
         expiredShots: state.expiredShots,
         hasIdea: state.hasIdea,
       })
-      const briefLine = [b.emotion, b.audience, b.references].filter(Boolean).length > 0 || b.redline
-        ? `创作意图：${[b.emotion, b.audience, b.references].filter(Boolean).join(' · ') || '（未填情绪/观众）'}${b.redline ? `；不要变成：${b.redline}` : ''}`
+      const contractFacts = [
+        b.premise ? `故事承诺：${b.premise}` : '',
+        b.payoff ? `追看回报：${b.payoff}` : '',
+        b.destination ? `最终落点：${b.destination}` : '',
+        b.emotion ? `核心情绪：${b.emotion}` : '',
+        b.audience ? `目标观众：${b.audience}` : '',
+        b.references ? `参考气质：${b.references}` : '',
+        b.redline ? `不要变成：${b.redline}` : '',
+      ].filter(Boolean)
+      const briefLine = contractFacts.length > 0
+        ? `创作契约：${contractFacts.join('；')}`
         : ''
       const logLine = state.judgments.length > 0
         ? `最近的判断：${state.judgments

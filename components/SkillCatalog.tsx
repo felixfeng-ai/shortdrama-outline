@@ -194,6 +194,9 @@ export default function SkillCatalog() {
     })
     : null
   const intentSummary = [
+    context?.brief.premise,
+    context?.brief.payoff,
+    context?.brief.destination,
     context?.brief.emotion,
     context?.brief.audience,
     context?.brief.references,
@@ -202,7 +205,7 @@ export default function SkillCatalog() {
   const agentContextBlock = [
     `当前项目：${project?.title || '尚未选择项目'}`,
     `当前集数：${context?.episodeCount ?? projectState.episodes}`,
-    intentSummary ? `创作意图：${intentSummary}` : '',
+    intentSummary ? `创作契约：${intentSummary}` : '',
     materials.length > 0
       ? [
         `当前项目原文目录：\n${listSourceMaterials(materials)}`,

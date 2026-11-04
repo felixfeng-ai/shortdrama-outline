@@ -16,7 +16,7 @@ export default function LegalPage() {
       <section className="mt-10 space-y-4">
         <h2 className="text-xl font-semibold">隐私与数据保存</h2>
         <p className="text-sm leading-7">
-          账号、项目快照、创作意图、结构化决策、Canon 和项目原文保存在服务端项目空间。本地参考图默认只存在当前设备，
+          账号、项目快照、创作契约、结构化决策、Canon 和项目原文保存在服务端项目空间。本地参考图默认只存在当前设备，
           不会作为图片文件上传；项目导出包可由用户自行带走。
         </p>
       </section>

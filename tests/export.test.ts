@@ -119,7 +119,15 @@ test("E20 project.json 清单必须带稳定的格式标识与 schema 版本", (
     projectSettings: {
       genre: "none",
       episodeCount: 0,
-      brief: { emotion: "", audience: "", references: "", redline: "" },
+      brief: {
+        premise: "",
+        payoff: "",
+        destination: "",
+        emotion: "",
+        audience: "",
+        references: "",
+        redline: "",
+      },
       look: { palette: "", light: "", lens: "", banned: "" },
       judgments: [],
     },

@@ -7,11 +7,21 @@
 // 纪律：这里的锚点串必须与镜头提示词里嵌的**逐字一致**，
 // 否则载入示例后「缺参考图 / 掉锚点」会立刻报错——示例反而变成反例。
 import type { Act, Character, Episode } from './types'
+import type { CreativeBrief } from './brief'
 import type { Scene, Shot, VisualCharacter, VisualPlace } from './assets/types'
 
 export const SAMPLE_TITLE = '示例 · 快递员的最后一单'
 export const SAMPLE_IDEA = '一个快递员意外继承了百万遗产，条件却是替原主人完成七桩未竟的交易'
 export const SAMPLE_GENRE = 'suspense'
+export const SAMPLE_BRIEF: CreativeBrief = {
+  premise: '快递员意外继承百万遗产，却必须替死者完成七桩交易，每拖一天就失去一部分继承权。',
+  payoff: '每完成一桩交易，都会揭开更深一层真相，也让主角离危险更近，付出的代价越来越大。',
+  destination: '从只想拿到遗产，走到主动选择放弃，并把迟到四十年的道歉送到该去的人手里。',
+  emotion: '克制',
+  audience: '25-35 女性',
+  references: '漫长的季节、步履不停',
+  redline: '不要爽剧式打脸，不要靠误会硬拖集数',
+}
 
 const CHEN = 'CHEN MO: 29 years old, Chinese man, long narrow face, short black hair, small scar on the left brow tip, worn dark blue delivery jacket'
 const SU = 'SU WAN: 68 years old, Chinese woman, soft round face, silver hair in a low bun, grey wool cardigan'

@@ -35,6 +35,7 @@
 
 - 中文正文/UI 系统栈：`-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif`。
 - 西文、编号、时长、额度：`var(--font-latin)` / `var(--font-mono)`。
+- 品牌字标是唯一例外：`成剧` 使用系统宋体栈（`Songti SC` / `Noto Serif SC` / `SimSun`），与等宽小字 `VEYAFRAME` 组成锁定组；页面标题仍保持无衬线。
 - 正文最小 `12px`；核心操作 `12.5–14px`；页面标题 `20–28px`。
 - 行高 1.6–1.75；故事输入桌面 `17px`、手机 `15px`；标题字距 0；数字用 `tabular-nums`。
 - 层级优先靠颜色、字重和间距，不靠大面积放大标题。

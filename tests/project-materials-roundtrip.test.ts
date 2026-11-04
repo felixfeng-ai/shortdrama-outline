@@ -28,7 +28,15 @@ test("ROUND1 服务端导出清单包含项目原文和真实创作上下文", a
     content: "第一章 雨夜\n陈默站在旧楼门口。",
   })
   saveProjectContext(db, project.id, OWNER, {
-    brief: { emotion: "克制", audience: "25-35 女性", references: "步履不停", redline: "不要爽剧" },
+    brief: {
+      premise: "快递员送出一封迟到四十年的信，却因此暴露自己的身世",
+      payoff: "每封信都让旧案多一层真相",
+      destination: "从替人送信走到敢于面对自己的来处",
+      emotion: "克制",
+      audience: "25-35 女性",
+      references: "步履不停",
+      redline: "不要爽剧",
+    },
     look: { palette: "冷蓝", light: "阴天", lens: "长焦", banned: "霓虹" },
     episodeCount: 12,
   })
@@ -46,6 +54,10 @@ test("ROUND1 服务端导出清单包含项目原文和真实创作上下文", a
   assert.match(payload.data.manifest.materials[0].content, /陈默/)
   assert.equal(payload.data.manifest.projectSettings.episodeCount, 12)
   assert.equal(payload.data.manifest.projectSettings.brief.emotion, "克制")
+  assert.equal(
+    payload.data.manifest.projectSettings.brief.premise,
+    "快递员送出一封迟到四十年的信，却因此暴露自己的身世",
+  )
   assert.equal(payload.data.manifest.projectSettings.look.palette, "冷蓝")
 })
 
@@ -60,7 +72,15 @@ test("ROUND2 项目包导入恢复原文和项目上下文", async () => {
     content: "第一章 雨夜\n陈默站在旧楼门口。",
   })
   const context = saveProjectContext(db, project.id, OWNER, {
-    brief: { emotion: "克制", audience: "25-35 女性", references: "步履不停", redline: "不要爽剧" },
+    brief: {
+      premise: "快递员送出一封迟到四十年的信，却因此暴露自己的身世",
+      payoff: "每封信都让旧案多一层真相",
+      destination: "从替人送信走到敢于面对自己的来处",
+      emotion: "克制",
+      audience: "25-35 女性",
+      references: "步履不停",
+      redline: "不要爽剧",
+    },
     look: { palette: "冷蓝", light: "阴天", lens: "长焦", banned: "霓虹" },
     episodeCount: 12,
   })
@@ -89,6 +109,14 @@ test("ROUND2 项目包导入恢复原文和项目上下文", async () => {
   const importedContext = getProjectContext(db, importedId)
   assert.equal(importedContext?.episodeCount, context.episodeCount)
   assert.equal(importedContext?.brief.emotion, "克制")
+  assert.equal(
+    importedContext?.brief.payoff,
+    "每封信都让旧案多一层真相",
+  )
+  assert.equal(
+    importedContext?.brief.destination,
+    "从替人送信走到敢于面对自己的来处",
+  )
   assert.equal(importedContext?.look.palette, "冷蓝")
   assert.equal(payload.data.counts.sources, 1)
 })

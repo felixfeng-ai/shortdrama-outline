@@ -2,7 +2,7 @@
 import assert from "node:assert/strict"
 
 import { AGENT_TOOL_SCHEMAS, createToolExecutors, type AgentState } from "../lib/agent/tools.ts"
-import { EMPTY_BRIEF } from "../lib/brief.ts"
+import { EMPTY_BRIEF, readBrief } from "../lib/brief.ts"
 
 // ── AT 工具层 ──
 //
@@ -73,6 +73,22 @@ test("AT2 项目状态：压缩成一句人话，不是原始 JSON", () => {
   assert.match(r.content, /别墅夜戏/)
   assert.match(r.content, /人物/)
   assert.ok(!r.content.includes("{") && !r.content.includes("}"), "不要回原始 JSON")
+})
+
+test("AT2b 项目状态向场记提供创作契约 V2", () => {
+  const r = createToolExecutors(state({
+    brief: readBrief({
+      premise: "快递员想拿回手术费，却被逼送一封不能拆的信",
+      payoff: "每次接近真相都付出更大的代价",
+      destination: "从只想活命走到愿意为真相承担代价",
+      emotion: "克制",
+    }),
+  })).get_project_status({})
+
+  assert.equal(r.ok, true)
+  assert.match(r.content, /故事承诺：快递员想拿回手术费/)
+  assert.match(r.content, /追看回报：每次接近真相都付出更大的代价/)
+  assert.match(r.content, /最终落点：从只想活命走到愿意为真相承担代价/)
 })
 
 test("AT3 分镜审计：镜数、缺图（带镜号与角色）、掉锚点、返修都说到", () => {

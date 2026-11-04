@@ -161,6 +161,36 @@ test("PC3 过期版本返回 409，不覆盖其他设备的更新", async () => 
   assert.match((await conflict.json()).error, /其他设备|刷新/)
 })
 
+test("PC5 创作契约 V2 七字段可持久化并在刷新后完整恢复", async () => {
+  __resetDbForTests(":memory:")
+  const project = createProject(getDbForRequest(), "契约项目", owner)
+  const brief = {
+    premise: "快递员想拿回手术费，却被逼送一封不能拆的信",
+    payoff: "每次接近真相都付出更大的代价",
+    destination: "从只想活命走到愿意为真相承担代价",
+    emotion: "克制",
+    audience: "25-35 女性",
+    references: "漫长的季节、白日焰火",
+    redline: "不要爽剧式打脸",
+  }
+
+  const saved = await putContext(
+    request(`/api/projects/${project.id}/context`, {
+      method: "PUT",
+      body: JSON.stringify({ brief, episodeCount: 30 }),
+    }),
+    params(project.id),
+  )
+  assert.equal(saved.status, 200)
+
+  const read = await getContext(
+    request(`/api/projects/${project.id}/context`),
+    params(project.id),
+  )
+  const restored = (await read.json()).data.context.brief
+  assert.deepEqual(restored, brief)
+})
+
 test("PC4 项目归属隔离，项目删除后上下文级联清理", async () => {
   __resetDbForTests(":memory:")
   const db = getDbForRequest()

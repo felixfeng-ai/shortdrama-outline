@@ -162,7 +162,7 @@ test("SDA16 高频展开动作必须共用可中断的柔和折叠容器", () =>
     ["项目菜单", projectSrc],
     ["灵感助手", ideaSrc],
     ["更新公告", releaseSrc],
-    ["创作意图", briefSrc],
+    ["创作契约", briefSrc],
     ["待办", todoSrc],
     ["判断日志", judgmentSrc],
     ["视觉宪法", lookSrc],

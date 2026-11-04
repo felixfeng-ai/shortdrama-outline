@@ -13,6 +13,7 @@ import { chargeQuota } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
+import { readBrief } from "@/lib/brief"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -30,12 +31,13 @@ export async function POST(req: Request) {
     // 额度闸门：入参校验已通过、尚未调用模型。超限时抛 QuotaError(429)，
     // 由下面的 catch 统一翻译成中文，不会产生任何模型调用
     const genre = readGenre(body?.genre)
+    const brief = readBrief(body?.brief)
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
     chargeQuota(db, identity, "scenes")
 
 
-    const { system, user } = buildScenePrompt(idea, characters, episodes, genre)
+    const { system, user } = buildScenePrompt(idea, characters, episodes, genre, brief)
     /*
       4000（默认）装不下这一步的产出：40 场戏本身约 3300 token，
       再加上 8-14 个地点的视觉锚点（约 2500），模型会把 JSON 提前闭合、

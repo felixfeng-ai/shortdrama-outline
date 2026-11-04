@@ -59,7 +59,15 @@ test("EXPORT-V2.1 清单使用真实项目名并补齐意图、视觉宪法和�
     projectSettings: {
       genre: "悬疑",
       episodeCount: 6,
-      brief: { emotion: "克制", audience: "25-35 女性", references: "漫长的季节", redline: "不要爽剧化" },
+      brief: {
+        premise: "快递员想拿回手术费，却被逼送一封不能拆的信",
+        payoff: "每次接近真相都付出更大的代价",
+        destination: "从只想活命走到愿意为真相承担代价",
+        emotion: "克制",
+        audience: "25-35 女性",
+        references: "漫长的季节",
+        redline: "不要爽剧化",
+      },
       look: { palette: "冷蓝、低饱和", light: "顶光", lens: "长焦", banned: "霓虹" },
       judgments: [{ id: "j1", at: 2, step: "characters", action: "换一个角色", reason: "动机太弱" }],
     },
@@ -78,6 +86,10 @@ test("EXPORT-V2.1 清单使用真实项目名并补齐意图、视觉宪法和�
   assert.equal(manifest.mode, "delivery")
   assert.equal(manifest.project.title, "快递员的最后一单")
   assert.equal(manifest.projectSettings.brief.redline, "不要爽剧化")
+  assert.equal(
+    manifest.projectSettings.brief.premise,
+    "快递员想拿回手术费，却被逼送一封不能拆的信",
+  )
   assert.equal(manifest.projectSettings.look.palette, "冷蓝、低饱和")
   assert.equal(manifest.projectSettings.judgments.length, 1)
 })
@@ -141,7 +153,15 @@ test("EXPORT-V2.4b 可选数组和提醒缺省时不报错", () => {
     projectSettings: {
       genre: "none",
       episodeCount: 0,
-      brief: { emotion: "", audience: "", references: "", redline: "" },
+      brief: {
+        premise: "",
+        payoff: "",
+        destination: "",
+        emotion: "",
+        audience: "",
+        references: "",
+        redline: "",
+      },
       look: { palette: "", light: "", lens: "", banned: "" },
       judgments: [],
     },

@@ -1,6 +1,6 @@
 'use client'
 
-// 导演意图卡：4 个字段，可跳过。空着时对生成零影响。
+// 创作契约：7 个字段，可跳过。空着时对生成零影响。
 import { useState } from 'react'
 import { isBriefEmpty, type CreativeBrief } from '@/lib/brief'
 import SmoothCollapse from './SmoothCollapse'
@@ -23,13 +23,64 @@ export default function BriefCard({ value, onChange, open: controlled, onOpenCha
   const open = controlled ?? inner
   const setOpen = onOpenChange ?? setInner
   const filled = !isBriefEmpty(value)
-  const summary = [value.emotion, value.audience, value.references].filter(Boolean).join(' · ')
+  const coreReady = Boolean(value.premise && value.payoff && value.destination)
+  const filledCount = [
+    value.premise,
+    value.payoff,
+    value.destination,
+    value.emotion,
+    value.audience,
+    value.references,
+    value.redline,
+  ].filter(Boolean).length
+  const summary = [
+    value.premise,
+    value.payoff,
+    value.emotion,
+    value.audience,
+    value.references,
+  ].filter(Boolean).join(' · ')
 
   const set = (patch: Partial<CreativeBrief>) => onChange({ ...value, ...patch })
 
   const body = (
     <SmoothCollapse open={open}>
       <div className={headless ? 'workmeta-panel' : 'brief-body'}>
+          <div className="brief-row brief-row-stacked">
+            <span className="brief-label">故事承诺</span>
+            <textarea
+              value={value.premise}
+              onChange={(e) => set({ premise: e.target.value })}
+              placeholder="谁想要什么、被什么阻止、失败要付出什么代价"
+              rows={2}
+              maxLength={160}
+              aria-label="故事承诺"
+              className="brief-contract-textarea"
+            />
+          </div>
+
+          <div className="brief-row">
+            <span className="brief-label">追看回报</span>
+            <input
+              value={value.payoff}
+              onChange={(e) => set({ payoff: e.target.value })}
+              placeholder="观众持续追看的具体情绪回报"
+              maxLength={100}
+              aria-label="追看回报"
+            />
+          </div>
+
+          <div className="brief-row">
+            <span className="brief-label">最终落点</span>
+            <input
+              value={value.destination}
+              onChange={(e) => set({ destination: e.target.value })}
+              placeholder="结局必须兑现的情绪、关系或价值变化"
+              maxLength={100}
+              aria-label="最终落点"
+            />
+          </div>
+
           <div className="brief-row">
             <span className="brief-label">核心情绪</span>
             <div className="brief-chips">
@@ -87,7 +138,11 @@ export default function BriefCard({ value, onChange, open: controlled, onOpenCha
           </div>
 
           <div className="brief-actions">
-            <span className="brief-hint">可跳过；空着时与原来的生成完全一致</span>
+            <span className={`brief-hint ${coreReady ? 'is-ready' : ''}`}>
+              {coreReady
+                ? `核心契约已就绪 · 已填写 ${filledCount}/7 项`
+                : `已填写 ${filledCount}/7 项 · 不填写时仍按原流程生成`}
+            </span>
             <button type="button" onClick={() => setOpen(false)}>完成</button>
           </div>
       </div>
@@ -105,8 +160,8 @@ export default function BriefCard({ value, onChange, open: controlled, onOpenCha
         onClick={() => setOpen(!open)}
       >
         <span className="brief-dot" aria-hidden="true" />
-        <span className="brief-title">创作意图</span>
-        <span className="brief-summary">{filled ? summary : '未填写 · 生成会按平均值走'}</span>
+        <span className="brief-title">创作契约</span>
+        <span className="brief-summary">{filled ? summary : '未填写 · 生成会更接近类型平均值'}</span>
         <span className="brief-toggle">{open ? '收起' : filled ? '编辑' : '填写'}</span>
       </button>
       {body}

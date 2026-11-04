@@ -449,10 +449,11 @@ export const generateScenes = (
   characters: unknown,
   episodes: unknown,
   genre = "none",
+  brief?: CreativeBrief,
   signal?: AbortSignal,
 ) =>
   postJson<{ scenes: Scene[]; places: VisualPlace[] }>(
-    "/api/scenes", { projectId, idea, characters, episodes, genre }, signal,
+    "/api/scenes", { projectId, idea, characters, episodes, genre, brief }, signal,
   )
 
 export interface RefInput {

@@ -32,7 +32,7 @@ export default function WorkMeta({
         aria-expanded={active === 'brief'}
         onClick={() => onToggle('brief')}
       >
-        创作意图 · {briefFilled ? '已填' : '未填'}
+        创作契约 · {briefFilled ? '已填' : '未填'}
       </button>
       <span className="workmeta-sep" aria-hidden="true">·</span>
       <button

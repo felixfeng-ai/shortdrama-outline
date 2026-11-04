@@ -64,16 +64,23 @@
     }
     .skill-page .brand {
       display: flex;
-      align-items: baseline;
-      gap: 8px;
+      align-items: center;
+      gap: 10px;
       white-space: nowrap;
     }
-    .skill-page .brand b { font-size: 20px; font-weight: 600; }
+    .skill-page .brand b {
+      font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: .05em;
+    }
     .skill-page .brand span {
-      color: var(--text-3);
+      color: var(--text-2);
       font-family: var(--font-mono);
-      font-size: 8px;
-      letter-spacing: .14em;
+      font-size: 8.5px;
+      letter-spacing: .16em;
+      padding-left: 10px;
+      border-left: 1px solid var(--line);
     }
     .skill-page .brand .ai {
       padding: 1px 5px;

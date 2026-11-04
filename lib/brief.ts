@@ -6,6 +6,12 @@
 // - 它是倾向，不覆盖三幕结构、情节点数量、场次下限这些硬要求。
 
 export interface CreativeBrief {
+  /** 一句话故事承诺：谁想要什么、被什么阻止、失败要付出什么代价 */
+  premise: string
+  /** 观众持续追看的具体情绪回报 */
+  payoff: string
+  /** 结局必须兑现的情绪、关系或价值变化 */
+  destination: string
   /** 核心情绪，例如「克制、压抑」 */
   emotion: string
   /** 目标观众，例如「25-35 女性」 */
@@ -17,6 +23,9 @@ export interface CreativeBrief {
 }
 
 export const EMPTY_BRIEF: CreativeBrief = {
+  premise: '',
+  payoff: '',
+  destination: '',
   emotion: '',
   audience: '',
   references: '',
@@ -25,6 +34,8 @@ export const EMPTY_BRIEF: CreativeBrief = {
 
 const FIELD_LIMIT = 60
 const REDLINE_LIMIT = 100
+const PREMISE_LIMIT = 160
+const CONTRACT_FIELD_LIMIT = 100
 
 function clean(value: unknown, max = FIELD_LIMIT): string {
   return typeof value === 'string'
@@ -46,6 +57,9 @@ function cleanReferences(value: unknown): string {
 export function readBrief(value: unknown): CreativeBrief {
   const v = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
   return {
+    premise: clean(v.premise, PREMISE_LIMIT),
+    payoff: clean(v.payoff, CONTRACT_FIELD_LIMIT),
+    destination: clean(v.destination, CONTRACT_FIELD_LIMIT),
     emotion: clean(v.emotion),
     audience: clean(v.audience),
     references: cleanReferences(v.references),
@@ -55,22 +69,39 @@ export function readBrief(value: unknown): CreativeBrief {
 
 export function isBriefEmpty(brief: CreativeBrief | undefined): boolean {
   if (!brief) return true
-  return !brief.emotion && !brief.audience && !brief.references && !brief.redline
+  return !brief.premise
+    && !brief.payoff
+    && !brief.destination
+    && !brief.emotion
+    && !brief.audience
+    && !brief.references
+    && !brief.redline
 }
 
 /** 用于过期判定：任何字段变了，下游就该标「基于旧意图」 */
 export function briefSignature(brief: CreativeBrief): string {
-  return [brief.emotion, brief.audience, brief.references, brief.redline].join('|')
+  return [
+    brief.premise,
+    brief.payoff,
+    brief.destination,
+    brief.emotion,
+    brief.audience,
+    brief.references,
+    brief.redline,
+  ].join('|')
 }
 
 /** 空意图返回空串——这是"与旧行为一致"的硬保证 */
 export function briefPromptBlock(brief: CreativeBrief | undefined): string {
   if (!brief || isBriefEmpty(brief)) return ''
   const lines = [
+    brief.premise && `- 故事承诺：${brief.premise}`,
+    brief.payoff && `- 追看回报：${brief.payoff}`,
+    brief.destination && `- 最终落点：${brief.destination}`,
     brief.emotion && `- 核心情绪：${brief.emotion}`,
     brief.audience && `- 目标观众：${brief.audience}`,
     brief.references && `- 参考气质：${brief.references}`,
     brief.redline && `- 不要变成：${brief.redline}`,
   ].filter(Boolean)
-  return `\n\n## 创作意图（倾向，不覆盖结构要求）\n${lines.join('\n')}`
+  return `\n\n## 创作契约（倾向，不覆盖硬结构要求）\n${lines.join('\n')}`
 }

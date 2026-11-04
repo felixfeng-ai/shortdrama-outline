@@ -22,7 +22,15 @@ function packageManifest() {
     projectSettings: {
       genre: "悬疑",
       episodeCount: 1,
-      brief: { emotion: "克制", audience: "", references: "", redline: "" },
+      brief: {
+        premise: "",
+        payoff: "",
+        destination: "",
+        emotion: "克制",
+        audience: "",
+        references: "",
+        redline: "",
+      },
       look: { palette: "冷蓝", light: "", lens: "", banned: "" },
       judgments: [{ id: "j1", at: 1, step: "manual", action: "手记", reason: "保留结尾留白" }],
     },
