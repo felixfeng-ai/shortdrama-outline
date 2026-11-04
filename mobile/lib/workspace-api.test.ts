@@ -57,6 +57,15 @@ const payload: WorkspaceData = {
       finishedAt: null,
     },
   ],
+  generationTargets: [
+    {
+      targetType: 'shot',
+      targetId: 'shot-entity-17',
+      targetLabel: '第 3 集 · 第 17 镜 · 码头夜谈',
+      prompt: 'rainy dock',
+      aspect: 'vertical',
+    },
+  ],
 };
 
 test('API base URL is normalized and empty values fall back to local mode', () => {
@@ -84,6 +93,7 @@ test('workspace fetch uses the mobile context endpoint with credentials', async 
   assert.equal(data.activeProject?.title, '夜港来信');
   assert.equal(data.tasks[0].targetLabel, '第 3 集 · 第 17 镜 · 码头夜谈');
   assert.equal(data.tasks[0].status, 'running');
+  assert.equal(data.generationTargets[0].targetId, 'shot-entity-17');
 });
 
 test('workspace fetch can request a selected project', async () => {

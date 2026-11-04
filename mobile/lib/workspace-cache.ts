@@ -91,3 +91,10 @@ export async function clearWorkspaceCache(): Promise<void> {
     await writeRaw(null);
   } catch {}
 }
+
+export async function removeWorkspaceCache(projectId: string): Promise<void> {
+  try {
+    const entries = parseAll(await readRaw()).filter((entry) => entry.projectId !== projectId);
+    await writeRaw(entries.length ? JSON.stringify({ version: 1, entries }) : null);
+  } catch {}
+}

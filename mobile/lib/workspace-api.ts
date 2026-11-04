@@ -52,6 +52,15 @@ export interface WorkspaceData {
   hero: WorkspaceHero | null;
   quota: WorkspaceQuota;
   tasks: WorkspaceTask[];
+  generationTargets: WorkspaceGenerationTarget[];
+}
+
+export interface WorkspaceGenerationTarget {
+  targetType: 'character' | 'place' | 'shot';
+  targetId: string;
+  targetLabel: string;
+  prompt: string;
+  aspect: 'portrait' | 'landscape' | 'vertical';
 }
 
 export interface AgentProjectContext {
@@ -104,6 +113,7 @@ export const demoWorkspace: WorkspaceData = {
     projectsLeft: 1,
   },
   tasks: [],
+  generationTargets: [],
 };
 
 export function resolveApiBaseUrl(value: string | undefined): string {
@@ -125,6 +135,9 @@ function readWorkspace(value: unknown): WorkspaceData {
     hero: (data.hero as WorkspaceHero | null | undefined) ?? null,
     quota: data.quota as WorkspaceQuota,
     tasks: Array.isArray(data.tasks) ? (data.tasks as WorkspaceTask[]) : [],
+    generationTargets: Array.isArray(data.generationTargets)
+      ? (data.generationTargets as WorkspaceGenerationTarget[])
+      : [],
   };
 }
 

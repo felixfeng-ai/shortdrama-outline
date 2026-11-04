@@ -12,3 +12,10 @@ test('账户页接入设备、导出与注销页面', () => {
   assert.ok(data.includes('exportAccount'), '数据页不能导出');
   assert.ok(data.includes('deleteAccount'), '数据页不能注销');
 });
+
+test('项目页接入重命名和删除确认', () => {
+  const projects = fs.readFileSync('app/(tabs)/projects.tsx', 'utf8');
+  assert.ok(projects.includes('renameProject'), '项目页没有重命名入口');
+  assert.ok(projects.includes('deleteProject'), '项目页没有删除入口');
+  assert.ok(projects.includes('Alert.alert'), '删除项目没有二次确认');
+});

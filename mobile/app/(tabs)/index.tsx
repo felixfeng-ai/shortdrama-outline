@@ -31,6 +31,10 @@ import {
   agentSessionReducer,
   initialAgentSessionState,
 } from '@/lib/agent-session';
+import {
+  loadAgentSession,
+  saveAgentSession,
+} from '@/lib/agent-session-storage';
 import { applyAgentSuggestion, mapAgentResponse, runAgentTurn } from '@/lib/agent-api';
 import { useAuth } from '@/lib/auth-store';
 import { useWorkspace } from '@/lib/workspace-store';
@@ -38,15 +42,19 @@ import { workspaceApiBaseUrl, workspaceToAgentContext } from '@/lib/workspace-ap
 
 export default function AgentHomeScreen() {
   const { data, status, error, refresh } = useWorkspace();
-  const { authorizedFetch } = useAuth();
+  const { authorizedFetch, user } = useAuth();
   const [session, dispatch] = useReducer(agentSessionReducer, initialAgentSessionState);
   const scrollRef = useRef<ElementRef<typeof ScrollView>>(null);
   const requestRef = useRef<AbortController | null>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionScopeRef = useRef('');
   const project = data.activeProject;
   const hero = data.hero;
   const hasProject = !!project;
   const projectContext = workspaceToAgentContext(data, project);
+  const sessionScope = project
+    ? `${user?.id ?? 'anonymous'}.${project.id}`
+    : '';
   const syncLabel =
     status === 'loading'
       ? '同步中'
@@ -178,6 +186,32 @@ export default function AgentHomeScreen() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!sessionScope) {
+      dispatch({ type: 'restore', state: initialAgentSessionState });
+      sessionScopeRef.current = '';
+      return;
+    }
+    let active = true;
+    dispatch({ type: 'restore', state: initialAgentSessionState });
+    void loadAgentSession(sessionScope).then((stored) => {
+      if (!active) return;
+      dispatch({ type: 'restore', state: stored ?? initialAgentSessionState });
+      sessionScopeRef.current = sessionScope;
+    });
+    return () => {
+      active = false;
+    };
+  }, [sessionScope]);
+
+  useEffect(() => {
+    if (!sessionScope || sessionScopeRef.current !== sessionScope) return;
+    const timer = setTimeout(() => {
+      void saveAgentSession(sessionScope, session);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [session, sessionScope]);
 
   useEffect(() => {
     if (session.phase === 'idle') return;

@@ -27,43 +27,33 @@
 
 ## 当前阻塞
 
-### 1. 线上移动接口尚未部署
-
-线上核对结果：
-
-- `https://chenju.work/api/health`：200
-- `https://chenju.work/api/auth/session`：200
-- `https://chenju.work/api/mobile/context`：404
-
-本地 Web 仓库已经实现 `/api/mobile/context`、`/api/mobile/agent` 和 `/api/mobile/agent/apply`，但未发布到线上。App 的 `.env.production` 已指向 `https://chenju.work`；接口部署前不能进行真实线上 App 验证。
-
-### 2. 当前机器没有真机构建工具
+### 1. 当前机器没有真机构建工具
 
 - `adb`：未安装
 - Android Emulator：未安装
 - EAS CLI：未安装
 - Xcode / `xcrun`：Windows 环境不可用
 
-因此当前无法证明：
+因此本机无法证明：
 
 - Keychain / Keystore 实际持久化。
 - 原生 App 是否正确处理 Bearer 与刷新。
 - 键盘、安全区、相册、推送和后台恢复。
 - iOS / Android 商店包是否可安装。
 
+线上接口已核对：`https://chenju.work/api/health` 与
+`https://chenju.work/api/mobile/context` 均返回 200。API 可访问不等于真机流程已验收。
+
 ## 功能缺口
 
 ### P0 上架阻断
 
-1. 部署 Web 移动接口和 CORS。
-2. 真实 iPhone / Android 安装与登录。
-3. 任务页接真实 `generation_tasks`。
-4. 审片页接真实 `generated_assets`，替换演示关键帧。
-5. 原生推送、通知权限和深链。
-6. 账号删除、数据导出和会话设备管理。
-7. 订阅、额度购买和 Apple IAP / Google Play Billing。
-8. 隐私政策、用户协议、AI 内容标识、举报和内容审核。
-9. 崩溃监控、性能监控和关键转化埋点。
+1. 真实 iPhone / Android 安装、登录和系统权限验证。
+2. EAS Project ID、APNs/FCM 凭据与真机推送送达。
+3. Apple / Google 沙盒购买、恢复购买和退款/到期处理。
+4. 商店截图、隐私表单、审核备注和测试账号。
+5. 中国大陆上线所需的 App 备案、ICP、算法/生成式 AI 材料和主体信息。
+6. 崩溃监控与商店正式签名构建仍需在账号环境中验收。
 
 ### P1 体验完整度
 
@@ -93,6 +83,7 @@
 
 - `mobile/eas.json`
 - `mobile/.env.production`
+- 详细构建步骤：[IOS-TESTFLIGHT-ANDROID-APK.md](./IOS-TESTFLIGHT-ANDROID-APK.md)
 
 待完成：
 
@@ -104,3 +95,4 @@ npx eas-cli build --profile preview --platform ios
 ```
 
 iOS 构建需要 Apple Developer 账号和已登记的测试设备；Android 可先产出内测 APK。
+个人 Apple Developer 账号可以使用 TestFlight 和 App Store；正式签名、上传和商店审核没有在本机执行。

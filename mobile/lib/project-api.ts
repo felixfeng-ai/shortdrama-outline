@@ -119,3 +119,41 @@ export async function importWorkspaceProject(
   }
   return readPayload<ProjectImportResult>(response, '项目包导入失败');
 }
+
+export async function renameWorkspaceProject(
+  baseUrl: string,
+  projectId: string,
+  rawTitle: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RemoteProject> {
+  const root = resolveApiBaseUrl(baseUrl);
+  const title = validateProjectTitle(rawTitle);
+  const response = await fetchImpl(`${root}/api/projects`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-Chengju-Client': 'app',
+    },
+    body: JSON.stringify({ id: projectId, title }),
+  });
+  return (await readPayload<{ project: RemoteProject }>(response, '项目重命名失败')).project;
+}
+
+export async function deleteWorkspaceProject(
+  baseUrl: string,
+  projectId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  const root = resolveApiBaseUrl(baseUrl);
+  const response = await fetchImpl(
+    `${root}/api/projects?id=${encodeURIComponent(projectId)}`,
+    {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { Accept: 'application/json', 'X-Chengju-Client': 'app' },
+    },
+  );
+  await readPayload<{ id: string }>(response, '项目删除失败');
+}

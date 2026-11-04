@@ -11,8 +11,8 @@ import type { AgentMode, AgentPhase } from '@/lib/agent-session';
 import {
   appendVoiceTranscript,
   readPickedImage,
-  type LocalImageAttachment,
 } from '@/lib/media-input';
+import { useMediaAttachments } from '@/lib/media-attachment-store';
 
 export function AgentComposer({
   mode,
@@ -39,7 +39,7 @@ export function AgentComposer({
     busy ||
     ['proposed', 'applying', 'apply-error'].includes(phase);
   const canSend = !locked && value.trim().length > 0;
-  const [attachments, setAttachments] = useState<LocalImageAttachment[]>([]);
+  const { attachments, addAttachment, removeAttachment } = useMediaAttachments();
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
   const [mediaError, setMediaError] = useState('');
@@ -92,10 +92,7 @@ export function AgentComposer({
           });
       const attachment = readPickedImage(result);
       if (attachment) {
-        setAttachments((previous) => [
-          attachment,
-          ...previous.filter((item) => item.id !== attachment.id),
-        ].slice(0, 3));
+        addAttachment(attachment);
       }
     } catch (reason) {
       setMediaError(reason instanceof Error ? reason.message : '图片选择失败');
@@ -141,12 +138,12 @@ export function AgentComposer({
                 />
                 <View style={styles.attachmentCopy}>
                   <Text numberOfLines={1} style={styles.attachmentName}>{attachment.name}</Text>
-                  <Text style={styles.attachmentMeta}>本机参考图 · 未上传</Text>
+                  <Text style={styles.attachmentMeta}>生成参考图 · 生成画面时使用</Text>
                 </View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`移除 ${attachment.name}`}
-                  onPress={() => setAttachments((items) => items.filter((item) => item.id !== attachment.id))}
+                  onPress={() => removeAttachment(attachment.id)}
                   style={({ pressed }) => [styles.removeAttachment, pressed && styles.pressed]}
                 >
                   <Feather name="x" size={15} color={colors.textMuted} />

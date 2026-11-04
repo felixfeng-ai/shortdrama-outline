@@ -54,7 +54,8 @@ export type AgentSessionAction =
   | { type: 'apply-fail'; message: string }
   | { type: 'stop' }
   | { type: 'accept' }
-  | { type: 'dismiss' };
+  | { type: 'dismiss' }
+  | { type: 'restore'; state: AgentSessionState };
 
 export const AGENT_PROMPTS: Record<AgentMode, readonly string[]> = {
   chat: ['收紧第 3 集钩子', '看看今天还差什么', '这句台词是不是太重'],
@@ -267,5 +268,8 @@ export function agentSessionReducer(
     case 'dismiss':
       if (!['proposed', 'stopped', 'applied', 'apply-error'].includes(state.phase)) return state;
       return idleState(state.mode);
+
+    case 'restore':
+      return action.state;
   }
 }

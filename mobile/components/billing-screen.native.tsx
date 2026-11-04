@@ -21,6 +21,7 @@ import { colors, fonts, radii, spacing, type } from '@/constants/tokens';
 import { fetchBillingProducts, submitBillingPurchase, type BillingConfig } from '@/lib/billing-api';
 import { useAuth } from '@/lib/auth-store';
 import { workspaceApiBaseUrl } from '@/lib/workspace-api';
+import { useWorkspace } from '@/lib/workspace-store';
 
 function purchaseToken(purchase: Purchase): string {
   return purchase.purchaseToken?.trim() || '';
@@ -28,6 +29,7 @@ function purchaseToken(purchase: Purchase): string {
 
 export default function BillingScreen() {
   const { status, authorizedFetch } = useAuth();
+  const { refresh: refreshWorkspace } = useWorkspace();
   const [config, setConfig] = useState<BillingConfig | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'buying' | 'verifying' | 'unavailable'>('loading');
   const [message, setMessage] = useState('');
@@ -48,7 +50,8 @@ export default function BillingScreen() {
         purchaseToken: token,
       }, authorizedFetch);
       if (result.verified) {
-        setMessage('购买已核验，权益将在服务端同步后生效。');
+        refreshWorkspace();
+        setMessage('购买已核验，额度正在同步。');
       } else if (result.status === 'pending') {
         setMessage('交易已提交，等待服务端核验。核验前不会增加额度。');
       } else {
@@ -61,7 +64,7 @@ export default function BillingScreen() {
     } finally {
       setState('ready');
     }
-  }, [authorizedFetch]);
+  }, [authorizedFetch, refreshWorkspace]);
 
   const iap = useIAP({
     onPurchaseSuccess: (purchase) => {

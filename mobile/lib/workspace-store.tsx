@@ -17,8 +17,10 @@ import {
 import { useAuth } from './auth-store.tsx';
 import {
   createWorkspaceProject,
+  deleteWorkspaceProject,
   importWorkspaceProject,
   loadSampleWorkspaceProject,
+  renameWorkspaceProject,
   type ProjectImportResult,
   type RemoteProject,
 } from './project-api.ts';
@@ -28,6 +30,7 @@ import {
 } from './project-selection.ts';
 import {
   loadWorkspaceCache,
+  removeWorkspaceCache,
   saveWorkspaceCache,
 } from './workspace-cache.ts';
 import { trackEvent } from './analytics-service.ts';
@@ -42,6 +45,8 @@ interface WorkspaceState {
   selectedProjectId: string | null;
   selectProject: (projectId: string) => Promise<void>;
   createProject: (title: string) => Promise<RemoteProject>;
+  renameProject: (projectId: string, title: string) => Promise<RemoteProject>;
+  deleteProject: (projectId: string) => Promise<void>;
   loadSampleProject: () => Promise<RemoteProject>;
   importProject: (form: FormData) => Promise<ProjectImportResult>;
 }
@@ -167,6 +172,31 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return result;
   }, [authorizedFetch, selectProject]);
 
+  const renameProject = useCallback(async (projectId: string, title: string) => {
+    if (!workspaceApiBaseUrl) throw new Error('尚未配置工作区地址');
+    const project = await renameWorkspaceProject(
+      workspaceApiBaseUrl,
+      projectId,
+      title,
+      authorizedFetch,
+    );
+    loadWorkspace(selectedProjectId);
+    return project;
+  }, [authorizedFetch, loadWorkspace, selectedProjectId]);
+
+  const deleteProjectAction = useCallback(async (projectId: string) => {
+    if (!workspaceApiBaseUrl) throw new Error('尚未配置工作区地址');
+    await deleteWorkspaceProject(workspaceApiBaseUrl, projectId, authorizedFetch);
+    await removeWorkspaceCache(projectId);
+    if (selectedProjectId === projectId) {
+      await saveSelectedProjectId(null);
+      setSelectedProjectId(null);
+      loadWorkspace(null);
+    } else {
+      loadWorkspace(selectedProjectId);
+    }
+  }, [authorizedFetch, loadWorkspace, selectedProjectId]);
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -177,6 +207,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         selectedProjectId,
         selectProject,
         createProject,
+        renameProject,
+        deleteProject: deleteProjectAction,
         loadSampleProject,
         importProject: importProjectAction,
       }}

@@ -13,6 +13,7 @@ import { TaskRecoveryBridge } from '@/components/task-recovery-bridge';
 import { colors } from '@/constants/tokens';
 import { AuthProvider } from '@/lib/auth-store';
 import { WorkspaceProvider } from '@/lib/workspace-store';
+import { MediaAttachmentProvider } from '@/lib/media-attachment-store';
 
 export const ErrorBoundary = AppErrorBoundary;
 
@@ -45,7 +46,8 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AuthProvider>
-        <WorkspaceProvider>
+        <MediaAttachmentProvider>
+          <WorkspaceProvider>
           <ThemeProvider
             value={{
               ...DefaultTheme,
@@ -73,7 +75,8 @@ export default function RootLayout() {
               <Stack.Screen name="login" />
             </Stack>
           </ThemeProvider>
-        </WorkspaceProvider>
+          </WorkspaceProvider>
+        </MediaAttachmentProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

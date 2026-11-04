@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -45,6 +46,8 @@ export default function ProjectsScreen() {
     data,
     status,
     createProject,
+    renameProject,
+    deleteProject,
     selectProject,
     loadSampleProject,
     importProject,
@@ -52,7 +55,11 @@ export default function ProjectsScreen() {
   const { authorizedFetch } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [projectTitle, setProjectTitle] = useState('');
-  const [busyAction, setBusyAction] = useState<'create' | 'sample' | 'import' | null>(null);
+  const [busyAction, setBusyAction] = useState<
+    'create' | 'sample' | 'import' | 'rename' | 'delete' | null
+  >(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameTitle, setRenameTitle] = useState('');
   const [notice, setNotice] = useState('');
   const [actionError, setActionError] = useState('');
   const [sharing, setSharing] = useState(false);
@@ -150,6 +157,52 @@ export default function ProjectsScreen() {
     }
   }
 
+  async function submitRename() {
+    if (!current || busyAction) return;
+    setBusyAction('rename');
+    setActionError('');
+    try {
+      const project = await renameProject(current.id, renameTitle);
+      setRenameOpen(false);
+      setNotice(`项目已改名为「${project.title}」`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '项目重命名失败');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function confirmDelete() {
+    if (!current || busyAction) return;
+    Alert.alert(
+      '删除项目',
+      `「${current.title}」的快照、分镜和生成资产都会被删除，无法恢复。`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '确认删除',
+          style: 'destructive',
+          onPress: () => void submitDelete(),
+        },
+      ],
+    );
+  }
+
+  async function submitDelete() {
+    if (!current || busyAction) return;
+    const title = current.title;
+    setBusyAction('delete');
+    setActionError('');
+    try {
+      await deleteProject(current.id);
+      setNotice(`已删除「${title}」`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '项目删除失败');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenFade>
@@ -214,12 +267,33 @@ export default function ProjectsScreen() {
                   </Pressable>
                 </View>
               </View>
-              <SecondaryButton
-                label={sharing ? '正在生成审阅链接…' : '分享只读审阅'}
-                icon="share-2"
-                disabled={sharing}
-                onPress={() => void shareReviewLink()}
-              />
+              <View style={styles.projectActions}>
+                <SecondaryButton
+                  label={sharing ? '生成中…' : '分享审阅'}
+                  icon="share-2"
+                  disabled={sharing || Boolean(busyAction)}
+                  onPress={() => void shareReviewLink()}
+                  style={styles.projectAction}
+                />
+                <SecondaryButton
+                  label="重命名"
+                  icon="edit-2"
+                  disabled={Boolean(busyAction)}
+                  onPress={() => {
+                    setRenameTitle(current.title);
+                    setActionError('');
+                    setRenameOpen(true);
+                  }}
+                  style={styles.projectAction}
+                />
+                <SecondaryButton
+                  label={busyAction === 'delete' ? '删除中…' : '删除'}
+                  icon="trash-2"
+                  disabled={Boolean(busyAction)}
+                  onPress={confirmDelete}
+                  style={styles.projectAction}
+                />
+              </View>
             </Panel>
           ) : (
             <Panel elevated style={styles.emptyCard}>
@@ -394,6 +468,59 @@ export default function ProjectsScreen() {
           </Panel>
         </KeyboardAvoidingView>
       </Modal>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setRenameOpen(false)}
+        transparent
+        visible={renameOpen}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalScrim}
+        >
+          <Pressable
+            accessibilityLabel="关闭重命名"
+            onPress={() => setRenameOpen(false)}
+            style={StyleSheet.absoluteFill}
+          />
+          <Panel elevated style={styles.modalCard}>
+            <View style={styles.modalHead}>
+              <View>
+                <Kicker>RENAME PROJECT</Kicker>
+                <Text style={styles.modalTitle}>修改项目名称</Text>
+              </View>
+              <IconButton icon="x" label="关闭重命名" onPress={() => setRenameOpen(false)} />
+            </View>
+            <TextInput
+              accessibilityLabel="项目新名称"
+              autoFocus
+              maxLength={100}
+              onChangeText={setRenameTitle}
+              onSubmitEditing={() => void submitRename()}
+              returnKeyType="done"
+              style={styles.modalInput}
+              value={renameTitle}
+            />
+            {actionError ? <Text style={styles.modalError}>{actionError}</Text> : null}
+            <View style={styles.modalActions}>
+              <SecondaryButton
+                label="取消"
+                disabled={busyAction === 'rename'}
+                onPress={() => setRenameOpen(false)}
+                style={styles.flexButton}
+              />
+              <PrimaryButton
+                label={busyAction === 'rename' ? '正在保存…' : '保存名称'}
+                icon="check"
+                disabled={busyAction === 'rename' || !renameTitle.trim()}
+                onPress={() => void submitRename()}
+                style={styles.flexButton}
+              />
+            </View>
+          </Panel>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -476,6 +603,14 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: 4,
+  },
+  projectActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  projectAction: {
+    flex: 1,
+    paddingHorizontal: spacing.xs,
   },
   currentNext: {
     color: colors.text,

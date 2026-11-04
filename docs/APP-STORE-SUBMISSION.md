@@ -5,6 +5,7 @@
 ## 代码内已完成
 
 - 原生 Expo 构建、Bundle ID / Package、URL Scheme、EAS production profile。
+- EAS internal preview profile：Android APK、线上 HTTPS API；iOS 可登记设备做 ad hoc 内测。
 - 隐私、法律、AI 生成标识和内容举报入口。
 - 账号注销、数据导出、设备会话管理。
 - 原生通知权限、Token 注册和通知深链。
@@ -41,3 +42,6 @@ npx eas-cli build --profile production --platform android
 npx eas-cli submit --profile production --platform ios
 npx eas-cli submit --profile production --platform android
 ```
+
+Android APK、iOS 真机内测和 TestFlight 的分步操作见
+[IOS-TESTFLIGHT-ANDROID-APK.md](./IOS-TESTFLIGHT-ANDROID-APK.md)。

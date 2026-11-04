@@ -40,6 +40,9 @@ import {
 } from '@/lib/task-view';
 import { useWorkspace, type WorkspaceSyncStatus } from '@/lib/workspace-store';
 import type { WorkspaceTask, WorkspaceTaskStatus } from '@/lib/workspace-api';
+import { useAuth } from '@/lib/auth-store';
+import { cancelWorkspaceTask, retryWorkspaceTask } from '@/lib/task-actions';
+import { workspaceApiBaseUrl } from '@/lib/workspace-api';
 
 const FILTERS: ReadonlyArray<{
   key: TaskFilter;
@@ -83,7 +86,10 @@ function syncCopy(status: WorkspaceSyncStatus): string {
 
 export default function TasksScreen() {
   const { data, status, error, refresh } = useWorkspace();
+  const { authorizedFetch } = useAuth();
   const [filter, setFilter] = useState<TaskFilter>('all');
+  const [actionId, setActionId] = useState('');
+  const [actionError, setActionError] = useState('');
   const tasks = data.tasks;
   const counts = useMemo(() => taskCounts(tasks), [tasks]);
   const visibleTasks = useMemo(() => filterWorkspaceTasks(tasks, filter), [filter, tasks]);
@@ -92,6 +98,25 @@ export default function TasksScreen() {
     status === 'synced' || tasks.length > 0
       ? data.activeProject?.title ?? '未选择项目'
       : '当前项目';
+
+  async function handleTaskAction(task: WorkspaceTask, action: 'cancel' | 'retry') {
+    const projectId = data.activeProject?.id;
+    if (!projectId || actionId) return;
+    setActionId(task.id);
+    setActionError('');
+    try {
+      if (action === 'cancel') {
+        await cancelWorkspaceTask(workspaceApiBaseUrl, projectId, task.id, authorizedFetch);
+      } else {
+        await retryWorkspaceTask(workspaceApiBaseUrl, projectId, task.id, authorizedFetch);
+      }
+      refresh();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : '任务操作失败');
+    } finally {
+      setActionId('');
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -117,12 +142,20 @@ export default function TasksScreen() {
           title="任务"
           left={<IconButton icon="arrow-left" label="返回 Agent" onPress={() => router.back()} />}
           right={
-            <IconButton
-              icon="refresh-cw"
-              label="刷新任务"
-              active={status === 'loading'}
-              onPress={refresh}
-            />
+            <View style={styles.headerActions}>
+              <IconButton
+                icon="zap"
+                label="生成画面"
+                active
+                onPress={() => router.push('/generate')}
+              />
+              <IconButton
+                icon="refresh-cw"
+                label="刷新任务"
+                active={status === 'loading'}
+                onPress={refresh}
+              />
+            </View>
           }
         />
 
@@ -215,6 +248,12 @@ export default function TasksScreen() {
               <SecondaryButton label="重新同步" icon="refresh-cw" onPress={refresh} />
             </Panel>
           ) : null}
+          {actionError ? (
+            <Panel style={styles.errorCard}>
+              <Feather name="alert-circle" size={16} color={colors.danger} />
+              <Text style={styles.inlineActionError}>{actionError}</Text>
+            </Panel>
+          ) : null}
 
           <View style={styles.sectionHead}>
             <View>
@@ -247,6 +286,13 @@ export default function TasksScreen() {
                   ? '在 Agent 中生成关键帧后，任务会出现在这里。'
                   : '切换到其他状态查看当前项目记录。'}
               </BodyText>
+              {tasks.length === 0 ? (
+                <SecondaryButton
+                  label="生成画面"
+                  icon="zap"
+                  onPress={() => router.push('/generate')}
+                />
+              ) : null}
             </Panel>
           ) : (
             <Panel style={styles.taskList}>
@@ -255,6 +301,8 @@ export default function TasksScreen() {
                   key={task.id}
                   task={task}
                   projectId={data.activeProject?.id ?? ''}
+                  actionId={actionId}
+                  onAction={(action) => void handleTaskAction(task, action)}
                   divider={index < visibleTasks.length - 1}
                 />
               ))}
@@ -286,14 +334,24 @@ function Metric({
 function TaskRow({
   task,
   projectId,
+  actionId,
+  onAction,
   divider,
 }: {
   task: WorkspaceTask;
   projectId: string;
+  actionId: string;
+  onAction: (action: 'cancel' | 'retry') => void;
   divider: boolean;
 }) {
   const meta = STATUS_META[task.status];
   const taskError = safeTaskError(task.error);
+  const action =
+    task.status === 'queued' || task.status === 'running'
+      ? 'cancel'
+      : task.status === 'failed' || task.status === 'canceled'
+        ? 'retry'
+        : null;
   return (
     <View>
       <Pressable
@@ -342,6 +400,21 @@ function TaskRow({
           {task.assetId ? <Text style={styles.reviewHint}>查看</Text> : null}
         </View>
       </Pressable>
+      {action ? (
+        <View style={styles.taskActionRow}>
+          <SecondaryButton
+            label={
+              actionId === task.id
+                ? action === 'cancel' ? '正在停止…' : '正在重试…'
+                : action === 'cancel' ? '停止任务' : '重试生成'
+            }
+            icon={action === 'cancel' ? 'square' : 'refresh-cw'}
+            disabled={Boolean(actionId)}
+            onPress={() => onAction(action)}
+            style={styles.taskActionButton}
+          />
+        </View>
+      ) : null}
       {divider ? <Divider /> : null}
     </View>
   );
@@ -361,6 +434,10 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
     padding: 3,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.xxs,
   },
   filter: {
     minHeight: 44,
@@ -496,6 +573,12 @@ const styles = StyleSheet.create({
     fontSize: type.caption,
     lineHeight: 18,
   },
+  inlineActionError: {
+    flex: 1,
+    color: colors.warningInk,
+    fontSize: type.caption,
+    lineHeight: 19,
+  },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -543,6 +626,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.sm,
     padding: spacing.sm,
+  },
+  taskActionRow: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  taskActionButton: {
+    alignSelf: 'flex-end',
+    minWidth: 132,
   },
   taskIcon: {
     width: 36,
