@@ -10,7 +10,11 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "work.chenju.veyaframe"
+      "bundleIdentifier": "work.chenju.veyaframe",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "成剧需要使用语音识别，以便转写你的创作指令。",
+        "NSMicrophoneUsageDescription": "成剧需要使用麦克风，以便把语音转成创作指令。"
+      }
     },
     "android": {
       "package": "work.chenju.veyaframe",
@@ -20,7 +24,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -58,6 +65,17 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "fd5d8e4e-37c8-4c4f-a8c9-7d0612a5f435"
+      }
+    },
+    "owner": "felix-ai"
   }
 }
