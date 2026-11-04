@@ -19,6 +19,7 @@ import PwaInstallButton from '@/components/PwaInstallButton'
 import PushNotificationButton from '@/components/PushNotificationButton'
 import AuthButton from '@/components/AuthButton'
 import ReleaseNotice from '@/components/ReleaseNotice'
+import SiteLegalFooter from '@/components/SiteLegalFooter'
 import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
 import DecisionPanel from '@/components/DecisionPanel'
@@ -3864,6 +3865,7 @@ export default function Home() {
               <button type="button" onClick={() => setNotice(null)} aria-label="知道了">知道了</button>
             </div>
           )}
+          <SiteLegalFooter />
         </main>
 
         {/*

@@ -821,6 +821,154 @@
   .signal-desk .signal-rail { display: none; }
 }
 
+/* Legal and trust entry points stay subordinate to the active creation step. */
+.signal-desk .site-legal-footer {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 14px 20px;
+  margin-top: 24px;
+  border-top: 1px solid var(--signal-line);
+  padding: 18px 0 4px;
+  color: var(--signal-text-3);
+}
+
+.signal-desk .site-legal-footer-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.signal-desk .site-legal-footer-brand > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid rgba(196, 217, 138, .28);
+  border-radius: 5px;
+  background: rgba(196, 217, 138, .08);
+  color: var(--signal-acid);
+  font-family: var(--font-latin), sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.signal-desk .site-legal-footer-brand p {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  margin: 0;
+}
+
+.signal-desk .site-legal-footer-brand b {
+  color: var(--signal-text-2);
+  font-family: var(--font-latin), sans-serif;
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.signal-desk .site-legal-footer-brand small,
+.signal-desk .site-legal-footer-copy {
+  color: var(--signal-text-3);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-desk .site-legal-footer nav {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 5px 15px;
+}
+
+.signal-desk .site-legal-footer nav a {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border-radius: 4px;
+  color: var(--signal-text-3);
+  font-size: 10px;
+  text-decoration: none;
+  transition: color 150ms cubic-bezier(.23, 1, .32, 1);
+}
+
+.signal-desk .site-legal-footer nav a:focus-visible {
+  outline: 2px solid rgba(142, 183, 231, .8);
+  outline-offset: 2px;
+}
+
+.signal-desk .auth-consent {
+  margin: 14px 0 0;
+  color: var(--signal-text-3);
+  font-size: 10.5px;
+  line-height: 1.7;
+}
+
+.signal-desk .auth-consent a {
+  color: var(--signal-text-2);
+  text-decoration: underline;
+  text-decoration-color: rgba(142, 183, 231, .38);
+  text-underline-offset: 3px;
+}
+
+.signal-desk .auth-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+}
+
+.signal-desk .auth-legal-links a {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  color: var(--signal-text-3);
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.signal-desk .auth-consent a:focus-visible,
+.signal-desk .auth-legal-links a:focus-visible {
+  outline: 2px solid rgba(142, 183, 231, .8);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .signal-desk .site-legal-footer nav a:hover,
+  .signal-desk .auth-consent a:hover,
+  .signal-desk .auth-legal-links a:hover {
+    color: var(--signal-text);
+  }
+}
+
+@media (max-width: 760px) {
+  .signal-desk .site-legal-footer {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding-top: 17px;
+  }
+
+  .signal-desk .site-legal-footer nav {
+    gap: 2px 14px;
+  }
+
+  .signal-desk .site-legal-footer nav a,
+  .signal-desk .auth-legal-links a {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-desk .site-legal-footer nav a,
+  .signal-desk .auth-consent a,
+  .signal-desk .auth-legal-links a {
+    transition: none;
+  }
+}
+
 /* Standalone account entry. Long-lived forms belong on their own route, not in a workbench modal. */
 .signal-desk .auth-page {
   display: grid;

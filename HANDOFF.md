@@ -42,6 +42,8 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
   返回 `packageMigration` 报告；v1、未知 schema 和未来版本继续拒绝。
 - 团队批注与生产台账已接入：逐镜汇总制作状态、质检、未处理批注、最近任务和采用图；
   工作台可复制 CSV，项目包固定附带 `production/ledger.csv` 与 `ledger.json`。
+- 内测法务基线已接入：一页式内测条款与隐私说明、首页低干扰页脚、登录协议同意、
+  举报处理与联系邮箱均可访问；当前版本为内测 v1.0，仍需正式法律文本终审。
 - 通义多图参考已完成真实验证：使用内存生成的 512×512 PNG 调用 `qwen-image-2.0-pro`，返回 PNG 约 1.16MB，耗时约 13 秒；未读取本地图片，也未把测试产物写入项目。
 - 正式账号第二阶段已落地：邮箱与手机号 6 位验证码、Web HttpOnly refresh session、App 15 分钟 access token、30 天 refresh token、一次性 refresh 轮换与退出撤销会话；验证码、refresh token 与 access session 都做哈希或签名校验。
 - 账号页新增活跃设备列表，可查看设备类型、最后活跃时间并单独退出其他设备；撤销后对应 access 与 refresh token 同时失效。
