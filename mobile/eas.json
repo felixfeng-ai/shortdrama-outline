@@ -8,7 +8,11 @@
       "distribution": "internal",
       "environment": "preview",
       "android": {
+        "image": "latest",
         "buildType": "apk"
+      },
+      "ios": {
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://chenju.work"
@@ -16,7 +20,13 @@
     },
     "production": {
       "autoIncrement": true,
-      "environment": "production"
+      "environment": "production",
+      "android": {
+        "image": "latest"
+      },
+      "ios": {
+        "image": "latest"
+      }
     }
   },
   "submit": {

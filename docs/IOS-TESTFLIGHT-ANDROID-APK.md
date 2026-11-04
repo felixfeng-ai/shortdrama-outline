@@ -26,6 +26,7 @@ npx expo config --type public
 
 - `distribution: internal`
 - Android `buildType: apk`
+- Android / iOS `image: latest`，满足 Expo GitHub App 网页构建要求
 - `EXPO_PUBLIC_API_URL=https://chenju.work`
 
 正式 API 必须是 HTTPS。需要服务端开关的配置，例如 `APP_BILLING_PRODUCT_IDS`、`BILLING_VERIFICATION_URL` 和 `AUTH_SECRET`，必须放在服务器环境，不能写进 App 包。
@@ -46,6 +47,8 @@ npx eas-cli@latest build --profile preview --platform android
 3. 使用邮箱验证码登录，确认能看到 Web 同一账号的项目和额度。
 4. 检查相机、相册、通知、弱网重试和重启后的登录恢复。
 5. 在系统设置中确认应用版本和包名均为 `work.chenju.veyaframe`。
+
+Expo GitHub App 的网页构建要求该平台至少成功完成过一次本地 CLI 构建。因此首次 Android 构建必须执行上面的命令；网页上的入门卡片链接只是文档，不是真正的构建入口。首次构建成功后，再到 Expo 项目的 GitHub settings 连接仓库、把 Base directory 设为 `mobile`，之后即可在 Builds 页面点击 `Build from GitHub`。
 
 如果只需要把 APK 发给测试者，可以下载 EAS 构建产物直接安装。若要使用 Google Play 内测轨道，则生产 profile 默认产出 AAB，并通过 `eas submit` 上传。
 

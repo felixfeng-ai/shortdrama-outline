@@ -19,6 +19,12 @@ if (eas.build?.preview?.distribution !== 'internal') {
 if (eas.build?.preview?.android?.buildType !== 'apk') {
   errors.push('preview profile 必须为 Android 产出 APK')
 }
+if (eas.build?.preview?.android?.image !== 'latest' || eas.build?.preview?.ios?.image !== 'latest') {
+  errors.push('preview profile 必须配置 GitHub 构建镜像 latest')
+}
+if (eas.build?.production?.android?.image !== 'latest' || eas.build?.production?.ios?.image !== 'latest') {
+  errors.push('production profile 必须配置 GitHub 构建镜像 latest')
+}
 if (eas.build?.preview?.env?.EXPO_PUBLIC_API_URL !== 'https://chenju.work') {
   errors.push('preview profile 必须连接 https://chenju.work')
 }

@@ -5,7 +5,8 @@ import test from 'node:test';
 interface EasBuildProfile {
   distribution?: string;
   environment?: string;
-  android?: { buildType?: string };
+  android?: { buildType?: string; image?: string };
+  ios?: { image?: string };
   env?: Record<string, string>;
 }
 
@@ -18,12 +19,16 @@ test('Android 内测配置产出可安装 APK 并连接线上 API', () => {
   assert.equal(preview?.distribution, 'internal');
   assert.equal(preview?.environment, 'preview');
   assert.equal(preview?.android?.buildType, 'apk');
+  assert.equal(preview?.android?.image, 'latest');
+  assert.equal(preview?.ios?.image, 'latest');
   assert.equal(preview?.env?.EXPO_PUBLIC_API_URL, 'https://chenju.work');
 });
 
 test('正式构建和提交 profile 保持可辨识', () => {
   assert.ok(eas.build?.production, '缺少 production build profile');
   assert.notEqual(eas.build?.production?.distribution, 'internal');
+  assert.equal(eas.build?.production?.android?.image, 'latest');
+  assert.equal(eas.build?.production?.ios?.image, 'latest');
 });
 
 test('内测操作文档覆盖 APK、iOS 内测和 TestFlight', () => {
