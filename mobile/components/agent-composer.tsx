@@ -1,9 +1,18 @@
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors, spacing, type } from '@/constants/tokens';
+import { colors, radii, spacing, type } from '@/constants/tokens';
 import type { AgentMode, AgentPhase } from '@/lib/agent-session';
+import {
+  appendVoiceTranscript,
+  readPickedImage,
+  type LocalImageAttachment,
+} from '@/lib/media-input';
 
 export function AgentComposer({
   mode,
@@ -30,14 +39,123 @@ export function AgentComposer({
     busy ||
     ['proposed', 'applying', 'apply-error'].includes(phase);
   const canSend = !locked && value.trim().length > 0;
+  const [attachments, setAttachments] = useState<LocalImageAttachment[]>([]);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+  const voiceBaseRef = useRef('');
+
+  useEffect(() => {
+    const result = ExpoSpeechRecognitionModule.addListener('result', (event) => {
+      const transcript = event.results[0]?.transcript ?? '';
+      onChangeText(appendVoiceTranscript(voiceBaseRef.current, transcript));
+    });
+    const end = ExpoSpeechRecognitionModule.addListener('end', () => setRecognizing(false));
+    const error = ExpoSpeechRecognitionModule.addListener('error', (event) => {
+      setRecognizing(false);
+      setMediaError(event.message || '语音识别失败，请重试');
+    });
+    return () => {
+      result.remove();
+      end.remove();
+      error.remove();
+      try {
+        ExpoSpeechRecognitionModule.abort();
+      } catch {}
+    };
+  }, [onChangeText]);
 
   function pressHaptic() {
     void Haptics.selectionAsync().catch(() => {});
   }
 
+  async function pickImage(source: 'camera' | 'library') {
+    setMediaError('');
+    setShowAttachmentMenu(false);
+    try {
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        throw new Error(source === 'camera' ? '相机权限未开启' : '相册权限未开启');
+      }
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            quality: 0.85,
+            allowsEditing: false,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.85,
+            allowsMultipleSelection: false,
+          });
+      const attachment = readPickedImage(result);
+      if (attachment) {
+        setAttachments((previous) => [
+          attachment,
+          ...previous.filter((item) => item.id !== attachment.id),
+        ].slice(0, 3));
+      }
+    } catch (reason) {
+      setMediaError(reason instanceof Error ? reason.message : '图片选择失败');
+    }
+  }
+
+  async function toggleVoice() {
+    setMediaError('');
+    if (recognizing) {
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+    try {
+      const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!permission.granted) throw new Error('麦克风或语音识别权限未开启');
+      voiceBaseRef.current = value;
+      setRecognizing(true);
+      ExpoSpeechRecognitionModule.start({
+        lang: 'zh-CN',
+        interimResults: true,
+        continuous: false,
+        maxAlternatives: 1,
+      });
+    } catch (reason) {
+      setRecognizing(false);
+      setMediaError(reason instanceof Error ? reason.message : '语音识别不可用');
+    }
+  }
+
   return (
     <View style={styles.wrap}>
       <View style={styles.composer}>
+        {attachments.length > 0 ? (
+          <View style={styles.attachments}>
+            {attachments.map((attachment) => (
+              <View key={attachment.id} style={styles.attachment}>
+                <Image
+                  accessible
+                  accessibilityLabel={`本机参考图 ${attachment.name}`}
+                  contentFit="cover"
+                  source={{ uri: attachment.uri }}
+                  style={styles.attachmentImage}
+                />
+                <View style={styles.attachmentCopy}>
+                  <Text numberOfLines={1} style={styles.attachmentName}>{attachment.name}</Text>
+                  <Text style={styles.attachmentMeta}>本机参考图 · 未上传</Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`移除 ${attachment.name}`}
+                  onPress={() => setAttachments((items) => items.filter((item) => item.id !== attachment.id))}
+                  style={({ pressed }) => [styles.removeAttachment, pressed && styles.pressed]}
+                >
+                  <Feather name="x" size={15} color={colors.textMuted} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         <TextInput
           accessibilityLabel="给 AI 场记的指令"
           editable={!locked}
@@ -48,19 +166,50 @@ export function AgentComposer({
               ? 'AI 场记正在检查当前场次…'
               : disabled
                 ? '先选择一个项目'
-              : phase === 'proposed'
-                ? '本轮已返回，先选择上方动作'
-                : '问进度、改一镜，或让它检查本集钩子…'
+                : phase === 'proposed'
+                  ? '本轮已返回，先选择上方动作'
+                  : '问进度、改一镜，或让它检查本集钩子…'
           }
           placeholderTextColor={colors.textMuted}
           style={styles.input}
           value={value}
         />
+
+        {showAttachmentMenu ? (
+          <View style={styles.attachmentMenu}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="拍照"
+              onPress={() => void pickImage('camera')}
+              style={({ pressed }) => [styles.attachmentAction, pressed && styles.pressed]}
+            >
+              <Feather name="camera" size={18} color={colors.textSecondary} />
+              <Text style={styles.attachmentActionText}>拍照</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="从相册选择"
+              onPress={() => void pickImage('library')}
+              style={({ pressed }) => [styles.attachmentAction, pressed && styles.pressed]}
+            >
+              <Feather name="image" size={18} color={colors.textSecondary} />
+              <Text style={styles.attachmentActionText}>相册</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {mediaError ? <Text style={styles.mediaError}>{mediaError}</Text> : null}
+        {recognizing ? <Text style={styles.voiceState}>正在听写 · 再次点麦克风停止</Text> : null}
+
         <View style={styles.bottomRow}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="添加附件"
-            onPress={pressHaptic}
+            disabled={locked}
+            onPress={() => {
+              pressHaptic();
+              setShowAttachmentMenu((open) => !open);
+            }}
             style={({ pressed }) => [styles.toolButton, pressed && styles.pressed]}
           >
             <Feather name="plus" size={22} color={colors.textSecondary} />
@@ -86,11 +235,23 @@ export function AgentComposer({
           <View style={styles.spacer} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="语音输入"
-            onPress={pressHaptic}
-            style={({ pressed }) => [styles.toolButton, pressed && styles.pressed]}
+            accessibilityLabel={recognizing ? '停止语音输入' : '语音输入'}
+            disabled={locked}
+            onPress={() => {
+              pressHaptic();
+              void toggleVoice();
+            }}
+            style={({ pressed }) => [
+              styles.toolButton,
+              recognizing && styles.toolButtonActive,
+              pressed && styles.pressed,
+            ]}
           >
-            <Feather name="mic" size={19} color={colors.textSecondary} />
+            <Feather
+              name={recognizing ? 'square' : 'mic'}
+              size={recognizing ? 15 : 19}
+              color={recognizing ? colors.accent : colors.textSecondary}
+            />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -99,11 +260,8 @@ export function AgentComposer({
             disabled={disabled || (!busy && !canSend)}
             onPress={() => {
               pressHaptic();
-              if (busy) {
-                onStop();
-              } else {
-                onSend();
-              }
+              if (busy) onStop();
+              else onSend();
             }}
             style={({ pressed }) => [
               styles.sendButton,
@@ -141,6 +299,44 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
+  attachments: {
+    gap: 6,
+    paddingVertical: 4,
+  },
+  attachment: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: radii.md,
+    backgroundColor: colors.elevated,
+    padding: 5,
+  },
+  attachmentImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 5,
+  },
+  attachmentCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  attachmentName: {
+    color: colors.text,
+    fontSize: type.caption,
+    fontWeight: '500',
+  },
+  attachmentMeta: {
+    marginTop: 1,
+    color: colors.textMuted,
+    fontSize: type.micro,
+  },
+  removeAttachment: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   input: {
     minHeight: 40,
     maxHeight: 88,
@@ -149,6 +345,39 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     paddingHorizontal: 0,
     paddingVertical: 6,
+  },
+  attachmentMenu: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  attachmentAction: {
+    minHeight: 44,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.elevated,
+  },
+  attachmentActionText: {
+    color: colors.textSecondary,
+    fontSize: type.caption,
+    fontWeight: '500',
+  },
+  mediaError: {
+    color: colors.warningInk,
+    fontSize: type.caption,
+    lineHeight: 18,
+    paddingVertical: 3,
+  },
+  voiceState: {
+    color: colors.info,
+    fontSize: type.micro,
+    paddingVertical: 3,
   },
   bottomRow: {
     minHeight: 44,
@@ -168,6 +397,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
+  },
+  toolButtonActive: {
+    borderColor: 'rgba(184,101,79,0.36)',
+    backgroundColor: colors.accentSoft,
   },
   modeButton: {
     minHeight: 40,
@@ -197,4 +430,3 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 });
-

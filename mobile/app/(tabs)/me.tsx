@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,19 +21,103 @@ import {
 } from '@/components/ui';
 import { colors, fonts, spacing, type } from '@/constants/tokens';
 import { useAuth } from '@/lib/auth-store';
+import {
+  disableNativeNotifications,
+  enableNativeNotifications,
+  notificationPermission,
+} from '@/lib/native-notifications';
 import { useWorkspace } from '@/lib/workspace-store';
 
 export default function MeScreen() {
-  const { status: authStatus, user, logout } = useAuth();
+  const { status: authStatus, user, logout, authorizedFetch } = useAuth();
   const { data } = useWorkspace();
+  const [notificationState, setNotificationState] = useState<
+    'checking' | 'granted' | 'denied' | 'idle' | 'loading' | 'error' | 'unsupported'
+  >('checking');
+  const [pushToken, setPushToken] = useState('');
   const quota = data.quota;
   const progress = quota.limit > 0 ? Math.round((quota.used / quota.limit) * 100) : 0;
+  useEffect(() => {
+    let active = true;
+    void notificationPermission()
+      .then((permission) => {
+        if (active) {
+          setNotificationState(
+            permission === 'granted'
+              ? 'granted'
+              : permission === 'unsupported'
+                ? 'unsupported'
+                : 'idle',
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setNotificationState('error');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function onEnableNotifications() {
+    if (notificationState === 'loading') return;
+    try {
+      if (notificationState === 'granted' && pushToken) {
+        setNotificationState('loading');
+        await disableNativeNotifications(pushToken, authorizedFetch);
+        setPushToken('');
+        setNotificationState('idle');
+        return;
+      }
+      setNotificationState('loading');
+      const result = await enableNativeNotifications(authorizedFetch);
+      setPushToken(result.token);
+      setNotificationState('granted');
+    } catch {
+      setNotificationState('error');
+    }
+  }
+
+  const notificationValue =
+    notificationState === 'loading'
+      ? '正在设置…'
+      : notificationState === 'granted'
+        ? '已开启 · 点击关闭'
+        : notificationState === 'error'
+          ? '设置失败 · 点击重试'
+          : notificationState === 'unsupported'
+            ? '仅 iOS / Android 构建可用'
+          : '任务 · 审片 · 额度';
   const settings = [
-    { icon: 'bell', label: '通知与提醒', value: '任务 · 审片 · 额度' },
-    { icon: 'smartphone', label: '已登录设备', value: '当前设备' },
-    { icon: 'credit-card', label: '订阅与额度', value: `${quota.remaining} / ${quota.limit} 单位` },
-    { icon: 'shield', label: '隐私与数据', value: '本地图片不上传' },
-    { icon: 'file-text', label: 'AI 内容标识', value: '导出时自动附加' },
+    {
+      key: 'notifications',
+      icon: 'bell',
+      label: '通知与提醒',
+      value: notificationValue,
+      onPress: onEnableNotifications,
+    },
+    {
+      key: 'devices',
+      icon: 'smartphone',
+      label: '已登录设备',
+      value: '当前设备',
+      onPress: () => router.push('/account/sessions'),
+    },
+    {
+      key: 'billing',
+      icon: 'credit-card',
+      label: '订阅与额度',
+      value: `${quota.remaining} / ${quota.limit} 单位`,
+      onPress: () => router.push('/account/billing'),
+    },
+    {
+      key: 'privacy',
+      icon: 'shield',
+      label: '隐私与数据',
+      value: '导出、注销与数据说明',
+      onPress: () => router.push('/account/data'),
+    },
+    { key: 'ai-label', icon: 'file-text', label: 'AI 内容标识', value: '导出时自动附加' },
   ] as const;
 
   return (
@@ -117,10 +202,11 @@ export default function MeScreen() {
 
           <Panel style={styles.settingsList}>
             {settings.map((item, index) => (
-              <View key={item.label}>
+              <View key={item.key}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`${item.label}，${item.value}`}
+                  onPress={'onPress' in item ? item.onPress : undefined}
                   style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}
                 >
                   <View style={styles.settingIcon}>
@@ -140,7 +226,9 @@ export default function MeScreen() {
           <View style={styles.legalRow}>
             <Text style={styles.legalText}>用户协议</Text>
             <Text style={styles.legalText}>隐私政策</Text>
-            <Text style={styles.legalText}>删除账号</Text>
+            <Pressable onPress={() => router.push('/account/data')}>
+              <Text style={styles.legalText}>删除账号</Text>
+            </Pressable>
           </View>
 
           <Text style={styles.version}>成剧 VeyaFrame · Native Preview 0.1</Text>

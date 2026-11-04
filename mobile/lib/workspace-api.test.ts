@@ -43,6 +43,20 @@ const payload: WorkspaceData = {
     used: 42,
     projectsLeft: 1,
   },
+  tasks: [
+    {
+      id: 'task-1',
+      targetType: 'shot',
+      targetId: 'shot-entity-17',
+      targetLabel: '第 3 集 · 第 17 镜 · 码头夜谈',
+      status: 'running',
+      error: null,
+      assetId: null,
+      createdAt: Date.UTC(2026, 10, 4, 7, 59, 0),
+      startedAt: Date.UTC(2026, 10, 4, 7, 59, 10),
+      finishedAt: null,
+    },
+  ],
 };
 
 test('API base URL is normalized and empty values fall back to local mode', () => {
@@ -68,6 +82,8 @@ test('workspace fetch uses the mobile context endpoint with credentials', async 
   assert.equal(calledUrl, 'http://127.0.0.1:3200/api/mobile/context');
   assert.equal(calledInit?.credentials, 'include');
   assert.equal(data.activeProject?.title, '夜港来信');
+  assert.equal(data.tasks[0].targetLabel, '第 3 集 · 第 17 镜 · 码头夜谈');
+  assert.equal(data.tasks[0].status, 'running');
 });
 
 test('workspace fetch can request a selected project', async () => {
@@ -152,7 +168,7 @@ test('remote workspace produces the native Agent context without hardcoded shot 
 
 test('empty remote workspaces produce a neutral Agent context', () => {
   const context = workspaceToAgentContext(
-    { ...payload, activeProject: null, hero: null },
+    { ...payload, activeProject: null, hero: null, tasks: [] },
     null,
   );
 

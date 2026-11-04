@@ -38,7 +38,23 @@
         }
       ],
       "expo-image",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "成剧需要访问相册，以便添加创作参考图。",
+          "cameraPermission": "成剧需要使用相机，以便拍摄创作参考图。"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "成剧需要使用麦克风，以便把语音转成创作指令。",
+          "speechRecognitionPermission": "成剧需要使用语音识别，以便转写你的创作指令。"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

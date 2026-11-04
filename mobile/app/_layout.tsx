@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { NotificationBridge } from '@/components/notification-bridge';
 import { colors } from '@/constants/tokens';
 import { AuthProvider } from '@/lib/auth-store';
 import { WorkspaceProvider } from '@/lib/workspace-store';
@@ -55,6 +56,7 @@ export default function RootLayout() {
                 notification: colors.warning,
               },
             }}>
+            <NotificationBridge />
             <Stack
               screenOptions={{
                 headerShown: false,

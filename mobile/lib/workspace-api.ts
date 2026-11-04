@@ -28,12 +28,29 @@ export interface WorkspaceQuota {
   projectsLeft: number;
 }
 
+export type WorkspaceTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+export type WorkspaceTaskTargetType = 'character' | 'place' | 'shot';
+
+export interface WorkspaceTask {
+  id: string;
+  targetType: WorkspaceTaskTargetType;
+  targetId: string;
+  targetLabel: string;
+  status: WorkspaceTaskStatus;
+  error: string | null;
+  assetId: string | null;
+  createdAt: number;
+  startedAt: number | null;
+  finishedAt: number | null;
+}
+
 export interface WorkspaceData {
   activeProject: WorkspaceProject | null;
   projects: WorkspaceProject[];
   totalProjects: number;
   hero: WorkspaceHero | null;
   quota: WorkspaceQuota;
+  tasks: WorkspaceTask[];
 }
 
 export interface AgentProjectContext {
@@ -85,6 +102,7 @@ export const demoWorkspace: WorkspaceData = {
     used: 42,
     projectsLeft: 1,
   },
+  tasks: [],
 };
 
 export function resolveApiBaseUrl(value: string | undefined): string {
@@ -105,6 +123,7 @@ function readWorkspace(value: unknown): WorkspaceData {
     totalProjects: Number.isFinite(data.totalProjects) ? Number(data.totalProjects) : 0,
     hero: (data.hero as WorkspaceHero | null | undefined) ?? null,
     quota: data.quota as WorkspaceQuota,
+    tasks: Array.isArray(data.tasks) ? (data.tasks as WorkspaceTask[]) : [],
   };
 }
 

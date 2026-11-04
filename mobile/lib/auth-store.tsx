@@ -37,6 +37,7 @@ interface AuthState {
   verifyCode: (email: string, code: string) => Promise<AuthCredentials>;
   logout: () => Promise<void>;
   authorizedFetch: typeof fetch;
+  getAccessHeaders: () => Promise<Record<string, string>>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -209,6 +210,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [clearCredentials, refreshCredentials],
   );
 
+  const getAccessHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    let credentials = credentialsRef.current;
+    if (credentials && credentials.accessExpiresAt <= Date.now() + 30_000) {
+      try {
+        credentials = await refreshCredentials();
+      } catch {
+        credentials = null;
+      }
+    }
+    return credentials
+      ? { Authorization: `Bearer ${credentials.accessToken}` }
+      : {};
+  }, [refreshCredentials]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -219,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyCode,
         logout,
         authorizedFetch: authorizedFetch as typeof fetch,
+        getAccessHeaders,
       }}
     >
       {children}

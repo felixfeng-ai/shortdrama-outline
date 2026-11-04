@@ -327,12 +327,7 @@ export default function AgentHomeScreen() {
                   projectContext={projectContext}
                   onAccept={acceptProposal}
                   onDismiss={() => dispatch({ type: 'dismiss' })}
-                  onReview={() =>
-                    router.push({
-                      pathname: '/review/[id]',
-                      params: { id: `shot-${session.reviewShotNumber ?? 17}` },
-                    })
-                  }
+                  onReview={() => router.push('/tasks')}
                   onRetry={sendPrompt}
                 />
 
