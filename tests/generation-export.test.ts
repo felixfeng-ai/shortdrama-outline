@@ -59,7 +59,7 @@ test("G7.2 manifest 保留关键帧元数据，但不泄露服务器 storageKey"
   })
 
   assert.equal(manifest.keyframes.length, 1)
-  assert.equal(manifest.schemaVersion, 2)
+  assert.equal(manifest.schemaVersion, 3)
   assert.equal(manifest.keyframes[0].id, "asset-1")
   assert.equal("storageKey" in manifest.keyframes[0], false)
   assert.equal(manifest.keyframes[0].selectedAt, 123)

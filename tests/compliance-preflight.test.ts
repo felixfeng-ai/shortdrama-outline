@@ -165,7 +165,11 @@ test("CP5 project.json 与旧包读取都保留 AI 声明兼容", () => {
 
   const old = {
     ...manifest,
+    schemaVersion: 2,
     ai: undefined,
+    materials: undefined,
+    files: undefined,
+    warnings: undefined,
   }
   const parsed = parseProjectPackage(old)
   assert.equal(parsed.ai.label, "AI 生成")

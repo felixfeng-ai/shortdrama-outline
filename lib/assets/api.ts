@@ -475,6 +475,12 @@ export const fetchExportManifest = (projectId: string) =>
 export async function importProjectPackage(form: FormData): Promise<{
   project: ProjectDto
   counts: { snapshots: number; tasks: number; keyframes: number; refs: number; sources?: number }
+  packageMigration?: {
+    fromVersion: number
+    toVersion: number
+    migrated: boolean
+    steps: string[]
+  }
   warnings: string[]
 }> {
   const response = await fetch("/api/project-import", { method: "POST", body: form })

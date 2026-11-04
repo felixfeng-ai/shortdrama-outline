@@ -8,7 +8,7 @@ import {
 } from "./ai-disclosure.ts"
 
 export const PROJECT_PACKAGE_SCHEMA = "chengju.project" as const
-export const PROJECT_PACKAGE_SCHEMA_VERSION = 2 as const
+export const PROJECT_PACKAGE_SCHEMA_VERSION = 3 as const
 export const EXPORT_REPORT_SCHEMA = "chengju.export-report" as const
 
 export type ProjectExportMode = "delivery" | "backup"

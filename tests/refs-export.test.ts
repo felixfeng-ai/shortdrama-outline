@@ -121,7 +121,7 @@ test("E1 导出自包含清单：含项目、各类最新版、图台账元数�
   assert.equal(payload.data.manifest.assets.shots.length, 1)
   assert.ok(Array.isArray(payload.data.manifest.refs))
   assert.equal(payload.data.manifest.schema, "chengju.project")
-  assert.equal(payload.data.manifest.schemaVersion, 2)
+  assert.equal(payload.data.manifest.schemaVersion, 3)
   assert.ok(Array.isArray(payload.data.manifest.snapshots))
 })
 

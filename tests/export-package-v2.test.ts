@@ -82,7 +82,7 @@ test("EXPORT-V2.1 清单使用真实项目名并补齐意图、视觉宪法和�
   })
 
   assert.equal(manifest.schema, "chengju.project")
-  assert.equal(manifest.schemaVersion, 2)
+  assert.equal(manifest.schemaVersion, 3)
   assert.equal(manifest.mode, "delivery")
   assert.equal(manifest.project.title, "快递员的最后一单")
   assert.equal(manifest.projectSettings.brief.redline, "不要爽剧化")

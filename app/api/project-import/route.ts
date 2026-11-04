@@ -7,7 +7,7 @@ import { saveProjectMaterial } from "@/lib/assets/materials"
 import { saveProjectContext } from "@/lib/assets/project-context"
 import { createProject, createSnapshot, deleteProject } from "@/lib/assets/repo"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
-import { parseProjectPackage } from "@/lib/export/import"
+import { readProjectPackage, type ProjectPackageMigration } from "@/lib/export/import"
 import type { ProjectPackageManifest } from "@/lib/export/package"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
@@ -282,8 +282,11 @@ export async function POST(req: Request) {
       throw new InputError("项目包 manifest 不是有效 JSON")
     }
     let manifest: ProjectPackageManifest
+    let packageMigration: ProjectPackageMigration
     try {
-      manifest = parseProjectPackage(value)
+      const parsed = readProjectPackage(value)
+      manifest = parsed.manifest
+      packageMigration = parsed.migration
     } catch (cause) {
       throw new InputError(cause instanceof Error ? cause.message : "项目包格式不正确")
     }
@@ -324,6 +327,7 @@ export async function POST(req: Request) {
         sources: materials.restored,
         localizationBranches: localization.branches,
       },
+      packageMigration,
       warnings: [...manifest.warnings, ...keyframes.warnings, ...materials.warnings],
     }))
   } catch (error) {

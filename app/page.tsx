@@ -130,7 +130,7 @@ import {
   type VaultMode,
 } from '@/lib/assets/vault'
 import { readStoreZip } from '@/lib/archive/zip'
-import { parseProjectPackage } from '@/lib/export/import'
+import { readProjectPackage } from '@/lib/export/import'
 import {
   buildStoryboardHtml,
   shotsToCsv,
@@ -2432,9 +2432,10 @@ export default function Home() {
       } catch {
         throw new Error("project.json 不是有效 JSON")
       }
-      const manifest = parseProjectPackage(raw)
+      const parsedPackage = readProjectPackage(raw)
+      const manifest = parsedPackage.manifest
       const form = new FormData()
-      form.set("manifest", JSON.stringify(manifest))
+      form.set("manifest", JSON.stringify(raw))
       const keyframes = manifest.keyframes as Array<{
         archivePath?: string
         importFile?: string
@@ -2515,7 +2516,7 @@ export default function Home() {
       const refsInManifest = localRefs.filter((ref) => ref.included).length
       if (restoredRefs < refsInManifest) warnings.push("部分本地参考图未能恢复到本机图库。")
       setNotice(
-        `已导入「${result.project.title}」：${result.counts.snapshots} 个快照、${result.counts.tasks} 个任务、${result.counts.keyframes} 张生成图、${result.counts.sources ?? 0} 份项目原文、${restoredRefs} 张本地参考图。${warnings.length ? ` ${warnings.slice(0, 2).join(" ")}` : ""}`,
+        `已导入「${result.project.title}」：${result.counts.snapshots} 个快照、${result.counts.tasks} 个任务、${result.counts.keyframes} 张生成图、${result.counts.sources ?? 0} 份项目原文、${restoredRefs} 张本地参考图。${result.packageMigration?.migrated ? ` 已从 v${result.packageMigration.fromVersion} 迁移到 v${result.packageMigration.toVersion}。` : ""}${warnings.length ? ` ${warnings.slice(0, 2).join(" ")}` : ""}`,
       )
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : "项目包导入失败，请重试")

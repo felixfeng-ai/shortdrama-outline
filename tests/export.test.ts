@@ -137,7 +137,7 @@ test("E20 project.json 清单必须带稳定的格式标识与 schema 版本", (
   })
 
   assert.equal(manifest.schema, "chengju.project")
-  assert.equal(manifest.schemaVersion, 2)
+  assert.equal(manifest.schemaVersion, 3)
   assert.deepEqual(manifest.project, { id: "p1", title: "测试剧" })
   assert.equal(manifest.exportedAt, 123)
   const pageSource = fs.readFileSync("app/page.tsx", "utf8")

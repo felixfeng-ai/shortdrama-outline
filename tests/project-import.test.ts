@@ -154,7 +154,7 @@ test("IMPORT-V2.5 页面接入 ZIP 解析、项目导入、本地 prefers 与参
   const client = fs.readFileSync("lib/assets/api.ts", "utf8")
 
   assert.ok(page.includes("readStoreZip(file)"))
-  assert.ok(page.includes("parseProjectPackage(raw)"))
+  assert.ok(page.includes("readProjectPackage(raw)"))
   assert.ok(page.includes("importProjectPackage(form)"))
   assert.ok(page.includes("chengju:brief:"))
   assert.ok(page.includes("chengju:look:"))
