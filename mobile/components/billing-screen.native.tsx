@@ -243,7 +243,14 @@ export default function BillingScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+  },
   hero: { padding: spacing.md, gap: spacing.xs },
   title: { color: colors.text, fontSize: type.title, fontWeight: '600' },
   products: { gap: spacing.sm },

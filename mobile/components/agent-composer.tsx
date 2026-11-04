@@ -279,6 +279,9 @@ export function AgentComposer({
 
 const styles = StyleSheet.create({
   wrap: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     backgroundColor: colors.canvas,
     paddingHorizontal: spacing.sm,
     paddingTop: spacing.xs,

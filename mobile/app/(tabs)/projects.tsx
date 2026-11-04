@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -33,8 +34,11 @@ import {
 } from '@/components/ui';
 import { completionPercent } from '@/lib/app-data';
 import { colors, fonts, spacing, type } from '@/constants/tokens';
+import { useAuth } from '@/lib/auth-store';
+import { createProjectReviewLink } from '@/lib/share-api';
 import { useWorkspace } from '@/lib/workspace-store';
 import { readPickedProjectPackage } from '@/lib/project-package';
+import { workspaceApiBaseUrl } from '@/lib/workspace-api';
 
 export default function ProjectsScreen() {
   const {
@@ -45,11 +49,13 @@ export default function ProjectsScreen() {
     loadSampleProject,
     importProject,
   } = useWorkspace();
+  const { authorizedFetch } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [projectTitle, setProjectTitle] = useState('');
   const [busyAction, setBusyAction] = useState<'create' | 'sample' | 'import' | null>(null);
   const [notice, setNotice] = useState('');
   const [actionError, setActionError] = useState('');
+  const [sharing, setSharing] = useState(false);
   const current = data.activeProject;
   const projects = data.projects;
   const hero = data.hero;
@@ -120,6 +126,30 @@ export default function ProjectsScreen() {
     }
   }
 
+  async function shareReviewLink() {
+    if (!current || sharing) return;
+    setSharing(true);
+    setActionError('');
+    setNotice('');
+    try {
+      const link = await createProjectReviewLink(
+        workspaceApiBaseUrl,
+        current.id,
+        authorizedFetch,
+      );
+      await Share.share({
+        title: `${current.title} · 只读审阅`,
+        message: `查看《${current.title}》的只读审阅：${link.url}`,
+        url: link.url,
+      });
+      setNotice('只读审阅链接已生成，7 天后失效。再次生成会撤销旧链接。');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '审阅链接生成失败');
+    } finally {
+      setSharing(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenFade>
@@ -184,6 +214,12 @@ export default function ProjectsScreen() {
                   </Pressable>
                 </View>
               </View>
+              <SecondaryButton
+                label={sharing ? '正在生成审阅链接…' : '分享只读审阅'}
+                icon="share-2"
+                disabled={sharing}
+                onPress={() => void shareReviewLink()}
+              />
             </Panel>
           ) : (
             <Panel elevated style={styles.emptyCard}>
@@ -368,6 +404,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
     gap: spacing.md,

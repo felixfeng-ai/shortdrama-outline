@@ -291,6 +291,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
     gap: spacing.md,

@@ -405,6 +405,9 @@ const styles = StyleSheet.create({
     color: colors.actionInk,
   },
   content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
     gap: spacing.md,

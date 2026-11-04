@@ -4,12 +4,12 @@
     "slug": "veyaframe",
     "version": "1.0.0",
     "description": "面向短剧与漫剧创作者的 AI 创作、分镜与审片 Agent。",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "veyaframe",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "work.chenju.veyaframe"
     },
     "android": {

@@ -32,19 +32,38 @@ async function writeRaw(value: string | null): Promise<void> {
 export function parseWorkspaceCache(value: string | null): WorkspaceCache | null {
   if (!value) return null;
   try {
-    const parsed = JSON.parse(value) as WorkspaceCache;
-    if (!parsed || typeof parsed !== 'object' || !parsed.data || !Array.isArray(parsed.data.projects)) {
-      return null;
-    }
-    return parsed;
+    const parsed = JSON.parse(value) as WorkspaceCache | { entries?: WorkspaceCache[] };
+    const entries = 'entries' in parsed && Array.isArray(parsed.entries)
+      ? parsed.entries
+      : [parsed as WorkspaceCache];
+    return entries
+      .filter((entry) => entry && typeof entry === 'object' && entry.data && Array.isArray(entry.data.projects))
+      .sort((a, b) => b.savedAt - a.savedAt)[0] ?? null;
   } catch {
     return null;
   }
 }
 
-export async function loadWorkspaceCache(): Promise<WorkspaceCache | null> {
+function parseAll(value: string | null): WorkspaceCache[] {
+  if (!value) return [];
   try {
-    return parseWorkspaceCache(await readRaw());
+    const parsed = JSON.parse(value) as WorkspaceCache | { entries?: WorkspaceCache[] };
+    const entries = 'entries' in parsed && Array.isArray(parsed.entries)
+      ? parsed.entries
+      : [parsed as WorkspaceCache];
+    return entries.filter(
+      (entry) => entry && typeof entry === 'object' && entry.data && Array.isArray(entry.data.projects),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export async function loadWorkspaceCache(projectId?: string | null): Promise<WorkspaceCache | null> {
+  try {
+    const entries = parseAll(await readRaw());
+    if (projectId) return entries.find((entry) => entry.projectId === projectId) ?? null;
+    return entries.sort((a, b) => b.savedAt - a.savedAt)[0] ?? null;
   } catch {
     return null;
   }
@@ -55,11 +74,13 @@ export async function saveWorkspaceCache(
   data: WorkspaceData,
 ): Promise<void> {
   try {
-    await writeRaw(JSON.stringify({
+    const current = parseAll(await readRaw());
+    const next = [{
       projectId,
       savedAt: Date.now(),
       data,
-    } satisfies WorkspaceCache));
+    } satisfies WorkspaceCache, ...current.filter((entry) => entry.projectId !== projectId)].slice(0, 5);
+    await writeRaw(JSON.stringify({ version: 1, entries: next }));
   } catch {
     // Cache is an optimization and must never block the main workflow.
   }

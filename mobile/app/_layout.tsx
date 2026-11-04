@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NotificationBridge } from '@/components/notification-bridge';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AnalyticsBridge } from '@/components/analytics-bridge';
+import { TaskRecoveryBridge } from '@/components/task-recovery-bridge';
 import { colors } from '@/constants/tokens';
 import { AuthProvider } from '@/lib/auth-store';
 import { WorkspaceProvider } from '@/lib/workspace-store';
@@ -60,6 +61,7 @@ export default function RootLayout() {
             }}>
             <NotificationBridge />
             <AnalyticsBridge />
+            <TaskRecoveryBridge />
             <Stack
               screenOptions={{
                 headerShown: false,

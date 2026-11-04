@@ -67,7 +67,14 @@ export default function LegalScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+  },
   card: { padding: spacing.md, gap: spacing.xs },
   title: { color: colors.text, fontSize: type.body, fontWeight: '600' },
   factRow: {

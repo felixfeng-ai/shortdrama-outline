@@ -34,7 +34,7 @@ export default function BillingScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
-  content: { padding: spacing.md },
+  content: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: spacing.md },
   card: { padding: spacing.md, gap: spacing.sm },
   title: { color: colors.text, fontSize: type.title, fontWeight: '600' },
   icon: {

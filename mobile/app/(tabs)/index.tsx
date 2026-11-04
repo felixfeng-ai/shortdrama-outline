@@ -410,6 +410,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,

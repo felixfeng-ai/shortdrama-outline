@@ -136,7 +136,14 @@ export default function ReportScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+  },
   card: { padding: spacing.md, gap: spacing.sm },
   reasons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   reason: {

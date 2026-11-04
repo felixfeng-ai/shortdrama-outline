@@ -134,6 +134,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [authStatus, loadWorkspace, selectedProjectId, selectionReady, user?.id]);
 
   const selectProject = useCallback(async (projectId: string) => {
+    const cached = await loadWorkspaceCache(projectId);
+    if (cached) {
+      setData(cached.data);
+      setStatus('cached');
+      cachedProjectRef.current = projectId;
+    }
     await saveSelectedProjectId(projectId);
     setSelectedProjectId(projectId);
     loadWorkspace(projectId);

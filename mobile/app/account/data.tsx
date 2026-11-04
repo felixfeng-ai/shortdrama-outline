@@ -140,7 +140,14 @@ export default function AccountDataScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+  },
   card: { padding: spacing.md, gap: spacing.sm },
   dangerCard: { padding: spacing.md, gap: spacing.sm, borderColor: 'rgba(184,78,68,0.22)' },
   icon: {

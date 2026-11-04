@@ -431,6 +431,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     padding: spacing.md,
     paddingBottom: spacing.xl,
     gap: spacing.md,
