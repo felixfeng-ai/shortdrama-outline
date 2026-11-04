@@ -7,6 +7,10 @@ import {
 import { missingLockedTraits, visualTraitLabel } from "../assets/anchors.ts"
 import { shotsToCsv, shotsToWorkList } from "../assets/export.ts"
 import { buildJianyingDelivery } from "./jianying.ts"
+import {
+  buildAiExportDisclosure,
+  type AiExportDisclosure,
+} from "./ai-disclosure.ts"
 
 export const PLATFORM_EXPORT_TARGETS = ["general", "jimeng", "kling", "jianying", "json"] as const
 export type PlatformExportTarget = (typeof PLATFORM_EXPORT_TARGETS)[number]
@@ -70,6 +74,7 @@ export interface PlatformExportKit {
     title: string
     exportedAt: number
     shotCount: number
+    ai: AiExportDisclosure
     preflight: PlatformPreflight
     shots: PlatformExportShot[]
   }
@@ -262,10 +267,12 @@ function buildPlatformWorkList(
     target: PlatformExportTarget
     keyframePathByTargetId?: Record<string, string>
     preflight: PlatformPreflight
+    ai: AiExportDisclosure
   },
 ): string {
   if (input.target === "general") {
-    return shotsToWorkList(shots, `${input.title} · 通用执行清单`)
+    const general = shotsToWorkList(shots, `${input.title} · 通用执行清单`)
+    return general
   }
   const platform = platformLabel(input.target)
   const usage = input.target === "kling"
@@ -278,6 +285,8 @@ function buildPlatformWorkList(
   const head = [
     `${input.title} · ${platform}执行清单`,
     `目标：${platform} · 共 ${shots.length} 个镜头`,
+    `AI 生成标识：${input.ai.label} · 来源清单：${input.ai.provenancePath}`,
+    input.ai.notice,
     `预检：${input.preflight.blocking} 个阻断项，${input.preflight.warning} 个提醒项`,
     "",
     usage,
@@ -320,10 +329,12 @@ export function buildPlatformExportKit(input: {
   places?: VisualPlace[]
   exportedAt?: number
   keyframePathByTargetId?: Record<string, string>
+  ai?: AiExportDisclosure
 }): PlatformExportKit {
   const target = readPlatformExportTarget(input.target)
   const exportedAt = input.exportedAt ?? Date.now()
   const keyframePathByTargetId = input.keyframePathByTargetId ?? {}
+  const ai = input.ai ?? buildAiExportDisclosure()
   const preflight = preflightPlatformExport(input.shots, {
     target,
     visuals: input.visuals,
@@ -337,6 +348,7 @@ export function buildPlatformExportKit(input: {
     title: input.title,
     exportedAt,
     shotCount: input.shots.length,
+    ai,
     preflight,
     shots: wireShots,
   }
@@ -355,6 +367,7 @@ export function buildPlatformExportKit(input: {
         target,
         keyframePathByTargetId,
         preflight,
+        ai,
       }),
     },
     {

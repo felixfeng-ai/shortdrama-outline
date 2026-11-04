@@ -31,6 +31,7 @@ import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
 import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
 import CreativeAuditPanel from '@/components/CreativeAuditPanel'
+import CompliancePanel from '@/components/CompliancePanel'
 import TodoPanel from '@/components/TodoPanel'
 import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
 import { buildTodoList } from '@/lib/todo'
@@ -46,8 +47,10 @@ import { appendJudgment, readJudgments, type JudgmentEntry } from '@/lib/judgmen
 import { EMPTY_LOOK, isLookEmpty, lookSignature, readLook, type LookBook } from '@/lib/look'
 import { buildProjectStatus } from '@/lib/project-status'
 import { auditCreativeQuality } from '@/lib/creative-audit'
+import { auditCompliance } from '@/lib/compliance'
 import { STEP_COST } from '@/lib/model-pricing'
 import { forecastQuota } from '@/lib/quota-forecast'
+import { buildAiExportDisclosure } from '@/lib/export/ai-disclosure'
 import {
   buildVariantDecisionInput,
   type VariantChoiceOption,
@@ -509,6 +512,7 @@ export default function Home() {
   const [canon, setCanon] = useState<ProjectCanonDto>({ entities: [], facts: [], issues: [] })
   const [projectSkill, setProjectSkill] = useState<ProjectSkillBinding | null>(null)
   const [entityComments, setEntityComments] = useState<EntityComment[]>([])
+  const [projectMaterials, setProjectMaterials] = useState<ProjectMaterial[]>([])
   const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
   const [contextVersion, setContextVersion] = useState<number | null>(null)
   const [metaPanel, setMetaPanel] = useState<MetaPanel | null>(null)
@@ -528,6 +532,7 @@ export default function Home() {
       setContextVersion(null)
       setDecisions([])
       setCanon({ entities: [], facts: [], issues: [] })
+      setProjectMaterials([])
       setJudgments([])
       return
     }
@@ -564,16 +569,18 @@ export default function Home() {
 
     void (async () => {
       try {
-        const [server, decisionData, canonData, skillBinding, commentData] = await Promise.all([
+        const [server, decisionData, canonData, skillBinding, commentData, materialData] = await Promise.all([
           fetchProjectContext(projectId),
           fetchProjectDecisions(projectId),
           fetchProjectCanon(projectId),
           fetchProjectSkill(projectId).catch(() => null),
           fetchProjectComments(projectId).catch(() => []),
+          fetchProjectMaterials(projectId, false).catch(() => []),
         ])
         if (cancelled) return
         setProjectSkill(skillBinding)
         setEntityComments(commentData)
+        setProjectMaterials(materialData)
         setCanon(canonData)
         setDecisions(decisionData.decisions)
         if (decisionData.judgments.length > 0) {
@@ -2202,11 +2209,19 @@ export default function Home() {
         keyframeEntries.push(entry)
       }
 
+      const aiDisclosure = buildAiExportDisclosure({
+        assetCount: keyframeEntries.length,
+        providers: keyframeEntries.map((entry) => entry.providerId),
+      })
       addText("ai-provenance.json", JSON.stringify({
         schema: "chengju.ai-provenance",
         schemaVersion: 1,
         generatedAt: exportedAt,
-        notice: "本清单记录项目内 AI 生成图片的来源、模型与提示词，供审阅和追溯。",
+        label: aiDisclosure.label,
+        notice: aiDisclosure.notice,
+        provenancePath: aiDisclosure.provenancePath,
+        assetCount: aiDisclosure.assetCount,
+        providers: aiDisclosure.providers,
         assets: keyframeEntries.map((entry) => ({
           id: entry.id,
           targetType: entry.targetType,
@@ -2252,6 +2267,7 @@ export default function Home() {
           places,
           exportedAt,
           keyframePathByTargetId,
+          ai: aiDisclosure,
         })
         for (const file of platformKit.files) {
           addText(file.path, file.content, `platform-${file.kind}`)
@@ -2313,6 +2329,7 @@ export default function Home() {
         tasks,
         snapshots,
         materials: sourceMaterials,
+        ai: aiDisclosure,
         localization,
         files,
         warnings,
@@ -2326,6 +2343,7 @@ export default function Home() {
         mode === "backup"
           ? "完整备份包含全部候选图和快照，但不包含远端 Provider 任务 id。"
           : "交付包只包含已采用生成图；如需迁移全部候选，请导出完整备份。",
+        "本包包含 AI 生成或辅助生成内容；已写入「AI 生成」标识与 ai-provenance.json 来源清单。",
       )
       if (missing.length > 0) warnings.push(`有 ${missing.length} 项文件未能并入，详见 export-report.json。`)
 
@@ -2333,6 +2351,11 @@ export default function Home() {
         `# ${title}`,
         "",
         mode === "backup" ? "导出模式：完整备份" : "导出模式：交付包",
+        "",
+        "## AI 标识",
+        `标签：${aiDisclosure.label}`,
+        aiDisclosure.notice,
+        `来源清单：${aiDisclosure.provenancePath}`,
         "",
         "## 目录",
         "project.json：完整项目状态与文件索引",
@@ -2365,6 +2388,7 @@ export default function Home() {
         mode: manifest.mode,
         project: manifest.project,
         exportedAt,
+        ai: manifest.ai,
         files,
         report: "export-report.json",
       }, null, 2))
@@ -2658,6 +2682,17 @@ export default function Home() {
   const creativeAudit = useMemo(
     () => auditCreativeQuality({ brief, characters, episodes }),
     [brief, characters, episodes],
+  )
+  const complianceAudit = useMemo(
+    () => auditCompliance({
+      title: projects.find((item) => item.id === projectId)?.title ?? idea.trim().slice(0, 40),
+      idea,
+      characters,
+      episodes,
+      shots,
+      sourceMaterials: projectMaterials,
+    }),
+    [characters, episodes, idea, projectId, projectMaterials, projects, shots],
   )
 
   const agentState: AgentState = {
@@ -3293,12 +3328,17 @@ export default function Home() {
               canonIssueCount={canon.issues.length}
               logCount={judgments.length}
               auditCount={creativeAudit.counts.total}
+              complianceCount={complianceAudit.counts.total}
               active={metaPanel}
               onToggle={(panel) => setMetaPanel(metaPanel === panel ? null : panel)}
             />
             <CreativeAuditPanel
               open={metaPanel === 'audit'}
               result={creativeAudit}
+            />
+            <CompliancePanel
+              open={metaPanel === 'compliance'}
+              result={complianceAudit}
             />
             {projectId && !firstRun && (
               <EntityCommentsPanel

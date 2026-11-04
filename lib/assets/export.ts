@@ -23,6 +23,12 @@ export type {
   ProjectPackageManifest,
   ProjectPackageSettings,
 } from '../export/package'
+export type { AiExportDisclosure } from '../export/ai-disclosure'
+import {
+  AI_EXPORT_NOTICE,
+  AI_GENERATION_LABEL,
+  AI_PROVENANCE_PATH,
+} from '../export/ai-disclosure'
 
 /**
  * 项目包是用户带走的长期契约，不是内部临时数据结构。
@@ -79,6 +85,8 @@ export function shotsToWorkList(shots: Shot[], title = "分镜执行清单"): st
   const head = [
     title,
     `共 ${shots.length} 个镜头`,
+    `AI 生成标识：${AI_GENERATION_LABEL} · 来源清单：${AI_PROVENANCE_PATH}`,
+    AI_EXPORT_NOTICE,
     "",
     "用法：按顺序执行，每镜复制提示词到出图/出视频平台，按「参考图」一栏准备好对应图片。",
     "",
@@ -175,7 +183,7 @@ export function shotsToCsv(
   const head = [
     '镜号', '集号', '场景', '地点', '出场角色', '动作', '说话人', '台词',
     '景别', '运镜', '提示词', '参考图', '缺失参考', '接下一镜首帧',
-    '画面比例', '时长', '状态', '镜头实体 ID', '已采用图路径',
+    '画面比例', '时长', '状态', '镜头实体 ID', '已采用图路径', 'AI 生成标识',
   ]
   const rows = shots.map((s) => [
     s.shot, s.episode > 0 ? s.episode : '', s.scene, s.place, s.characters.join('、'), s.action, s.speaker, s.dialogue,
@@ -183,6 +191,7 @@ export function shotsToCsv(
     s.prompt, s.refImages.join(' | '), s.missingRefFor.join('、'),
     s.params.lastFrame ? '是' : '否', s.params.ratio, s.params.duration, s.status,
     s.entityId, options.keyframePathByTargetId?.[s.entityId] ?? '',
+    AI_GENERATION_LABEL,
   ].map(esc).join(','))
   return '\ufeff' + [head.map(esc).join(','), ...rows].join('\n') + '\n'
 }
@@ -269,6 +278,9 @@ export function buildStoryboardHtml(input: {
   .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #334155; }
   .warn { color: #b45309; background: #fef3c7; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
   .dim { color: #94a3b8; }
+  .ai-disclosure { margin: 18px 0 24px; padding: 12px 14px; border: 1px solid #d97706;
+         border-left-width: 4px; border-radius: 6px; background: #fffbeb; color: #78350f;
+         font-size: 13px; line-height: 1.7; }
   .thumb { display: block; width: 120px; height: 68px; object-fit: cover; border-radius: 4px; background: #e2e8f0; }
   footer { margin-top: 32px; color: #94a3b8; font-size: 12px; }
 </style>
@@ -276,6 +288,10 @@ export function buildStoryboardHtml(input: {
 <body>
   <h1>${esc(title)} · 分镜表</h1>
   <p class="meta">导出时间：${new Date().toISOString().slice(0, 19).replace('T', ' ')}　·　共 ${shots.length} 个镜头 / ${scenes.length} 场 / ${visuals.length} 个角色</p>
+  <aside class="ai-disclosure" data-ai-generated="true">
+    <strong>${AI_GENERATION_LABEL}</strong> · ${esc(AI_EXPORT_NOTICE)}
+    来源清单：<code>${AI_PROVENANCE_PATH}</code>
+  </aside>
 
   ${visuals.length ? `<h2>角色视觉锚点</h2><table><thead><tr><th>角色</th><th>英文锚点（逐镜复用）</th><th>采用图</th></tr></thead><tbody>${visualRows}</tbody></table>` : ''}
 
@@ -287,7 +303,7 @@ export function buildStoryboardHtml(input: {
 
   ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>首帧</th><th>镜</th><th>集号</th><th>场景</th><th>出场</th><th>动作</th><th>台词</th><th>景别</th><th>运镜</th><th>画幅 / 时长</th><th>状态</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
 
-  <footer>由「成剧」导出 —— 本文件不依赖任何外部资源，可离线打开。</footer>
+  <footer>由「成剧」导出 —— 本文件包含 AI 生成内容，不依赖任何外部资源，可离线打开。</footer>
 </body>
 </html>`
 }

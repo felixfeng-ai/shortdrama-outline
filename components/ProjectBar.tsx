@@ -183,6 +183,9 @@ export default function ProjectBar({
           <p className="mb-2 text-[10.5px] leading-relaxed text-ink-400">
             交付包带已采用图、预检和{platformLabel(exportTarget)}执行文件；完整备份保留全部版本、任务和历史候选。
           </p>
+          <p className="mb-2 text-[10.5px] leading-relaxed text-ink-400">
+            全部导出固定写入「AI 生成」标识与 AI 来源清单（ai-provenance.json），README、HTML、Markdown 和执行单中均可核对。
+          </p>
           <div className="project-export-actions flex flex-wrap gap-2">
           <button
             type="button"

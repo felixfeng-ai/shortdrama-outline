@@ -3,6 +3,7 @@ import {
   PROJECT_PACKAGE_SCHEMA_VERSION,
   type ProjectPackageManifest,
 } from "./package.ts"
+import { buildAiExportDisclosure } from "./ai-disclosure.ts"
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -32,8 +33,17 @@ export function parseProjectPackage(value: unknown): ProjectPackageManifest {
   if (manifest.materials !== undefined && !Array.isArray(manifest.materials)) {
     throw new Error("项目包原文素材格式不正确")
   }
+  if (manifest.ai !== undefined) {
+    const ai = record(manifest.ai)
+    if (ai.label !== "AI 生成" || ai.provenancePath !== "ai-provenance.json") {
+      throw new Error("项目包 AI 标识格式不正确")
+    }
+  }
   if (manifest.localization !== undefined && !record(manifest.localization)) {
     throw new Error("项目包本地化数据格式不正确")
   }
-  return manifest as unknown as ProjectPackageManifest
+  return {
+    ...manifest,
+    ai: manifest.ai ?? buildAiExportDisclosure(),
+  } as unknown as ProjectPackageManifest
 }

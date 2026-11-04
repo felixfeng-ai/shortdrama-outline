@@ -2,6 +2,10 @@ import type { GeneratedAsset } from "../generation/types.ts"
 import type { CreativeBrief } from "../brief.ts"
 import type { JudgmentEntry } from "../judgment-log.ts"
 import type { LookBook } from "../look.ts"
+import {
+  buildAiExportDisclosure,
+  type AiExportDisclosure,
+} from "./ai-disclosure.ts"
 
 export const PROJECT_PACKAGE_SCHEMA = "chengju.project" as const
 export const PROJECT_PACKAGE_SCHEMA_VERSION = 2 as const
@@ -64,6 +68,7 @@ export interface ProjectPackageManifest<
   tasks: TTask[]
   snapshots: TSnapshot[]
   materials: TMaterial[]
+  ai: AiExportDisclosure
   localization?: unknown
   files: ProjectExportFile[]
   reportPath: "export-report.json"
@@ -91,6 +96,7 @@ export function buildProjectPackageManifest<
   tasks?: TTask[]
   snapshots?: TSnapshot[]
   materials?: TMaterial[]
+  ai?: AiExportDisclosure
   localization?: unknown
   files?: ProjectExportFile[]
   warnings?: string[]
@@ -109,6 +115,7 @@ export function buildProjectPackageManifest<
     tasks: input.tasks ?? [],
     snapshots: input.snapshots ?? [],
     materials: input.materials ?? [],
+    ai: input.ai ?? buildAiExportDisclosure(),
     ...(input.localization === undefined ? {} : { localization: input.localization }),
     files: input.files ?? [],
     reportPath: "export-report.json",

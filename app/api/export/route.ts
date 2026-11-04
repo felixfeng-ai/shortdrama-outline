@@ -19,6 +19,7 @@ import { EMPTY_LOOK } from "@/lib/look"
 import { listGeneratedAssets, listGenerationTasks } from "@/lib/generation/repo"
 import { keyframeManifestEntry } from "@/lib/generation/export"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
+import { buildAiExportDisclosure } from "@/lib/export/ai-disclosure"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -64,6 +65,7 @@ export async function GET(req: Request) {
     const idea = latest.idea as { idea?: unknown; genre?: unknown } | undefined
     const episodes = Array.isArray(latest.episodes) ? latest.episodes as unknown[] : []
     const context = getProjectContext(db, projectId)
+    const generatedAssets = listGeneratedAssets(db, projectId)
     const manifest = buildProjectPackageManifest({
       project: {
         id: project.id,
@@ -99,11 +101,15 @@ export async function GET(req: Request) {
         shots: latest.shots ?? [],
       },
       refs: listRefs(db, projectId),
-      keyframes: listGeneratedAssets(db, projectId).map((asset) =>
+      keyframes: generatedAssets.map((asset) =>
         keyframeManifestEntry(asset, { archivePath: null, included: false })),
       tasks: listGenerationTasks(db, projectId),
       snapshots,
       materials: listProjectMaterials(db, projectId),
+      ai: buildAiExportDisclosure({
+        assetCount: generatedAssets.length,
+        providers: generatedAssets.map((asset) => asset.providerId),
+      }),
       files: [],
       warnings: [
         "服务端清单不含本地参考图像素、浏览器本地偏好和图片文件；完整迁移请使用 Web 端“完整备份”。",

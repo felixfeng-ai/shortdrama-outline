@@ -1,6 +1,11 @@
 // 大纲导出：把三步结果拼成 Markdown，供「复制全部」和「导出 .md」使用。
 
 import type { Act, Character, Episode } from './types'
+import {
+  AI_EXPORT_NOTICE,
+  AI_GENERATION_LABEL,
+  AI_PROVENANCE_PATH,
+} from './export/ai-disclosure'
 
 /** 拼装完整大纲的 Markdown 文本 */
 export function buildMarkdown(input: {
@@ -10,7 +15,16 @@ export function buildMarkdown(input: {
   episodes: Episode[]
 }): string {
   const { idea, characters, acts, episodes } = input
-  const lines: string[] = ['# 成剧 · 短剧大纲', '', `> 故事想法：${idea}`, '']
+  const lines: string[] = [
+    '# 成剧 · 短剧大纲',
+    '',
+    `> **AI 生成标识：${AI_GENERATION_LABEL}**`,
+    `> ${AI_EXPORT_NOTICE}`,
+    `> 来源清单：\`${AI_PROVENANCE_PATH}\``,
+    '',
+    `> 故事想法：${idea}`,
+    '',
+  ]
 
   if (characters.length > 0) {
     lines.push('## 一、核心人物', '')
