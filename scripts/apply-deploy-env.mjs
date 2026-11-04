@@ -13,6 +13,9 @@ const current = fs.readFileSync(target, "utf8")
 const next = applyEnvValues(current, {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   AUTH_EMAIL_FROM: process.env.AUTH_EMAIL_FROM,
+  WEB_PUSH_PUBLIC_KEY: process.env.WEB_PUSH_PUBLIC_KEY,
+  WEB_PUSH_PRIVATE_KEY: process.env.WEB_PUSH_PRIVATE_KEY,
+  WEB_PUSH_SUBJECT: process.env.WEB_PUSH_SUBJECT,
   AUTH_ALLOW_DEV_CODE: process.env.AUTH_ALLOW_DEV_CODE,
 })
 

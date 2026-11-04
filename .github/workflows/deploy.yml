@@ -40,12 +40,15 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           AUTH_EMAIL_FROM: ${{ secrets.AUTH_EMAIL_FROM }}
+          WEB_PUSH_PUBLIC_KEY: ${{ secrets.WEB_PUSH_PUBLIC_KEY }}
+          WEB_PUSH_PRIVATE_KEY: ${{ secrets.WEB_PUSH_PRIVATE_KEY }}
+          WEB_PUSH_SUBJECT: ${{ secrets.WEB_PUSH_SUBJECT }}
           AUTH_ALLOW_DEV_CODE: "0"
         with:
           host: ${{ secrets.CHENGJU_HOST }}
           username: ubuntu
           key: ${{ secrets.CHENGJU_SSH_KEY }}
-          envs: RESEND_API_KEY,AUTH_EMAIL_FROM,AUTH_ALLOW_DEV_CODE
+          envs: RESEND_API_KEY,AUTH_EMAIL_FROM,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,AUTH_ALLOW_DEV_CODE
           script: |
             set -e
             bash /opt/chengju/deploy/cicd-deploy.sh

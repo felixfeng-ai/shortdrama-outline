@@ -49,3 +49,17 @@ test("READY3 CI 与部署脚本都具备发布门禁", () => {
   assert.match(deploy, /npm run check:prod/)
   assert.match(pkg, /"check:prod"/)
 })
+
+test("READY4 部署链可注入 Web Push VAPID 配置", () => {
+  const workflow = fs.readFileSync(".github/workflows/deploy.yml", "utf8")
+  const apply = fs.readFileSync("scripts/apply-deploy-env.mjs", "utf8")
+
+  for (const key of [
+    "WEB_PUSH_PUBLIC_KEY",
+    "WEB_PUSH_PRIVATE_KEY",
+    "WEB_PUSH_SUBJECT",
+  ]) {
+    assert.ok(workflow.includes(key), `workflow 缺少 ${key}`)
+    assert.ok(apply.includes(key), `部署环境注入缺少 ${key}`)
+  }
+})
