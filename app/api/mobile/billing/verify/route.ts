@@ -6,6 +6,7 @@ import { currentAuthUser } from "@/lib/auth/request"
 import { AuthError } from "@/lib/auth/service"
 import {
   readBillingPurchase,
+  grantBillingEntitlement,
   recordBillingPurchase,
 } from "@/lib/billing/repo"
 
@@ -42,6 +43,13 @@ export async function POST(req: Request) {
       entitlement = result?.entitlement ?? {}
     }
     const transaction = recordBillingPurchase(db, user.id, purchase, status, entitlement)
+    if (transaction.status === "verified") {
+      const units = Number(entitlement.units)
+      const expiresAt = Number(entitlement.expiresAt)
+      if (Number.isFinite(units) && Number.isFinite(expiresAt)) {
+        grantBillingEntitlement(db, user.id, transaction.id, units, expiresAt)
+      }
+    }
     return NextResponse.json(ok({
       id: transaction.id,
       status: transaction.status,

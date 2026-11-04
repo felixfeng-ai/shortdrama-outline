@@ -9,10 +9,15 @@ import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { readLook } from "@/lib/look"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
+  mergeGenerationReferences,
+  readClientReferenceImages,
+} from "@/lib/generation/client-references"
+import {
   completeGenerationTask,
   cancelGenerationTask,
   createGenerationTask,
   failGenerationTask,
+  getGenerationTask,
   listGeneratedAssets,
   listGenerationTasks,
   markGenerationTaskRunning,
@@ -156,9 +161,43 @@ export async function PATCH(req: Request) {
   try {
     const body = await req.json().catch(() => null)
     const projectId = requiredString(body?.projectId, "缺少 projectId")
-    const assetId = requiredString(body?.assetId, "缺少 assetId")
     const db = getDbForRequest()
     assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
+    const action = body?.action === "cancel" || body?.action === "retry"
+      ? body.action
+      : "select"
+    if (action === "cancel" || action === "retry") {
+      const taskId = requiredString(body?.taskId, "缺少 taskId")
+      const task = getGenerationTask(db, taskId)
+      if (!task || task.projectId !== projectId) throw new InputError("生成任务不存在")
+      if (action === "cancel") {
+        const canceled = task.status === "queued" || task.status === "running"
+          ? cancelGenerationTask(db, task.id, "已在 App 中停止")
+          : task
+        return NextResponse.json(ok({ task: canceled }))
+      }
+      if (task.status !== "failed" && task.status !== "canceled") {
+        throw new InputError("只有失败或已停止的任务可以重试")
+      }
+      const headers = new Headers(req.headers)
+      headers.delete("content-length")
+      return POST(new Request(req.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          projectId,
+          targetType: task.targetType,
+          targetId: task.targetId,
+          prompt: task.prompt,
+          aspect: task.targetType === "place"
+            ? "landscape"
+            : task.targetType === "character"
+              ? "portrait"
+              : "vertical",
+        }),
+      }))
+    }
+    const assetId = requiredString(body?.assetId, "缺少 assetId")
     const asset = selectGeneratedAsset(db, projectId, assetId)
     return NextResponse.json(ok({ asset }))
   } catch (error) {
@@ -187,6 +226,7 @@ export async function POST(req: Request) {
     const targetId = requiredString(body?.targetId, "缺少生成目标 id")
     const prompt = requiredString(body?.prompt, "缺少图像提示词")
     const autoSelect = body?.autoSelect !== false
+    const clientReferences = readClientReferenceImages(body?.referenceImages)
     const look = readLook(body?.look)
     const imageConfig = getAliyunImageConfig()
     const seed = projectImageSeed(projectId)
@@ -196,12 +236,22 @@ export async function POST(req: Request) {
       throw new InputError("当前角色、地点或镜头还没有保存到项目，请先生成对应步骤")
     }
     const references = loadReferenceImages(db, projectId, type, targetId)
-    const generationModel = references.images.length > 0
+    const generationReferences = mergeGenerationReferences(references.images, clientReferences)
+    const generationModel = generationReferences.length > 0
       ? imageConfig.editModel
       : imageConfig.model
     const effectivePrompt = withGenerationReferenceInstructions(
       withImageStyle(prompt, look),
-      references.candidates,
+      clientReferences.length > 0
+        ? [
+            ...references.candidates,
+            ...clientReferences.map((_, index) => ({
+              asset: { id: `client-${index + 1}` },
+              role: "style" as const,
+              label: `用户参考图 ${index + 1}`,
+            })),
+          ].slice(0, 3)
+        : references.candidates,
     )
 
     const task = createGenerationTask(db, {
@@ -220,7 +270,7 @@ export async function POST(req: Request) {
       prompt: effectivePrompt,
       aspect: body?.aspect,
       seed,
-      referenceImages: references.images.length > 0 ? references.images : undefined,
+      referenceImages: generationReferences.length > 0 ? generationReferences : undefined,
       signal: req.signal,
     })
     const file = writeGeneratedImage(projectId, task.id, image.bytes, image.mime)
@@ -246,7 +296,7 @@ export async function POST(req: Request) {
     return NextResponse.json(ok({
       task: completed,
       asset: autoSelect ? selectGeneratedAsset(db, projectId, asset.id) : asset,
-      referenceCount: references.images.length,
+      referenceCount: generationReferences.length,
     }))
   } catch (error) {
     const message = error instanceof Error ? error.message : "生成失败，请重试"

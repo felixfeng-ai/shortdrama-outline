@@ -19,6 +19,11 @@ import {
   todayKey,
   QuotaError,
 } from "../lib/quota.ts"
+import {
+  grantBillingEntitlement,
+  readBillingPurchase,
+  recordBillingPurchase,
+} from "../lib/billing/repo.ts"
 
 function memDb() {
   return openDb(":memory:")
@@ -210,4 +215,66 @@ test("Q15 重复打开同一个库不报错（建表幂等）", () => {
   // openDb 内部会再跑一次 ensureQuotaSchema，不能因为表已存在而抛
   assert.doesNotThrow(() => db.exec("CREATE TABLE IF NOT EXISTS usage_log (id INTEGER PRIMARY KEY)"))
   assert.equal(getQuota(db, "ip-idem").used, 1)
+})
+
+function seedBillingTransaction(db: ReturnType<typeof memDb>, owner: string, transactionId: string) {
+  return recordBillingPurchase(db, owner, readBillingPurchase({
+    platform: "ios",
+    productId: "chengju_creator_monthly",
+    transactionId,
+    purchaseToken: `token-${transactionId}`,
+  }), "verified")
+}
+
+test("Q16 已核验且未过期的订阅权益计入账号额度", () => {
+  const db = memDb()
+  const now = Date.parse("2026-11-04T04:00:00Z")
+  const transaction = seedBillingTransaction(db, "user_quota", "tx-quota")
+
+  grantBillingEntitlement(
+    db,
+    "user_quota",
+    transaction.id,
+    30,
+    now + 30 * 24 * 60 * 60_000,
+    now,
+  )
+
+  const quota = getQuota(db, "user_quota", now)
+  assert.equal(quota.limit, DAILY_UNITS_PER_IDENTITY + 30)
+  assert.equal(quota.remaining, DAILY_UNITS_PER_IDENTITY + 30)
+  assert.equal(getQuota(db, "someone_else", now).limit, DAILY_UNITS_PER_IDENTITY)
+})
+
+test("Q17 同一订阅交易重复到账只发放一次", () => {
+  const db = memDb()
+  const now = Date.parse("2026-11-04T04:00:00Z")
+  const transaction = seedBillingTransaction(db, "user_repeat", "tx-repeat")
+
+  grantBillingEntitlement(db, "user_repeat", transaction.id, 20, now + 60_000, now)
+  grantBillingEntitlement(db, "user_repeat", transaction.id, 20, now + 60_000, now)
+
+  assert.equal(getQuota(db, "user_repeat", now).limit, DAILY_UNITS_PER_IDENTITY + 20)
+  assert.equal(
+    (db.prepare("SELECT COUNT(*) AS n FROM billing_entitlements WHERE owner_id = ?")
+      .get("user_repeat") as { n: number }).n,
+    1,
+  )
+})
+
+test("Q18 过期权益和无效权益不增加额度", () => {
+  const db = memDb()
+  const now = Date.parse("2026-11-04T04:00:00Z")
+  const transaction = seedBillingTransaction(db, "user_expired", "tx-expired")
+
+  assert.equal(getQuota(db, "user_expired", now).limit, DAILY_UNITS_PER_IDENTITY)
+  assert.throws(
+    () => grantBillingEntitlement(db, "user_expired", transaction.id, 0, now + 60_000, now),
+    /单位/,
+  )
+  assert.throws(
+    () => grantBillingEntitlement(db, "user_expired", transaction.id, 20, now, now),
+    /过期/,
+  )
+  assert.equal(getQuota(db, "user_expired", now).limit, DAILY_UNITS_PER_IDENTITY)
 })

@@ -6,6 +6,8 @@ import type {
 } from './assets/types.ts'
 import type { Project } from './assets/repo.ts'
 import { generationTaskTargetLabel } from './generation/task-view.ts'
+import { buildCharacterKeyframePrompt } from './generation/prompt.ts'
+import { buildPlaceImagePrompt } from './assets/anchors.ts'
 import type {
   GenerationStatus,
   GenerationTargetType,
@@ -60,6 +62,14 @@ export interface MobileContextTask {
   finishedAt: number | null
 }
 
+export interface MobileGenerationTarget {
+  targetType: 'character' | 'place' | 'shot'
+  targetId: string
+  targetLabel: string
+  prompt: string
+  aspect: 'portrait' | 'landscape' | 'vertical'
+}
+
 export interface MobileContextData {
   activeProject: MobileContextProject | null
   projects: MobileContextProject[]
@@ -67,6 +77,7 @@ export interface MobileContextData {
   hero: MobileContextHero | null
   quota: MobileContextQuota
   tasks: MobileContextTask[]
+  generationTargets: MobileGenerationTarget[]
 }
 
 type SnapshotPayloads = Partial<Record<ArtifactKind, unknown>>
@@ -186,7 +197,15 @@ export function buildMobileContext(input: {
 }): MobileContextData {
   const { projects, snapshots, quota, now } = input
   if (projects.length === 0) {
-    return { activeProject: null, projects: [], totalProjects: 0, hero: null, quota, tasks: [] }
+    return {
+      activeProject: null,
+      projects: [],
+      totalProjects: 0,
+      hero: null,
+      quota,
+      tasks: [],
+      generationTargets: [],
+    }
   }
 
   const active = input.activeProjectId
@@ -230,6 +249,34 @@ export function buildMobileContext(input: {
       startedAt: task.startedAt,
       finishedAt: task.finishedAt,
     }))
+  const generationTargets: MobileGenerationTarget[] = [
+    ...readArray(snapshots.visualCharacters).map((item) => ({
+      targetType: 'character' as const,
+      targetId: readText(item.entityId) || readText(item.id),
+      targetLabel: `角色 · ${readText(item.name) || '未命名角色'}`,
+      prompt: buildCharacterKeyframePrompt(item as unknown as VisualCharacter),
+      aspect: 'portrait' as const,
+    })),
+    ...readArray(snapshots.visualPlaces).map((item) => ({
+      targetType: 'place' as const,
+      targetId: readText(item.id) || readText(item.name),
+      targetLabel: `地点 · ${readText(item.name) || '未命名地点'}`,
+      prompt: buildPlaceImagePrompt(item as unknown as VisualPlace),
+      aspect: 'landscape' as const,
+    })),
+    ...readArray(snapshots.shots).map((item) => {
+      const episode = readNumber(item.episode)
+      const shot = readNumber(item.shot)
+      const scene = readText(item.scene) || '未命名场景'
+      return {
+        targetType: 'shot' as const,
+        targetId: readText(item.entityId) || readText(item.id),
+        targetLabel: `${episode > 0 ? `第 ${episode} 集 · ` : ''}第 ${shot} 镜 · ${scene}`,
+        prompt: readText(item.prompt) || readText(item.action),
+        aspect: 'vertical' as const,
+      }
+    }),
+  ].filter((target) => target.targetId && target.prompt.trim())
 
   return {
     activeProject,
@@ -240,5 +287,6 @@ export function buildMobileContext(input: {
     hero,
     quota,
     tasks,
+    generationTargets,
   }
 }

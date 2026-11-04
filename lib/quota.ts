@@ -47,6 +47,17 @@ export function ensureQuotaSchema(db: DatabaseSync): void {
     );
     CREATE INDEX IF NOT EXISTS idx_usage_identity_day ON usage_log(identity, day);
     CREATE INDEX IF NOT EXISTS idx_usage_day ON usage_log(day);
+    CREATE TABLE IF NOT EXISTS billing_entitlements (
+      id             TEXT PRIMARY KEY,
+      owner_id       TEXT NOT NULL,
+      transaction_id TEXT NOT NULL UNIQUE REFERENCES billing_transactions(id) ON DELETE CASCADE,
+      units          INTEGER NOT NULL,
+      starts_at      INTEGER NOT NULL,
+      expires_at     INTEGER NOT NULL,
+      created_at     INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_billing_entitlements_owner
+      ON billing_entitlements(owner_id, expires_at);
   `)
 }
 
@@ -96,13 +107,19 @@ export function getQuota(
   const all = db.prepare(
     "SELECT COALESCE(SUM(units), 0) AS u FROM usage_log WHERE day = ?",
   ).get(day) as { u: number }
+  const grants = db.prepare(
+    `SELECT COALESCE(SUM(units), 0) AS u
+     FROM billing_entitlements
+     WHERE owner_id = ? AND starts_at <= ? AND expires_at > ?`,
+  ).get(identity, now, now) as { u: number }
+  const limit = DAILY_UNITS_PER_IDENTITY + Number(grants.u || 0)
 
   return {
     used: mine.u,
-    limit: DAILY_UNITS_PER_IDENTITY,
+    limit,
     globalUsed: all.u,
     globalLimit: DAILY_UNITS_GLOBAL,
-    remaining: Math.max(0, DAILY_UNITS_PER_IDENTITY - mine.u),
+    remaining: Math.max(0, limit - mine.u),
   }
 }
 

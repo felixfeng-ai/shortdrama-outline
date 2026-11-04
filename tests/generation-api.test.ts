@@ -175,6 +175,72 @@ test("G2.1-G2.2 POST 完整走通 queued→running→succeeded，并且只发送
   }
 })
 
+test("客户端参考图实际进入多图编辑请求并返回真实任务", async () => {
+  __resetDbForTests(":memory:")
+  const db = getDbForRequest()
+  const project = createProject(db, "参考图生成", OWNER_A)
+  createSnapshot(db, {
+    projectId: project.id,
+    kind: "shots",
+    payload: [{ id: "shot-ref-1", entityId: "shot-ref-entity", prompt: "rainy street" }],
+  })
+
+  const originalFetch = globalThis.fetch
+  let providerBody: Record<string, unknown> | null = null
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input)
+    if (url.endsWith("/multimodal-generation/generation")) {
+      providerBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>
+      return Response.json({
+        output: {
+          choices: [{
+            finish_reason: "stop",
+            message: { content: [{ image: "https://cdn.example.com/reference-result.png" }] },
+          }],
+        },
+      })
+    }
+    return new Response(PNG, { status: 200, headers: { "content-type": "image/png" } })
+  }) as typeof fetch
+  process.env.ALIYUN_DASHSCOPE_API_KEY = "server-test-key"
+  process.env.ALIYUN_IMAGE_MODEL = "wanx2.1-t2i-turbo"
+  process.env.ALIYUN_IMAGE_EDIT_MODEL = "qwen-image-2.0-pro"
+
+  try {
+    const response = await postGenerations(new Request("http://localhost/api/generations", {
+      method: "POST",
+      headers: headers(OWNER_A, true),
+      body: JSON.stringify({
+        projectId: project.id,
+        targetType: "shot",
+        targetId: "shot-ref-entity",
+        prompt: "rainy street",
+        referenceImages: [{
+          base64: Buffer.from(PNG).toString("base64"),
+          mime: "image/png",
+        }],
+      }),
+    }))
+    const payload = await response.json()
+
+    assert.equal(response.status, 200)
+    assert.equal(payload.data.referenceCount, 1)
+    assert.equal(payload.data.task.status, "succeeded")
+    assert.ok(providerBody)
+    assert.equal((providerBody as Record<string, unknown>).model, "qwen-image-2.0-pro")
+    const input = (providerBody as Record<string, unknown>).input as {
+      messages: Array<{ content: Array<{ image?: string; text?: string }> }>
+    }
+    assert.match(input.messages[0].content[0].image ?? "", /^data:image\/png;base64,/)
+    assert.match(input.messages[0].content.at(-1)?.text ?? "", /用户参考图 1/)
+  } finally {
+    globalThis.fetch = originalFetch
+    delete process.env.ALIYUN_DASHSCOPE_API_KEY
+    delete process.env.ALIYUN_IMAGE_MODEL
+    delete process.env.ALIYUN_IMAGE_EDIT_MODEL
+  }
+})
+
 test("P2c 删除项目同时清理关键帧文件，不留下孤儿像素", async () => {
   const { project, asset } = seedAsset()
   const file = resolveGeneratedStoragePath(asset.storageKey)

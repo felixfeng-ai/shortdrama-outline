@@ -9,6 +9,11 @@ import {
   saveGeneratedAsset,
 } from "../lib/generation/repo.ts"
 import { buildAccountExport, deleteAccountData } from "../lib/account/service.ts"
+import {
+  grantBillingEntitlement,
+  readBillingPurchase,
+  recordBillingPurchase,
+} from "../lib/billing/repo.ts"
 
 const USER = "user_test_account"
 
@@ -64,11 +69,20 @@ test("账号导出包含项目、快照、任务和资产元数据", () => {
 
 test("注销账号级联删除项目、任务、Token 和用户", () => {
   const { db, project } = seedUser()
+  const transaction = recordBillingPurchase(db, USER, readBillingPurchase({
+    platform: "ios",
+    productId: "chengju_creator_monthly",
+    transactionId: "account-delete-billing",
+    purchaseToken: "account-delete-token",
+  }), "verified")
+  grantBillingEntitlement(db, USER, transaction.id, 20, Date.now() + 60_000)
   const result = deleteAccountData(db, USER)
   assert.equal(result.deleted, true)
   assert.equal(result.projects, 1)
   assert.equal((db.prepare("SELECT COUNT(*) AS n FROM projects WHERE id = ?").get(project.id) as { n: number }).n, 0)
   assert.equal((db.prepare("SELECT COUNT(*) AS n FROM generation_tasks WHERE project_id = ?").get(project.id) as { n: number }).n, 0)
   assert.equal((db.prepare("SELECT COUNT(*) AS n FROM mobile_push_tokens WHERE owner_id = ?").get(USER) as { n: number }).n, 0)
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM billing_transactions WHERE owner_id = ?").get(USER) as { n: number }).n, 0)
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM billing_entitlements WHERE owner_id = ?").get(USER) as { n: number }).n, 0)
   assert.equal((db.prepare("SELECT COUNT(*) AS n FROM users WHERE id = ?").get(USER) as { n: number }).n, 0)
 })

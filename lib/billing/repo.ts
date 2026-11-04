@@ -87,3 +87,26 @@ export function recordBillingPurchase(
   if (!row) throw new Error("购买交易保存失败")
   return rowToTransaction(row)
 }
+
+export function grantBillingEntitlement(
+  db: DatabaseSync,
+  ownerId: string,
+  transactionId: string,
+  units: number,
+  expiresAt: number,
+  now = Date.now(),
+): void {
+  const safeUnits = Math.floor(units)
+  if (!Number.isFinite(safeUnits) || safeUnits <= 0 || safeUnits > 100_000) {
+    throw new Error("订阅权益单位不正确")
+  }
+  if (!Number.isFinite(expiresAt) || expiresAt <= now) {
+    throw new Error("订阅权益已过期")
+  }
+  db.prepare(
+    `INSERT INTO billing_entitlements
+      (id, owner_id, transaction_id, units, starts_at, expires_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(transaction_id) DO NOTHING`,
+  ).run(randomUUID(), ownerId, transactionId, safeUnits, now, expiresAt, now)
+}

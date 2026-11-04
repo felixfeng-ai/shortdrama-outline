@@ -120,3 +120,58 @@ test('mobile context returns real generation tasks with readable project targets
   assert.equal(context.tasks[0].status, 'failed')
   assert.equal(context.tasks[0].error, 'Provider 超时')
 })
+
+test('mobile context exposes generation targets from current snapshots', () => {
+  const context = buildMobileContext({
+    projects,
+    snapshots: {
+      visualCharacters: [{
+        id: 'visual-1',
+        entityId: 'char-1',
+        name: '林昭',
+        age: '28 岁',
+        face: '窄脸',
+        hair: '短发',
+        marks: '',
+        wardrobe: '风衣',
+        props: '',
+        anchor: 'LIN ZHAO: 28, narrow face',
+      }],
+      visualPlaces: [{
+        id: 'place-1',
+        name: '码头',
+        space: '旧码头',
+        props: '木箱',
+        lighting: '夜雨',
+        grade: '冷蓝',
+        anchor: 'OLD PIER: rainy night',
+      }],
+      shots: [{
+        id: 'shot-1',
+        entityId: 'shot-entity-1',
+        episode: 2,
+        shot: 3,
+        scene: '码头',
+        characters: ['林昭'],
+        action: '回头',
+        speaker: '',
+        dialogue: '',
+        place: '码头',
+        shotSize: '近景',
+        camera: '固定',
+        prompt: 'close shot, rain',
+        refImages: [],
+        missingRefFor: [],
+        params: { ratio: '9:16', duration: 10, lastFrame: false },
+        status: 'todo',
+      }],
+    },
+    quota,
+    now: 3000,
+    activeProjectId: 'p1',
+  })
+  assert.equal(context.generationTargets.length, 3)
+  assert.equal(context.generationTargets[0].targetType, 'character')
+  assert.match(context.generationTargets[1].prompt, /OLD PIER/)
+  assert.equal(context.generationTargets[2].targetLabel, '第 2 集 · 第 3 镜 · 码头')
+})

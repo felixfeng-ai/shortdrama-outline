@@ -119,7 +119,7 @@ export function selectGenerationReferenceCandidates(input: {
 
 export function withGenerationReferenceInstructions(
   prompt: string,
-  candidates: GenerationReferenceCandidate[],
+  candidates: Array<Pick<GenerationReferenceCandidate, "label" | "role">>,
 ): string {
   if (candidates.length === 0) return prompt
   if (prompt.includes("PROJECT KEYFRAME REFERENCES（")) return prompt.trimEnd()
