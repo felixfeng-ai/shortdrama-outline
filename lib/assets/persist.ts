@@ -64,11 +64,12 @@ export function persistEditedArtifact(
   projectId: string,
   kind: ArtifactKind,
   payload: unknown,
+  branchId = "",
 ): Snapshot {
   const parents: string[] = []
   for (const upstream of PARENT_KINDS[kind]) {
     const latest = latestSnapshot(db, projectId, upstream)
     if (latest) parents.push(latest.id)
   }
-  return createSnapshot(db, { projectId, kind, payload, parents })
+  return createSnapshot(db, { projectId, branchId, kind, payload, parents })
 }

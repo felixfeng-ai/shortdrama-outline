@@ -425,6 +425,11 @@ export default function SkillAgentDrawer({
   }
 
   function openWorkspace(card: AgentCard) {
+    if (card.kind === 'localization-edit') {
+      if (!projectId) return
+      window.location.href = `/localize/${encodeURIComponent(projectId)}?branch=${encodeURIComponent(card.branchId)}`
+      return
+    }
     const step = card.kind === 'decision' || card.kind === 'regenerate'
       ? card.step
       : card.kind === 'entity-edit'
@@ -529,12 +534,16 @@ export default function SkillAgentDrawer({
                     ? `第 ${line.card.shot} 镜`
                     : line.card.kind === 'entity-edit'
                       ? line.card.targetName
+                      : line.card.kind === 'localization-edit'
+                        ? line.card.targetName
                       : line.card.stepLabel}
                 </h3>
                 <p>
                   {line.card.kind === 'shot-edit'
                     ? line.card.summary
                     : line.card.kind === 'entity-edit'
+                      ? line.card.summary
+                    : line.card.kind === 'localization-edit'
                       ? line.card.summary
                     : line.card.kind === 'regenerate'
                       ? line.card.reason

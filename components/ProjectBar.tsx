@@ -136,6 +136,15 @@ export default function ProjectBar({
         >
           重命名
         </button>
+        {current && hasContent && (
+          <a
+            href={`/localize/${encodeURIComponent(current.id)}`}
+            className="shrink-0 rounded-pill border border-surface-line px-2.5 py-1.5 text-xs text-ink-600
+              transition-colors hover:border-accent-300 hover:text-accent-700"
+          >
+            海外版
+          </a>
+        )}
         <button
           type="button"
           disabled={!hasContent}

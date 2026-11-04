@@ -64,6 +64,7 @@ export interface ProjectPackageManifest<
   tasks: TTask[]
   snapshots: TSnapshot[]
   materials: TMaterial[]
+  localization?: unknown
   files: ProjectExportFile[]
   reportPath: "export-report.json"
   warnings: string[]
@@ -90,6 +91,7 @@ export function buildProjectPackageManifest<
   tasks?: TTask[]
   snapshots?: TSnapshot[]
   materials?: TMaterial[]
+  localization?: unknown
   files?: ProjectExportFile[]
   warnings?: string[]
 }): ProjectPackageManifest<TProject, TStory, TAssets, TRef, TKeyframe, TTask, TSnapshot, TMaterial> {
@@ -107,6 +109,7 @@ export function buildProjectPackageManifest<
     tasks: input.tasks ?? [],
     snapshots: input.snapshots ?? [],
     materials: input.materials ?? [],
+    ...(input.localization === undefined ? {} : { localization: input.localization }),
     files: input.files ?? [],
     reportPath: "export-report.json",
     warnings: input.warnings ?? [],

@@ -20,12 +20,17 @@ import {
 } from "@/lib/generation/repo"
 import { removeGeneratedProjectFiles, writeGeneratedImage } from "@/lib/generation/files"
 import { sniffImageMime } from "@/lib/generation/model"
+import {
+  restoreLocalizationBackup,
+  type LocalizationBackupData,
+} from "@/lib/localization/backup"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 interface ExportedSnapshot {
   id?: string
+  branchId?: string
   kind: ArtifactKind
   version: number
   payload: unknown
@@ -95,7 +100,7 @@ function restoreSnapshots(
   db: ReturnType<typeof getDbForRequest>,
   projectId: string,
   manifest: ProjectPackageManifest,
-): number {
+): { count: number; snapshotMap: Map<string, string> } {
   const snapshots = manifest.snapshots as ExportedSnapshot[]
   if (manifest.mode === "backup" && Array.isArray(snapshots) && snapshots.length > 0) {
     const ordered = snapshots
@@ -107,17 +112,25 @@ function restoreSnapshots(
     const oldToNew = new Map<string, string>()
     for (const item of ordered) {
       const parents = (item.parents ?? []).map((id) => oldToNew.get(id)).filter((id): id is string => Boolean(id))
-      const created = createSnapshot(db, { projectId, kind: item.kind, payload: item.payload, parents })
+      const created = createSnapshot(db, {
+        projectId,
+        branchId: item.branchId,
+        kind: item.kind,
+        payload: item.payload,
+        parents,
+      })
       if (item.id) oldToNew.set(item.id, created.id)
     }
-    return ordered.length
+    return { count: ordered.length, snapshotMap: oldToNew }
   }
 
   const latest = latestPayloads(manifest)
+  const snapshotMap = new Map<string, string>()
   for (const kind of KIND_ORDER) {
-    createSnapshot(db, { projectId, kind, payload: latest[kind] })
+    const created = createSnapshot(db, { projectId, kind, payload: latest[kind] })
+    snapshotMap.set(kind, created.id)
   }
-  return KIND_ORDER.length
+  return { count: KIND_ORDER.length, snapshotMap }
 }
 
 async function restoreKeyframes(
@@ -286,6 +299,17 @@ export async function POST(req: Request) {
       episodeCount: manifest.projectSettings.episodeCount,
     })
     const restoredSnapshots = restoreSnapshots(db, project.id, manifest)
+    const localization = restoreLocalizationBackup(
+      db,
+      project.id,
+      ownerId,
+      manifest.localization as LocalizationBackupData | undefined,
+      {
+        sourceSnapshotId: restoredSnapshots.snapshotMap.get("episodes")
+          ?? restoredSnapshots.snapshotMap.values().next().value,
+        sourceSnapshotMap: restoredSnapshots.snapshotMap,
+      },
+    )
     const taskMap = restoreTasks(db, project.id, manifest)
     const keyframes = await restoreKeyframes(db, project.id, form, manifest, taskMap)
     const materials = restoreMaterials(db, project.id, ownerId, manifest)
@@ -293,11 +317,12 @@ export async function POST(req: Request) {
     return NextResponse.json(ok({
       project,
       counts: {
-        snapshots: restoredSnapshots,
+        snapshots: restoredSnapshots.count + localization.snapshots,
         tasks: taskMap.size,
         keyframes: keyframes.restored,
         refs: 0,
         sources: materials.restored,
+        localizationBranches: localization.branches,
       },
       warnings: [...manifest.warnings, ...keyframes.warnings, ...materials.warnings],
     }))

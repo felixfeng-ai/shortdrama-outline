@@ -373,6 +373,11 @@ SQLite + 私有数据目录
 | `reusable_assets` | 跨项目角色、地点和视觉宪法文本资产；剔除图片二进制与本地路径 |
 | `project_agent_threads` / `project_agent_messages` | 同项目多会话与消息隔离，项目事实仍共享 |
 | `project_branches` | 从真实快照创建的分支记录与基线血缘 |
+| `project_branch_context` | 海外分支的市场、平台、评级、字幕规则、改编 Brief 与乐观锁版本 |
+| `project_branch_glossary` | 分支级术语、人物译名、锁定状态和备注 |
+| `project_branch_canon_facts` | 市场专属 Canon 事实，与全球 Canon 分开保存 |
+| `localization_runs` | 本地化长任务输入签名、游标、已产内容与恢复状态 |
+| `localization_audits` | 术语、红线、字幕、Canon 等本地化审校报告 |
 | `usage_log` | 按身份、步骤、日期的额度流水与全站熔断依据 |
 
 **为什么是 DeepSeek**，只看两条：
@@ -541,6 +546,16 @@ chengju/
 | GET | `/api/projects/[id]/threads/[threadId]` | — | 读取单个会话和消息 |
 | POST | `/api/projects/[id]/threads/[threadId]/messages` | `{ role, content }` | 追加用户或 Agent 消息 |
 | GET / POST | `/api/projects/[id]/branches` | `{ name, baseSnapshotId, note? }` | 读取或创建版本分支记录 |
+| GET / POST | `/api/projects/[id]/localization/branches` | `{ name, baseSnapshotId, market, locale }` | 读取或创建真实海外工作分支 |
+| GET / PUT | `/api/projects/[id]/localization/branches/[branchId]/context` | 市场、平台、评级、改编 Brief、字幕规则 | 保存分支级本地化上下文，带乐观锁 |
+| GET / PUT | `/api/projects/[id]/localization/branches/[branchId]/glossary` | `{ source, target, kind, locked }` | 读取或更新 Localization Bible |
+| GET / POST | `/api/projects/[id]/localization/branches/[branchId]/canon` | Canon 事实 | 读取全球继承事实和分支事实，或保存市场 Canon |
+| POST | `/api/projects/[id]/localization/branches/[branchId]/localize` | `{ sourceSnapshotId, resume? }` | SSE 分批本地化，支持断点恢复，不自动写快照 |
+| POST | `/api/projects/[id]/localization/branches/[branchId]/confirm` | `{ sourceSnapshotId, items }` | 用户确认后写入海外分支快照 |
+| GET / POST | `/api/projects/[id]/localization/branches/[branchId]/audit` | `{ sourceSnapshotId, items }` | 读取最新或运行本地化审校 |
+| POST | `/api/projects/[id]/localization/branches/[branchId]/visual` | `{ commit?, suggestions? }` | 分析或确认视觉本地化修正 |
+| POST | `/api/projects/[id]/localization/branches/[branchId]/delivery` | `{ title, sourceSnapshotId, items }` | 生成字幕、配音稿、术语表和本地化 manifest |
+| GET | `/api/projects/[id]/localization/backup` | — | 完整备份海外分支、Context、术语、Canon、运行和审计 |
 | POST | `/api/mcp` | MCP JSON-RPC：`initialize`、`tools/list`、`tools/call` | 仅提供项目摘要和只读能力，不开放写入 |
 | POST | `/api/auth/email/request-code` | `{ email }` | 发送邮箱验证码；仅本机开发且显式开启时返回 `devCode` |
 | POST | `/api/auth/email/verify-code` | `{ email, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 Access/Refresh Token |
@@ -779,6 +794,8 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 跨项目资产库 | ✅ 已完成 | 角色、地点和视觉宪法可按 owner 跨项目复用；同名保存递增版本，服务端递归剔除图片二进制与本地路径 |
 | 多会话与版本分支 | ✅ 已完成 | 同项目可建多个 Agent 会话，消息隔离、项目事实共享；可从真实快照创建带基线版本的分支记录 |
 | MCP 只读连接 | ✅ 已完成 | `/api/mcp` 提供 initialize、tools/list 与项目摘要读取；不开放远程写、图片路径、密钥或其它 owner 数据 |
+| 短剧出海本地化工作区 | ✅ 已完成 | 独立 `/localize/[projectId]`，支持真实海外分支、市场 Context、术语、分支 Canon、SSE 改编、确认快照、视觉检查、审计和本地化交付包 |
+| 海外完整备份与恢复 | ✅ 已完成 | v2 项目包新增可选 `localization` 数据；旧包缺少该字段仍可导入，海外分支快照 ID 与血缘在恢复时重建 |
 | PWA 安装基础 | ✅ 已完成 | Manifest、Service Worker、离线兜底、条件安装入口、项目与步骤深链和浏览器历史恢复；不缓存 API、个人图片或生成资产 |
 | 只读项目审阅链接 | 🟡 本地完成，待发布 | 7 天有效、重新生成撤销旧链接、无需登录；只开放文本快照，不暴露本地图库、生成文件、额度或任务 |
 | Web Push 生成通知 | 🟡 代码完成，待配置 | 用户授权后推送生成成功/失败，点击回到定妆或分镜；VAPID 私钥只在服务端，生产环境需配置密钥 |
@@ -818,6 +835,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 订阅与支付 | 📋 | 套餐、订单、计费、额度充值、退款和发票能力尚未开发 |
 | 原生 App | 📋 | Web/PWA 已具备；原生工作区仍需合并当前 Web 基线，并补 Keychain/Keystore、401 单飞刷新、深链、原生推送、相机/相册和离线草稿 |
 | 图生视频与成片时间线 | 📋 | 当前只到角色定妆图和镜头首帧；图生视频、视频拼接和成片时间线留到最后，不与本轮 P0 上线阻塞项混排 |
+| 海外平台自动发布 | 📋 | 当前只输出 TikTok / ReelShort / DramaBox 等平台规格和文本交付包，不接私密上传 API、买量、支付或地区运营 |
 
 发布顺序按“真实用户能否安全进入并持续使用”判断：邮箱登录生产配置与收件验收 → 审阅、通知和本地授权的发布验收 → 多实例与运维 → 团队、计费、合规。通用调用风控已覆盖当前单实例生产；短信和微信登录不再阻塞个人开发者的首轮上线。图生视频属于后续产品扩展，不是当前正式上线的必要条件。
 

@@ -6,6 +6,9 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { resolveProjectOwner } from "@/lib/auth/request"
 import { getProjectSkillBinding } from "@/lib/skills/personal"
 import { listProjectBranches } from "@/lib/project-collaboration"
+import { listLocalizationBranches } from "@/lib/localization/branches"
+import { getBranchContext } from "@/lib/localization/context"
+import { getLatestLocalizationAudit } from "@/lib/localization/audit"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -20,6 +23,16 @@ const TOOLS = [
   {
     name: "get_project_summary",
     description: "读取一个项目的 Skill、分支和基础身份信息；不返回图片、媒体路径或密钥。",
+    inputSchema: {
+      type: "object",
+      properties: { projectId: { type: "string" } },
+      required: ["projectId"],
+    },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "get_localization_summary",
+    description: "读取一个项目的海外本地化分支、市场上下文和最新审计摘要。只读，不返回密钥或本地图片。",
     inputSchema: {
       type: "object",
       properties: { projectId: { type: "string" } },
@@ -90,6 +103,44 @@ export async function POST(req: Request) {
           })),
           capabilities: { readOnly: true },
         }))
+      }
+      if (name === "get_localization_summary") {
+        const projectId = String(args?.projectId ?? "").trim()
+        if (!projectId) return rpcError(id, -32602, "projectId is required")
+        assertProjectAccess(db, projectId, ownerId)
+        const branches = listLocalizationBranches(db, projectId, ownerId).map((branch) => ({
+          id: branch.id,
+          name: branch.name,
+          market: branch.market,
+          locale: branch.locale,
+          status: branch.status,
+          context: (() => {
+            const context = getBranchContext(db, projectId, branch.id, ownerId)
+            return context ? {
+              market: context.profile.market,
+              locale: context.profile.locale,
+              platforms: context.platforms,
+              audience: context.adaptationBrief.audience,
+              strategy: context.adaptationBrief.strategy,
+              version: context.version,
+            } : null
+          })(),
+          audit: (() => {
+            const audit = getLatestLocalizationAudit(db, projectId, branch.id, ownerId)
+            return audit ? {
+              blocking: audit.blocking,
+              warning: audit.warning,
+              checkedAt: audit.checkedAt,
+              issues: audit.issues.map((issue) => ({
+                code: issue.code,
+                severity: issue.severity,
+                episode: issue.episode,
+                message: issue.message,
+              })),
+            } : null
+          })(),
+        }))
+        return rpcResult(id, textResult({ branches, capabilities: { readOnly: true } }))
       }
       return rpcError(id, -32602, `Unknown tool: ${name}`)
     }

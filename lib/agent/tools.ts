@@ -71,6 +71,35 @@ export interface AgentEntityComment {
   status: 'open' | 'resolved'
 }
 
+export interface AgentLocalizationBranch {
+  id: string
+  name: string
+  market: string
+  locale: string
+  status: string
+}
+
+export interface AgentLocalizationContext {
+  branchId: string
+  market: string
+  locale: string
+  platforms: string[]
+  audience: string
+  strategy: string
+}
+
+export interface AgentLocalizationAudit {
+  blocking: number
+  warning: number
+  issues: string[]
+}
+
+export interface AgentLocalizationEntity {
+  type: 'episode' | 'shot'
+  id: string
+  name: string
+}
+
 export interface AgentState {
   projectTitle: string
   hasIdea: boolean
@@ -81,6 +110,10 @@ export interface AgentState {
   skill?: AgentSkillContext | null
   entities?: AgentEntity[]
   entityComments?: AgentEntityComment[]
+  localizationBranches?: AgentLocalizationBranch[]
+  localizationContext?: AgentLocalizationContext | null
+  localizationAudit?: AgentLocalizationAudit | null
+  localizationEntities?: AgentLocalizationEntity[]
   episodes: { number: number; title: string; hook: string; intensity?: number }[]
   completed: Record<StepKey, boolean>
   shots: AgentShot[]
@@ -97,6 +130,15 @@ export type AgentCard =
     targetId: string
     targetName: string
     field: 'personality' | 'space' | 'synopsis' | 'action'
+    text: string
+    summary: string
+  }
+  | {
+    kind: 'localization-edit'
+    branchId: string
+    targetType: AgentLocalizationEntity['type']
+    targetId: string
+    targetName: string
     text: string
     summary: string
   }
@@ -140,6 +182,35 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
     name: 'get_active_skill',
     description: '读取当前项目采用的个人创作方法（Skill）及其版本、阶段规则和验收标准。用户问创作标准、下一步怎么做或为什么这样判断时先调用；Skill 只是方法，不是项目事实。',
     parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'list_localization_branches',
+    description: '列出当前项目的海外本地化分支、市场、语言和状态。用户问出海版本或需要选择市场分支时先调用。',
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'get_localization_context',
+    description: '读取指定海外分支的目标市场、平台、受众、改编策略和最新审计摘要。只读，不修改本地化正文。',
+    parameters: {
+      type: 'object',
+      properties: { branchId: { type: 'string' } },
+      required: ['branchId'],
+    },
+  },
+  {
+    name: 'propose_localization_edit',
+    description: '为海外分集或镜头生成待确认的本地化修改卡。只提议，不直接写入；分支和实体必须来自当前项目。',
+    parameters: {
+      type: 'object',
+      properties: {
+        branchId: { type: 'string' },
+        targetType: { type: 'string', enum: ['episode', 'shot'] },
+        targetId: { type: 'string' },
+        newText: { type: 'string' },
+        summary: { type: 'string' },
+      },
+      required: ['branchId', 'targetType', 'targetId', 'newText', 'summary'],
+    },
   },
   {
     name: 'get_entity_comments',
@@ -364,6 +435,38 @@ export function createToolExecutors(
         ].filter(Boolean).join('\n'),
       }
     },
+    list_localization_branches: () => {
+      const branches = state.localizationBranches ?? []
+      if (branches.length === 0) return { ok: true, content: '当前项目还没有海外本地化分支。' }
+      return {
+        ok: true,
+        content: branches.map((branch) =>
+          `${branch.name}｜${branch.market} / ${branch.locale}｜${branch.status}`
+        ).join('\n'),
+      }
+    },
+    get_localization_context: (args) => {
+      const branchId = String(args?.branchId ?? '').trim()
+      const branch = (state.localizationBranches ?? []).find((item) => item.id === branchId)
+      if (!branch) return { ok: false, content: '海外分支不存在，不能编 branchId。' }
+      const context = state.localizationContext?.branchId === branchId
+        ? state.localizationContext
+        : null
+      if (!context) return { ok: true, content: `${branch.name} 还没有保存市场与改编上下文。` }
+      const audit = state.localizationAudit
+      return {
+        ok: true,
+        content: [
+          `${branch.name}｜${context.market} / ${context.locale}`,
+          `平台：${context.platforms.join('、') || '未填写'}`,
+          `受众：${context.audience || '未填写'}`,
+          `改编策略：${context.strategy || '未填写'}`,
+          audit
+            ? `审计：${audit.blocking} 个阻断，${audit.warning} 个提醒${audit.issues.length ? `；${audit.issues.slice(0, 5).join('；')}` : ''}`
+            : '审计：尚未运行',
+        ].join('\n'),
+      }
+    },
     get_entity_comments: (args) => {
       const targetType = String(args?.targetType ?? '')
       const targetId = String(args?.targetId ?? '')
@@ -415,6 +518,36 @@ export function createToolExecutors(
           targetId: entity.id,
           targetName: entity.name,
           field,
+          text: newText,
+          summary,
+        },
+      }
+    },
+    propose_localization_edit: (args) => {
+      const branchId = String(args?.branchId ?? '').trim()
+      const targetType = String(args?.targetType ?? '')
+      const targetId = String(args?.targetId ?? '').trim()
+      const newText = String(args?.newText ?? '').trim()
+      const summary = String(args?.summary ?? '').trim()
+      const branch = (state.localizationBranches ?? []).find((item) => item.id === branchId)
+      if (!branch) return { ok: false, content: '海外分支不存在，不能编 branchId。' }
+      if (targetType !== 'episode' && targetType !== 'shot') {
+        return { ok: false, content: '本地化修改目标只能是 episode 或 shot。' }
+      }
+      const target = (state.localizationEntities ?? []).find((item) =>
+        item.type === targetType && item.id === targetId
+      )
+      if (!target) return { ok: false, content: '当前海外分支没有该实体，不要编 targetId。' }
+      if (!newText || !summary) return { ok: false, content: 'newText 和 summary 都不能为空。' }
+      return {
+        ok: true,
+        content: `已生成待确认卡片：${branch.name} · ${target.name} · ${summary}`,
+        card: {
+          kind: 'localization-edit',
+          branchId,
+          targetType: target.type,
+          targetId: target.id,
+          targetName: target.name,
           text: newText,
           summary,
         },

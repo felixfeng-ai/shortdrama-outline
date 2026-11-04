@@ -7,6 +7,7 @@ import { persistEditedArtifact } from "@/lib/assets/persist"
 import { ARTIFACT_KINDS, type ArtifactKind } from "@/lib/assets/types"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner } from "@/lib/auth/request"
+import { getLocalizationBranch } from "@/lib/localization/branches"
 
 export const runtime = "nodejs"
 // 这些路由依赖请求参数与数据库，不能静态预渲染
@@ -17,13 +18,20 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const projectId = url.searchParams.get("projectId") || ""
     const kind = url.searchParams.get("kind") || ""
+    const branchId = url.searchParams.get("branchId") || ""
 
     if (!projectId) throw new InputError("缺少 projectId")
     if (!(ARTIFACT_KINDS as readonly string[]).includes(kind)) throw new InputError("kind 不合法")
 
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
-    return NextResponse.json(ok({ snapshots: listSnapshots(db, projectId, kind as ArtifactKind) }))
+    const ownerId = resolveProjectOwner(db, req)
+    assertProjectAccess(db, projectId, ownerId)
+    if (branchId && !getLocalizationBranch(db, projectId, branchId, ownerId)) {
+      throw new InputError("海外分支不存在或无权访问")
+    }
+    return NextResponse.json(ok({
+      snapshots: listSnapshots(db, projectId, kind as ArtifactKind, branchId),
+    }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })
@@ -42,6 +50,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     const projectId = typeof body?.projectId === "string" ? body.projectId.trim() : ""
     const kind = typeof body?.kind === "string" ? body.kind : ""
+    const branchId = typeof body?.branchId === "string" ? body.branchId.trim() : ""
     const payload = body?.payload
 
     if (!projectId) throw new InputError("缺少 projectId")
@@ -59,9 +68,13 @@ export async function POST(req: Request) {
     if (serialized.length > 2_000_000) throw new InputError("内容过大，无法保存")
 
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
+    const ownerId = resolveProjectOwner(db, req)
+    assertProjectAccess(db, projectId, ownerId)
+    if (branchId && !getLocalizationBranch(db, projectId, branchId, ownerId)) {
+      throw new InputError("海外分支不存在或无权访问")
+    }
 
-    const snapshot = persistEditedArtifact(db, projectId, artifactKind, payload)
+    const snapshot = persistEditedArtifact(db, projectId, artifactKind, payload, branchId)
     return NextResponse.json(ok({ snapshot }))
   } catch (error) {
     const { body, status } = errorResponse(error)

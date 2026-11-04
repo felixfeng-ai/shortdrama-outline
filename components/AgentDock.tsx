@@ -41,6 +41,8 @@ interface Props {
   onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => void
   /** 用户确认实体级建议后，页面按稳定实体 id 写回对应字段 */
   onApplyEntityCard: (card: Extract<AgentCard, { kind: 'entity-edit' }>) => void
+  /** 海外工作区确认本地化修改 */
+  onApplyLocalization?: (card: Extract<AgentCard, { kind: 'localization-edit' }>) => void
   /** 用户确认「结构化决策」后，页面负责落库 */
   onApplyDecision: (card: Extract<AgentCard, { kind: 'decision' }>) => void
   /** 用户确认「重新生成某一步」后，页面负责触发 */
@@ -78,9 +80,12 @@ const TOOL_LABEL: Record<string, string> = {
   get_quota: '查额度',
   get_decisions: '读创作决策',
   get_entity_comments: '读实体批注',
+  list_localization_branches: '读海外分支',
+  get_localization_context: '读本地化上下文',
   search_docs: '查文档',
   propose_shot_edit: '提议改写镜头',
   propose_entity_edit: '提议修改实体',
+  propose_localization_edit: '提议本地化修改',
   propose_regenerate: '提议重跑某步',
   propose_decision: '提议创作决策',
 }
@@ -129,6 +134,7 @@ export default function AgentDock({
   onNewMessage,
   onApplyCard,
   onApplyEntityCard,
+  onApplyLocalization,
   onApplyDecision,
   onRegenerate,
   onOpenStep,
@@ -524,6 +530,8 @@ export default function AgentDock({
                       ? `待确认：第 ${line.card.shot} 镜 · ${line.card.summary}`
                       : line.card.kind === 'entity-edit'
                         ? `待确认：${line.card.targetName} · ${line.card.summary}`
+                        : line.card.kind === 'localization-edit'
+                          ? `待确认本地化：${line.card.targetName} · ${line.card.summary}`
                       : line.card.kind === 'decision'
                         ? `待确认决策：${line.card.stepLabel} · ${line.card.question}`
                         : `待确认：重新生成「${line.card.stepLabel}」`}
@@ -533,6 +541,8 @@ export default function AgentDock({
                       ? line.card.text
                       : line.card.kind === 'entity-edit'
                         ? line.card.text
+                        : line.card.kind === 'localization-edit'
+                          ? line.card.text
                       : line.card.kind === 'decision'
                         ? `推荐「${line.card.recommended}」：${line.card.reason}`
                         : line.card.reason}
@@ -548,6 +558,10 @@ export default function AgentDock({
                       onClick={() => {
                         if (line.card.kind === 'shot-edit') onApplyCard(line.card)
                         else if (line.card.kind === 'entity-edit') onApplyEntityCard(line.card)
+                        else if (line.card.kind === 'localization-edit') {
+                          if (onApplyLocalization) onApplyLocalization(line.card)
+                          else push({ role: 'note', text: '请在海外本地化工作区确认这条修改。' })
+                        }
                         else if (line.card.kind === 'decision') onApplyDecision(line.card)
                         else onRegenerate(line.card.step)
                         push({ role: 'note', text: '已按你的确认执行。' })

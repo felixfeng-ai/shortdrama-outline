@@ -18,11 +18,16 @@ import { latestSnapshot } from "./repo.ts"
 export function isStale(db: DatabaseSync, snapshot: Snapshot): boolean {
   for (const parentId of snapshot.parents) {
     const parent = db.prepare("SELECT * FROM snapshots WHERE id = ?").get(parentId) as
-      | { project_id: string; kind: string }
+      | { project_id: string; branch_id: string; kind: string }
       | undefined
     if (!parent) continue
 
-    const latest = latestSnapshot(db, parent.project_id, parent.kind as ArtifactKind)
+    const latest = latestSnapshot(
+      db,
+      parent.project_id,
+      parent.kind as ArtifactKind,
+      parent.branch_id ?? "",
+    )
     if (latest && latest.id !== parentId) return true
   }
   return false
@@ -32,11 +37,16 @@ export function isStale(db: DatabaseSync, snapshot: Snapshot): boolean {
 export function staleReason(db: DatabaseSync, snapshot: Snapshot): string | null {
   for (const parentId of snapshot.parents) {
     const parent = db.prepare("SELECT * FROM snapshots WHERE id = ?").get(parentId) as
-      | { project_id: string; kind: string; version: number }
+      | { project_id: string; branch_id: string; kind: string; version: number }
       | undefined
     if (!parent) continue
 
-    const latest = latestSnapshot(db, parent.project_id, parent.kind as ArtifactKind)
+    const latest = latestSnapshot(
+      db,
+      parent.project_id,
+      parent.kind as ArtifactKind,
+      parent.branch_id ?? "",
+    )
     if (latest && latest.id !== parentId) {
       return `${parent.kind} 已更新到 v${latest.version}（本版基于 v${parent.version}）`
     }
@@ -45,7 +55,7 @@ export function staleReason(db: DatabaseSync, snapshot: Snapshot): string | null
 }
 
 interface SnapshotRow {
-  id: string; project_id: string; kind: string; version: number
+  id: string; project_id: string; branch_id: string; kind: string; version: number
   payload: string; created_at: number
 }
 
@@ -78,6 +88,7 @@ export function findImpact(db: DatabaseSync, snapshotId: string): Snapshot[] {
       result.push({
         id: row.id,
         projectId: row.project_id,
+        branchId: row.branch_id ?? "",
         kind: row.kind as ArtifactKind,
         version: row.version,
         payload: JSON.parse(row.payload),

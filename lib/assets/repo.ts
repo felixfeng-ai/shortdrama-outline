@@ -23,6 +23,8 @@ export interface Project {
 export interface Snapshot {
   id: string
   projectId: string
+  /** 空字符串表示原始中文版本；海外版本使用 project_branches.id */
+  branchId: string
   kind: ArtifactKind
   version: number
   payload: unknown
@@ -32,7 +34,7 @@ export interface Snapshot {
 
 interface ProjectRow { id: string; title: string; owner_id: string | null; created_at: number; updated_at: number }
 interface SnapshotRow {
-  id: string; project_id: string; kind: string; version: number
+  id: string; project_id: string; branch_id: string; kind: string; version: number
   payload: string; created_at: number
 }
 interface ParentRow { to_snapshot_id: string }
@@ -51,6 +53,7 @@ function toSnapshot(row: SnapshotRow, parents: string[]): Snapshot {
   return {
     id: row.id,
     projectId: row.project_id,
+    branchId: row.branch_id ?? "",
     kind: row.kind as ArtifactKind,
     version: row.version,
     payload: JSON.parse(row.payload),
@@ -129,9 +132,16 @@ function readParents(db: DatabaseSync, snapshotId: string): string[] {
  */
 export function createSnapshot(
   db: DatabaseSync,
-  input: { projectId: string; kind: ArtifactKind; payload: unknown; parents?: string[] },
+  input: {
+    projectId: string
+    branchId?: string
+    kind: ArtifactKind
+    payload: unknown
+    parents?: string[]
+  },
 ): Snapshot {
   const parents = input.parents ?? []
+  const branchId = input.branchId ?? ""
 
   // 血缘边依赖外键约束：父快照必须真实存在，否则 SQLite 会直接拒绝
   const id = randomUUID()
@@ -144,15 +154,24 @@ export function createSnapshot(
   const version = row.v + 1
 
   db.prepare(
-    "INSERT INTO snapshots (id, project_id, kind, version, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(id, input.projectId, input.kind, version, JSON.stringify(input.payload), now)
+    "INSERT INTO snapshots (id, project_id, branch_id, kind, version, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, input.projectId, branchId, input.kind, version, JSON.stringify(input.payload), now)
 
   const link = db.prepare("INSERT INTO lineage (from_snapshot_id, to_snapshot_id) VALUES (?, ?)")
   for (const parent of parents) link.run(id, parent)
 
   db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").run(now, input.projectId)
 
-  return { id, projectId: input.projectId, kind: input.kind, version, payload: input.payload, parents, createdAt: now }
+  return {
+    id,
+    projectId: input.projectId,
+    branchId,
+    kind: input.kind,
+    version,
+    payload: input.payload,
+    parents,
+    createdAt: now,
+  }
 }
 
 export function getSnapshot(db: DatabaseSync, id: string): Snapshot | null {
@@ -161,14 +180,24 @@ export function getSnapshot(db: DatabaseSync, id: string): Snapshot | null {
 }
 
 /** 按 version 倒序列出某个 kind 的全部快照 */
-export function listSnapshots(db: DatabaseSync, projectId: string, kind: ArtifactKind): Snapshot[] {
+export function listSnapshots(
+  db: DatabaseSync,
+  projectId: string,
+  kind: ArtifactKind,
+  branchId = "",
+): Snapshot[] {
   const rows = db.prepare(
-    "SELECT * FROM snapshots WHERE project_id = ? AND kind = ? ORDER BY version DESC",
-  ).all(projectId, kind) as SnapshotRow[]
+    "SELECT * FROM snapshots WHERE project_id = ? AND branch_id = ? AND kind = ? ORDER BY version DESC",
+  ).all(projectId, branchId, kind) as SnapshotRow[]
   return rows.map((row) => toSnapshot(row, readParents(db, row.id)))
 }
 
 /** 某个 kind 的最新一版（没有则 null） */
-export function latestSnapshot(db: DatabaseSync, projectId: string, kind: ArtifactKind): Snapshot | null {
-  return listSnapshots(db, projectId, kind)[0] ?? null
+export function latestSnapshot(
+  db: DatabaseSync,
+  projectId: string,
+  kind: ArtifactKind,
+  branchId = "",
+): Snapshot | null {
+  return listSnapshots(db, projectId, kind, branchId)[0] ?? null
 }

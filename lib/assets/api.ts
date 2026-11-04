@@ -32,7 +32,7 @@ export interface ProjectDto {
   updatedAt: number
 }
 export interface SnapshotDto<T = unknown> {
-  id: string; kind: string; version: number; payload: T; parents: string[]; createdAt: number
+  id: string; projectId?: string; branchId?: string; kind: string; version: number; payload: T; parents: string[]; createdAt: number
 }
 
 export interface ProjectContextDto {
@@ -140,8 +140,8 @@ export const deleteProject = (id: string) =>
 /** 载入示例项目：服务端写一整套六步产物，返回新项目（不调模型、不扣额度） */
 export const loadSampleProject = () => postJson<{ project: ProjectDto }>('/api/sample', {})
 
-export const listSnapshots = <T>(projectId: string, kind: string) =>
-  fetch(`/api/snapshots?projectId=${projectId}&kind=${kind}`)
+export const listSnapshots = <T>(projectId: string, kind: string, branchId = "") =>
+  fetch(`/api/snapshots?projectId=${encodeURIComponent(projectId)}&kind=${encodeURIComponent(kind)}${branchId ? `&branchId=${encodeURIComponent(branchId)}` : ""}`)
     .then((r) => r.json())
     .then((p) => p.data.snapshots as SnapshotDto<T>[])
 

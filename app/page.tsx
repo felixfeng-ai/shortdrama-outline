@@ -152,6 +152,7 @@ import {
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
+import { fetchLocalizationBackup } from '@/lib/localization/client'
 import { keyframeManifestEntry } from '@/lib/generation/export'
 import {
   MIN_IDEA_LENGTH,
@@ -2087,6 +2088,14 @@ export default function Home() {
       const tasks = mode === "backup"
         ? keyframeState.tasks
         : keyframeState.tasks.filter((task) => task.assetId && selectedAssetIds.has(task.assetId))
+      const localization = projectId && mode === "backup"
+        ? await fetchLocalizationBackup(projectId).catch((error) => {
+          warnings.push(
+            `海外本地化备份读取失败：${error instanceof Error ? error.message : "未知错误"}`,
+          )
+          return undefined
+        })
+        : undefined
 
       const baseInput = {
         project: {
@@ -2111,6 +2120,7 @@ export default function Home() {
         tasks,
         snapshots,
         materials: sourceMaterials,
+        localization,
         files,
         warnings,
       }

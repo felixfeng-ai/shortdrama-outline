@@ -182,6 +182,33 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   UNIQUE (owner_id, endpoint)
 );
 
+-- 原生 App 推送 Token：只保存设备令牌与非敏感展示信息。
+CREATE TABLE IF NOT EXISTS mobile_push_tokens (
+  id          TEXT PRIMARY KEY,
+  owner_id    TEXT NOT NULL,
+  token       TEXT NOT NULL,
+  platform    TEXT NOT NULL,
+  device_name TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL,
+  UNIQUE (owner_id, token)
+);
+
+-- 商店交易只保存凭据哈希和核验状态，原始收据不落库。
+CREATE TABLE IF NOT EXISTS billing_transactions (
+  id                  TEXT PRIMARY KEY,
+  owner_id            TEXT NOT NULL,
+  platform            TEXT NOT NULL,
+  product_id          TEXT NOT NULL,
+  transaction_id      TEXT NOT NULL,
+  purchase_token_hash TEXT NOT NULL,
+  status              TEXT NOT NULL,
+  entitlement_json    TEXT NOT NULL DEFAULT '{}',
+  created_at          INTEGER NOT NULL,
+  updated_at          INTEGER NOT NULL,
+  UNIQUE(owner_id, transaction_id)
+);
+
 -- 长文本分批生成断点：每个项目、每种产物只保留最新一份，不进入正式版本血缘。
 CREATE TABLE IF NOT EXISTS text_generation_checkpoints (
   project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -199,6 +226,8 @@ CREATE INDEX IF NOT EXISTS idx_lineage_to ON lineage(to_snapshot_id);
 CREATE INDEX IF NOT EXISTS idx_generation_tasks_project ON generation_tasks(project_id, target_type, target_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_generated_assets_project ON generated_assets(project_id, target_type, target_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_owner ON push_subscriptions(owner_id);
+CREATE INDEX IF NOT EXISTS idx_mobile_push_tokens_owner ON mobile_push_tokens(owner_id);
+CREATE INDEX IF NOT EXISTS idx_billing_transactions_owner ON billing_transactions(owner_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_login_codes_phone ON login_codes(phone, created_at);
 CREATE INDEX IF NOT EXISTS idx_email_login_codes_email ON email_login_codes(email, created_at);
 CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_updated ON auth_rate_limits(updated_at);
@@ -466,6 +495,130 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON project_agent_messages(thread_id, created_at);
       CREATE INDEX IF NOT EXISTS idx_project_branches_project
         ON project_branches(project_id, owner_id, created_at);
+    `,
+  },
+  {
+    version: 9,
+    name: "short-drama-localization",
+    sql: `
+      -- 原始版使用 branch_id=''，因此旧项目、旧快照和旧查询行为不变。
+      ALTER TABLE snapshots ADD COLUMN branch_id TEXT NOT NULL DEFAULT '';
+
+      -- project_branches 从“基线记录”升级为可编辑工作分支。
+      ALTER TABLE project_branches ADD COLUMN branch_type TEXT NOT NULL DEFAULT 'experiment';
+      ALTER TABLE project_branches ADD COLUMN locale TEXT NOT NULL DEFAULT '';
+      ALTER TABLE project_branches ADD COLUMN market TEXT NOT NULL DEFAULT '';
+      ALTER TABLE project_branches ADD COLUMN source_language TEXT NOT NULL DEFAULT 'zh-CN';
+      ALTER TABLE project_branches ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
+      ALTER TABLE project_branches ADD COLUMN parent_branch_id TEXT;
+      ALTER TABLE project_branches ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;
+      UPDATE project_branches SET updated_at = created_at WHERE updated_at = 0;
+
+      CREATE INDEX IF NOT EXISTS idx_snapshots_branch_kind
+        ON snapshots(project_id, branch_id, kind, version);
+      CREATE INDEX IF NOT EXISTS idx_project_branches_type
+        ON project_branches(project_id, branch_type, status, updated_at);
+    `,
+  },
+  {
+    version: 10,
+    name: "localization-context-and-canon",
+    sql: `
+      CREATE TABLE IF NOT EXISTS project_branch_context (
+        branch_id           TEXT PRIMARY KEY REFERENCES project_branches(id) ON DELETE CASCADE,
+        project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        market_code         TEXT NOT NULL,
+        platforms_json      TEXT NOT NULL DEFAULT '[]',
+        content_rating      TEXT NOT NULL DEFAULT '',
+        adaptation_json     TEXT NOT NULL DEFAULT '{}',
+        subtitle_json       TEXT NOT NULL DEFAULT '{}',
+        notes               TEXT NOT NULL DEFAULT '',
+        version             INTEGER NOT NULL,
+        updated_by          TEXT NOT NULL,
+        updated_at          INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS project_branch_glossary (
+        id             TEXT PRIMARY KEY,
+        project_id     TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        branch_id      TEXT NOT NULL REFERENCES project_branches(id) ON DELETE CASCADE,
+        source         TEXT NOT NULL,
+        target         TEXT NOT NULL,
+        kind           TEXT NOT NULL DEFAULT 'term',
+        locked         INTEGER NOT NULL DEFAULT 0,
+        case_sensitive INTEGER NOT NULL DEFAULT 0,
+        notes          TEXT NOT NULL DEFAULT '',
+        created_at     INTEGER NOT NULL,
+        updated_at     INTEGER NOT NULL,
+        UNIQUE(project_id, branch_id, source)
+      );
+
+      -- 分支事实单独成表，避免改变全球 Canon 的唯一约束与历史语义。
+      CREATE TABLE IF NOT EXISTS project_branch_canon_facts (
+        id                 TEXT PRIMARY KEY,
+        project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        branch_id          TEXT NOT NULL REFERENCES project_branches(id) ON DELETE CASCADE,
+        entity_id          TEXT NOT NULL REFERENCES canon_entities(id) ON DELETE CASCADE,
+        field              TEXT NOT NULL,
+        value              TEXT NOT NULL,
+        valid_from_episode INTEGER NOT NULL,
+        valid_to_episode   INTEGER NOT NULL,
+        source_snapshot_id TEXT REFERENCES snapshots(id) ON DELETE SET NULL,
+        locked             INTEGER NOT NULL DEFAULT 0,
+        created_at         INTEGER NOT NULL,
+        updated_at         INTEGER NOT NULL,
+        UNIQUE(project_id, branch_id, entity_id, field, value, valid_from_episode, valid_to_episode)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_branch_context_project
+        ON project_branch_context(project_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_branch_glossary_branch
+        ON project_branch_glossary(project_id, branch_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_branch_canon_branch
+        ON project_branch_canon_facts(project_id, branch_id, entity_id, field, valid_from_episode);
+    `,
+  },
+  {
+    version: 11,
+    name: "localization-runs",
+    sql: `
+      -- 独立记录本地化长任务的游标与已产出内容。
+      -- 不塞进通用 text_generation_checkpoints，避免同一项目多个市场分支互相覆盖。
+      CREATE TABLE IF NOT EXISTS localization_runs (
+        id                 TEXT PRIMARY KEY,
+        project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        branch_id          TEXT NOT NULL REFERENCES project_branches(id) ON DELETE CASCADE,
+        owner_id           TEXT NOT NULL,
+        source_snapshot_id TEXT NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,
+        signature          TEXT NOT NULL,
+        cursor             INTEGER NOT NULL DEFAULT 0,
+        state_json         TEXT NOT NULL DEFAULT '{}',
+        status             TEXT NOT NULL DEFAULT 'running',
+        created_at         INTEGER NOT NULL,
+        updated_at         INTEGER NOT NULL,
+        UNIQUE(project_id, branch_id, signature)
+      );
+      CREATE INDEX IF NOT EXISTS idx_localization_runs_project
+        ON localization_runs(project_id, branch_id, updated_at);
+    `,
+  },
+  {
+    version: 12,
+    name: "localization-audits",
+    sql: `
+      CREATE TABLE IF NOT EXISTS localization_audits (
+        id                 TEXT PRIMARY KEY,
+        project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        branch_id          TEXT NOT NULL REFERENCES project_branches(id) ON DELETE CASCADE,
+        owner_id           TEXT NOT NULL,
+        source_snapshot_id TEXT NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,
+        report_json        TEXT NOT NULL,
+        blocking           INTEGER NOT NULL,
+        warnings           INTEGER NOT NULL,
+        created_at         INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_localization_audits_branch
+        ON localization_audits(project_id, branch_id, created_at);
     `,
   },
 ]

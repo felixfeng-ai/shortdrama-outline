@@ -32,5 +32,8 @@ export function parseProjectPackage(value: unknown): ProjectPackageManifest {
   if (manifest.materials !== undefined && !Array.isArray(manifest.materials)) {
     throw new Error("项目包原文素材格式不正确")
   }
+  if (manifest.localization !== undefined && !record(manifest.localization)) {
+    throw new Error("项目包本地化数据格式不正确")
+  }
   return manifest as unknown as ProjectPackageManifest
 }
