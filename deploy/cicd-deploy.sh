@@ -24,7 +24,7 @@ if [ "$0" != "/tmp/chengju-deploy.sh" ]; then
 fi
 # -------------------------------------------------------------
 
-set -e
+set -euo pipefail
 
 APP="chengju"
 DIR="/opt/chengju"
@@ -91,8 +91,30 @@ echo "=== 5/6 安装依赖 + 构建 ==="
 mkdir -p logs
 # 用 npm ci 而不是 npm install：严格按 package-lock 安装，
 # 避免国内镜像偶尔解压出残缺包导致的诡异运行时错误。
-npm ci --no-audit --no-fund 2>&1 | tail -2
-npm run build 2>&1 | tail -6
+rm -rf node_modules
+npm cache verify >/tmp/chengju-npm-cache.log 2>&1 || true
+if ! npm ci --no-audit --no-fund --prefer-online >/tmp/chengju-npm-ci.log 2>&1; then
+    echo "❌ npm ci 失败，完整日志："
+    tail -n 100 /tmp/chengju-npm-ci.log
+    exit 1
+fi
+tail -n 4 /tmp/chengju-npm-ci.log
+# npm ci 在某些镜像下可能返回成功但解压残缺。构建前直接检查 Next 的
+# 命令入口和本次构建依赖的内置页面，缺失时立即失败并保留完整日志。
+test -f node_modules/next/dist/bin/next || {
+    echo "❌ Next 命令入口缺失，node_modules 未完整安装"
+    exit 1
+}
+test -f node_modules/next/dist/client/components/builtin/global-not-found.js || {
+    echo "❌ Next 内置页面缺失，node_modules 未完整安装"
+    exit 1
+}
+if ! npm run build >/tmp/chengju-build.log 2>&1; then
+    echo "❌ 生产构建失败，完整日志："
+    tail -n 120 /tmp/chengju-build.log
+    exit 1
+fi
+tail -n 8 /tmp/chengju-build.log
 
 echo "=== 6/6 启动 ==="
 # 用 ecosystem 配置文件启动，不依赖 PM2 遗留的进程表

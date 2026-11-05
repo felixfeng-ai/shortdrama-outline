@@ -56,4 +56,8 @@ jobs:
           envs: RESEND_API_KEY,AUTH_EMAIL_FROM,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,MINIMAX_API_KEY,VIDEO_GENERATION_ENABLED,MINIMAX_VIDEO_MODEL,MINIMAX_VIDEO_RESOLUTION,AUTH_ALLOW_DEV_CODE
           script: |
             set -e
+            # 先同步主分支，确保执行的是本次提交里的部署脚本。
+            cd /opt/chengju
+            git fetch origin main --quiet
+            git reset --hard origin/main --quiet
             bash /opt/chengju/deploy/cicd-deploy.sh

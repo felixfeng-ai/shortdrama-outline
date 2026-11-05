@@ -94,3 +94,25 @@ test("READY5 开启 TTS 时必须同时配置供应商 Key 与计价", () => {
   })
   assert.deepEqual(valid.errors, [])
 })
+
+test("READY6 部署脚本保留安装与构建退出码，并在构建前校验 Next", () => {
+  const workflow = fs.readFileSync(".github/workflows/deploy.yml", "utf8")
+  const deploy = fs.readFileSync("deploy/cicd-deploy.sh", "utf8")
+
+  assert.match(deploy, /set -euo pipefail/)
+  assert.match(deploy, /test -f node_modules\/next\/dist\/bin\/next/)
+  assert.match(
+    deploy,
+    /test -f node_modules\/next\/dist\/client\/components\/builtin\/global-not-found\.js/,
+  )
+  assert.doesNotMatch(
+    deploy,
+    /npm ci --no-audit --no-fund 2>&1 \| tail -2/,
+    "npm ci 的错误不能被子 shell 吞掉",
+  )
+
+  const syncAt = workflow.indexOf("git reset --hard origin/main")
+  const deployAt = workflow.indexOf("bash /opt/chengju/deploy/cicd-deploy.sh")
+  assert.ok(syncAt >= 0, "Actions 没有先同步最新部署脚本")
+  assert.ok(deployAt > syncAt, "必须先同步代码再执行服务器部署脚本")
+})
