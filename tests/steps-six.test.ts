@@ -10,6 +10,7 @@ import { STEPS } from "../lib/types.ts"
 // 用户走到第四步时会以为流程已经结束。资产层三个步骤必须一并进步骤条。
 
 const pageSrc = fs.readFileSync("app/page.tsx", "utf8")
+const workspaceHomeSrc = fs.readFileSync("components/WorkspaceHome.tsx", "utf8")
 const indicatorSrc = fs.readFileSync("components/StepIndicator.tsx", "utf8")
 const sideNavSrc = fs.readFileSync("components/SideNav.tsx", "utf8")
 const stepPillsSrc = fs.readFileSync("components/StepPills.tsx", "utf8")
@@ -91,8 +92,9 @@ test("G3b 六步导航必须用 nav 短标签，不能用 title 长标题", () =
 })
 
 test("G3c 桌面端六步导航必须真的挂在页面上", () => {
-  assert.ok(pageSrc.includes("<StepPills"), "page.tsx 没有渲染 StepPills，六步导航等于没接")
-  assert.ok(pageSrc.includes("from '@/components/StepPills'"), "StepPills 没有引入")
+  assert.ok(pageSrc.includes("<WorkspaceHome"), "page.tsx 没有渲染确认稿首页")
+  assert.ok(workspaceHomeSrc.includes("wfx-step-track"), "确认稿首页缺少六步轨道")
+  assert.ok(workspaceHomeSrc.includes("STEPS.map"), "六步轨道没有复用统一 STEPS")
 })
 
 // ── G4 左栏高亮与「下一步」提示 ──

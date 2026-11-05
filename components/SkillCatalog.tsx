@@ -51,6 +51,11 @@ interface SeedPrompt {
   skill: SkillDefinition | null
 }
 
+interface SkillCatalogProps {
+  /** 嵌入工作台时隐藏页面自己的顶栏，复用同一套技能内容。 */
+  embedded?: boolean
+}
+
 const CATEGORIES: Array<SkillCategory | '全部'> = [
   '全部',
   '小说改编',
@@ -93,11 +98,11 @@ function payloadCount(payload: unknown): number {
   return Array.isArray(payload) ? payload.length : payload ? 1 : 0
 }
 
-export default function SkillCatalog() {
+export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
   const [library, setLibrary] = useState<SkillLibrary>('recommend')
   const [category, setCategory] = useState<SkillCategory | '全部'>('全部')
   const [query, setQuery] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(embedded ? SKILL_CATALOG[0]?.id ?? null : null)
   const [mode, setMode] = useState<IntakeMode>('idea')
   const [drafts, setDrafts] = useState<Record<IntakeMode, string>>({
     idea: '',
@@ -401,9 +406,22 @@ export default function SkillCatalog() {
     }
   }
 
+  const skillPlanNode = selectedSkill && executionPlan ? (
+    <SkillExecutionPlan
+      skill={selectedSkill}
+      plan={executionPlan}
+      readiness={readiness ?? { ready: true, missing: [] }}
+      quotaRemaining={quota?.remaining ?? null}
+      agentOpen={agentOpen}
+      hasPrompt={Boolean(prompt.trim())}
+      onClose={() => setSelectedId(null)}
+      onStart={() => openAgentWithPrompt(prompt, selectedSkill)}
+    />
+  ) : null
+
   return (
-    <div className="skill-page">
-      <header className="topbar">
+    <div className={`skill-page ${embedded ? 'skill-page-embedded' : ''}`}>
+      {!embedded && <header className="topbar">
         <div className="brand"><b>成剧</b><span>VEYAFRAME</span><span className="ai">AI</span></div>
         <nav className="top-nav" aria-label="主导航">
           <a href={skillsHref(project?.id ?? null, returnStep)} className="active" aria-current="page">创作技能</a>
@@ -415,7 +433,7 @@ export default function SkillCatalog() {
         <div className="top-meta">
           <span className="top-project">{project?.title || (loadingProject ? '读取项目中…' : '还没有项目')}</span>
           <span>{returnStepLabel ? `步骤 · ${returnStepLabel}` : '项目总览'}</span>
-          <span>{quota ? `额度 ${quota.remaining} / ${quota.limit}` : '额度读取中'}</span>
+          <span>{quota ? `创作额度 ${quota.remaining} / ${quota.limit}` : '创作额度读取中'}</span>
           <span>{projects.length} 个项目</span>
         </div>
         <div className="top-actions">
@@ -427,7 +445,7 @@ export default function SkillCatalog() {
             <svg viewBox="0 0 24 24"><path d="M4 12 12 4l8 8M6.5 10v9h11v-9" /></svg>
           </a>
         </div>
-      </header>
+      </header>}
 
       <main className="page">
         <section className="hero" aria-labelledby="pageTitle">
@@ -646,18 +664,7 @@ export default function SkillCatalog() {
             </div>
           </div>
 
-          {selectedSkill && executionPlan && (
-            <SkillExecutionPlan
-              skill={selectedSkill}
-              plan={executionPlan}
-              readiness={readiness ?? { ready: true, missing: [] }}
-              quotaRemaining={quota?.remaining ?? null}
-              agentOpen={agentOpen}
-              hasPrompt={Boolean(prompt.trim())}
-              onClose={() => setSelectedId(null)}
-              onStart={() => openAgentWithPrompt(prompt, selectedSkill)}
-            />
-          )}
+          {!embedded && skillPlanNode}
 
           {!selectedSkill && (
             <div className="quick-prompts" aria-label="快捷任务">
@@ -673,9 +680,9 @@ export default function SkillCatalog() {
             <h2 id="catalogTitle" className="catalog-title">创作技能库</h2>
             <div className="library-tabs" role="tablist" aria-label="技能集合">
               {([
-                ['recommend', '推荐'],
-                ['favorite', '收藏'],
-                ['mine', '我的'],
+                ['recommend', embedded ? '基于项目推荐' : '推荐'],
+                ['favorite', embedded ? '已收藏' : '收藏'],
+                ['mine', embedded ? '我的技能' : '我的'],
               ] as const).map(([value, label]) => (
                 <button
                   key={value}
@@ -694,50 +701,74 @@ export default function SkillCatalog() {
               <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="4.5" /><path d="m12 12 4 4" /></svg>
               <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="搜索创作技能" />
             </label>
-          </div>
-          <div className="catalog-filters" aria-label="创作技能分类">
-            {CATEGORIES.map((item) => (
+            {embedded && (
               <button
-                key={item}
-                className={`filter-button ${category === item ? 'active' : ''}`}
                 type="button"
-                data-category={item}
-                onClick={() => setCategory(item)}
+                className="catalog-manage"
+                onClick={() => document.querySelector('.personal-skills')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                {item}
+                管理我的技能
               </button>
-            ))}
+            )}
           </div>
+          <div className={embedded ? 'studio-skills-layout' : ''}>
+            <div className="studio-skills-main">
+              <div className="catalog-filters" aria-label="创作技能分类">
+                {CATEGORIES.map((item) => (
+                  <button
+                    key={item}
+                    className={`filter-button ${category === item ? 'active' : ''}`}
+                    type="button"
+                    data-category={item}
+                    onClick={() => setCategory(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
 
-          <div className="skill-grid">
-            {skills.map((skill) => (
-              <button
-                key={skill.id}
-                className={`skill-card ${skill.visual} ${skill.id === selectedId ? 'selected' : ''}`}
-                type="button"
-                aria-pressed={skill.id === selectedId}
-                onClick={() => chooseSkill(skill)}
-              >
-                <span className="skill-visual">
-                  {/* Existing generated project asset used as a real production thumbnail. */}
-                  <img src={skill.image} alt="" loading="lazy" />
-                  <span className="visual-badge">{skill.type}</span>
-                  <span className="visual-count">{skill.count}</span>
-                </span>
-                <span className="skill-content">
-                  <h3>{skill.title}</h3>
-                  <p>{skill.summary}</p>
-                  <span className="skill-meta">
-                    <span className="official-mark">V</span>
-                    <b>官方技能</b><i />
-                    <span>{skill.meta}</span>
-                  </span>
-                </span>
-                <span className="skill-arrow">›</span>
-              </button>
-            ))}
+              <div className="skill-grid">
+                {skills.map((skill) => (
+                  <button
+                    key={skill.id}
+                    className={`skill-card ${skill.visual} ${skill.id === selectedId ? 'selected' : ''}`}
+                    type="button"
+                    aria-pressed={skill.id === selectedId}
+                    onClick={() => chooseSkill(skill)}
+                  >
+                    <span className="skill-visual">
+                      {/* Existing generated project asset used as a real production thumbnail. */}
+                      <img src={skill.image} alt="" loading="lazy" />
+                      <span className="visual-badge">{skill.type}</span>
+                      <span className="visual-count">{skill.count}</span>
+                    </span>
+                    <span className="skill-content">
+                      <h3>{skill.title}</h3>
+                      <p>{skill.summary}</p>
+                      <span className="skill-meta">
+                        <span className="official-mark">V</span>
+                        <b>官方技能</b><i />
+                        <span>{skill.meta}</span>
+                      </span>
+                    </span>
+                    <span className="skill-arrow">›</span>
+                  </button>
+                ))}
+              </div>
+              {skills.length === 0 && <div className="catalog-empty" style={{ display: 'block' }}>当前集合还没有内容，或没有匹配的创作技能。</div>}
+            </div>
+            {embedded && (
+              <aside className="studio-skill-plan" aria-label="技能执行计划">
+                {skillPlanNode ?? (
+                  <div className="studio-plan-empty">
+                    <span>执行计划</span>
+                    <h3>选择一个创作技能</h3>
+                    <p>先看会读取什么、产出什么、写入边界和确认节点，再带入 Agent。</p>
+                  </div>
+                )}
+              </aside>
+            )}
           </div>
-          {skills.length === 0 && <div className="catalog-empty" style={{ display: 'block' }}>当前集合还没有内容，或没有匹配的创作技能。</div>}
           <footer className="library-footer">
             <span>
               <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 3.5 6v4c0 4 2.7 6.2 6.5 7 3.8-.8 6.5-3 6.5-7V6L10 3Z" /><path d="m7.5 10 1.7 1.7 3.5-3.7" /></svg>
@@ -756,12 +787,21 @@ export default function SkillCatalog() {
       <button
         className="agent-entry"
         type="button"
+        aria-label="问场记"
+        title="打开问场记"
         aria-expanded={agentOpen}
         aria-controls="agentDrawer"
         onClick={() => setAgentOpen(true)}
       >
-        <span className="agent-avatar">记</span>
-        <span className="agent-entry-copy"><b>问场记</b><span>选技能、查项目或直接开工</span></span>
+        <span className="agent-avatar" aria-hidden="true">
+          <svg viewBox="0 0 32 32">
+            <path d="M16 5.2c5.8 0 9.8 3.2 9.8 7.9 0 4.7-4 7.9-9.8 7.9-1.2 0-2.4-.16-3.5-.48L7.7 22.7l1.25-4.1C7.2 17.2 6.2 15.3 6.2 13.1c0-4.7 4-7.9 9.8-7.9Z" />
+            <circle cx="12.4" cy="13.1" r="1.15" />
+            <circle cx="19.6" cy="13.1" r="1.15" />
+            <path d="M12.6 17.2c1 1.2 2.1 1.8 3.4 1.8s2.4-.6 3.4-1.8" />
+            <path d="M24.8 4.4v4.1M22.75 6.45h4.1" />
+          </svg>
+        </span>
         <i aria-hidden="true" />
       </button>
 

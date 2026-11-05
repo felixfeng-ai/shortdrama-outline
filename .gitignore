@@ -39,6 +39,7 @@ dev.log
 tsconfig.tsbuildinfo
 # 本地临时脚本与验证产物（不要入库）
 .tmp-*
+.taste-skill/
 *.tmp.cjs
 *.tmp.mjs
 .verify/

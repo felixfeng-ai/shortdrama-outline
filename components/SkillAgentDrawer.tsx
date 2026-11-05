@@ -420,7 +420,7 @@ export default function SkillAgentDrawer({
           historyRef.current = [
             ...historyRef.current,
             { role: 'user', content: request },
-            { role: 'assistant', content: `${report.title}完成：${report.summary}只读，不写项目，不扣额度。` },
+            { role: 'assistant', content: `${report.title}完成：${report.summary}只读，不写项目，不消耗创作额度。` },
           ]
           return
         } catch {
@@ -454,7 +454,7 @@ export default function SkillAgentDrawer({
             { role: 'user', content: request },
             {
               role: 'assistant',
-              content: `镜头连续性检查完成：检查 ${report.summary.totalShots} 镜，${report.summary.issueShots} 镜待处理，${report.summary.issueCount} 个具体问题。只读，不写项目，不扣额度。`,
+              content: `镜头连续性检查完成：检查 ${report.summary.totalShots} 镜，${report.summary.issueShots} 镜待处理，${report.summary.issueCount} 个具体问题。只读，不写项目，不消耗创作额度。`,
             },
           ]
           return
@@ -577,7 +577,7 @@ export default function SkillAgentDrawer({
             <div className="agent-welcome">
               <div className="agent-bubble">
                 <b>你可以直接说要完成什么。</b><br />
-                我会先匹配 Skill、读取项目，再给计划。没有确认不会改内容或花生图额度。
+                我会先匹配 Skill、读取项目，再给计划。没有确认不会改内容或消耗创作额度。
               </div>
               <div className="agent-suggestions">
                 {[

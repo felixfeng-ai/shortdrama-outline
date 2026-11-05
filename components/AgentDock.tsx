@@ -95,7 +95,7 @@ const TOOL_LABEL: Record<string, string> = {
   list_edit_targets: '读可修改目标',
   audit_shots: '查分镜',
   review_episodes: '审分集',
-  get_quota: '查额度',
+  get_quota: '查创作额度',
   get_decisions: '读创作决策',
   get_entity_comments: '读实体批注',
   list_localization_branches: '读海外分支',

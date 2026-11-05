@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react'
 
 import { fetchAuthSession, type AuthUserDto } from '@/lib/auth/client'
 
-export default function AuthButton() {
+interface Props {
+  variant?: 'default' | 'workspace-avatar' | 'workspace-user'
+}
+
+export default function AuthButton({ variant = 'default' }: Props) {
   const [user, setUser] = useState<AuthUserDto | null>(null)
 
   useEffect(() => {
@@ -20,11 +24,12 @@ export default function AuthButton() {
   }
 
   const accountLabel = user?.displayName || user?.email || user?.phone || "登录"
+  const initial = user ? accountLabel.trim().slice(0, 1).toUpperCase() : '登'
 
   return (
     <a
       href="/login"
-      className="h-install"
+      className={`h-install ${variant === 'default' ? '' : `is-${variant}`}`}
       onClick={openLogin}
       title={user ? `已登录 ${user.email || user.phone || user.displayName}` : '登录后跨设备找回项目'}
     >
@@ -32,6 +37,7 @@ export default function AuthButton() {
         <circle cx="10" cy="6.5" r="3" />
         <path d="M4.5 16c.7-3 2.5-4.5 5.5-4.5s4.8 1.5 5.5 4.5" />
       </svg>
+      <span className="wfx-user-initial" aria-hidden="true">{initial}</span>
       <span>{accountLabel}</span>
     </a>
   )

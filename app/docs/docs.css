@@ -1,5 +1,5 @@
 .docs-page {
-  --docs-acid: var(--signal-acid, #c4d98a);
+  --docs-acid: var(--signal-acid, #8dc8dc);
   min-height: 100dvh;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .015), transparent 24%),
@@ -31,29 +31,37 @@
 
 .docs-brand-mark {
   display: grid;
-  width: 26px;
-  height: 26px;
+  width: 27px;
+  height: 27px;
   place-items: center;
-  border-radius: 5px;
-  background: var(--docs-acid);
-  color: #1b2115;
-  font-family: var(--font-latin), sans-serif;
-  font-size: 12px;
-  font-weight: 700;
+  border-radius: 0;
+  background: transparent;
+  color: var(--signal-text);
+}
+
+.docs-brand-mark svg {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .docs-brand b {
-  font-family: Georgia, "Songti SC", serif;
-  font-size: 15px;
-  letter-spacing: .04em;
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
 .docs-brand em {
   color: var(--signal-text-3, #8b969d);
-  font-family: var(--font-mono), monospace;
-  font-size: 8px;
+  font-family: inherit;
+  font-size: 12px;
   font-style: normal;
-  letter-spacing: .14em;
+  letter-spacing: 0;
 }
 
 .docs-topnav {

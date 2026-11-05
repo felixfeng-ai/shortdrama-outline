@@ -57,8 +57,8 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Signal Desk · 2026-10-22 用户确认的方向 A
-   近黑指令台 + 酸性绿主操作 + 冷蓝运行态；业务组件逻辑不变。
+   Signal Desk · 2026-11-06 工作区视觉收口
+   近黑指令台 + 反相白主操作 + 冷蓝运行态；业务组件逻辑不变。
    ═══════════════════════════════════════════════════════════════════ */
 .signal-desk {
   --c-surface: 19 23 26;
@@ -87,19 +87,19 @@
   --c-done-700: 158 197 239;
   --c-done-800: 183 214 247;
   --c-done-900: 210 231 251;
-  --c-accent-50: 37 44 28;
-  --c-accent-100: 47 56 34;
-  --c-accent-200: 64 76 45;
-  --c-accent-300: 96 112 68;
-  --c-accent-400: 196 217 138;
-  --c-accent-500: 178 199 122;
-  --c-accent-600: 150 170 98;
+  --c-accent-50: 19 38 44;
+  --c-accent-100: 24 49 56;
+  --c-accent-200: 36 76 87;
+  --c-accent-300: 62 116 131;
+  --c-accent-400: 113 179 200;
+  --c-accent-500: 141 200 220;
+  --c-accent-600: 121 179 198;
   --c-accent-700: 213 141 115;
   --c-accent-800: 232 171 150;
   --c-accent-900: 244 202 187;
   --c-chip: 29 35 40;
   --c-chip-hover: 34 41 46;
-  --c-chip-lead: 46 55 35;
+  --c-chip-lead: 28 49 56;
   --c-prose: 24 29 33;
   --c-actmini: 29 35 40;
   --signal-bg: #13171a;
@@ -110,12 +110,12 @@
   --signal-text: #dfe4e2;
   --signal-text-2: #b6c0c5;
   --signal-text-3: #8b969d;
-  --signal-acid: #c4d98a;
-  --signal-blue: #8eb7e7;
+  --signal-acid: #8dc8dc;
+  --signal-blue: #8dc8dc;
   --signal-warning: #d58d73;
   min-height: 100dvh;
   background:
-    radial-gradient(circle at 32% -8%, rgba(196, 217, 138, .035), transparent 32%),
+    radial-gradient(circle at 32% -8%, rgba(141, 200, 220, .035), transparent 32%),
     linear-gradient(180deg, rgba(255, 255, 255, .012), transparent 17%),
     var(--signal-bg);
   color: var(--signal-text);
@@ -232,7 +232,7 @@
   color: var(--signal-text);
   box-shadow: inset 0 0 0 1px rgba(238, 242, 244, 0.025);
 }
-.signal-desk .h-pill.on em { color: var(--signal-acid); }
+.signal-desk .h-pill.on em { color: var(--signal-blue); }
 .signal-desk .h-pill.done {
   border-color: rgba(113, 167, 255, 0.12);
   background: rgba(113, 167, 255, 0.075);
@@ -272,8 +272,8 @@
   color: var(--signal-text-3);
 }
 .signal-desk .release-version {
-  border-color: rgba(196, 217, 138, .26);
-  background: rgba(196, 217, 138, .07);
+  border-color: rgba(141, 200, 220, .26);
+  background: rgba(141, 200, 220, .07);
   color: var(--signal-acid);
 }
 .signal-desk .release-title {
@@ -325,7 +325,7 @@
   transition: border-color 160ms cubic-bezier(.23,1,.32,1), color 160ms;
 }
 .signal-rail-canvas:hover {
-  border-color: rgba(185, 243, 90, 0.5);
+  border-color: rgba(141, 200, 220, 0.5);
   color: var(--signal-acid);
 }
 .signal-rail-canvas svg {
@@ -472,6 +472,141 @@
   color: var(--signal-text);
   padding: 18px 20px 28px;
 }
+
+.workspace-mode-row {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 14px;
+}
+.workspace-mode-tabs {
+  display: inline-flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--signal-panel);
+}
+.workspace-mode-tabs button {
+  min-height: 34px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--signal-text-3);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+.workspace-mode-tabs button:hover {
+  color: var(--signal-text);
+}
+.workspace-mode-tabs button.active {
+  background: var(--signal-text);
+  color: var(--signal-bg);
+  font-weight: 650;
+}
+
+.inline-release {
+  width: min(1220px, 100%);
+  margin: 0 auto 12px;
+}
+.inline-release-bar {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 9px 0 12px;
+  border-radius: 6px;
+  background: var(--signal-panel);
+}
+.inline-release-bar > i {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: var(--signal-blue);
+}
+.inline-release-bar > span {
+  flex: 0 0 auto;
+  color: var(--signal-text-3);
+  font-size: 11.5px;
+}
+.inline-release-bar > p {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  color: var(--signal-text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inline-release-bar > p b {
+  color: var(--signal-text);
+  font-weight: 560;
+}
+.inline-release-bar > button {
+  min-height: 26px;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--signal-text-3);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.inline-release-bar > button:hover {
+  background: var(--signal-raised);
+  color: var(--signal-text);
+}
+.inline-release-detail {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 0 0 6px 6px;
+  background: var(--signal-panel);
+}
+.inline-release-detail header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.inline-release-detail header b {
+  font-size: 12.5px;
+  font-weight: 590;
+}
+.inline-release-detail time {
+  color: var(--signal-text-3);
+  font-size: 11.5px;
+}
+.inline-release-detail ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.inline-release-detail li {
+  color: var(--signal-text-2);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.inline-release-detail li::before {
+  margin-right: 6px;
+  color: var(--signal-blue);
+  content: "·";
+}
+
+.is-create-mode .h-agent-fab,
+.is-create-mode .h-deck,
+.is-create-mode .h-deck-scrim {
+  display: none !important;
+}
+
+.skill-page.skill-page-embedded .agent-entry {
+  bottom: 22px;
+}
 .signal-desk .surface {
   border: 1px solid var(--signal-line);
   border-radius: 8px;
@@ -491,8 +626,8 @@
 }
 .signal-desk .project-ledger button:hover,
 .signal-desk .project-ledger .project-backup:hover {
-  border-color: rgba(185, 243, 90, 0.38);
-  background: rgba(185, 243, 90, 0.06);
+  border-color: rgba(141, 200, 220, 0.38);
+  background: rgba(141, 200, 220, 0.06);
   color: var(--signal-acid);
 }
 .signal-desk .project-ledger .bg-surface-soft {
@@ -526,8 +661,8 @@
   color: var(--signal-text);
 }
 .signal-desk .chip.lead {
-  border-color: rgba(185, 243, 90, 0.45);
-  background: rgba(185, 243, 90, 0.1);
+  border-color: rgba(141, 200, 220, 0.45);
+  background: rgba(141, 200, 220, 0.1);
   color: var(--signal-acid);
 }
 .signal-desk .chip .tag-ai {
@@ -536,11 +671,11 @@
 }
 .signal-desk .bmain,
 .signal-desk .btn-primary {
-  border: 1px solid rgba(185, 243, 90, 0.7);
+  border: 1px solid rgba(141, 200, 220, 0.7);
   background: var(--signal-acid);
   background-image: none;
   color: #0b0d10;
-  box-shadow: 0 10px 24px -18px rgba(185, 243, 90, 0.8);
+  box-shadow: 0 10px 24px -18px rgba(141, 200, 220, 0.8);
 }
 .signal-desk .bmain:hover,
 .signal-desk .btn-primary:hover {
@@ -569,12 +704,12 @@
 }
 .signal-desk .mini .mtxt input::placeholder { color: #66727d; }
 .signal-desk .mini .mico {
-  background: rgba(185, 243, 90, 0.09);
+  background: rgba(141, 200, 220, 0.09);
   color: var(--signal-acid);
 }
 .signal-desk .mini .mico svg { stroke: var(--signal-acid); }
 .signal-desk .mini .ruler {
-  background: linear-gradient(90deg, rgba(185,243,90,.68), rgba(113,167,255,.2));
+  background: linear-gradient(90deg, rgba(141,200,220,.68), rgba(113,167,255,.2));
 }
 .signal-desk .idea-followup > div {
   color: var(--signal-text-3);
@@ -591,7 +726,7 @@
   color: var(--signal-text);
 }
 .signal-desk .workmeta button.on {
-  background: rgba(185, 243, 90, 0.1);
+  background: rgba(141, 200, 220, 0.1);
   color: var(--signal-acid);
 }
 .signal-desk .workmeta-sep { color: #4f5b65; }
@@ -643,8 +778,8 @@
   background: rgba(113, 167, 255, 0.035);
 }
 .signal-desk .h-work .ledger-row.is-active {
-  background: rgba(185, 243, 90, 0.055);
-  box-shadow: inset 0 0 0 1px rgba(185, 243, 90, 0.24);
+  background: rgba(141, 200, 220, 0.055);
+  box-shadow: inset 0 0 0 1px rgba(141, 200, 220, 0.24);
 }
 .signal-desk .h-work .folio {
   color: var(--signal-blue);
@@ -683,7 +818,7 @@
 .signal-desk .h-deck-body { color: var(--signal-text-2); }
 .signal-desk .agent-starter-list { border-top-color: var(--signal-line); }
 .signal-desk .agent-starter { border-bottom-color: var(--signal-line); }
-.signal-desk .agent-starter:hover { background: rgba(185, 243, 90, 0.045); }
+.signal-desk .agent-starter:hover { background: rgba(141, 200, 220, 0.045); }
 .signal-desk .agent-starter-q { color: var(--signal-text); }
 .signal-desk .agent-starter-hint { color: var(--signal-text-3); }
 .signal-desk .agent-starter svg { stroke: var(--signal-text-3); }
@@ -765,7 +900,7 @@
   min-width: 20px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(196, 217, 138, .1);
+  background: rgba(141, 200, 220, .1);
   color: var(--signal-acid);
   font: 10px/1.5 var(--font-mono);
   text-align: center;
@@ -850,7 +985,7 @@
   padding: 0 9px;
   border: 1px solid var(--signal-line);
   border-radius: 5px;
-  background: rgba(196, 217, 138, .06);
+  background: rgba(141, 200, 220, .06);
   color: var(--signal-acid);
   font-size: 10px;
   font-weight: 600;
@@ -858,11 +993,11 @@
 }
 .signal-desk .h-install:hover {
   border-color: color-mix(in srgb, var(--signal-acid) 45%, var(--signal-line));
-  background: rgba(196, 217, 138, .1);
+  background: rgba(141, 200, 220, .1);
 }
 .signal-desk .h-push.is-on {
   border-color: color-mix(in srgb, var(--signal-acid) 55%, var(--signal-line));
-  background: rgba(196, 217, 138, .14);
+  background: rgba(141, 200, 220, .14);
 }
 .signal-desk .h-push:disabled {
   cursor: default;
@@ -926,7 +1061,7 @@
   line-height: 1.15 !important;
 }
 .signal-desk .signal-rail .navpanel button.on svg {
-  stroke: #1b2115 !important;
+  stroke: #071014 !important;
 }
 .signal-desk .signal-rail .navpanel button svg {
   flex: 0 0 16px;
@@ -988,9 +1123,9 @@
   height: 24px;
   flex: 0 0 24px;
   place-items: center;
-  border: 1px solid rgba(196, 217, 138, .28);
+  border: 1px solid rgba(141, 200, 220, .28);
   border-radius: 5px;
-  background: rgba(196, 217, 138, .08);
+  background: rgba(141, 200, 220, .08);
   color: var(--signal-acid);
   font-family: var(--font-latin), sans-serif;
   font-size: 10px;
@@ -1037,7 +1172,7 @@
 }
 
 .signal-desk .site-legal-footer nav a:focus-visible {
-  outline: 2px solid rgba(142, 183, 231, .8);
+  outline: 2px solid rgba(141, 200, 220, .8);
   outline-offset: 2px;
 }
 
@@ -1051,7 +1186,7 @@
 .signal-desk .auth-consent a {
   color: var(--signal-text-2);
   text-decoration: underline;
-  text-decoration-color: rgba(142, 183, 231, .38);
+  text-decoration-color: rgba(141, 200, 220, .38);
   text-underline-offset: 3px;
 }
 
@@ -1073,7 +1208,7 @@
 
 .signal-desk .auth-consent a:focus-visible,
 .signal-desk .auth-legal-links a:focus-visible {
-  outline: 2px solid rgba(142, 183, 231, .8);
+  outline: 2px solid rgba(141, 200, 220, .8);
   outline-offset: 2px;
 }
 
@@ -1146,7 +1281,7 @@
   place-items: center;
   border-radius: 5px;
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
   font-family: var(--font-latin), sans-serif;
   font-size: 12px;
   font-weight: 600;
@@ -1453,7 +1588,7 @@
   width: 100%;
   border: 1px solid color-mix(in srgb, var(--signal-acid) 72%, var(--signal-line));
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
 }
 .signal-desk .auth-primary:active:not(:disabled),
 .signal-desk .auth-secondary:active:not(:disabled) {
@@ -1470,7 +1605,7 @@
   width: 13px;
   height: 13px;
   border: 1.5px solid rgba(27, 33, 21, .28);
-  border-top-color: #1b2115;
+  border-top-color: #071014;
   border-radius: 50%;
   animation: auth-spin 720ms linear infinite;
 }
@@ -1759,7 +1894,7 @@
   place-items: center;
   border-radius: 5px;
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
   font-family: var(--font-latin), sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -1893,7 +2028,7 @@
 .signal-desk .review-nav a:focus-visible,
 .signal-desk .review-brand:focus-visible,
 .signal-desk .review-state a:focus-visible {
-  outline: 2px solid rgba(142, 183, 231, .78);
+  outline: 2px solid rgba(141, 200, 220, .78);
   outline-offset: 2px;
 }
 .signal-desk .review-article {
@@ -2110,7 +2245,7 @@
   padding: 0 18px;
   border-radius: 5px;
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
   font-size: 12px;
   font-weight: 600;
 }
@@ -2239,7 +2374,7 @@
 }
 .keyframe-history {
   scrollbar-width: thin;
-  scrollbar-color: rgba(142, 183, 231, .32) transparent;
+  scrollbar-color: rgba(141, 200, 220, .32) transparent;
 }
 .keyframe-history-item {
   aspect-ratio: 9 / 16;
@@ -2280,7 +2415,7 @@
 }
 .shot-video-history {
   scrollbar-width: thin;
-  scrollbar-color: rgba(142, 183, 231, .32) transparent;
+  scrollbar-color: rgba(141, 200, 220, .32) transparent;
 }
 .shot-video-generate {
   margin-left: 2px;
@@ -5187,7 +5322,7 @@
   color: var(--signal-blue);
   font: inherit;
   text-decoration: underline;
-  text-decoration-color: rgba(142, 183, 231, .38);
+  text-decoration-color: rgba(141, 200, 220, .38);
   text-underline-offset: 2px;
   cursor: pointer;
 }
@@ -5211,7 +5346,7 @@
 .agent-inline-jump:focus-visible,
 .agent-doc-link:focus-visible {
   border-radius: 2px;
-  outline: 2px solid rgba(142, 183, 231, .72);
+  outline: 2px solid rgba(141, 200, 220, .72);
   outline-offset: 2px;
 }
 .agent-stream-caret {
@@ -6938,7 +7073,7 @@
 }
 .signal-desk .variant-badge {
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
 }
 .signal-desk .variant-direction {
   border-color: var(--signal-line);
@@ -7049,8 +7184,10 @@
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(20, 20, 20, 0.08);
 }
-.map-bar b {
+.map-bar b,
+.map-bar h1 {
   display: inline-flex;
+  margin: 0;
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
@@ -7058,7 +7195,8 @@
   font-size: 15px;
   font-weight: 650;
 }
-.map-bar b svg {
+.map-bar b svg,
+.map-bar h1 svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -7161,7 +7299,7 @@
   font-size: 8.5px;
 }
 .map-view-tabs button.active {
-  border-color: rgba(196, 217, 138, 0.48);
+  border-color: rgba(141, 200, 220, 0.48);
   background: color-mix(in srgb, var(--signal-acid) 12%, var(--signal-raised));
   color: var(--signal-text);
 }
@@ -7403,8 +7541,8 @@
   overflow: hidden;
   border-right: 1px solid var(--signal-line);
   background:
-    linear-gradient(rgba(142, 183, 231, .045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(142, 183, 231, .045) 1px, transparent 1px),
+    linear-gradient(rgba(141, 200, 220, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(141, 200, 220, .045) 1px, transparent 1px),
     #101418;
   background-size: 12px 12px;
 }
@@ -7514,7 +7652,7 @@
   padding: 0 13px;
   border: 1px solid color-mix(in srgb, var(--signal-acid) 32%, var(--signal-line));
   border-radius: 5px;
-  background: rgba(196, 217, 138, .06);
+  background: rgba(141, 200, 220, .06);
   color: var(--signal-acid);
   font-size: 10px;
   cursor: pointer;
@@ -9118,11 +9256,11 @@
 }
 .signal-desk .bmain,
 .signal-desk .btn-primary {
-  border: 1px solid rgba(185, 243, 90, 0.7);
+  border: 1px solid rgba(141, 200, 220, 0.7);
   background: var(--signal-acid);
   background-image: none;
   color: #0b0d10;
-  box-shadow: 0 10px 24px -18px rgba(185, 243, 90, 0.8);
+  box-shadow: 0 10px 24px -18px rgba(141, 200, 220, 0.8);
 }
 .signal-desk .chip {
   border: 1px solid #303840;
@@ -9137,8 +9275,8 @@
   color: var(--signal-text);
 }
 .signal-desk .chip.lead {
-  border-color: rgba(185, 243, 90, 0.45);
-  background: rgba(185, 243, 90, 0.1);
+  border-color: rgba(141, 200, 220, 0.45);
+  background: rgba(141, 200, 220, 0.1);
   color: var(--signal-acid);
 }
 .signal-desk .h-deck {
@@ -9164,7 +9302,7 @@
   color: var(--signal-text-3);
 }
 .signal-desk .h-deck-grab-row .go {
-  border: 1px solid rgba(185, 243, 90, 0.52);
+  border: 1px solid rgba(141, 200, 220, 0.52);
   border-radius: 4px;
   background: var(--signal-acid);
   color: #0b0d10;
@@ -9205,12 +9343,12 @@
   color: var(--signal-text-3);
 }
 .signal-desk .map-view-tabs button.active {
-  border-color: color-mix(in srgb, var(--signal-acid) 42%, var(--signal-line));
-  background: color-mix(in srgb, var(--signal-acid) 6%, var(--signal-raised));
+  border-color: color-mix(in srgb, var(--signal-blue) 44%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-blue) 7%, var(--signal-raised));
   color: var(--signal-text);
 }
 .signal-desk .map-view-tabs button.active span {
-  color: var(--signal-acid);
+  color: var(--signal-blue);
 }
 .signal-desk .map-bar button,
 .signal-desk .map-inspector-close {
@@ -9220,9 +9358,9 @@
 }
 .signal-desk .map-bar button:hover,
 .signal-desk .map-inspector-close:hover {
-  border-color: rgba(185, 243, 90, 0.38);
+  border-color: color-mix(in srgb, var(--signal-blue) 42%, var(--signal-line));
   background: var(--signal-raised);
-  color: var(--signal-acid);
+  color: var(--signal-blue);
 }
 .signal-desk .map-priority {
   border-color: var(--signal-line);
@@ -9302,8 +9440,8 @@
 }
 .signal-desk .map-node.current,
 .signal-desk .map-node.selected {
-  border-color: rgba(185, 243, 90, 0.56);
-  box-shadow: 0 0 0 2px rgba(185, 243, 90, 0.1), 0 16px 30px -24px rgba(0, 0, 0, 1);
+  border-color: rgba(141, 200, 220, 0.56);
+  box-shadow: 0 0 0 2px rgba(141, 200, 220, 0.1), 0 16px 30px -24px rgba(0, 0, 0, 1);
 }
 .signal-desk .map-node-head :is(b, em),
 .signal-desk .map-row :is(b, em) {
@@ -9354,7 +9492,7 @@
 }
 .signal-desk .map-open-step {
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
 }
 .signal-desk .map-open-step:hover {
   background: var(--signal-acid-strong, #d0e39b);
@@ -9381,7 +9519,7 @@
   color: var(--signal-text-2);
 }
 .signal-desk .map-row.selected {
-  background: rgba(185, 243, 90, 0.06);
+  background: rgba(141, 200, 220, 0.06);
 }
 .signal-desk .map-links path { stroke: rgba(122, 139, 154, 0.28); }
 .signal-desk .map-links marker path { fill: rgba(113, 167, 255, 0.5); }
@@ -9563,7 +9701,7 @@
   border-radius: 5px;
   background: var(--signal-acid) !important;
   background-image: none !important;
-  color: #1b2115 !important;
+  color: #071014 !important;
 }
 .signal-desk .h-deck section[aria-label="Veya Agent"] > p {
   padding: 0 14px 10px !important;
@@ -9677,10 +9815,10 @@
   border-radius: 6px !important;
   background: var(--signal-acid) !important;
   background-image: none !important;
-  color: #1b2115 !important;
+  color: #071014 !important;
   font-size: 12.5px;
   font-weight: 600;
-  box-shadow: 0 10px 26px -20px rgba(196, 217, 138, .75);
+  box-shadow: none;
 }
 .signal-desk .bmain:hover {
   background: var(--signal-acid-strong, #d0e39b) !important;
@@ -9853,7 +9991,7 @@
   border-bottom-color: var(--signal-line) !important;
 }
 .signal-desk .h-work .ledger-row:hover {
-  background: rgba(142, 183, 231, .025) !important;
+  background: rgba(141, 200, 220, .025) !important;
 }
 .signal-desk .h-work .ledger-row > dl {
   gap: 12px 22px !important;
@@ -9888,9 +10026,7 @@
 }
 
 .signal-desk .map-overlay {
-  background:
-    radial-gradient(circle at 32% -8%, rgba(196, 217, 138, .035), transparent 32%),
-    var(--signal-bg);
+  background: var(--signal-bg);
   opacity: 1;
   transform: translateY(0) scale(1);
   transform-origin: 50% 38%;
@@ -9921,18 +10057,18 @@
 }
 .signal-desk .map-stage-wrap {
   background-color: #101418;
-  background-image: radial-gradient(rgba(142, 183, 231, .14) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(141, 200, 220, .14) 1px, transparent 1px);
 }
 .signal-desk .map-node {
   background: var(--signal-raised);
 }
 .signal-desk .map-node.current,
 .signal-desk .map-node.selected {
-  border-color: color-mix(in srgb, var(--signal-acid) 52%, var(--signal-line));
-  box-shadow: 0 0 0 2px rgba(196, 217, 138, .08), 0 16px 30px -24px rgba(0, 0, 0, .9);
+  border-color: color-mix(in srgb, var(--signal-blue) 54%, var(--signal-line));
+  box-shadow: 0 0 0 2px rgba(141, 200, 220, .09), 0 16px 30px -24px rgba(0, 0, 0, .9);
 }
 .signal-desk .map-row.selected {
-  background: color-mix(in srgb, var(--signal-acid) 6%, var(--signal-panel));
+  background: color-mix(in srgb, var(--signal-blue) 7%, var(--signal-panel));
 }
 
 @media (max-width: 1180px) {
@@ -10011,7 +10147,7 @@
   .signal-desk .h-deck-grab-row .go {
     border-color: color-mix(in srgb, var(--signal-acid) 52%, var(--signal-line));
     background: var(--signal-acid);
-    color: #1b2115;
+    color: #071014;
   }
 }
 @media (max-width: 620px) {
@@ -10047,7 +10183,7 @@
   place-items: center;
   border-radius: 6px;
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
   font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -10077,7 +10213,7 @@
 .signal-desk .signal-rail .navpanel button.on {
   border-color: color-mix(in srgb, var(--signal-acid) 42%, var(--signal-line));
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
 }
 .signal-desk .signal-rail-label {
   font-size: 7px;
@@ -10104,11 +10240,11 @@
   gap: 12px;
 }
 .signal-desk .story-command-kicker {
-  color: var(--signal-acid);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 9px;
+  color: var(--signal-text-3);
+  font-family: var(--font-ui);
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: .08em;
+  letter-spacing: 0;
 }
 .signal-desk .story-tools-toggle {
   min-height: 24px;
@@ -10117,7 +10253,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--signal-text-3);
-  font-size: 9.5px;
+  font-size: 11px;
   cursor: pointer;
 }
 .signal-desk .story-tools-toggle:hover,
@@ -10187,9 +10323,7 @@
   overflow: hidden;
   border: 1px solid var(--signal-line);
   border-radius: 7px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .018), transparent 62%),
-    var(--signal-raised);
+  background: var(--signal-raised);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .018);
 }
 .signal-desk .signal-command > div {
@@ -10203,23 +10337,20 @@
   border-left: 1px solid var(--signal-line-soft);
 }
 .signal-desk .signal-command-current {
-  background:
-    linear-gradient(90deg, rgba(142, 183, 231, .045), transparent 72%);
+  background: color-mix(in srgb, var(--signal-blue) 4%, var(--signal-raised));
 }
 .signal-desk .signal-command-blocker.has-blocker {
-  background:
-    linear-gradient(90deg, rgba(213, 141, 115, .055), transparent 72%);
+  background: color-mix(in srgb, var(--signal-warning) 4%, var(--signal-raised));
 }
 .signal-desk .signal-command-next {
-  background:
-    linear-gradient(90deg, rgba(196, 217, 138, .04), transparent 72%);
+  background: color-mix(in srgb, var(--signal-blue) 2.5%, var(--signal-raised));
 }
 .signal-desk .signal-command-label {
   color: var(--signal-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: .05em;
+  letter-spacing: 0;
 }
 .signal-desk .signal-command-current strong {
   overflow-wrap: anywhere;
@@ -10233,7 +10364,7 @@
   overflow: hidden;
   margin: 0;
   color: var(--signal-text-2);
-  font-size: 10.5px;
+  font-size: 11.5px;
   line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -10241,7 +10372,7 @@
 .signal-desk .signal-command-detail {
   color: var(--signal-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
 }
@@ -10255,10 +10386,10 @@
   margin-top: 1px;
   border: 1px solid color-mix(in srgb, var(--signal-acid) 26%, var(--signal-line));
   border-radius: 5px;
-  background: rgba(196, 217, 138, .07);
+  background: rgba(141, 200, 220, .07);
   padding: 0 9px;
   color: var(--signal-acid);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -10270,7 +10401,7 @@
   transform: scale(.98);
 }
 .signal-desk .signal-command-action:focus-visible {
-  outline: 2px solid rgba(142, 183, 231, .76);
+  outline: 2px solid rgba(141, 200, 220, .76);
   outline-offset: 2px;
 }
 .signal-desk .signal-flow {
@@ -10360,8 +10491,8 @@
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--signal-acid) 24%, var(--signal-line));
   border-radius: 7px;
-  background: #263321;
-  color: #e8f2df;
+  background: #13262c;
+  color: #dff2f8;
   font-size: 11.5px;
   line-height: 1.5;
   text-align: left;
@@ -10369,7 +10500,7 @@
 }
 .signal-desk .agent-prompt-bubble:hover {
   border-color: color-mix(in srgb, var(--signal-acid) 40%, var(--signal-line));
-  background: #2c3a25;
+  background: #18343c;
 }
 .signal-desk .agent-answer-bubble {
   max-width: calc(100% - 22px);
@@ -10413,11 +10544,11 @@
   width: 32px;
   height: 32px;
   place-items: center;
-  border: 1px solid rgba(196, 217, 138, .3);
+  border: 1px solid rgba(141, 200, 220, .3);
   border-radius: 7px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .06), transparent),
-    rgba(196, 217, 138, .1);
+    rgba(141, 200, 220, .1);
   color: var(--signal-acid);
   font-family: var(--font-latin), sans-serif;
   font-size: 12px;
@@ -10485,9 +10616,9 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  border: 1px solid rgba(196, 217, 138, .2);
+  border: 1px solid rgba(141, 200, 220, .2);
   border-radius: 6px;
-  background: rgba(196, 217, 138, .065);
+  background: rgba(141, 200, 220, .065);
   padding: 0 10px;
   color: var(--signal-acid);
   font-size: 9.5px;
@@ -10516,13 +10647,13 @@
 }
 .signal-desk .agent-session-select:focus-visible,
 .signal-desk .agent-session-new:focus-visible {
-  outline: 2px solid rgba(142, 183, 231, .76);
+  outline: 2px solid rgba(141, 200, 220, .76);
   outline-offset: 2px;
 }
 @media (hover: hover) and (pointer: fine) {
   .signal-desk .signal-command-action:hover {
-    border-color: rgba(196, 217, 138, .46);
-    background: rgba(196, 217, 138, .11);
+    border-color: rgba(141, 200, 220, .46);
+    background: rgba(141, 200, 220, .11);
   }
   .signal-desk .agent-session-select:hover:not(:disabled) {
     border-color: var(--signal-line-strong, rgba(213, 224, 228, .18));
@@ -10530,8 +10661,8 @@
     color: var(--signal-text);
   }
   .signal-desk .agent-session-new:hover:not(:disabled) {
-    border-color: rgba(196, 217, 138, .34);
-    background: rgba(196, 217, 138, .1);
+    border-color: rgba(141, 200, 220, .34);
+    background: rgba(141, 200, 220, .1);
   }
 }
 @media (max-width: 520px) {
@@ -10704,7 +10835,7 @@
   padding: 16px 17px 14px;
   border-bottom: 1px solid var(--signal-line);
   background:
-    linear-gradient(90deg, rgba(196, 217, 138, .035), transparent 64%);
+    linear-gradient(90deg, rgba(141, 200, 220, .035), transparent 64%);
 }
 .project-tools-head > div {
   display: grid;
@@ -10803,7 +10934,7 @@
 }
 .project-tools-tab[aria-selected="true"] {
   border-bottom-color: var(--signal-acid);
-  background: rgba(196, 217, 138, .045);
+  background: rgba(141, 200, 220, .045);
 }
 .project-tools-tab[aria-selected="true"] b { color: var(--signal-text); }
 .project-tools-content {
@@ -10924,7 +11055,7 @@
   font-style: normal;
 }
 .shot-preview-status.done {
-  border-color: rgba(196, 217, 138, .3);
+  border-color: rgba(141, 200, 220, .3);
   color: var(--signal-acid);
 }
 .shot-preview-status.rework {
@@ -10942,8 +11073,8 @@
   border: 1px solid var(--signal-line);
   border-radius: 7px;
   background:
-    linear-gradient(rgba(142, 183, 231, .04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(142, 183, 231, .04) 1px, transparent 1px),
+    linear-gradient(rgba(141, 200, 220, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(141, 200, 220, .04) 1px, transparent 1px),
     #101418;
   background-size: 14px 14px;
 }
@@ -11098,7 +11229,7 @@
   padding: 16px 17px 14px;
   border-bottom: 1px solid var(--signal-line);
   background:
-    linear-gradient(90deg, rgba(196, 217, 138, .04), transparent 60%),
+    linear-gradient(90deg, rgba(141, 200, 220, .04), transparent 60%),
     var(--signal-panel);
 }
 .artifact-center-head > div:first-child {
@@ -11455,7 +11586,7 @@
   font-size: 7.5px;
 }
 .artifact-diff-kind.added {
-  border-color: rgba(196, 217, 138, .28);
+  border-color: rgba(141, 200, 220, .28);
   color: var(--signal-acid);
 }
 .artifact-diff-kind.removed {
@@ -11463,7 +11594,7 @@
   color: var(--signal-warning);
 }
 .artifact-diff-kind.changed {
-  border-color: rgba(142, 183, 231, .28);
+  border-color: rgba(141, 200, 220, .28);
   color: var(--signal-blue);
 }
 .artifact-diff-row code {
@@ -12156,9 +12287,7 @@
   gap: 18px;
   padding: 13px 14px 11px;
   border-bottom: 1px solid var(--signal-line);
-  background:
-    linear-gradient(90deg, rgba(142, 183, 231, .035), transparent 56%),
-    rgba(17, 21, 25, .78);
+  background: color-mix(in srgb, var(--signal-blue) 2%, var(--signal-panel));
 }
 .canvas-graph-head > div:first-child {
   display: grid;
@@ -12331,7 +12460,7 @@
   flex: 1;
   overflow: hidden;
   background-color: #101418;
-  background-image: radial-gradient(rgba(142, 183, 231, .12) 1px, transparent 1px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='1' cy='1' r='.8' fill='%238eb7e7' fill-opacity='.14'/%3E%3C/svg%3E");
   background-size: 20px 20px;
   cursor: grab;
   touch-action: none;
@@ -12380,10 +12509,8 @@
   overflow: hidden;
   border: 1px solid var(--signal-line-strong, rgba(213, 224, 228, .18));
   border-radius: 7px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .018), transparent),
-    #1b2126;
-  box-shadow: 0 12px 24px -22px rgba(0, 0, 0, .9);
+  background: #1b2126;
+  box-shadow: none;
   padding: 9px 10px;
   color: var(--signal-text);
   cursor: grab;
@@ -12399,10 +12526,8 @@
   opacity: .88;
 }
 .canvas-graph-node.selected {
-  border-color: color-mix(in srgb, var(--signal-acid) 62%, var(--signal-line));
-  background:
-    linear-gradient(180deg, rgba(196, 217, 138, .045), transparent),
-    #1d2429;
+  border-color: color-mix(in srgb, var(--signal-blue) 62%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-blue) 6%, #1b2126);
 }
 .canvas-graph-node.connect-source {
   border-color: var(--signal-blue);
@@ -12864,7 +12989,7 @@
 
   .signal-desk .signal-rail-brand:focus-visible {
     border-radius: 6px;
-    outline: 2px solid rgba(142, 183, 231, .8);
+    outline: 2px solid rgba(141, 200, 220, .8);
     outline-offset: 2px;
   }
 
@@ -13039,7 +13164,7 @@
 
   .signal-desk .signal-rail-link:focus-visible,
   .signal-desk .signal-rail .navpanel button:focus-visible {
-    outline: 2px solid rgba(142, 183, 231, .8);
+    outline: 2px solid rgba(141, 200, 220, .8);
     outline-offset: -2px;
   }
 }
@@ -13058,7 +13183,7 @@
   }
 
   .signal-desk .h-top :is(.h-canvas, .h-docs-entry, .h-install, .release-trigger):focus-visible {
-    outline: 2px solid rgba(142, 183, 231, .78);
+    outline: 2px solid rgba(141, 200, 220, .78);
     outline-offset: 2px;
   }
 }
@@ -13185,7 +13310,7 @@
     border: 1px solid color-mix(in srgb, var(--signal-acid) 34%, var(--signal-line));
     border-radius: 50%;
     background:
-      radial-gradient(circle at 34% 24%, rgba(196, 217, 138, .14), transparent 48%),
+      radial-gradient(circle at 34% 24%, rgba(141, 200, 220, .14), transparent 48%),
       #1a2118;
     color: var(--signal-acid);
     box-shadow:
@@ -13203,7 +13328,7 @@
     right: calc(var(--agent-dock-width) + 14px);
     border-color: color-mix(in srgb, var(--signal-acid) 52%, var(--signal-line));
     background:
-      radial-gradient(circle at 34% 24%, rgba(196, 217, 138, .2), transparent 48%),
+      radial-gradient(circle at 34% 24%, rgba(141, 200, 220, .2), transparent 48%),
       #20281c;
   }
 
@@ -13313,9 +13438,129 @@
   }
 }
 
+/* 画布覆盖层内继续显示全局三模式，切换前先播放既有退出过渡。 */
+.signal-desk .canvas-mode-switch {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+.signal-desk .map-bar .workspace-mode-tabs {
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--signal-raised);
+}
+.signal-desk .map-bar .workspace-mode-tabs button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--signal-text-3);
+  font-size: 12px;
+}
+.signal-desk .map-bar .workspace-mode-tabs button:hover {
+  background: transparent;
+  color: var(--signal-text);
+}
+.signal-desk .map-bar .workspace-mode-tabs button.active {
+  background: var(--signal-text);
+  color: var(--signal-bg);
+}
+.signal-desk .map-bar .workspace-mode-tabs button.active:hover {
+  background: var(--signal-text);
+  color: var(--signal-bg);
+}
+.signal-desk .signal-rail-canvas.active,
+.signal-desk .signal-rail-skill.active {
+  border-color: var(--signal-text);
+  background: var(--signal-text);
+  color: var(--signal-bg);
+}
+.signal-desk .signal-rail-canvas.active:hover,
+.signal-desk .signal-rail-skill.active:hover {
+  border-color: var(--signal-text);
+  background: #ffffff;
+  color: var(--signal-bg);
+}
+.signal-desk .signal-rail-skill:not(.active) {
+  border-color: var(--signal-line);
+  background: var(--signal-panel);
+  color: var(--signal-text-3);
+}
+.signal-desk .signal-rail-skill:not(.active):hover {
+  border-color: color-mix(in srgb, var(--signal-blue) 45%, var(--signal-line));
+  background: var(--signal-raised);
+  color: var(--signal-text);
+}
+
 @media (max-width: 920px) {
+  .signal-desk .map-bar {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .signal-desk .map-bar > span,
+  .signal-desk .map-bar .map-project-context {
+    display: none;
+  }
+  .signal-desk .map-bar > button {
+    order: 1;
+    margin-left: auto;
+  }
+  .signal-desk .canvas-mode-switch {
+    order: 2;
+    width: 100%;
+    margin-top: 2px;
+  }
+  .signal-desk .canvas-mode-switch .workspace-mode-tabs {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .signal-desk .canvas-mode-switch .workspace-mode-tabs button {
+    flex: 1 1 0;
+  }
+
   .signal-desk .h-agent-fab {
     display: none;
+  }
+
+  .workspace-mode-row {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scrollbar-width: none;
+  }
+
+  .workspace-mode-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .workspace-mode-tabs {
+    flex: 0 0 auto;
+  }
+
+  .inline-release {
+    width: 100%;
+  }
+
+  .inline-release-bar > span {
+    display: none;
+  }
+
+  .inline-release-bar > p {
+    font-size: 12px;
+  }
+
+  .inline-release-detail header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .is-create-mode .h-work {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 }
 
@@ -13340,5 +13585,103 @@
 
   .signal-desk .h-agent-fab.has-unread::before {
     animation: none;
+  }
+}
+
+/* Readability floor: workspace labels stay legible at every supported width. */
+.signal-desk .h-wordmark,
+.signal-desk .h-ai,
+.signal-desk .h-quota,
+.signal-desk .h-top .h-install,
+.signal-desk .h-pills .h-pill,
+.signal-desk .h-pills .h-pill em,
+.signal-desk .signal-rail-link span,
+.signal-desk .signal-rail .navpanel button span {
+  font-size: 11px;
+}
+.signal-desk .signal-rail .navpanel button > span:last-child > span,
+.signal-desk .project-ledger > div:first-child > span:first-child,
+.signal-desk .h-work .folio,
+.signal-desk .h-work section[id] header p {
+  font-size: 11px !important;
+}
+.signal-desk .signal-flow button {
+  font-size: 11px;
+}
+.signal-desk .artifact-center-count {
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+.signal-desk .surface .rounded-chip,
+.signal-desk .surface dt.text-xs,
+.signal-desk .surface p.text-xs,
+.signal-desk .site-legal-footer-brand > span,
+.signal-desk .site-legal-footer-brand b,
+.signal-desk .site-legal-footer-brand small,
+.signal-desk .site-legal-footer nav a,
+.signal-desk .site-legal-footer-copy {
+  font-size: 11px;
+}
+.signal-desk .bmain,
+.signal-desk .btn-primary.rounded-chip {
+  box-shadow: none;
+}
+.signal-desk .bmain:not(:disabled),
+.signal-desk .btn-primary:not(:disabled),
+.signal-desk .btn-primary.rounded-chip:not(:disabled) {
+  border-color: var(--signal-text) !important;
+  background: var(--signal-text) !important;
+  color: var(--signal-bg) !important;
+}
+.signal-desk .bmain:not(:disabled):hover,
+.signal-desk .btn-primary:not(:disabled):hover,
+.signal-desk .btn-primary.rounded-chip:not(:disabled):hover {
+  border-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* Agent dock keeps the same readable floor as the workspace around it. */
+.signal-desk .h-deck section[aria-label="Veya Agent"] > header .text-xs,
+.signal-desk .h-deck .agent-session-label,
+.signal-desk .h-deck .agent-session-new,
+.signal-desk .h-deck .agent-session-new > span,
+.signal-desk .h-deck .agent-run-toggle b,
+.signal-desk .h-deck .agent-run-toggle small,
+.signal-desk .h-deck .agent-run-head > span,
+.signal-desk .h-deck .deck-ctx,
+.signal-desk .h-deck .deck-ctx b,
+.signal-desk .h-deck .agent-answer-bubble > span,
+.signal-desk .h-deck .agent-starter-head span,
+.signal-desk .h-deck .agent-starter-hint,
+.signal-desk .h-deck section[aria-label="Veya Agent"] > p {
+  font-size: 11px !important;
+}
+
+/* The orchestration canvas is dense, but no label may fall below the readable floor. */
+.signal-desk .canvas-graph-workspace :is(span, small, p, i, button, label),
+.signal-desk .map-project-context strong,
+.signal-desk .map-view-tabs button,
+.signal-desk .map-view-tabs button span,
+.signal-desk .canvas-graph-node > strong,
+.signal-desk .canvas-graph-empty strong,
+.signal-desk .canvas-graph-empty p,
+.signal-desk .h-top .h-wordmark {
+  font-size: 11px !important;
+}
+.signal-desk .canvas-graph-workspace,
+.signal-desk .map-overlay {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 920px) {
+  .is-create-mode .h-work {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .signal-desk .h-work > .site-legal-footer {
+    padding-right: 4px;
+    padding-left: 4px;
   }
 }

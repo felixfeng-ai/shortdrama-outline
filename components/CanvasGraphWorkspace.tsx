@@ -559,7 +559,7 @@ export default function CanvasGraphWorkspace({
       <div className="canvas-graph-main">
         <header className="canvas-graph-head">
           <div>
-            <span>ORCHESTRATION CANVAS</span>
+            <span>编排画布</span>
             <strong>{projectTitle || "当前项目"} · 编排画布</strong>
             <small>{graph.nodes.length} 节点 · {graph.edges.length} 条依赖</small>
           </div>
@@ -673,7 +673,7 @@ export default function CanvasGraphWorkspace({
               >
                 <span className="canvas-graph-node-kind">
                   {NODE_TYPE_LABEL[node.type]}
-                  {node.system && <i>SYSTEM</i>}
+                  {node.system && <i>系统</i>}
                 </span>
                 <strong>{node.title}</strong>
                 <p>{node.body || "尚未填写说明"}</p>
@@ -691,14 +691,14 @@ export default function CanvasGraphWorkspace({
       <aside className="canvas-graph-inspector" aria-label="编排节点属性">
         {!selectedNode ? (
           <div className="canvas-graph-inspector-empty">
-            <span>NODE INSPECTOR</span>
+            <span>节点属性</span>
             <strong>选择一个节点</strong>
             <p>拖动调整布局，或从节点发起依赖连线。</p>
           </div>
         ) : (
           <>
             <header>
-              <span>{selectedNode.system ? "SYSTEM NODE" : "CUSTOM NODE"}</span>
+              <span>{selectedNode.system ? "系统节点" : "自定义节点"}</span>
               <strong>{NODE_TYPE_LABEL[selectedNode.type]}</strong>
             </header>
             {selectedNode.system ? (

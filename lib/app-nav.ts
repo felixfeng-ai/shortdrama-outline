@@ -32,17 +32,30 @@ export function withProjectQuery(search: string, projectId: string | null): stri
   return value ? `?${value}` : ""
 }
 
+export type WorkspaceMode = "overview" | "create" | "canvas"
+
+/** 工作台模式是 URL 状态，刷新、前进和后退都恢复同一工作面。 */
+export function readWorkspaceModeQuery(search: string): WorkspaceMode {
+  const value = searchParams(search).get("view")
+  if (value === "create" || value === "canvas") return value
+  return "overview"
+}
+
+export function withWorkspaceModeQuery(search: string, mode: WorkspaceMode): string {
+  const params = searchParams(search)
+  if (mode === "overview") params.delete("view")
+  else params.set("view", mode)
+  const value = params.toString()
+  return value ? `?${value}` : ""
+}
+
 /** 画布是工作台的 URL 状态，刷新与浏览器前进后退都能恢复。 */
 export function readCanvasQuery(search: string): boolean {
-  return searchParams(search).get("view") === "canvas"
+  return readWorkspaceModeQuery(search) === "canvas"
 }
 
 export function withCanvasQuery(search: string, open: boolean): string {
-  const params = searchParams(search)
-  if (open) params.set("view", "canvas")
-  else params.delete("view")
-  const value = params.toString()
-  return value ? `?${value}` : ""
+  return withWorkspaceModeQuery(search, open ? "canvas" : "overview")
 }
 
 function buildHref(pathname: string, params: URLSearchParams): string {
@@ -54,6 +67,18 @@ export function workspaceHref(projectId: string | null, step?: StepKey | null): 
   const params = new URLSearchParams()
   if (projectId) params.set("project", projectId)
   if (step) params.set("step", step)
+  return buildHref("/", params)
+}
+
+export function workspaceModeHref(
+  projectId: string | null,
+  step: StepKey | null | undefined,
+  mode: WorkspaceMode,
+): string {
+  const params = new URLSearchParams()
+  if (projectId) params.set("project", projectId)
+  if (step) params.set("step", step)
+  if (mode !== "overview") params.set("view", mode)
   return buildHref("/", params)
 }
 

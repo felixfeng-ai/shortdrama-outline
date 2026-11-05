@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>VeyaFrame · 三套最终方向</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./base.css">
+  <style>
+    :root {
+      --bg: #08090a;
+      --surface: #111214;
+      --raised: #17191b;
+      --ink: #f0f1ed;
+      --muted: #a4a9a9;
+      --faint: #7f8587;
+      --line: rgba(255, 255, 255, .08);
+      --accent: #9ac7dc;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+    }
+
+    body {
+      background: var(--bg);
+    }
+
+    .index-top {
+      display: flex;
+      min-height: 62px;
+      align-items: center;
+      gap: 18px;
+      padding: 0 26px;
+      background: #0a0b0c;
+    }
+
+    .index-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .index-brand svg {
+      width: 29px;
+      height: 29px;
+      stroke-width: 1.4;
+    }
+
+    .index-brand b {
+      font-size: 16px;
+      font-weight: 660;
+    }
+
+    .index-brand small {
+      color: var(--faint);
+      font-size: 11px;
+      letter-spacing: .12em;
+    }
+
+    .index-top p {
+      margin: 0 0 0 auto;
+      color: #92999b;
+      font-size: 12px;
+    }
+
+    .index-main {
+      width: min(1320px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 54px 0 72px;
+    }
+
+    .index-intro {
+      display: grid;
+      max-width: 790px;
+      gap: 9px;
+      margin-bottom: 30px;
+    }
+
+    .index-intro > span {
+      color: var(--accent);
+      font-size: 11px;
+    }
+
+    .index-intro h1 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(32px, 3.6vw, 48px);
+      font-weight: 620;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    .index-intro h1 span {
+      display: block;
+    }
+
+    .index-intro p {
+      max-width: 660px;
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .direction-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 13px;
+    }
+
+    .direction-card {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 12px;
+      background: var(--surface);
+    }
+
+    .direction-preview {
+      position: relative;
+      height: 286px;
+      overflow: hidden;
+      background: #0b0d0e;
+    }
+
+    .direction-copy {
+      display: grid;
+      flex: 1;
+      gap: 9px;
+      padding: 17px 18px 18px;
+    }
+
+    .direction-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .direction-meta span {
+      color: #92999b;
+      font-size: 11px;
+    }
+
+    .direction-meta em {
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #1a282d;
+      color: #9bc8d4;
+      font-size: 11px;
+      font-style: normal;
+    }
+
+    .direction-copy h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 20px;
+      font-weight: 590;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .direction-copy > p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .direction-points {
+      display: grid;
+      gap: 5px;
+      margin: 2px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .direction-points li {
+      color: #868d8e;
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    .direction-points li::before {
+      margin-right: 6px;
+      color: #617780;
+      content: "—";
+    }
+
+    .direction-link {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: auto;
+      padding: 0 12px;
+      border-radius: 6px;
+      background: #1a1c1e;
+      color: #e2e5e2;
+      font-size: 12px;
+      transition: background-color 150ms var(--ease);
+    }
+
+    .direction-link:hover {
+      background: #22262a;
+    }
+
+    .direction-link svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .mini-a {
+      display: grid;
+      height: 100%;
+      grid-template-columns: 42px minmax(0, 1fr);
+      color: #9aa1a2;
+    }
+
+    .mini-a-side {
+      display: grid;
+      align-content: start;
+      gap: 9px;
+      padding: 15px 9px;
+      background: #0b0d0e;
+    }
+
+    .mini-a-side i {
+      width: 21px;
+      height: 21px;
+      border-radius: 5px;
+      background: #191b1e;
+    }
+
+    .mini-a-main {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      padding: 24px 18px;
+    }
+
+    .mini-a-title {
+      width: 60%;
+      height: 15px;
+      border-radius: 4px;
+      background: #dedfd7;
+    }
+
+    .mini-a-sub {
+      width: 44%;
+      height: 7px;
+      border-radius: 4px;
+      background: #313538;
+    }
+
+    .mini-a-story {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 14px 0;
+      border-top: 1px solid rgba(255, 255, 255, .06);
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
+    }
+
+    .mini-a-story i {
+      width: 84%;
+      height: 9px;
+      border-radius: 4px;
+      background: #474c4c;
+    }
+
+    .mini-a-story i:nth-child(2) {
+      width: 63%;
+      background: #303536;
+    }
+
+    .mini-a-rows {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini-a-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-a-row i {
+      width: 22px;
+      height: 25px;
+      border-radius: 4px;
+      background: #262a2c;
+    }
+
+    .mini-a-row span {
+      width: 38%;
+      height: 6px;
+      border-radius: 4px;
+      background: #323738;
+    }
+
+    .mini-a-fab {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      background: #f1f1ed;
+    }
+
+    .mini-b {
+      display: grid;
+      height: 100%;
+      grid-template-columns: 82px minmax(0, 1fr);
+      background: #0b0c0e;
+    }
+
+    .mini-b-side {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding: 16px 10px;
+      background: #0e0e10;
+    }
+
+    .mini-b-side b {
+      width: 40px;
+      height: 7px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background: #d6d7d2;
+    }
+
+    .mini-b-side i {
+      width: 100%;
+      height: 17px;
+      border-radius: 4px;
+      background: #171719;
+    }
+
+    .mini-b-side i:first-of-type {
+      background: #232326;
+    }
+
+    .mini-b-main {
+      display: grid;
+      align-content: start;
+      gap: 11px;
+      padding: 21px 18px;
+    }
+
+    .mini-b-hero {
+      display: grid;
+      height: 88px;
+      place-items: center;
+      border-radius: 8px;
+      background-color: #151517;
+      background-image: radial-gradient(rgba(255,255,255,.12) .6px, transparent .6px);
+      background-size: 10px 10px;
+    }
+
+    .mini-b-hero i {
+      width: 40px;
+      height: 30px;
+      border-radius: 8px;
+      background: #f1f1ed;
+    }
+
+    .mini-b-tools {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    .mini-b-tools i {
+      aspect-ratio: 1;
+      border-radius: 7px;
+      background: #19191c;
+    }
+
+    .mini-b-tools i:first-child {
+      background: #182a2f;
+    }
+
+    .mini-b-projects {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .mini-b-projects i {
+      height: 41px;
+      border-radius: 6px;
+      background: #202124;
+    }
+
+    .mini-c {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background-color: #0d1012;
+      background-image: radial-gradient(rgba(157,198,233,.12) .7px, transparent .7px);
+      background-size: 12px 12px;
+    }
+
+    .mini-c-node {
+      position: absolute;
+      width: 78px;
+      height: 44px;
+      border-radius: 6px;
+      background: #171b1e;
+    }
+
+    .mini-c-node:nth-child(1) { left: 26px; top: 50px; }
+    .mini-c-node:nth-child(2) { left: 132px; top: 32px; }
+    .mini-c-node:nth-child(3) { left: 132px; top: 101px; }
+    .mini-c-node:nth-child(4) { left: 237px; top: 64px; border-color: #80acc9; background: #192127; }
+    .mini-c-line {
+      position: absolute;
+      height: 1px;
+      background: rgba(157,198,233,.34);
+      transform-origin: left center;
+    }
+
+    .mini-c-line.l1 { width: 47px; left: 102px; top: 73px; transform: rotate(-14deg); }
+    .mini-c-line.l2 { width: 47px; left: 102px; top: 85px; transform: rotate(20deg); }
+    .mini-c-line.l3 { width: 42px; left: 207px; top: 57px; transform: rotate(22deg); }
+    .mini-c-line.l4 { width: 42px; left: 207px; top: 119px; transform: rotate(-30deg); }
+
+    .mini-c-dock {
+      position: absolute;
+      right: 34px;
+      bottom: 19px;
+      left: 70px;
+      height: 35px;
+      border-radius: 8px;
+      background: #181d20;
+    }
+
+    .mini-c-inspector {
+      position: absolute;
+      top: 24px;
+      right: 13px;
+      width: 72px;
+      height: 126px;
+      border-radius: 6px;
+      background: #171b1e;
+    }
+
+    .decision-bar {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+      margin-top: 15px;
+      padding: 21px 22px;
+      border-radius: 10px;
+      background: #111315;
+    }
+
+    .decision-bar h2 {
+      margin: 0 0 7px;
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 580;
+    }
+
+    .decision-bar p {
+      margin: 0;
+      color: #969d9d;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .decision-bar strong {
+      color: #d8ddda;
+      font-weight: 560;
+    }
+
+    .decision-route {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #7e8889;
+      font-size: 11px;
+    }
+
+    .decision-route b {
+      display: grid;
+      min-width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 6px;
+      background: #191d20;
+      color: #d6ddda;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .decision-route i {
+      color: #526064;
+      font-style: normal;
+    }
+
+    @media (max-width: 980px) {
+      .direction-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .direction-preview {
+        height: 320px;
+      }
+      .decision-bar {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 620px) {
+      .index-main {
+        width: calc(100vw - 28px);
+        padding-top: 34px;
+      }
+      .index-top {
+        padding: 0 14px;
+      }
+      .index-top p {
+        display: none;
+      }
+      .index-intro h1 {
+        font-size: 30px;
+        line-height: 1.2;
+      }
+      .direction-preview {
+        height: 240px;
+      }
+      .decision-route {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="index-top">
+    <a class="index-brand" href="#">
+      <svg viewBox="0 0 30 30"><path d="M5 9 15 3l10 6v12l-10 6-10-6z"/><path d="m10 11 5 9 5-9"/></svg>
+      <b>VeyaFrame</b>
+      <small>DIRECTION REVIEW</small>
+    </a>
+    <p>三套布局与视觉系统 · 2026-11-05</p>
+  </header>
+
+  <main class="index-main">
+    <section class="index-intro">
+      <span>UI / PRODUCT DIRECTION</span>
+      <h1><span>不是一个黑色主题，</span><span>是三种不同的创作关系。</span></h1>
+      <p>三套方案都沿用深色主调，但分别回答“编辑器如何安静”“创作主页如何有作品感”“画布如何成为 Agent 的主界面”。</p>
+    </section>
+
+    <section class="direction-grid" aria-label="三套方向">
+      <article class="direction-card">
+        <div class="direction-preview" aria-hidden="true">
+          <div class="mini-a">
+            <div class="mini-a-side"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="mini-a-main">
+              <i class="mini-a-title"></i><i class="mini-a-sub"></i>
+              <div class="mini-a-story"><i></i><i></i></div>
+              <div class="mini-a-rows">
+                <div class="mini-a-row"><i></i><span></span></div>
+                <div class="mini-a-row"><i></i><span></span></div>
+                <div class="mini-a-row"><i></i><span></span></div>
+              </div>
+            </div>
+          </div>
+          <i class="mini-a-fab"></i>
+        </div>
+        <div class="direction-copy">
+          <div class="direction-meta"><span>方案 A</span><em>最舒适 · 推荐主工作台</em></div>
+          <h2>Quiet Studio</h2>
+          <p>去掉常驻右栏和多余框线，把故事与人物内容重新变成主角。Agent 悬浮、按需打开。</p>
+          <ul class="direction-points">
+            <li>适合长时间写作与逐场修改</li>
+            <li>最低迁移风险，沿用现有六步模型</li>
+            <li>画面更克制，但视觉记忆点偏弱</li>
+          </ul>
+          <a class="direction-link" href="./a-quiet-studio.html">打开完整 Demo <svg viewBox="0 0 20 20"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
+        </div>
+      </article>
+
+      <article class="direction-card">
+        <div class="direction-preview" aria-hidden="true">
+          <div class="mini-b">
+            <div class="mini-b-side"><b></b><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="mini-b-main">
+              <div class="mini-b-hero"><i></i></div>
+              <div class="mini-b-tools"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="mini-b-projects"><i></i><i></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="direction-copy">
+          <div class="direction-meta"><span>方案 B</span><em>最有作品感</em></div>
+          <h2>Creator Canvas</h2>
+          <p>参考 LibTV 的创作主页节奏。中央画布是第一入口，模型、项目和作品作为第二层。</p>
+          <ul class="direction-points">
+            <li>首屏更直观，适合新用户和作品展示</li>
+            <li>图片与画布给眼睛休息空间</li>
+            <li>更适合首页，不足以替代深度编辑页</li>
+          </ul>
+          <a class="direction-link" href="./b-creator-canvas.html">打开完整 Demo <svg viewBox="0 0 20 20"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
+        </div>
+      </article>
+
+      <article class="direction-card">
+        <div class="direction-preview" aria-hidden="true">
+          <div class="mini-c">
+            <i class="mini-c-line l1"></i><i class="mini-c-line l2"></i><i class="mini-c-line l3"></i><i class="mini-c-line l4"></i>
+            <i class="mini-c-node"></i><i class="mini-c-node"></i><i class="mini-c-node"></i><i class="mini-c-node"></i>
+            <i class="mini-c-inspector"></i><i class="mini-c-dock"></i>
+          </div>
+        </div>
+        <div class="direction-copy">
+          <div class="direction-meta"><span>方案 C</span><em>最 AI-native</em></div>
+          <h2>Node Desk</h2>
+          <p>参考 Flova 的画布工作流。节点承载场次、镜头和产物，底部 Agent 指令栏贯穿整个创作。</p>
+          <ul class="direction-points">
+            <li>差异化最强，真实呈现整条生产链</li>
+            <li>适合作为项目级画布与协作入口</li>
+            <li>学习成本最高，新手需要更强的引导</li>
+          </ul>
+          <a class="direction-link" href="./c-node-desk.html">打开完整 Demo <svg viewBox="0 0 20 20"><path d="M4 10h12M11 5l5 5-5 5"/></svg></a>
+        </div>
+      </article>
+    </section>
+
+    <aside class="decision-bar">
+      <div>
+        <h2>最终建议不是三选一，而是分层组合</h2>
+        <p><strong>B 做首页</strong>建立作品感和画布入口，<strong>A 做深度编辑</strong>承担长文本创作，<strong>C 做项目画布</strong>承载 Agent 与生产节点。三套共享黑色中性色、白色主操作和冷蓝运行态。</p>
+      </div>
+      <div class="decision-route" aria-label="推荐信息架构">
+        <b>B</b><span>创作主页</span><i>→</i><b>A</b><span>深度编辑</span><i>→</i><b>C</b><span>项目画布</span>
+      </div>
+    </aside>
+  </main>
+</body>
+</html>

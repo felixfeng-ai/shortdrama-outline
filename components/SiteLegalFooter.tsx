@@ -5,7 +5,7 @@ export default function SiteLegalFooter() {
         <span aria-hidden="true">V</span>
         <p>
           <b>VeyaFrame</b>
-          <small>内测版 · 香港服务器</small>
+          <small>内测版</small>
         </p>
       </div>
 

@@ -59,7 +59,7 @@ export default function ContinuityReportCard({ report, onOpenWorkspace }: Props)
         <span>只读检查</span>
         <span>写入 {report.writes ? '是' : '否'}</span>
         <span>模型调用 {report.modelCalls}</span>
-        <span>额度消耗 {report.quotaCharged}</span>
+        <span>创作额度消耗 {report.quotaCharged}</span>
         <button type="button" onClick={onOpenWorkspace}>去工作台逐镜处理</button>
       </footer>
     </section>

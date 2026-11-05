@@ -150,7 +150,7 @@ export default function IdeaPanel({
       {/* ── 大卡：灵感输入 + 题材标签 + 生成 ── */}
       <div className="compose">
         <div className="story-command-head">
-          <span className="story-command-kicker">STORY COMMAND</span>
+          <span className="story-command-kicker">故事指令</span>
           <span className="flex items-center gap-2">
             <button
               type="button"

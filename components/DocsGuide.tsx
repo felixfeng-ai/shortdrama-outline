@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import VeyaBrandMark from './VeyaBrandMark'
+
 const FLOW = [
   ['01', '核心人物', '先明确角色身份、动机与人物弧光。'],
   ['02', '三幕大纲', '建立故事承诺、冲突升级与最终落点。'],
@@ -25,6 +27,14 @@ const CHAPTERS = [
       ['shot-video', '镜头视频'],
       ['timeline-final', '声音与时间线成片'],
       ['export-delivery', '导出与外部交付'],
+    ],
+  },
+  {
+    title: '工作区与跨端',
+    links: [
+      ['workspace-modes', '总览 / 创作 / 画布'],
+      ['canvas-window', '全屏画布'],
+      ['mobile-app', '手机 App 与跨端'],
     ],
   },
   {
@@ -114,9 +124,9 @@ export default function DocsGuide() {
     <div className="docs-page">
       <header className="docs-topbar">
         <a className="docs-brand" href="/" aria-label="返回成剧工作台">
-          <span className="docs-brand-mark">V</span>
-          <b>成剧</b>
-          <em>VEYAFRAME</em>
+          <span className="docs-brand-mark"><VeyaBrandMark /></span>
+          <b>VeyaFrame</b>
+          <em>成剧</em>
         </a>
         <nav className="docs-topnav" aria-label="站点导航">
           <a className="active" href="/docs" aria-current="page">教程</a>
@@ -157,7 +167,7 @@ export default function DocsGuide() {
             <h1>从想法、原文到成片</h1>
             <p className="docs-lede">
               成剧把故事、角色、场次、分镜、图片、视频、声音和时间线放在同一条项目链里。
-              这份教程会带你完成第一次创作，并说明每项能力在哪里、什么时候使用。
+              工作区用“总览 / 创作 / 画布”组织当前项目，手机 App 与 Web 登录同一账号后可以继续同一项目。
             </p>
             <div className="docs-hero-actions">
               <a href="#quick-start">开始第一次创作 <ArrowIcon /></a>
@@ -205,8 +215,8 @@ export default function DocsGuide() {
             <h2>开始第一次创作</h2>
             <ol className="docs-steps">
               <li>
-                <b>选择起点</b>
-                <p>在工作台输入一句故事想法，或把已有小说、剧本加入项目原文。</p>
+                <b>选择工作面</b>
+                <p>从左侧菜单进入“首页”查看当前任务，或在“创作技能”里从想法、原文和当前项目开始。</p>
               </li>
               <li>
                 <b>生成核心人物</b>
@@ -222,21 +232,21 @@ export default function DocsGuide() {
               </li>
               <li>
                 <b>生成视频与成片</b>
-                <p>在第 6 步打开“镜头视频”，完成后进入“时间线成片”。</p>
+                <p>在第 6 步打开“镜头视频”，完成后进入“时间线成片”；需要更大空间时可从画布页头打开全屏画布。</p>
               </li>
             </ol>
             <TutorialFigure
               src="/docs/tutorial/01-quick-start.png"
-              alt="成剧工作台首页，展示故事输入、六步导航、示例项目入口和右下角 Veya Agent 图标"
-              label="工作台 · 首次创作"
+              alt="VeyaFrame 当前工作区首页，展示总览、创作、画布三模式、当前项目和右侧项目状态"
+              label="工作台 · 总览"
               points={[
-                '先在 STORY COMMAND 写入一句想法，或载入示例项目查看完整流程。',
-                '六步轨道显示当前进度；前置内容未完成时不会直接跳到下游生成。',
+                '左侧菜单固定提供首页、项目、创作技能、资产库和使用教程。',
+                '顶部三模式共享当前项目：总览看阻断，创作进入技能与 Agent，画布查看节点关系。',
                 '右下角 Veya 图标按需展开 Agent；它可以解释下一步和提出修改，写入前会等待确认。',
               ]}
             />
             <Callout title="第一次使用">
-              可以先载入示例项目，查看完整六步和成片入口；示例不会调用模型，也不消耗生成额度。
+              可以先载入示例项目，查看完整六步和成片入口；示例不会调用模型，也不消耗创作额度。
             </Callout>
           </section>
 
@@ -342,15 +352,15 @@ export default function DocsGuide() {
             <h2>导出与外部交付</h2>
             <p>
               平台内成片路径输出 MP4、SRT 和 render manifest；外部路径继续提供逐镜提示词、
-              首帧、参数、预检和平台执行清单。
+              首帧、参数、预检和平台执行清单。导出统一从工作区顶栏的“导出交付包”进入。
             </p>
             <TutorialFigure
               src="/docs/tutorial/05-export.png"
-              alt="项目导出菜单展开状态，展示导出交付包、完整备份、Markdown 和项目包导入"
-              label="项目条 · 导出"
+              alt="VeyaFrame 工作区顶栏导出交付包完成状态，展示预检结果和导出文件数量"
+              label="顶栏 · 导出交付包"
               points={[
-                '导出交付包用于审阅和下游执行，只包含已采用的资产。',
-                '导出完整备份会保留全部快照、任务、候选图和项目偏好，用于恢复。',
+                '导出前先执行阻断和提醒预检，结果会写进项目报告。',
+                '交付包用于审阅和下游执行，只包含已采用资产；完整备份用于恢复。',
                 '平台内成片下载 MP4、SRT 和 manifest；外部路径可继续交给即梦、可灵或剪映。',
               ]}
             />
@@ -366,8 +376,66 @@ export default function DocsGuide() {
             </div>
           </section>
 
+          <section id="workspace-modes" className="docs-section">
+            <p className="docs-section-kicker">08 / WORKSPACE MODES</p>
+            <h2>总览 / 创作 / 画布</h2>
+            <p>
+              三个工作面属于同一个项目，不会丢失当前项目和步骤。总览负责当前阻断与下一步，
+              创作复用完整技能库和 Agent，画布负责查看节点、依赖和人工编排。
+            </p>
+            <TutorialFigure
+              src="/docs/tutorial/06-workspace-create.png"
+              alt="VeyaFrame 创作模式，展示创作技能、执行计划和右侧圆形 Agent 图标"
+              label="创作模式 · 技能与计划"
+              points={[
+                '创作模式保留技能分类、图片、搜索和执行计划，不切换项目。',
+                '右侧执行计划先说明读取范围、产物、写入边界与确认节点。',
+                '“问场记”使用圆形 Veya 图标；桌面侧舱和手机抽屉共用同一 Agent。',
+              ]}
+            />
+          </section>
+
+          <section id="canvas-window" className="docs-section">
+            <p className="docs-section-kicker">09 / FULLSCREEN CANVAS</p>
+            <h2>全屏画布</h2>
+            <p>
+              工作区里的“画布”主入口仍在当前页面打开。需要并排审阅或更大的拖拽空间时，
+              点击画布页头的“在新窗口打开”，会进入不包含侧栏、公告和模式条的独立全屏画布。
+            </p>
+            <TutorialFigure
+              src="/docs/tutorial/07-fullscreen-canvas.png"
+              alt="VeyaFrame 独立全屏编排画布，展示节点、依赖线、缩放和节点属性面板"
+              label="独立窗口 · 全屏编排画布"
+              points={[
+                '新窗口保留当前项目和当前步骤，不会打开一个重复的完整工作台。',
+                '画布占满窗口，节点拖拽、缩放、连线、自动保存和多标签同步继续可用。',
+                '关闭新窗口即可回到原工作台，原工作台状态不受影响。',
+              ]}
+            />
+          </section>
+
+          <section id="mobile-app" className="docs-section">
+            <p className="docs-section-kicker">10 / MOBILE & CONTINUITY</p>
+            <h2>手机 App 与跨端</h2>
+            <p>
+              桌面顶栏“下载手机 App”会展示二维码。手机扫码安装后登录同一账号，
+              即可在 Web、PWA 与 App 间继续同一个项目和创作额度。
+              当前仅支持安卓和鸿蒙手机，iOS 版本更新中。
+            </p>
+            <TutorialFigure
+              src="/docs/tutorial/08-mobile-app.png"
+              alt="VeyaFrame 手机 App 下载二维码弹层，展示二维码和跨设备继续项目说明"
+              label="手机 App · 扫码下载"
+              points={[
+                '扫码下载 App 后使用与 Web 相同的邮箱账号登录。',
+                '项目、任务、版本和生成结果按账号同步；本地参考图仍遵守零上传边界。',
+                '手机上可以从当前项目、待办和 Agent 继续，不会重新生成一套项目事实。',
+              ]}
+            />
+          </section>
+
           <section id="skills-agent" className="docs-section">
-            <p className="docs-section-kicker">08 / SKILLS & AGENT</p>
+            <p className="docs-section-kicker">11 / SKILLS & AGENT</p>
             <h2>创作技能与 Agent</h2>
             <p>
               桌面端 Agent 默认收起在工作区右下角，不占用主工作面宽度；点击 Veya 图标后展开侧舱，
@@ -385,7 +453,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="cost-recovery" className="docs-section">
-            <p className="docs-section-kicker">09 / COST & RECOVERY</p>
+            <p className="docs-section-kicker">12 / COST & RECOVERY</p>
             <h2>费用、恢复与版本</h2>
             <ul className="docs-checklist">
               <li>可计费动作会先显示预估费用；批量操作还会显示预算上限。</li>
@@ -397,7 +465,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="faq" className="docs-section">
-            <p className="docs-section-kicker">10 / FAQ</p>
+            <p className="docs-section-kicker">13 / FAQ</p>
             <h2>常见问题</h2>
             <div className="docs-faq">
               <details>

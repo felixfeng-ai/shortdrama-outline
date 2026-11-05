@@ -11,13 +11,13 @@ export interface ProductRelease {
  */
 export const PRODUCT_RELEASES = [
   {
-    version: "v2026.11.04",
-    publishedAt: "2026-11-04T23:53:00+08:00",
-    title: "Veya Agent 与品牌统一",
+    version: "v2026.11.06",
+    publishedAt: "2026-11-06T00:00:00+08:00",
+    title: "VeyaFrame 火热内测中",
     highlights: [
-      "AI 场记升级为 Veya Agent，会话选择与新建会话统一为一条控制栏。",
-      "浏览器标题、favicon、PWA 名称统一为 VeyaFrame。",
-      "内测条款、隐私说明、统一法务页脚与登录协议确认上线。",
+      "平台正在火热内测，欢迎踊跃体验 AI 短剧创作、协作画布、Veya Agent 与全屏编排画布。",
+      "手机 App 已支持安卓和鸿蒙扫码体验，iOS 版本更新中。",
+      "使用中遇到问题可直接反馈；你的意见会进入下一轮产品更新。",
     ],
   },
 ] as const satisfies readonly ProductRelease[]

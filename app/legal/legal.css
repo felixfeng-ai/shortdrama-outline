@@ -3,7 +3,7 @@
   background:
     linear-gradient(rgba(213, 224, 228, .022) 1px, transparent 1px),
     linear-gradient(90deg, rgba(213, 224, 228, .022) 1px, transparent 1px),
-    radial-gradient(circle at 14% -6%, rgba(196, 217, 138, .05), transparent 26rem),
+    radial-gradient(circle at 14% -6%, rgba(141, 200, 220, .05), transparent 26rem),
     var(--signal-bg, #13171a);
   background-size: 72px 72px, 72px 72px, auto, auto;
   color: var(--signal-text, #dfe4e2);
@@ -19,12 +19,12 @@
 }
 
 .legal-page ::selection {
-  background: rgba(196, 217, 138, .2);
+  background: rgba(141, 200, 220, .2);
   color: var(--signal-text, #dfe4e2);
 }
 
 .legal-page a:focus-visible {
-  outline: 2px solid rgba(142, 183, 231, .8);
+  outline: 2px solid rgba(141, 200, 220, .8);
   outline-offset: 3px;
 }
 
@@ -60,7 +60,7 @@
   place-items: center;
   border-radius: 5px;
   background: var(--signal-acid);
-  color: #1b2115;
+  color: #071014;
   font-family: var(--font-latin), sans-serif;
   font-size: 11px;
   font-weight: 700;
@@ -265,7 +265,7 @@
 .legal-document a {
   color: var(--signal-blue);
   text-decoration: underline;
-  text-decoration-color: rgba(142, 183, 231, .4);
+  text-decoration-color: rgba(141, 200, 220, .4);
   text-underline-offset: 3px;
 }
 
@@ -275,11 +275,11 @@
   min-height: 42px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(196, 217, 138, .42);
+  border: 1px solid rgba(141, 200, 220, .42);
   border-radius: 6px;
   background: var(--signal-acid);
   padding: 0 16px;
-  color: #1b2115;
+  color: #071014;
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
@@ -326,7 +326,7 @@
   }
 
   .legal-document .legal-report-action:hover {
-    color: #1b2115;
+    color: #071014;
     background: #d2e4a1;
   }
 }

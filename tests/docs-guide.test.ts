@@ -3,10 +3,10 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 
 test("T1 工作台和创作技能页都有明确教程入口", () => {
-  const page = fs.readFileSync("app/page.tsx", "utf8")
+  const topbar = fs.readFileSync("components/WorkspaceTopbar.tsx", "utf8")
   const skills = fs.readFileSync("components/SkillCatalog.tsx", "utf8")
-  assert.match(page, /href="\/docs"/)
-  assert.match(page, />教程</)
+  assert.match(topbar, /href="\/docs"/)
+  assert.match(topbar, /使用教程/)
   assert.match(skills, /href="\/docs"/)
   assert.match(skills, />教程</)
 })

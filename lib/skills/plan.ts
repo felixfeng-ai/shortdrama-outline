@@ -313,7 +313,7 @@ export function buildSkillExecutionPlan(
     units: {
       min: limits > 0 ? 1 : 0,
       max: limits,
-      label: limits > 0 ? `最多 ${limits} 额度（1 单位/模型往返）` : '0 额度',
+      label: limits > 0 ? `最多 ${limits} 创作额度（1 单位/模型往返）` : '0 创作额度',
     },
     timeLabel: timeLabel(limits),
     confirmations: writes

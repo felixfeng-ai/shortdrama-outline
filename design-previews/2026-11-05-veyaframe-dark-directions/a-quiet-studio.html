@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>方案 A · Quiet Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./base.css">
+  <style>
+    :root {
+      --bg: #08090b;
+      --sheet: #0f1113;
+      --surface: #151719;
+      --raised: #1c1f22;
+      --ink: #f0f1ee;
+      --muted: #a5aaac;
+      --faint: #858c91;
+      --line: #24272a;
+      --accent: #8fb9f0;
+      --warm: #e2d8bd;
+      --primary: #f2f2ef;
+      --primary-ink: #111213;
+      --serif: "Songti SC", "STSong", "Noto Serif SC", serif;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+    }
+
+    body {
+      background: var(--bg);
+    }
+
+    .quiet-app {
+      display: grid;
+      min-height: 100dvh;
+      grid-template-columns: 76px minmax(0, 1fr);
+      grid-template-rows: 60px minmax(0, 1fr);
+    }
+
+    .quiet-top {
+      position: sticky;
+      z-index: 20;
+      top: 0;
+      grid-column: 1 / -1;
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 18px;
+      padding: 0 22px;
+      background: var(--bg);
+    }
+
+    .quiet-brand {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .quiet-brand-mark {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      color: var(--primary);
+    }
+
+    .quiet-brand-mark svg {
+      width: 25px;
+      height: 25px;
+      stroke-width: 1.5;
+    }
+
+    .quiet-brand b {
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .quiet-brand small {
+      color: var(--faint);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .1em;
+    }
+
+    .quiet-project {
+      min-width: 0;
+      flex: 1;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .quiet-project b {
+      overflow: hidden;
+      color: #d9dcda;
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .quiet-top-actions {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 14px;
+      color: var(--faint);
+      font-size: 11px;
+    }
+
+    .quiet-save {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quiet-save i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .quiet-avatar {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .quiet-rail {
+      position: sticky;
+      top: 60px;
+      display: flex;
+      height: calc(100dvh - 60px);
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 18px 8px 14px;
+      background: var(--bg);
+    }
+
+    .quiet-rail::after {
+      position: absolute;
+      top: 16px;
+      right: 0;
+      bottom: 16px;
+      width: 1px;
+      background: rgba(255, 255, 255, .045);
+      content: "";
+    }
+
+    .rail-item {
+      position: relative;
+      display: grid;
+      width: 54px;
+      min-height: 52px;
+      place-items: center;
+      gap: 3px;
+      padding: 5px 2px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #777d82;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), color 150ms var(--ease);
+    }
+
+    .rail-item svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 1.45;
+    }
+
+    .rail-item span {
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .rail-item.is-active {
+      background: #17191b;
+      color: var(--ink);
+    }
+
+    .rail-item.is-done::after {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #778ca5;
+      content: "";
+    }
+
+    .rail-menu {
+      margin-top: auto;
+    }
+
+    .quiet-main {
+      width: min(1120px, calc(100vw - 76px));
+      min-width: 0;
+      margin: 0 auto;
+      padding: 38px 46px 110px;
+    }
+
+    .quiet-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+
+    .quiet-title-row > div {
+      min-width: 0;
+    }
+
+    .quiet-kicker {
+      margin: 0 0 5px;
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .quiet-title-row h1 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(26px, 2.2vw, 32px);
+      font-weight: 620;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .quiet-title-row p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .quiet-primary {
+      display: inline-flex;
+      min-height: 38px;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
+      padding: 0 15px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--primary);
+      color: var(--primary-ink);
+      font-size: 12.5px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform 120ms var(--ease), background-color 150ms var(--ease);
+    }
+
+    .quiet-primary:hover {
+      background: #fff;
+      transform: translateY(-1px);
+    }
+
+    .quiet-primary:active {
+      transform: scale(.985);
+    }
+
+    .quiet-primary svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.7;
+    }
+
+    .quiet-steps {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      margin-bottom: 34px;
+    }
+
+    .quiet-steps::before {
+      position: absolute;
+      top: 16px;
+      right: 7%;
+      left: 7%;
+      height: 1px;
+      background: #25282b;
+      content: "";
+    }
+
+    .quiet-step {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      border: 0;
+      background: transparent;
+      color: var(--faint);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .quiet-step i {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--sheet);
+      color: #858c90;
+      font-style: normal;
+      font-size: 11px;
+    }
+
+    .quiet-step.is-done {
+      color: #91979b;
+    }
+
+    .quiet-step.is-done i {
+      color: #a8bdd3;
+    }
+
+    .quiet-step.is-active {
+      color: var(--ink);
+    }
+
+    .quiet-step.is-active i {
+      background: var(--ink);
+      color: var(--bg);
+    }
+
+    .quiet-story {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 44px;
+      padding: 34px 0 32px;
+      border-bottom: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .quiet-story-main {
+      min-width: 0;
+    }
+
+    .quiet-story-label {
+      color: var(--faint);
+      font-size: 11px;
+    }
+
+    .quiet-story-input {
+      width: 100%;
+      min-height: 136px;
+      margin-top: 12px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #f1f0e9;
+      font-family: var(--serif);
+      font-size: clamp(25px, 2.5vw, 35px);
+      font-weight: 500;
+      line-height: 1.55;
+      letter-spacing: 0;
+    }
+
+    .quiet-genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 16px;
+    }
+
+    .quiet-genre {
+      min-height: 30px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 5px;
+      background: #17191b;
+      color: #91979b;
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .quiet-genre.is-active {
+      background: #e9e7df;
+      color: #111214;
+    }
+
+    .quiet-story-aside {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 16px;
+      padding-bottom: 2px;
+    }
+
+    .quiet-story-aside img {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      border-radius: 7px;
+      filter: saturate(.72) contrast(.94) brightness(.82);
+    }
+
+    .quiet-story-aside p {
+      margin: 0;
+      color: #858b90;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .quiet-story-aside b {
+      display: block;
+      margin-bottom: 2px;
+      color: #c7cbc9;
+      font-weight: 550;
+    }
+
+    .quiet-characters {
+      margin-top: 30px;
+    }
+
+    .quiet-section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 7px;
+    }
+
+    .quiet-section-head h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 18px;
+      font-weight: 580;
+      letter-spacing: 0;
+    }
+
+    .quiet-section-head p,
+    .quiet-section-head button {
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .quiet-section-head button {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .quiet-character-list {
+      display: grid;
+    }
+
+    .quiet-character {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1.1fr) minmax(0, 1.45fr) auto;
+      align-items: center;
+      gap: 18px;
+      padding: 16px 0;
+      border-top: 1px solid rgba(255, 255, 255, .065);
+    }
+
+    .quiet-character:first-child {
+      border-top: 0;
+    }
+
+    .quiet-portrait {
+      width: 58px;
+      height: 66px;
+      object-fit: cover;
+      object-position: center 18%;
+      border-radius: 5px;
+      filter: saturate(.65) contrast(.92) brightness(.84);
+    }
+
+    .quiet-portrait-placeholder {
+      display: grid;
+      place-items: center;
+      background: #1b1f21;
+      color: #aeb8ba;
+      font-size: 17px;
+      font-weight: 560;
+    }
+
+    .quiet-character-copy {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+
+    .quiet-character-copy b {
+      color: #e5e7e4;
+      font-size: 14px;
+      font-weight: 580;
+    }
+
+    .quiet-character-copy small,
+    .quiet-character-note {
+      color: #858b90;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .quiet-character-note {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .quiet-character-action {
+      min-height: 31px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: #a4aaad;
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .quiet-character-action:hover {
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .quiet-project-pulse {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 24px;
+      margin-top: 22px;
+      color: #797f84;
+      font-size: 12px;
+    }
+
+    .quiet-project-pulse b {
+      color: #b8bdbb;
+      font-weight: 520;
+    }
+
+    .veya-fab {
+      position: fixed;
+      z-index: 30;
+      right: 24px;
+      bottom: 24px;
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #111213;
+      cursor: pointer;
+      box-shadow: 0 18px 44px -24px #000;
+      transition: transform 140ms var(--ease), background-color 150ms var(--ease);
+    }
+
+    .veya-fab:hover {
+      background: #fff;
+      transform: translateY(-2px);
+    }
+
+    .veya-fab svg {
+      width: 23px;
+      height: 23px;
+      stroke-width: 1.45;
+    }
+
+    .veya-fab em {
+      position: absolute;
+      top: -3px;
+      right: -2px;
+      display: grid;
+      min-width: 18px;
+      height: 18px;
+      place-items: center;
+      padding: 0 4px;
+      border: 2px solid var(--bg);
+      border-radius: 999px;
+      background: #7ea6de;
+      color: #07111d;
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 700;
+    }
+
+    .veya-sheet {
+      position: fixed;
+      z-index: 29;
+      right: 24px;
+      bottom: 88px;
+      display: flex;
+      width: min(378px, calc(100vw - 28px));
+      max-height: min(640px, calc(100dvh - 120px));
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 11px;
+      background: #151719;
+      box-shadow: 0 32px 80px -38px #000;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity 170ms var(--ease), transform 190ms var(--ease);
+    }
+
+    .veya-sheet.is-open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .veya-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 16px 12px;
+      background: #181b1d;
+    }
+
+    .veya-mark {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 50%;
+      background: #ecebe5;
+      color: #111;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .veya-head-copy {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .veya-head-copy b {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .veya-head-copy small {
+      color: #858b90;
+      font-size: 11px;
+    }
+
+    .veya-close {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: #8b9195;
+      cursor: pointer;
+    }
+
+    .veya-close svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .veya-context {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      color: #81888c;
+      font-size: 11px;
+      background: #111315;
+    }
+
+    .veya-context b {
+      color: #c8ccca;
+      font-weight: 520;
+    }
+
+    .veya-body {
+      min-height: 0;
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 16px;
+    }
+
+    .veya-answer {
+      margin: 0;
+      color: #c8ccca;
+      font-size: 12.5px;
+      line-height: 1.72;
+    }
+
+    .veya-answer b {
+      color: #f0f1ee;
+      font-weight: 580;
+    }
+
+    .veya-prompts {
+      display: grid;
+      margin-top: 16px;
+    }
+
+    .veya-prompt {
+      display: grid;
+      min-height: 54px;
+      grid-template-columns: minmax(0, 1fr) 18px;
+      align-items: center;
+      gap: 10px;
+      padding: 0;
+      border: 0;
+      border-top: 1px solid rgba(255, 255, 255, .065);
+      background: transparent;
+      color: #aeb3b4;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .veya-prompt span {
+      display: grid;
+      gap: 2px;
+    }
+
+    .veya-prompt b {
+      font-size: 11.5px;
+      font-weight: 520;
+    }
+
+    .veya-prompt small {
+      color: #737a7e;
+      font-size: 11px;
+    }
+
+    .veya-prompt svg {
+      width: 14px;
+      height: 14px;
+      color: #6e7579;
+    }
+
+    .veya-compose {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      background: #181b1d;
+    }
+
+    .veya-compose input {
+      min-width: 0;
+      min-height: 39px;
+      flex: 1;
+      border: 0;
+      border-radius: 7px;
+      background: #101214;
+      padding: 0 12px;
+      color: #e7e8e5;
+      font-size: 11.5px;
+      outline: 0;
+    }
+
+    .veya-compose input::placeholder {
+      color: #6f767a;
+    }
+
+    .veya-send {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: #edece6;
+      color: #111;
+      cursor: pointer;
+    }
+
+    .veya-send svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.8;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .rail-item:hover {
+        background: #151719;
+        color: #c6cac8;
+      }
+      .quiet-step:hover {
+        color: #c4c8c6;
+      }
+      .veya-prompt:hover {
+        color: #f0f1ee;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .quiet-app {
+        display: block;
+      }
+      .quiet-top {
+        min-height: 58px;
+        padding: 0 16px;
+      }
+      .quiet-rail {
+        display: none;
+      }
+      .quiet-main {
+        width: 100%;
+        padding: 24px 20px 110px;
+      }
+      .quiet-story {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+      }
+      .quiet-story-aside {
+        display: grid;
+        grid-template-columns: 140px minmax(0, 1fr);
+        align-items: center;
+      }
+      .quiet-story-aside img {
+        aspect-ratio: 4 / 3;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .quiet-brand small,
+      .quiet-top-actions .quiet-usage,
+      .quiet-project {
+        display: none;
+      }
+      .quiet-top-actions {
+        margin-left: auto;
+      }
+      .quiet-title-row {
+        display: grid;
+        gap: 16px;
+      }
+      .quiet-primary {
+        width: 100%;
+        justify-content: center;
+      }
+      .quiet-steps {
+        display: flex;
+        gap: 2px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .quiet-steps::before {
+        display: none;
+      }
+      .quiet-step {
+        min-width: 56px;
+        flex: 0 0 56px;
+      }
+      .quiet-step span {
+        font-size: 11px;
+      }
+      .quiet-story {
+        padding-top: 24px;
+      }
+      .quiet-story-aside {
+        display: none;
+      }
+      .quiet-story-input {
+        min-height: 126px;
+        font-size: 25px;
+      }
+      .quiet-character {
+        grid-template-columns: 48px minmax(0, 1fr) auto;
+        gap: 12px;
+      }
+      .quiet-portrait {
+        width: 46px;
+        height: 54px;
+      }
+      .quiet-character-note {
+        display: none;
+      }
+      .veya-fab {
+        right: 16px;
+        bottom: 16px;
+      }
+      .veya-sheet {
+        right: 12px;
+        bottom: 76px;
+        max-height: calc(100dvh - 100px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="quiet-app">
+    <header class="quiet-top">
+      <div class="quiet-brand">
+        <span class="quiet-brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 28 28"><path d="M5 7.5 14 3l9 4.5v13L14 25l-9-4.5z"/><path d="m9 10 5 8 5-8"/></svg>
+        </span>
+        <b>成剧</b>
+        <small>VEYAFRAME</small>
+      </div>
+      <div class="quiet-project"><b>示例 · 快递员的最后一单</b></div>
+      <div class="quiet-top-actions">
+        <span class="quiet-save"><i></i> 已保存</span>
+        <span class="quiet-usage">10:42 自动保存 · 65 额度</span>
+        <span class="quiet-avatar">冯</span>
+      </div>
+    </header>
+
+    <nav class="quiet-rail" aria-label="创作步骤">
+      <button class="rail-item" type="button" data-view="canvas" aria-label="画布">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M7 8l4 8M17 8l-4 8"/></svg>
+        <span>画布</span>
+      </button>
+      <button class="rail-item is-active" type="button" data-step>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3.2 3-4.8 6.5-4.8s5.7 1.6 6.5 4.8"/></svg>
+        <span>人物</span>
+      </button>
+      <button class="rail-item" type="button" data-step>
+        <svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h10M5 18h14"/><circle cx="18" cy="12" r="1.3"/></svg>
+        <span>三幕</span>
+      </button>
+      <button class="rail-item" type="button" data-step>
+        <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h6"/></svg>
+        <span>分集</span>
+      </button>
+      <button class="rail-item" type="button" data-step>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 19c1-3.4 3.3-5 7-5s6 1.6 7 5"/></svg>
+        <span>定妆</span>
+      </button>
+      <button class="rail-item" type="button" data-step>
+        <svg viewBox="0 0 24 24"><path d="m4 18 5-6 4 3 6-8v11H4Z"/><circle cx="8" cy="7" r="2"/></svg>
+        <span>场次</span>
+      </button>
+      <button class="rail-item" type="button" data-step>
+        <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 10h5M8 14h8"/></svg>
+        <span>分镜</span>
+      </button>
+      <button class="rail-item rail-menu" type="button" aria-label="项目工具">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+        <span>更多</span>
+      </button>
+    </nav>
+
+    <main class="quiet-main">
+      <header class="quiet-title-row">
+        <div>
+          <p class="quiet-kicker">第 1 步 · 核心人物</p>
+          <h1>让每个人的欲望推动下一场戏</h1>
+          <p>先把人物关系做对，再进入三幕和分集。所有修改都会保留版本。</p>
+        </div>
+        <button class="quiet-primary" id="generate" type="button">
+          生成人物
+          <svg viewBox="0 0 24 24"><path d="M5 12h13M14 7l5 5-5 5"/></svg>
+        </button>
+      </header>
+
+      <nav class="quiet-steps" aria-label="流程">
+        <button class="quiet-step is-active" type="button"><i>01</i><span>核心人物</span></button>
+        <button class="quiet-step" type="button"><i>02</i><span>三幕大纲</span></button>
+        <button class="quiet-step" type="button"><i>03</i><span>分集剧情</span></button>
+        <button class="quiet-step" type="button"><i>04</i><span>视觉定妆</span></button>
+        <button class="quiet-step" type="button"><i>05</i><span>场次剧本</span></button>
+        <button class="quiet-step" type="button"><i>06</i><span>分镜</span></button>
+      </nav>
+
+      <section class="quiet-story" aria-label="故事起点">
+        <div class="quiet-story-main">
+          <span class="quiet-story-label">故事起点</span>
+          <textarea class="quiet-story-input" aria-label="故事想法">一个快递员意外继承了百万遗产，条件却是替原主人完成七桩未竟的交易。</textarea>
+          <div class="quiet-genres" aria-label="题材">
+            <button class="quiet-genre is-active" type="button">都市</button>
+            <button class="quiet-genre" type="button">悬疑</button>
+            <button class="quiet-genre" type="button">逆袭</button>
+            <button class="quiet-genre" type="button">漫剧</button>
+          </div>
+        </div>
+        <aside class="quiet-story-aside">
+          <img src="../../public/skills/manor.png" alt="项目中的夜宅场景参考">
+          <p><b>一句故事已经能开机</b>人物、场景与镜头会共享同一组视觉锚点。</p>
+        </aside>
+      </section>
+
+      <section class="quiet-characters" aria-labelledby="charactersTitle">
+        <header class="quiet-section-head">
+          <div>
+            <h2 id="charactersTitle">核心人物</h2>
+            <p>3 人 · 关系已建立 · 最近更新 10:38</p>
+          </div>
+          <button type="button">添加人物</button>
+        </header>
+        <div class="quiet-character-list">
+          <article class="quiet-character">
+            <img class="quiet-portrait" src="../../public/skills/story.png" alt="陈默的人物参考">
+            <div class="quiet-character-copy"><b>陈默</b><small>29 岁 · 同城快递员</small></div>
+            <p class="quiet-character-note">想证明自己不是“送完就走”的人，却始终不敢承认自己需要一个家。</p>
+            <button class="quiet-character-action" type="button">编辑</button>
+          </article>
+          <article class="quiet-character">
+            <div class="quiet-portrait quiet-portrait-placeholder" aria-hidden="true"><span>苏</span></div>
+            <div class="quiet-character-copy"><b>苏婉</b><small>68 岁 · 独居委托人</small></div>
+            <p class="quiet-character-note">想听一句迟到三十年的道歉，但绝不先开口；她握着遗产真正的去向。</p>
+            <button class="quiet-character-action" type="button">编辑</button>
+          </article>
+          <article class="quiet-character">
+            <div class="quiet-portrait quiet-portrait-placeholder" aria-hidden="true"><span>沈</span></div>
+            <div class="quiet-character-copy"><b>沈之遥</b><small>41 岁 · 遗产继承人</small></div>
+            <p class="quiet-character-note">只想拿回钱，却最怕别人提起父亲；每一次撤退都在制造更大的冲突。</p>
+            <button class="quiet-character-action" type="button">编辑</button>
+          </article>
+        </div>
+      </section>
+
+      <footer class="quiet-project-pulse">
+        <span><b>2</b> 项待办</span>
+        <span><b>0</b> 个 Canon 冲突</span>
+        <span><b>1</b> 个镜头缺参考图</span>
+        <span>下一步：三幕大纲</span>
+      </footer>
+    </main>
+  </div>
+
+  <button class="veya-fab" id="veyaToggle" type="button" aria-label="打开 Veya Agent" aria-expanded="false">
+    <svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4.5M9.5 4.5h5"/><circle cx="9.5" cy="13.5" r=".8" fill="currentColor" stroke="none"/><circle cx="14.5" cy="13.5" r=".8" fill="currentColor" stroke="none"/><path d="M10 16.5h4"/></svg>
+    <em>3</em>
+  </button>
+
+  <aside class="veya-sheet" id="veyaSheet" aria-label="Veya Agent">
+    <header class="veya-head">
+      <span class="veya-mark">V</span>
+      <span class="veya-head-copy"><b>Veya Agent</b><small>编剧与制作助手 · 改前先确认</small></span>
+      <button class="veya-close" id="veyaClose" type="button" aria-label="收起 Agent">
+        <svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg>
+      </button>
+    </header>
+    <div class="veya-context"><span>正在看</span><b>第 1 步 · 核心人物</b><span>· 可读全文</span></div>
+    <div class="veya-body">
+      <p class="veya-answer"><b>陈默和苏婉之间还缺一个“不能明说”的共同秘密。</b><br>补上后，第一桩交易会更像命运，而不是巧合。</p>
+      <div class="veya-prompts">
+        <button class="veya-prompt" type="button"><span><b>把苏婉的动机再藏深一点</b><small>生成一张待确认修改卡</small></span><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg></button>
+        <button class="veya-prompt" type="button"><span><b>检查这三个人是否能撑起 30 集</b><small>读取项目状态和现有结构</small></span><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg></button>
+        <button class="veya-prompt" type="button"><span><b>下一步该先做三幕还是定妆</b><small>根据阻塞与依赖给出顺序</small></span><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <form class="veya-compose" id="veyaForm">
+      <input aria-label="向 Veya Agent 提问" placeholder="问进度、改人物，或让我检查整条链路">
+      <button class="veya-send" type="submit" aria-label="发送">
+        <svg viewBox="0 0 24 24"><path d="m5 12 14-7-4 14-3-6-7-1Z"/></svg>
+      </button>
+    </form>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    const sheet = document.getElementById('veyaSheet');
+    const toggle = document.getElementById('veyaToggle');
+    const close = document.getElementById('veyaClose');
+    const toast = document.getElementById('toast');
+    let toastTimer;
+
+    function setAgent(open) {
+      sheet.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+    }
+
+    toggle.addEventListener('click', () => setAgent(!sheet.classList.contains('is-open')));
+    close.addEventListener('click', () => setAgent(false));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setAgent(false);
+    });
+    document.getElementById('veyaForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      showToast('这是交互 Demo：正式版会调用当前项目 Agent。');
+    });
+    document.getElementById('generate').addEventListener('click', () => {
+      showToast('生成动作将在正式工作台执行；这里仅展示布局。');
+    });
+    document.querySelectorAll('.quiet-genre').forEach((button) => {
+      button.addEventListener('click', () => button.classList.toggle('is-active'));
+    });
+    document.querySelectorAll('.rail-item[data-step]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.rail-item').forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+      });
+    });
+    document.querySelectorAll('.quiet-step').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.quiet-step').forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+      });
+    });
+  </script>
+</body>
+</html>

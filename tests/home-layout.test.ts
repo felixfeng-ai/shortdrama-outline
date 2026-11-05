@@ -6,21 +6,22 @@ const pageSrc = fs.readFileSync("app/page.tsx", "utf8")
 const ideaSrc = fs.readFileSync("components/IdeaPanel.tsx", "utf8")
 const projectSrc = fs.readFileSync("components/ProjectBar.tsx", "utf8")
 const releaseSrc = fs.readFileSync("components/ReleaseNotice.tsx", "utf8")
+const inlineReleaseSrc = fs.readFileSync("components/InlineReleaseNotice.tsx", "utf8")
+const topbarSrc = fs.readFileSync("components/WorkspaceTopbar.tsx", "utf8")
 const agentSrc = fs.readFileSync("components/AgentDock.tsx", "utf8")
 const css = fs.readFileSync("app/globals.css", "utf8")
 
-test("H1 上线公告收进顶栏，不再占用首页主内容首屏", () => {
-  const headerStart = pageSrc.indexOf('<header className="h-top">')
-  const headerEnd = pageSrc.indexOf("</header>", headerStart)
-  const noticeIndex = pageSrc.indexOf("<ReleaseNotice")
-  const mainStart = pageSrc.indexOf('<main className="h-work">')
-  const mainEnd = pageSrc.indexOf('<aside className="h-deck', mainStart)
+test("H1 上线公告位于确认稿顶栏之后、模式条之前", () => {
+  const topbarIndex = pageSrc.indexOf("<WorkspaceTopbar")
+  const noticeIndex = pageSrc.indexOf("<InlineReleaseNotice")
+  const modeIndex = pageSrc.indexOf('<div className="wfx-mode-strip">')
 
-  assert.ok(headerStart >= 0 && headerEnd > headerStart, "找不到顶栏")
-  assert.ok(noticeIndex > headerStart && noticeIndex < headerEnd, "公告入口不在顶栏")
-  assert.ok(!pageSrc.slice(mainStart, mainEnd).includes("<ReleaseNotice"), "主内容里仍有公告横幅")
-  assert.ok(releaseSrc.includes("release-trigger"), "公告没有紧凑入口")
-  assert.ok(releaseSrc.includes("release-badge"), "新消息角标丢失")
+  assert.ok(topbarIndex >= 0, "找不到工作区顶栏")
+  assert.ok(noticeIndex > topbarIndex, "公告不在顶栏之后")
+  assert.ok(modeIndex > noticeIndex, "公告不在模式条之前")
+  assert.ok(topbarSrc.includes("导出交付包"), "顶栏缺少项目主操作")
+  assert.ok(inlineReleaseSrc.includes("inline-release"), "公告没有紧凑展示")
+  assert.ok(inlineReleaseSrc.includes("关闭平台公告"), "公告不能关闭")
 })
 
 test("H2 项目条压缩成单行账本，不重复堆元信息", () => {

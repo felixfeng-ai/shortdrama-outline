@@ -32,19 +32,19 @@ test("CG3 额度足够时给出本步和剩余额度", () => {
   assert.equal(quote.label, "本步 4 单位 · 剩余 19")
 })
 
-test("CG4 额度不足时明确差多少并阻止提交", () => {
+test("CG4 创作额度不足时明确差多少并阻止提交", () => {
   const quote = forecastQuota(9, 6)
   assert.equal(quote.affordable, false)
   assert.equal(quote.shortBy, 3)
-  assert.match(quote.label, /额度不足/)
+  assert.match(quote.label, /创作额度不足/)
   assert.match(quote.label, /差 3/)
 })
 
-test("CG5 额度未知时只报本步，不误判为不足", () => {
+test("CG5 创作额度未知时只报本步，不误判为不足", () => {
   const quote = forecastQuota(2, null)
   assert.equal(quote.affordable, true)
   assert.equal(quote.known, false)
-  assert.equal(quote.label, "本步 2 单位 · 额度读取中")
+  assert.equal(quote.label, "本步 2 单位 · 创作额度读取中")
 })
 
 test("CG6 六步主按钮与双版本入口接入统一成本提示", () => {

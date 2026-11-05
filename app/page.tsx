@@ -36,6 +36,15 @@ import CompliancePanel from '@/components/CompliancePanel'
 import ProductionLedgerPanel from '@/components/ProductionLedgerPanel'
 import TodoPanel from '@/components/TodoPanel'
 import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
+import CanvasGraphWorkspace from '@/components/CanvasGraphWorkspace'
+import SkillCatalog from '@/components/SkillCatalog'
+import WorkspaceModeTabs from '@/components/WorkspaceModeTabs'
+import InlineReleaseNotice from '@/components/InlineReleaseNotice'
+import WorkspaceSidebar from '@/components/WorkspaceSidebar'
+import WorkspaceTopbar from '@/components/WorkspaceTopbar'
+import WorkspaceHome from '@/components/WorkspaceHome'
+import '@/app/skills/skills.css'
+import '@/app/workspace-shell.css'
 import { buildTodoList } from '@/lib/todo'
 import {
   DEFAULT_EPISODE_COUNT,
@@ -167,13 +176,13 @@ import {
   type PlatformExportTarget,
 } from '@/lib/export/platforms'
 import {
-  readCanvasQuery,
   readProjectQuery,
   readStepQuery,
-  skillsHref,
-  withCanvasQuery,
+  readWorkspaceModeQuery,
   withProjectQuery,
   withStepQuery,
+  withWorkspaceModeQuery,
+  type WorkspaceMode,
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
@@ -385,6 +394,9 @@ export default function Home() {
    * 点左栏（或窄屏步骤条）切换。生成状态都在这之外，切换不会打断正在跑的任务。
    */
   const [view, setView] = useState<StepKey>('characters')
+  /** 总览首页与单步编辑共用 overview 模式；有 step 参数时进入单步编辑。 */
+  const [workspaceStepDetail, setWorkspaceStepDetail] = useState(false)
+  const [workspaceMobileOpen, setWorkspaceMobileOpen] = useState(false)
   const projectIdRef = useRef<string | null>(null)
   useEffect(() => {
     projectIdRef.current = projectId
@@ -392,8 +404,13 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false
     const syncRouteFromUrl = () => {
-      setView(readStepQuery(window.location.search) ?? 'characters')
-      setCanvasOpen(readCanvasQuery(window.location.search))
+      const step = readStepQuery(window.location.search)
+      setView(step ?? 'characters')
+      const nextMode = readWorkspaceModeQuery(window.location.search)
+      setWorkspaceMode(nextMode)
+      setWorkspaceStepDetail(nextMode === 'overview' && Boolean(step))
+      setCanvasOpen(nextMode === 'canvas')
+      setCanvasInitialMode('graph')
     }
     const syncFromPopState = () => {
       syncRouteFromUrl()
@@ -457,8 +474,13 @@ export default function Home() {
   const [agentUnread, setAgentUnread] = useState(0)
   /** 项目画布：全局节点视图，关键字段可直接修改 */
   const [canvasOpen, setCanvasOpen] = useState(false)
+  /** 工作台三种同层模式：总览、创作、画布。 */
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('overview')
+  /** 从顶层「画布」进入时优先落到真实可拖拽的编排画布。 */
+  const [canvasInitialMode, setCanvasInitialMode] = useState<'production' | 'flow' | 'graph'>('graph')
   /** 低频项目工具：默认不挂载内容，按需打开 */
   const [projectToolsOpen, setProjectToolsOpen] = useState(false)
+  const [projectToolsTab, setProjectToolsTab] = useState<'comments' | 'assets' | 'branches'>('comments')
   /** 项目级产物中心：版本、真实差异与 Agent 待确认队列 */
   const [artifactCenterOpen, setArtifactCenterOpen] = useState(false)
   const [artifactSnapshots, setArtifactSnapshots] = useState<
@@ -1070,6 +1092,7 @@ export default function Home() {
 
   // 步骤条高亮到「第一个还没产出内容的步骤」；六步全部有内容时停在最后一步
   const currentStep = !hasCharacters ? 1 : !hasActs ? 2 : !hasEpisodes ? 3 : !visuals.length ? 4 : !scenes.length ? 5 : 6
+  const currentStepKey = STEPS.find((step) => step.index === currentStep)?.key ?? 'characters'
 
   /** 六步的完成态：窄屏步骤条与桌面左栏共用一份，避免两处各写一遍 */
   const stepCompleted: Record<StepKey, boolean> = {
@@ -1314,28 +1337,78 @@ export default function Home() {
    */
   const canJump = () => true
 
-  /** 画布是工作台 URL 的一等状态：打开时 push，关闭时回到上一条工作台记录。 */
-  const openCanvas = () => {
-    if (canvasOpen) return
-    const search = withCanvasQuery(window.location.search, true)
+  /** 画布是工作台 URL 的一等状态；确认稿中它内嵌在主工作区，不再是全屏覆盖层。 */
+  const openCanvas = (initialMode: 'production' | 'flow' | 'graph' = 'graph') => {
+    const search = withWorkspaceModeQuery(window.location.search, 'canvas')
     const href = `${window.location.pathname}${search}${window.location.hash}`
     const previous = window.history.state && typeof window.history.state === 'object'
       ? window.history.state
       : {}
     window.history.pushState({ ...previous, canvasEntry: true }, '', href)
-    setCanvasOpen(true)
+    setCanvasInitialMode(initialMode)
+    setWorkspaceMode('canvas')
+    setWorkspaceStepDetail(false)
+    setCanvasOpen(false)
+    setDeckOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const goWorkspaceHome = () => {
+    const params = new URLSearchParams(window.location.search)
+    params.delete('view')
+    params.delete('step')
+    const search = params.toString()
+    const href = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`
+    const previous = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state
+      : {}
+    window.history.pushState({ ...previous, canvasEntry: false, homeEntry: true }, '', href)
+    setWorkspaceMode('overview')
+    setWorkspaceStepDetail(false)
+    setCanvasOpen(false)
+    setDeckOpen(false)
+    setWorkspaceMobileOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openCanvasWindow() {
+    const params = new URLSearchParams()
+    if (projectId) params.set('project', projectId)
+    params.set('step', currentStepKey)
+    if (workspaceProjectTitle) params.set('title', workspaceProjectTitle)
+    const href = `/canvas?${params.toString()}`
+    const opened = window.open(href, '_blank')
+    if (!opened) {
+      setNotice('浏览器拦截了画布窗口，请允许弹出窗口后重试。')
+      return
+    }
+    opened.opener = null
+  }
+
+  const openWorkspaceMode = (mode: WorkspaceMode) => {
+    if (mode === 'canvas') {
+      openCanvas('graph')
+      return
+    }
+    if (mode === 'overview') {
+      goWorkspaceHome()
+      return
+    }
+    const search = withWorkspaceModeQuery(window.location.search, mode)
+    const href = `${window.location.pathname}${search}${window.location.hash}`
+    const previous = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state
+      : {}
+    window.history.pushState({ ...previous, canvasEntry: false, modeEntry: true }, '', href)
+    setCanvasOpen(false)
+    setWorkspaceMode(mode)
+    setWorkspaceStepDetail(false)
+    setDeckOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const closeCanvas = () => {
-    if (!canvasOpen) return
-    const state = window.history.state
-    if (state && typeof state === 'object' && state.canvasEntry) {
-      window.history.back()
-      return
-    }
-    const search = withCanvasQuery(window.location.search, false)
-    window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}${window.location.hash}`)
-    setCanvasOpen(false)
+    goWorkspaceHome()
   }
 
   const openArtifactCenter = () => {
@@ -1354,7 +1427,7 @@ export default function Home() {
 
   /** 点左栏/窄屏步骤条：切到那一步，并把页面滚回顶部 */
   const goToStep = (key: StepKey) => {
-    const nextSearch = withCanvasQuery(withStepQuery(window.location.search, key), false)
+    const nextSearch = withWorkspaceModeQuery(withStepQuery(window.location.search, key), 'overview')
     const previous = window.history.state && typeof window.history.state === 'object'
       ? window.history.state
       : {}
@@ -1372,8 +1445,25 @@ export default function Home() {
       )
     }
     setView(key)
+    setWorkspaceMode('overview')
+    setWorkspaceStepDetail(true)
     setCanvasOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openWorkspaceTodo = () => {
+    goToStep(currentStepKey)
+    setMetaPanel('todo')
+  }
+
+  const openWorkspaceAssets = () => {
+    setProjectToolsTab('assets')
+    setProjectToolsOpen(true)
+  }
+
+  const openWorkspaceLedger = () => {
+    goToStep(currentStepKey)
+    setMetaPanel('ledger')
   }
 
   function openCanvasItem(node: CanvasNodeId, itemId: string) {
@@ -1443,6 +1533,11 @@ export default function Home() {
   const canvasProjectTitle = projects.find((item) => item.id === projectId)?.title
     || idea.trim().slice(0, 24)
     || '未命名项目'
+  const workspaceProject = projects.find((item) => item.id === projectId) ?? null
+  const workspaceProjectTitle = workspaceProject?.title ?? (idea.trim() || '未命名项目')
+  const workspaceSavedLabel = anyRunning
+    ? '正在生成'
+    : projectId ? '全部更改已保存' : '尚未保存'
   const canvasStepLabel = STEPS.find((step) => step.key === view)?.nav ?? '核心人物'
 
   /**
@@ -3359,128 +3454,15 @@ export default function Home() {
   )
 
   return (
-    <div className="min-h-screen">
+    <div className={`signal-desk wfx-workspace ${workspaceMode === 'create' ? 'is-create-mode' : ''}`}>
       {/*
-        顶栏：一层楼高，品牌在左、硬指标与自建入口在右（对齐 concept-reference.png）。
-        底部那道朱砂细线是全站唯一的分隔装饰，代替原来的居中 hero。
+        确认稿把品牌和项目导航收进左侧完整工作区侧栏，
+        顶栏只承担面包屑、保存状态和项目动作。
       */}
-      {/* 顶栏：与 demo 完全一致——左边品牌 + AI 徽标，右边齿轮与头像 */}
-      {/* 顶栏吸顶：向下滚动时品牌与额度一直可见 */}
-      <header className="h-top">
-        <div className="h-lockup">
-          <h1 className="h-brand">成剧</h1>
-          <span className="h-wordmark">VEYAFRAME</span>
-        </div>
-        <span className="h-ai" title="全流程 AI 生成">AI</span>
-        <span className="h-slogan hidden lg:inline">一句想法 → 分镜、镜头视频与成片</span>
-        <span className="h-div hidden lg:block" aria-hidden="true" />
-        <QuotaBar refreshKey={quotaRefreshKey} inline episodeCount={episodeCount} />
-
-        <StepPills
-          current={viewIndex}
-          completed={stepCompleted}
-          onJump={goToStep}
-          canJump={canJump}
-        />
-
-        <button
-          type="button"
-          className="h-canvas h-nav-utility"
-          onClick={() => openCanvas()}
-          title="查看六步项目画布"
-          aria-label="打开项目画布"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="5" cy="6" r="2.2" />
-            <circle cx="19" cy="6" r="2.2" />
-            <circle cx="12" cy="18" r="2.2" />
-            <path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8" />
-          </svg>
-          <span>画布</span>
-        </button>
-
-        <a
-          href={skillsHref(projectId, view)}
-          className="h-canvas h-skill-entry h-nav-utility"
-          title="打开创作技能库"
-          aria-label="打开创作技能库"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m12 3 2.4 5.1 5.6.7-4.1 3.9 1.1 5.5L12 15.5l-5 2.7 1.1-5.5L4 8.8l5.6-.7L12 3Z" />
-          </svg>
-          <span className="h-skill-label-full">创作技能</span>
-          <span className="h-skill-label-short">技能</span>
-        </a>
-        <a
-          className="h-docs-entry h-nav-utility"
-          href="/docs"
-          title="打开成剧使用教程"
-          aria-label="打开成剧使用教程"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
-            <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21.5v-16Z" />
-          </svg>
-          <span>教程</span>
-        </a>
-
-        <span className={`h-run ${anyRunning ? 'busy' : ''}`} aria-live="polite">
-          <i aria-hidden="true" />
-          {anyRunning ? `生成中 · ${elapsed.toFixed(1)}s` : `${completedCount}/6 已完成`}
-        </span>
-
-        <PwaInstallButton />
-        <PushNotificationButton />
-        <AuthButton />
-
-        <ReleaseNotice />
-
-        <ul className="hidden flex-wrap items-center gap-1.5 2xl:flex">
-          {['零部署', '图不上传', '一键打包带走'].map((tag) => (
-            <li key={tag} className="rounded-pill bg-surface-soft px-2.5 py-1 text-[11px] font-medium text-ink-600">
-              {tag}
-            </li>
-          ))}
-        </ul>
-
-        <a
-          href="https://github.com/felixfeng-ai/shortdrama-outline"
-          target="_blank"
-          rel="noreferrer"
-          title="代码在这里，可以拿去自建"
-          className="rounded-full p-1.5 text-ink-500 transition-colors hover:bg-surface-soft
-            hover:text-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current">
-            <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03a9.4 9.4 0 0 1 5 0c1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
-          </svg>
-        </a>
-      </header>
-
-      {canvasOpen && (
-        <ProjectCanvas
-          current={view}
-          completed={stepCompleted}
-          counts={{ ...canvasCounts, placeGaps: missingPlaces }}
-          issues={canvasIssues}
-          previews={canvasPreviews}
-          projectId={projectId}
-          projectTitle={canvasProjectTitle}
-          currentStepLabel={canvasStepLabel}
-          onEdit={handleCanvasEdit}
-          onLoadVersions={loadCanvasVersions}
-          onRestoreVersion={restoreCanvasVersion}
-          onOpen={(step) => {
-            goToStep(step)
-          }}
-          onOpenItem={openCanvasItem}
-          onAskAgent={askAgentFromCanvas}
-          onClose={() => closeCanvas()}
-        />
-      )}
 
       <ProjectToolsPanel
         open={projectToolsOpen}
+        initialTab={projectToolsTab}
         onClose={() => setProjectToolsOpen(false)}
         projectId={projectId}
         entities={agentState.entities ?? []}
@@ -3505,62 +3487,91 @@ export default function Home() {
         onOpenAgent={openAgentFromArtifactCenter}
       />
 
-      <div className="h-main">
-        <aside className="signal-rail" aria-label="创作步骤">
-          <a className="signal-rail-brand" href="/" aria-label="返回成剧工作台">
-            <b>成剧</b>
-            <span>VEYAFRAME</span>
-          </a>
-          <span className="signal-rail-logo" aria-hidden="true">V</span>
-          <div className="signal-rail-utilities">
-            <button
-              type="button"
-              className="signal-rail-link signal-rail-canvas"
-              onClick={() => openCanvas()}
-              title="打开项目画布"
-              aria-label="打开项目画布"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="5" cy="6" r="2.2" />
-                <circle cx="19" cy="6" r="2.2" />
-                <circle cx="12" cy="18" r="2.2" />
-                <path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8" />
-              </svg>
-              <span>画布</span>
-            </button>
-            <a
-              className="signal-rail-link signal-rail-skill"
-              href={skillsHref(projectId, view)}
-              title="打开创作技能库"
-              aria-label="打开创作技能库"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m12 3 2.4 5.1 5.6.7-4.1 3.9 1.1 5.5L12 15.5l-5 2.7 1.1-5.5L4 8.8l5.6-.7L12 3Z" />
-              </svg>
-              <span>创作技能</span>
-            </a>
-            <a
-              className="signal-rail-link signal-rail-docs"
-              href="/docs"
-              title="打开成剧使用教程"
-              aria-label="打开成剧使用教程"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
-                <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21.5v-16Z" />
-              </svg>
-              <span>教程</span>
-            </a>
+      <WorkspaceSidebar
+        mode={workspaceMode}
+        currentStep={currentStepKey}
+        completed={stepCompleted}
+        homeActive={workspaceMode === 'overview' && !workspaceStepDetail}
+        projects={projects}
+        projectId={projectId}
+        projectTitle={workspaceProjectTitle}
+        todoCount={todoItems.length}
+        savedLabel={workspaceSavedLabel}
+        quotaRefreshKey={quotaRefreshKey}
+        mobileOpen={workspaceMobileOpen}
+        onCloseMobile={() => setWorkspaceMobileOpen(false)}
+        onHome={goWorkspaceHome}
+        onSwitchProject={(id) => { void handleSwitchProject(id) }}
+        onNewProject={handleNewProject}
+        onOpenTodo={openWorkspaceTodo}
+        onOpenCreate={() => openWorkspaceMode('create')}
+        onOpenAssets={openWorkspaceAssets}
+        onOpenStep={goToStep}
+        onOpenCanvas={() => openCanvas('graph')}
+        onOpenArtifacts={openArtifactCenter}
+        onOpenLedger={openWorkspaceLedger}
+      />
+
+      <div className="wfx-workspace-main">
+        <WorkspaceTopbar
+          mode={workspaceMode}
+          projectTitle={workspaceProjectTitle}
+          savedLabel={workspaceSavedLabel}
+          running={anyRunning}
+          onOpenMobileMenu={() => setWorkspaceMobileOpen(true)}
+          onExport={() => { void handleExportPackage('delivery') }}
+          onOpenMore={() => {
+            setProjectToolsTab('comments')
+            setProjectToolsOpen(true)
+          }}
+        />
+
+        <div className="wfx-content">
+          <InlineReleaseNotice />
+          <div className="wfx-mode-strip">
+            <WorkspaceModeTabs mode={workspaceMode} onChange={openWorkspaceMode} />
           </div>
-          <span className="signal-rail-divider" aria-hidden="true" />
-          <SideNav
-            current={viewIndex}
-            completed={stepCompleted}
-            onJump={goToStep}
-            canJump={canJump}
-          />
-        </aside>
-        <main className="h-work">
+
+          {workspaceMode === 'overview' && !workspaceStepDetail && (
+            <WorkspaceHome
+              projectTitle={workspaceProjectTitle}
+              genreLabel={genre.label}
+              updatedAt={workspaceProject?.updatedAt}
+              characters={characters}
+              acts={acts}
+              episodes={episodes}
+              visuals={visuals}
+              scenes={scenes}
+              shots={shots}
+              todoItems={todoItems}
+              currentStep={currentStep}
+              completed={stepCompleted}
+              canJump={canJump}
+              onContinue={goToStep}
+              onOpenCanvas={() => openCanvas('graph')}
+              onOpenStep={goToStep}
+              onOpenArtifacts={openArtifactCenter}
+              onOpenAgent={() => {
+                setDeckOpen(true)
+                setAgentOpen(true)
+                setInspectorOpen(false)
+              }}
+              onLoadSample={() => { void handleLoadSample() }}
+            />
+          )}
+
+          <div className={workspaceMode === 'overview' && workspaceStepDetail ? '' : 'hidden'}>
+          {workspaceMode === 'overview' && workspaceStepDetail && (
+            <header className="wfx-detail-head">
+              <div>
+                <span>{workspaceProjectTitle}</span>
+                <h1>{STEPS.find((step) => step.key === view)?.nav ?? '项目编辑'}</h1>
+              </div>
+              <button className="wfx-button is-secondary" type="button" onClick={goWorkspaceHome}>
+                返回继续创作
+              </button>
+            </header>
+          )}
           {variantSession && (
             <VariantPicker
               stepLabel={
@@ -4161,6 +4172,39 @@ export default function Home() {
             )}
 
           </div>
+          </div>
+
+          {workspaceMode === 'create' && (
+            <div className="wfx-create">
+              <SkillCatalog embedded />
+            </div>
+          )}
+
+          {workspaceMode === 'canvas' && (
+            <section className="wfx-canvas-page" aria-labelledby="wfx-canvas-title">
+              <header className="wfx-canvas-head">
+                <div>
+                  <h1 id="wfx-canvas-title">画布</h1>
+                  <p>复用线上真实编排画布，可拖拽、缩放、连线并自动同步。</p>
+                </div>
+                <div className="wfx-canvas-actions">
+                  <button className="wfx-button is-secondary" type="button" onClick={openCanvasWindow}>
+                    在新窗口打开
+                  </button>
+                  <button className="wfx-button is-secondary" type="button" onClick={() => openCanvas('graph')}>
+                    适应当前窗口
+                  </button>
+                </div>
+              </header>
+              <div className="wfx-canvas-frame">
+                <CanvasGraphWorkspace
+                  projectId={projectId}
+                  projectTitle={workspaceProjectTitle}
+                  onOpenStep={(step) => goToStep(step)}
+                />
+              </div>
+            </section>
+          )}
 
           {notice && (
             <div className="work-toast" role="status" aria-live="polite">
@@ -4169,7 +4213,31 @@ export default function Home() {
             </div>
           )}
           <SiteLegalFooter />
-        </main>
+        </div>
+
+        <nav className="wfx-mobile-nav" aria-label="移动端导航">
+          <button className={workspaceMode === 'overview' ? 'is-active' : ''} type="button" onClick={goWorkspaceHome}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3 9 7-6 7 6v8H3z" /></svg>
+            <span>首页</span>
+          </button>
+          <button type="button" onClick={() => setWorkspaceMobileOpen(true)}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v12H3z" /><path d="M6 8h8M6 12h5" /></svg>
+            <span>项目</span>
+          </button>
+          <button type="button" onClick={openWorkspaceTodo}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 10 2.5 2.5L14 7" /><circle cx="10" cy="10" r="7" /></svg>
+            <span>待办</span>
+          </button>
+          <button className={workspaceMode === 'create' ? 'is-active' : ''} type="button" onClick={() => openWorkspaceMode('create')}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3 2 4 4 2-4 2-2 4-2-4-4-2 4-2z" /></svg>
+            <span>技能</span>
+          </button>
+          <button type="button" onClick={() => setWorkspaceMobileOpen(true)}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="7" r="3" /><path d="M4 17c1-3 3-4 6-4s5 1 6 4" /></svg>
+            <span>我的</span>
+          </button>
+        </nav>
+      </div>
 
         {/*
           Agent 工作舱：
@@ -4397,7 +4465,6 @@ export default function Home() {
             )}
           </div>
         </aside>
-      </div>
     </div>
   )
 }

@@ -9,8 +9,8 @@ test("P1.1 Manifest 具备安装所需字段和 SVG 图标", () => {
   assert.equal(PWA_MANIFEST.short_name, "VeyaFrame")
   assert.equal(PWA_MANIFEST.start_url, "/")
   assert.equal(PWA_MANIFEST.display, "standalone")
-  assert.equal(PWA_MANIFEST.background_color, "#13171A")
-  assert.equal(PWA_MANIFEST.theme_color, "#13171A")
+  assert.equal(PWA_MANIFEST.background_color, "#08090A")
+  assert.equal(PWA_MANIFEST.theme_color, "#08090A")
   assert.ok(PWA_MANIFEST.icons.some((icon) => icon.type === "image/svg+xml"))
   assert.ok(PWA_MANIFEST.icons.every((icon) => icon.src === "/veyaframe-icon.svg"))
   assert.equal(fs.existsSync("public/manifest.webmanifest"), false, "旧静态清单会覆盖 App Router Manifest")
@@ -18,14 +18,14 @@ test("P1.1 Manifest 具备安装所需字段和 SVG 图标", () => {
 
 test("P2 顶栏安装按钮只在 beforeinstallprompt 可用时出现，并注册 Service Worker", () => {
   const source = fs.readFileSync("components/PwaInstallButton.tsx", "utf8")
-  const page = fs.readFileSync("app/page.tsx", "utf8")
+  const topbar = fs.readFileSync("components/WorkspaceTopbar.tsx", "utf8")
   assert.ok(source.includes("beforeinstallprompt"), "缺少浏览器安装事件")
   assert.ok(source.includes("priorInstallPrompt.prompt()"), "没有调用安装提示")
   assert.ok(source.includes("serviceWorker.register('/sw.js')"), "没有注册 Service Worker")
   assert.ok(source.includes("setInstallTarget(mobileQuery.matches ? '主屏' : '桌面')"), "安装文案没有区分桌面与主屏")
   assert.ok(source.includes("添加到{installTarget}"), "缺少设备自适应的添加文案")
   assert.ok(!source.includes(">安装应用<"), "按钮仍使用容易误解为安装包的旧文案")
-  assert.ok(page.includes("<PwaInstallButton"), "顶栏没有安装入口")
+  assert.ok(topbar.includes("<PwaInstallButton"), "顶栏更多菜单没有安装入口")
 })
 
 test("P3/P4 Service Worker 提供离线页、缓存静态资源且绕过 API 与图片", () => {

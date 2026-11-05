@@ -9,12 +9,12 @@ function read(path: string): string {
 test("Web Push 客户端只在用户点击后请求权限，并注册 Service Worker", () => {
   const client = read("lib/push/client.ts")
   const button = read("components/PushNotificationButton.tsx")
-  const page = read("app/page.tsx")
+  const topbar = read("components/WorkspaceTopbar.tsx")
   assert.ok(client.includes("Notification.requestPermission"))
   assert.ok(client.includes("pushManager.subscribe"))
   assert.ok(client.includes("/api/push/subscription"))
   assert.ok(button.includes("开启完成通知"))
-  assert.ok(page.includes("<PushNotificationButton"))
+  assert.ok(topbar.includes("<PushNotificationButton"))
 })
 
 test("Service Worker 支持推送展示与点击回到对应步骤", () => {

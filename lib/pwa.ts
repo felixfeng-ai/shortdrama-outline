@@ -6,8 +6,8 @@ export const PWA_MANIFEST = {
   scope: "/",
   display: "standalone",
   orientation: "portrait-primary",
-  background_color: "#13171A",
-  theme_color: "#13171A",
+  background_color: "#08090A",
+  theme_color: "#08090A",
   lang: "zh-CN",
   categories: ["productivity", "entertainment"],
   shortcuts: [
