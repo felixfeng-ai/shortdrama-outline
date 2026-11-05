@@ -28,7 +28,7 @@ test("Agent 使用 Veya Agent 品牌名，并保留剧作与制作能力说明",
   assert.match(dock, /Veya Agent/)
   assert.match(dock, /剧作与制作 Agent/)
   assert.match(drawer, /Veya Agent/)
-  assert.match(page, /^\s*Agent\s*$/m)
+  assert.match(page, /Veya Agent/)
   assert.match(css, /aria-label="Veya Agent"/)
   assert.doesNotMatch(dock, />AI 场记</)
 })

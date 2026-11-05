@@ -11,7 +11,7 @@ import StepSection from '@/components/StepSection'
 import StepPills from '@/components/StepPills'
 import SideNav from '@/components/SideNav'
 import SignalOverview from '@/components/SignalOverview'
-import AssistantDock from '@/components/AssistantDock'
+import ShotPreviewDock from '@/components/ShotPreviewDock'
 import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
 import GenerationTaskPanel from '@/components/GenerationTaskPanel'
@@ -458,19 +458,24 @@ export default function Home() {
   }, [projectId])
   /** 用户手动点过 tab 之后，不再自动切换 */
   const tabTouched = useRef(false)
+  const hasDeckOutput = view === 'shots' && shots.length > 0
   useEffect(() => {
     if (agentOpen) setAgentUnread(0)
   }, [agentOpen])
   /*
-    右舱跟随当前步骤：前五步默认场记（那时"产出"只有一块空的分镜位），
-    到分镜步默认产出。按步骤而不是按 shots.length，避免异步加载时闪一下。
-    一旦用户自己点过 tab，就尊重他的选择。
+    没有可预览镜头时只保留 Agent；进入分镜后，用户没手动选过页签时
+    默认打开镜头预览。离开分镜则立即回收预览和镜头属性状态。
   */
   useEffect(() => {
+    if (!hasDeckOutput) {
+      setAgentOpen(true)
+      setInspectorOpen(false)
+      return
+    }
     if (tabTouched.current) return
-    setAgentOpen(view !== 'shots')
-    setInspectorOpen(view === 'shots')
-  }, [view])
+    setAgentOpen(false)
+    setInspectorOpen(false)
+  }, [hasDeckOutput])
   /* 窄屏抽屉：Esc 收起 + 展开时锁住背景滚动 */
   useEffect(() => {
     if (!deckOpen) return
@@ -1401,12 +1406,6 @@ export default function Home() {
     () => shots.find((s) => s.id === activeShotId) ?? shots[0] ?? null,
     [shots, activeShotId],
   )
-
-  /** 把 AI 助手改写好的文本写回当前镜头——只改被问到的那一镜，不碰其它字段 */
-  const applyAssistantText = (target: 'prompt' | 'action', text: string) => {
-    if (!activeShot) return
-    setShots((prev) => prev.map((s) => (s.id === activeShot.id ? { ...s, [target]: text } : s)))
-  }
 
   // 上游改过之后，下游结果就是基于旧版本生成的
   const actsStale = hasActs && actsBuiltFrom !== `${charactersSig}|${briefSig}`
@@ -3942,7 +3941,7 @@ export default function Home() {
         <aside
           className={`h-deck ${deckOpen ? 'open' : ''}`}
           data-theme="paper-light-dark-ai"
-          aria-label="产出舱"
+          aria-label="Veya 工作舱"
         >
           {/* 窄屏抓手：收起时就是一条「› 问进度、改某一镜…」的输入行 */}
           <button
@@ -3950,7 +3949,7 @@ export default function Home() {
             className="h-deck-grab"
             aria-expanded={deckOpen}
             aria-controls="deck-body"
-            aria-label={deckOpen ? '收起产出舱' : '展开产出舱'}
+            aria-label={deckOpen ? '收起工作舱' : '展开工作舱'}
             onClick={() => {
               // 收起时这一行写的是「问进度、改某一镜」——展开就该落在场记，
               // 而不是把用户丢到「产出」tab 再自己找一遍
@@ -3968,88 +3967,86 @@ export default function Home() {
               <span className="go">↵</span>
             </span>
           </button>
-          <div className="h-deck-tabs" role="tablist" aria-label="产出舱视图">
-            <button
-              type="button"
-              role="tab"
-              id="deck-tab-output"
-              aria-selected={!agentOpen && !inspectorOpen}
-              aria-controls="deck-pane-output"
-              className={`h-deck-tab ${!agentOpen && !inspectorOpen ? 'on' : ''}`}
-              onClick={() => {
-                tabTouched.current = true
-                setAgentOpen(false)
-                setInspectorOpen(false)
-              }}
-            >
-              产出
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="deck-tab-agent"
-              aria-selected={agentOpen}
-              aria-controls="deck-pane-agent"
-              className={`h-deck-tab ${agentOpen ? 'on' : ''}`}
-              onClick={() => {
-                tabTouched.current = true
-                setInspectorOpen(false)
-                setAgentOpen(true)
-              }}
-            >
-              Agent
-              {!agentOpen && agentUnread > 0 && (
-                <span className="h-deck-badge" aria-label={`${agentUnread} 条新消息`}>
-                  {agentUnread > 9 ? '9+' : agentUnread}
-                </span>
-              )}
-            </button>
-            {view === 'shots' && activeShot && (
+          {hasDeckOutput && (
+            <div className="h-deck-tabs" role="tablist" aria-label="Veya 工作舱视图">
               <button
                 type="button"
                 role="tab"
-                id="deck-tab-inspector"
-                aria-selected={inspectorOpen}
-                aria-controls="deck-pane-inspector"
-                className={`h-deck-tab ${inspectorOpen ? 'on' : ''}`}
+                id="deck-tab-output"
+                aria-selected={!agentOpen && !inspectorOpen}
+                aria-controls="deck-pane-output"
+                className={`h-deck-tab ${!agentOpen && !inspectorOpen ? 'on' : ''}`}
                 onClick={() => {
                   tabTouched.current = true
                   setAgentOpen(false)
-                  setInspectorOpen(true)
+                  setInspectorOpen(false)
                 }}
               >
-                镜头属性
+                镜头预览
               </button>
-            )}
-            <span className="h-deck-meta">
-              {anyRunning
-                ? `生成中 · ${elapsed.toFixed(1)}s`
-                : `SHOT ${activeShot ? String(activeShot.shot).padStart(2, '0') : '--'}`}
-            </span>
-          </div>
+              <button
+                type="button"
+                role="tab"
+                id="deck-tab-agent"
+                aria-selected={agentOpen}
+                aria-controls="deck-pane-agent"
+                className={`h-deck-tab ${agentOpen ? 'on' : ''}`}
+                onClick={() => {
+                  tabTouched.current = true
+                  setInspectorOpen(false)
+                  setAgentOpen(true)
+                }}
+              >
+                Veya Agent
+                {!agentOpen && agentUnread > 0 && (
+                  <span className="h-deck-badge" aria-label={`${agentUnread} 条新消息`}>
+                    {agentUnread > 9 ? '9+' : agentUnread}
+                  </span>
+                )}
+              </button>
+              {activeShot && (
+                <button
+                  type="button"
+                  role="tab"
+                  id="deck-tab-inspector"
+                  aria-selected={inspectorOpen}
+                  aria-controls="deck-pane-inspector"
+                  className={`h-deck-tab ${inspectorOpen ? 'on' : ''}`}
+                  onClick={() => {
+                    tabTouched.current = true
+                    setAgentOpen(false)
+                    setInspectorOpen(true)
+                  }}
+                >
+                  镜头属性
+                </button>
+              )}
+              <span className="h-deck-meta">
+                {anyRunning
+                  ? `生成中 · ${elapsed.toFixed(1)}s`
+                  : `SHOT ${activeShot ? String(activeShot.shot).padStart(2, '0') : '--'}`}
+              </span>
+            </div>
+          )}
 
           <div className="h-deck-body" id="deck-body">
-            <div
-              className="h-deck-pane"
-              id="deck-pane-output"
-              role="tabpanel"
-              aria-labelledby="deck-tab-output"
-              style={{ display: agentOpen || inspectorOpen ? 'none' : 'flex' }}
-            >
-              <AssistantDock
-                shot={activeShot}
-                idea={idea}
-                genre={genre}
-                characters={characters}
-                onApply={applyAssistantText}
-              />
-            </div>
+            {hasDeckOutput && (
+              <div
+                className="h-deck-pane"
+                id="deck-pane-output"
+                role="tabpanel"
+                aria-labelledby="deck-tab-output"
+                style={{ display: agentOpen || inspectorOpen ? 'none' : 'flex' }}
+              >
+                <ShotPreviewDock projectId={projectId} shot={activeShot} />
+              </div>
+            )}
             <div
               className="h-deck-pane"
               id="deck-pane-agent"
               role="tabpanel"
               aria-labelledby="deck-tab-agent"
-              style={{ display: agentOpen ? 'flex' : 'none' }}
+              style={{ display: !hasDeckOutput || agentOpen ? 'flex' : 'none' }}
             >
               <AgentDock
                 variant="docked"
@@ -4060,7 +4057,7 @@ export default function Home() {
                   if (open) setInspectorOpen(false)
                 }}
                 onNewMessage={() => {
-                  // 正停在场记里就不用提示；停在产出/别的步骤才点亮角标
+                  // 正停在场记里就不用提示；停在镜头预览时才点亮角标
                   if (!agentOpen) setAgentUnread((n) => n + 1)
                 }}
                 context={
@@ -4080,7 +4077,7 @@ export default function Home() {
                 seedPrompt={agentSeed}
               />
             </div>
-            {view === 'shots' && activeShot && (
+            {hasDeckOutput && activeShot && (
               <div
                 className="h-deck-pane"
                 id="deck-pane-inspector"

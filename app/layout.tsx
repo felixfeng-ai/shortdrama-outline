@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
-import { THEME_BOOTSTRAP } from '@/lib/theme'
 
 /*
   西文/数字用 Albert Sans（即梦同款思路：展示体 + 系统中文），
@@ -81,10 +80,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${latin.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
-      <head>
-        {/* 首屏就定好底色：否则会先闪一下默认色再跳成选中的那套 */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
-      </head>
       <body className="signal-desk">{children}</body>
     </html>
   )
