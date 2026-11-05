@@ -154,13 +154,13 @@ export function AgentComposer({
         ) : null}
 
         <TextInput
-          accessibilityLabel="给 AI 场记的指令"
+          accessibilityLabel="给 Veya Agent 的指令"
           editable={!locked}
           multiline
           onChangeText={onChangeText}
           placeholder={
             busy
-              ? 'AI 场记正在检查当前场次…'
+              ? 'Veya Agent 正在检查当前场次…'
               : disabled
                 ? '先选择一个项目'
                 : phase === 'proposed'
@@ -252,7 +252,7 @@ export function AgentComposer({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={busy ? '停止 AI 场记' : '发送给 AI 场记'}
+            accessibilityLabel={busy ? '停止 Veya Agent' : '发送给 Veya Agent'}
             accessibilityState={{ disabled: disabled || (!busy && !canSend) }}
             disabled={disabled || (!busy && !canSend)}
             onPress={() => {
