@@ -17,6 +17,7 @@ import {
   cancelGenerationTask,
   createGenerationTask,
   failGenerationTask,
+  getGeneratedAsset,
   getGenerationTask,
   listGeneratedAssets,
   listGenerationTasks,
@@ -148,8 +149,8 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(ok({
-      tasks: listGenerationTasks(db, projectId, type, id),
-      assets: listGeneratedAssets(db, projectId, type, id),
+      tasks: listGenerationTasks(db, projectId, type, id, "image"),
+      assets: listGeneratedAssets(db, projectId, type, id, "image"),
     }))
   } catch (error) {
     const { body, status } = errorResponse(error)
@@ -198,8 +199,11 @@ export async function PATCH(req: Request) {
       }))
     }
     const assetId = requiredString(body?.assetId, "缺少 assetId")
-    const asset = selectGeneratedAsset(db, projectId, assetId)
-    return NextResponse.json(ok({ asset }))
+    const candidate = getGeneratedAsset(db, assetId, projectId)
+    if (!candidate || candidate.mediaKind !== "image") {
+      throw new InputError("该资产不是关键帧")
+    }
+    return NextResponse.json(ok({ asset: selectGeneratedAsset(db, projectId, assetId) }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

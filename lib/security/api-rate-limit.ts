@@ -6,7 +6,14 @@ import { clientIpFromRequest } from "../auth/rate-limit.ts"
 const TEN_MINUTES = 10 * 60_000
 const ONE_DAY = 24 * 60 * 60_000
 
-export type ApiRateLimitGroup = "model" | "assistant" | "image" | "export" | "import" | "material"
+export type ApiRateLimitGroup =
+  | "model"
+  | "assistant"
+  | "image"
+  | "video"
+  | "export"
+  | "import"
+  | "material"
 
 interface ApiRateLimitPolicy {
   group: ApiRateLimitGroup
@@ -41,6 +48,14 @@ export const API_RATE_LIMIT_POLICIES: Record<ApiRateLimitGroup, ApiRateLimitPoli
     ipLimit: { env: "API_IMAGE_IP_10M_LIMIT", fallback: 20, windowMs: TEN_MINUTES },
     identityLimit: { env: "API_IMAGE_IDENTITY_10M_LIMIT", fallback: 10, windowMs: TEN_MINUTES },
     globalLimit: { env: "API_IMAGE_GLOBAL_DAILY_LIMIT", fallback: 500, windowMs: ONE_DAY },
+  },
+  video: {
+    group: "video",
+    label: "视频生成",
+    message: "视频生成请求过于频繁，请稍后再试",
+    ipLimit: { env: "API_VIDEO_IP_10M_LIMIT", fallback: 10, windowMs: TEN_MINUTES },
+    identityLimit: { env: "API_VIDEO_IDENTITY_10M_LIMIT", fallback: 5, windowMs: TEN_MINUTES },
+    globalLimit: { env: "API_VIDEO_GLOBAL_DAILY_LIMIT", fallback: 200, windowMs: ONE_DAY },
   },
   export: {
     group: "export",

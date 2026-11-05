@@ -7,6 +7,7 @@ const MIME_EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
+  "video/mp4": "mp4",
 }
 
 function generatedRoot(): string {
@@ -64,8 +65,30 @@ export function writeGeneratedImage(
 }
 
 export function readGeneratedImage(storageKey: string): Uint8Array {
+  return readGeneratedAsset(storageKey)
+}
+
+export function writeGeneratedVideo(
+  projectId: string,
+  assetId: string,
+  bytes: Uint8Array,
+  mime: string,
+): { storageKey: string; bytes: number } {
+  if (mime !== "video/mp4") throw new Error("不支持的视频格式")
+  if (bytes.length === 0) throw new Error("视频内容为空")
+  if (bytes.length > 200 * 1024 * 1024) throw new Error("视频不能超过 200MB")
+  const project = safeProjectId(projectId)
+  const asset = safeAssetId(assetId)
+  const relative = path.posix.join("generated", project, `${asset}.mp4`)
+  const full = resolveGeneratedStoragePath(relative)
+  fs.mkdirSync(path.dirname(full), { recursive: true })
+  fs.writeFileSync(full, bytes)
+  return { storageKey: relative, bytes: bytes.length }
+}
+
+export function readGeneratedAsset(storageKey: string): Uint8Array {
   const full = resolveGeneratedStoragePath(storageKey)
-  if (!fs.existsSync(full)) throw new Error("关键帧文件不存在")
+  if (!fs.existsSync(full)) throw new Error("关键帧文件不存在或生成资产缺失")
   return new Uint8Array(fs.readFileSync(full))
 }
 

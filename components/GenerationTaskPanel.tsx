@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import SmoothCollapse from './SmoothCollapse'
 import type { Shot, VisualCharacter, VisualPlace } from '@/lib/assets/types'
@@ -9,6 +9,7 @@ import {
   generateKeyframe,
   selectKeyframe,
 } from '@/lib/generation/client'
+import { fetchProjectVideoState, retryVideoTask, selectVideo } from '@/lib/video/client'
 import { publicGenerationError } from '@/lib/generation/model'
 import {
   generationTaskTargetLabel,
@@ -47,35 +48,43 @@ export default function GenerationTaskPanel({ projectId, visuals, places, shots,
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [confirmingBatch, setConfirmingBatch] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!projectId) {
       setTasks([])
       setAssets([])
       return
     }
-    let cancelled = false
-    const load = async () => {
-      setLoading(true)
-      try {
-        const state = await fetchProjectGenerationAssets(projectId)
-        if (!cancelled) {
-          setTasks(state.tasks)
-          setAssets(state.assets)
-        }
-      } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : '任务读取失败')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    setLoading(true)
+    try {
+      const [imageState, videoState] = await Promise.all([
+        fetchProjectGenerationAssets(projectId),
+        fetchProjectVideoState(projectId),
+      ])
+      setTasks([...imageState.tasks, ...videoState.tasks]
+        .sort((a, b) => b.createdAt - a.createdAt))
+      setAssets([...imageState.assets, ...videoState.assets])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '任务读取失败')
+    } finally {
+      setLoading(false)
     }
+  }, [projectId])
+
+  useEffect(() => {
+    if (!projectId) return
     const onUpdate = () => { void load() }
     void load()
     window.addEventListener('chengju:generation-updated', onUpdate)
     return () => {
-      cancelled = true
       window.removeEventListener('chengju:generation-updated', onUpdate)
     }
-  }, [projectId])
+  }, [load, projectId])
+
+  useEffect(() => {
+    if (!tasks.some((task) => task.status === 'queued' || task.status === 'running')) return
+    const timer = window.setInterval(() => { void load() }, 5_000)
+    return () => window.clearInterval(timer)
+  }, [load, tasks])
 
   const summary = useMemo(() => summarizeGenerationTasks(tasks), [tasks])
   const retryable = useMemo(() => selectRetryableTasks(tasks), [tasks])
@@ -87,6 +96,7 @@ export default function GenerationTaskPanel({ projectId, visuals, places, shots,
 
   async function retryOne(task: GenerationTask) {
     if (!projectId) throw new Error('项目还没有保存')
+    if (task.mediaKind === 'video') return retryVideoTask(projectId, task.id)
     const shot = shots.find((item) => item.entityId === task.targetId || item.id === task.targetId)
     const aspect = task.targetType === 'character'
       ? 'portrait'
@@ -141,7 +151,8 @@ export default function GenerationTaskPanel({ projectId, visuals, places, shots,
   async function handleSelect(asset: GeneratedAsset) {
     if (!projectId || asset.selectedAt) return
     try {
-      await selectKeyframe(projectId, asset.id)
+      if (asset.mediaKind === 'video') await selectVideo(projectId, asset.id)
+      else await selectKeyframe(projectId, asset.id)
       notifyUpdated()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '采用失败')
@@ -206,11 +217,17 @@ export default function GenerationTaskPanel({ projectId, visuals, places, shots,
                   </div>
                   {asset && (
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <img
-                        src={asset.downloadUrl}
-                        alt=""
-                        className="h-8 w-10 rounded-[3px] object-cover"
-                      />
+                      {asset.mediaKind === 'video' ? (
+                        <span className="rounded-[3px] border border-surface-line bg-ink-900 px-2 py-1 font-mono text-[8px] text-white">
+                          MP4
+                        </span>
+                      ) : (
+                        <img
+                          src={asset.downloadUrl}
+                          alt=""
+                          className="h-8 w-10 rounded-[3px] object-cover"
+                        />
+                      )}
                       {!asset.selectedAt && (
                         <button type="button" className="generation-task-action" onClick={() => void handleSelect(asset)}>
                           采用

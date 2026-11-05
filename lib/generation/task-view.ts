@@ -39,20 +39,21 @@ export function generationTaskTargetLabel(
   shots: readonly Shot[],
   places: readonly VisualPlace[] = [],
 ): string {
+  const mediaPrefix = task.mediaKind === "video" ? "视频 · " : ""
   if (task.targetType === "character") {
     const character = visuals.find((item) => item.entityId === task.targetId || item.id === task.targetId)
-    return character?.name ? `角色 · ${character.name}` : `角色 · ${task.targetId.slice(0, 8)}`
+    return `${mediaPrefix}${character?.name ? `角色 · ${character.name}` : `角色 · ${task.targetId.slice(0, 8)}`}`
   }
   if (task.targetType === "place") {
     const place = places.find((item) =>
       item.id === task.targetId || placeGenerationTargetId(item.name) === task.targetId
     )
-    return place?.name ? `地点 · ${place.name}` : `地点 · ${task.targetId.slice(0, 8)}`
+    return `${mediaPrefix}${place?.name ? `地点 · ${place.name}` : `地点 · ${task.targetId.slice(0, 8)}`}`
   }
   const shot = shots.find((item) => item.entityId === task.targetId || item.id === task.targetId)
-  if (!shot) return `镜头 · ${task.targetId.slice(0, 8)}`
+  if (!shot) return `${mediaPrefix}镜头 · ${task.targetId.slice(0, 8)}`
   const episode = shot.episode > 0 ? `第 ${shot.episode} 集 · ` : ""
-  return `${episode}第 ${shot.shot} 镜 · ${shot.scene}`
+  return `${mediaPrefix}${episode}第 ${shot.shot} 镜 · ${shot.scene}`
 }
 
 export function selectRetryableTasks(tasks: readonly GenerationTask[]): GenerationTask[] {

@@ -14,6 +14,7 @@ import { shotToWorkOrder } from '@/lib/assets/export'
 import { CAMERA_MOVES, SHOT_DURATIONS, SHOT_SIZES, isSupportedDuration, type Shot, type ShotStatus } from '@/lib/assets/types'
 import SmoothCollapse from './SmoothCollapse'
 import KeyframePanel from './KeyframePanel'
+import ShotVideoPanel from './ShotVideoPanel'
 import type { LookBook } from '@/lib/look'
 
 interface Props {
@@ -175,16 +176,26 @@ export default function ShotCard({
         </div>
 
         {open && (
-          <KeyframePanel
-            projectId={projectId}
-            onEnsureProject={onEnsureProject}
-            targetType="shot"
-            targetId={shot.entityId}
-            prompt={shot.prompt || shot.action || shot.scene}
-            aspect={shot.params.ratio === '16:9' ? 'landscape' : 'vertical'}
-            actionLabel="生成首帧"
-            look={look}
-          />
+          <>
+            <KeyframePanel
+              projectId={projectId}
+              onEnsureProject={onEnsureProject}
+              targetType="shot"
+              targetId={shot.entityId}
+              prompt={shot.prompt || shot.action || shot.scene}
+              aspect={shot.params.ratio === '16:9' ? 'landscape' : 'vertical'}
+              actionLabel="生成首帧"
+              look={look}
+            />
+            <ShotVideoPanel
+              projectId={projectId}
+              onEnsureProject={onEnsureProject}
+              targetId={shot.entityId}
+              prompt={shot.prompt || shot.action || shot.scene}
+              duration={shot.params.duration}
+              ratio={shot.params.ratio}
+            />
+          </>
         )}
 
         {/* 出场角色 */}

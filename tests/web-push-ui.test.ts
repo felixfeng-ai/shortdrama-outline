@@ -33,6 +33,14 @@ test("关键帧生成成功或失败都会触发完成通知", () => {
   assert.match(route, /status:\s*["']failed["']/)
 })
 
+test("视频任务成功或失败都会触发视频完成通知", () => {
+  const route = read("app/api/video/generations/route.ts")
+  assert.ok(route.includes("notifyGenerationFinished"))
+  assert.ok(route.includes('mediaKind: "video"'))
+  assert.match(route, /status:\s*["']succeeded["']/)
+  assert.match(route, /status:\s*["']failed["']/)
+})
+
 test("浏览器推送订阅有超时兜底，不会无限停在忙碌态", () => {
   const client = read("lib/push/client.ts")
   assert.ok(client.includes("withPushTimeout"))

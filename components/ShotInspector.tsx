@@ -3,6 +3,7 @@
 import AutoTextarea from './AutoTextarea'
 import CopyButton from './CopyButton'
 import KeyframePanel from './KeyframePanel'
+import ShotVideoPanel from './ShotVideoPanel'
 import { CAMERA_MOVES, SHOT_DURATIONS, SHOT_SIZES, type Shot, type ShotStatus } from '@/lib/assets/types'
 import type { LookBook } from '@/lib/look'
 import type { ShotQcResult } from '@/lib/assets/qc'
@@ -208,6 +209,15 @@ export default function ShotInspector({
         aspect={shot.params.ratio === '16:9' ? 'landscape' : 'vertical'}
         actionLabel="生成首帧"
         look={look}
+      />
+
+      <ShotVideoPanel
+        projectId={projectId}
+        onEnsureProject={onEnsureProject}
+        targetId={shot.entityId}
+        prompt={shot.prompt || shot.action || shot.scene}
+        duration={shot.params.duration}
+        ratio={shot.params.ratio}
       />
 
       <section className="shot-inspector-section" aria-label="本镜 Prompt">

@@ -78,6 +78,7 @@ export async function notifyGenerationFinished(
     taskId: string
     targetType: "character" | "place" | "shot"
     status: "queued" | "running" | "succeeded" | "failed" | "canceled"
+    mediaKind?: "image" | "video" | "audio"
     error?: string | null
     projectId?: string
     targetId?: string

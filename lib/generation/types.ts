@@ -1,5 +1,6 @@
 export type GenerationTargetType = "character" | "place" | "shot"
 export type GenerationStatus = "queued" | "running" | "succeeded" | "failed" | "canceled"
+export type MediaKind = "image" | "video" | "audio"
 
 export interface GenerationTask {
   id: string
@@ -13,6 +14,19 @@ export interface GenerationTask {
   status: GenerationStatus
   error: string | null
   assetId: string | null
+  mediaKind?: MediaKind
+  batchId?: string | null
+  providerTaskId?: string | null
+  providerStatus?: string | null
+  request?: Record<string, unknown>
+  pricingVersion?: string | null
+  estimatedCostMicros?: number
+  actualCostMicros?: number
+  maxAttempts?: number
+  attempt?: number
+  retryOfTaskId?: string | null
+  idempotencyKey?: string | null
+  nextPollAt?: number | null
   createdAt: number
   startedAt: number | null
   finishedAt: number | null
@@ -30,9 +44,33 @@ export interface GeneratedAsset {
   providerId: string
   model: string
   prompt: string
+  mediaKind?: MediaKind
+  durationMs?: number | null
+  width?: number | null
+  height?: number | null
+  fps?: number | null
+  sha256?: string | null
+  posterStorageKey?: string | null
+  sourceAssetIds?: string[]
+  generationMeta?: Record<string, unknown>
   selectedAt: number | null
   createdAt: number
   downloadUrl: string
+}
+
+export interface GenerationBatch {
+  id: string
+  projectId: string
+  episode: number
+  scope: Record<string, unknown>
+  status: "draft" | "confirmed" | "running" | "completed" | "stopped" | "failed"
+  budgetLimitMicros: number
+  reservedCostMicros: number
+  actualCostMicros: number
+  idempotencyKey: string | null
+  createdAt: number
+  confirmedAt: number | null
+  finishedAt: number | null
 }
 
 export interface GenerationStateDto {

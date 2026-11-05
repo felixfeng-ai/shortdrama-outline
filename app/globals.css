@@ -2131,6 +2131,47 @@
   background: var(--signal-raised);
 }
 
+.shot-video-panel {
+  padding-top: 10px;
+  border-top: 1px solid var(--signal-line);
+}
+.shot-video-summary {
+  display: grid;
+  grid-template-columns: minmax(96px, 180px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+}
+.shot-video-preview {
+  display: block;
+  width: 180px;
+  max-width: 100%;
+  justify-self: start;
+  overflow: hidden;
+  border: 1px solid var(--signal-line);
+  border-radius: 6px;
+  background: var(--signal-raised);
+  object-fit: cover;
+}
+.shot-video-history {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(142, 183, 231, .32) transparent;
+}
+.shot-video-generate {
+  margin-left: 2px;
+}
+.shot-inspector .shot-video-panel {
+  margin-top: 2px;
+  padding-top: 9px;
+}
+.shot-inspector .shot-video-summary {
+  grid-template-columns: minmax(0, 1fr);
+}
+.shot-inspector .shot-video-preview {
+  width: 100%;
+  max-width: 220px;
+}
+
 @media (max-width: 720px) {
   .keyframe-generate {
     width: 100%;
@@ -2158,12 +2199,36 @@
   .keyframe-settings {
     max-width: none;
   }
+  .shot-video-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .shot-video-mode {
+    display: flex;
+    width: 100%;
+  }
+  .shot-video-mode > button {
+    flex: 1;
+    min-height: 38px;
+  }
+  .shot-video-generate {
+    width: 100%;
+    min-height: 44px;
+    margin-left: 0;
+  }
+  .shot-video-preview {
+    width: 160px;
+    max-width: 55vw;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .keyframe-panel,
   .keyframe-generate,
-  .keyframe-history-item {
+  .keyframe-history-item,
+  .shot-video-panel,
+  .shot-video-preview,
+  .shot-video-history {
     transition: none !important;
     animation: none !important;
   }
@@ -2177,6 +2242,15 @@
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--signal-raised) 74%, transparent), transparent 62%),
     var(--signal-panel);
+}
+.batch-video-panel {
+  border-color: color-mix(in srgb, var(--signal-blue) 28%, var(--signal-line));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--signal-blue) 5%, transparent), transparent 42%),
+    var(--signal-panel);
+}
+.batch-video-panel .batch-generation-mark {
+  color: var(--signal-blue);
 }
 .batch-generation-head {
   display: flex;

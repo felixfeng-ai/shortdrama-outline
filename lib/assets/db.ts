@@ -646,6 +646,59 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON localization_audits(project_id, branch_id, created_at);
     `,
   },
+  {
+    version: 13,
+    name: "video-generation-tasks",
+    sql: `
+      ALTER TABLE generation_tasks ADD COLUMN media_kind TEXT NOT NULL DEFAULT 'image';
+      ALTER TABLE generation_tasks ADD COLUMN batch_id TEXT;
+      ALTER TABLE generation_tasks ADD COLUMN provider_task_id TEXT;
+      ALTER TABLE generation_tasks ADD COLUMN provider_status TEXT;
+      ALTER TABLE generation_tasks ADD COLUMN request_json TEXT NOT NULL DEFAULT '{}';
+      ALTER TABLE generation_tasks ADD COLUMN pricing_version TEXT;
+      ALTER TABLE generation_tasks ADD COLUMN estimated_cost_micros INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE generation_tasks ADD COLUMN actual_cost_micros INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE generation_tasks ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE generation_tasks ADD COLUMN attempt INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE generation_tasks ADD COLUMN retry_of_task_id TEXT;
+      ALTER TABLE generation_tasks ADD COLUMN idempotency_key TEXT;
+      ALTER TABLE generation_tasks ADD COLUMN next_poll_at INTEGER;
+
+      ALTER TABLE generated_assets ADD COLUMN media_kind TEXT NOT NULL DEFAULT 'image';
+      ALTER TABLE generated_assets ADD COLUMN duration_ms INTEGER;
+      ALTER TABLE generated_assets ADD COLUMN width INTEGER;
+      ALTER TABLE generated_assets ADD COLUMN height INTEGER;
+      ALTER TABLE generated_assets ADD COLUMN fps REAL;
+      ALTER TABLE generated_assets ADD COLUMN sha256 TEXT;
+      ALTER TABLE generated_assets ADD COLUMN poster_storage_key TEXT;
+      ALTER TABLE generated_assets ADD COLUMN source_asset_ids_json TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE generated_assets ADD COLUMN generation_meta_json TEXT NOT NULL DEFAULT '{}';
+
+      CREATE TABLE IF NOT EXISTS generation_batches (
+        id                    TEXT PRIMARY KEY,
+        project_id            TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        episode               INTEGER NOT NULL DEFAULT 0,
+        scope_json            TEXT NOT NULL DEFAULT '{}',
+        status                TEXT NOT NULL DEFAULT 'draft',
+        budget_limit_micros   INTEGER NOT NULL DEFAULT 0,
+        reserved_cost_micros  INTEGER NOT NULL DEFAULT 0,
+        actual_cost_micros    INTEGER NOT NULL DEFAULT 0,
+        idempotency_key       TEXT,
+        created_at            INTEGER NOT NULL,
+        confirmed_at          INTEGER,
+        finished_at           INTEGER
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_generation_tasks_media
+        ON generation_tasks(project_id, media_kind, status, next_poll_at);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_tasks_idempotency
+        ON generation_tasks(project_id, idempotency_key)
+        WHERE idempotency_key IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_batches_idempotency
+        ON generation_batches(project_id, idempotency_key)
+        WHERE idempotency_key IS NOT NULL;
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

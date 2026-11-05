@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import BatchGenerationPanel from './BatchGenerationPanel'
+import BatchVideoPanel from './BatchVideoPanel'
 import ShotBoardCard from './ShotBoardCard'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import type { GeneratedAsset, GenerationStatus, GenerationTask } from '@/lib/generation/types'
@@ -474,6 +475,18 @@ export default function ShotList({
           projectId={projectId}
           onEnsureProject={onEnsureProject}
           look={look}
+        />
+
+        <BatchVideoPanel
+          projectId={projectId}
+          onEnsureProject={onEnsureProject}
+          shots={visibleShots}
+          assets={generationAssets}
+          title={
+            episodeFilter === null
+              ? '批量生成全剧镜头视频'
+              : `批量生成${selectedEpisodeLabel}镜头视频`
+          }
         />
 
         <div className="shot-board-flow">

@@ -98,3 +98,31 @@ test("失败通知脱敏 Key 和文件路径；取消生成不通知", () => {
     status: "running",
   }), null)
 })
+
+test("视频完成通知明确指向视频候选并使用视频服务脱敏文案", () => {
+  assert.deepEqual(
+    buildGenerationNotification({
+      taskId: "task-video-1",
+      targetType: "shot",
+      mediaKind: "video",
+      status: "succeeded",
+    }),
+    {
+      title: "镜头视频已生成",
+      body: "打开成剧查看最新视频候选并决定是否采用。",
+      url: "/?step=shots",
+      tag: "generation-task-video-1",
+    },
+  )
+  const failed = buildGenerationNotification({
+    taskId: "task-video-2",
+    targetType: "shot",
+    mediaKind: "video",
+    status: "failed",
+    error: "Invalid API-key sk-secret /data/generated/private.mp4",
+  })
+  assert.ok(failed)
+  assert.equal(failed.title, "镜头视频生成失败")
+  assert.match(failed.body, /平台视频服务异常/)
+  assert.doesNotMatch(failed.body, /sk-secret|Invalid API-key|data\/generated/)
+})
