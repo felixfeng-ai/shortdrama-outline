@@ -2,6 +2,8 @@
 
 Expo + React Native + TypeScript 原生 App。现有仓库根目录的 Next.js 项目不参与手机客户端运行。
 
+完整产品、技术栈、账号同步和打包说明见 [根目录 README](../README.md)。
+
 App 与 Web 如何共用项目、快照、会话和写回链路，见 [docs/APP-WEB-DATA.md](../docs/APP-WEB-DATA.md)。
 真机、线上接口、命名和上架阻塞见 [docs/APP-STORE-READINESS.md](../docs/APP-STORE-READINESS.md)。
 
@@ -77,7 +79,7 @@ npx expo export --platform web
 
 ## 下一步
 
-1. 配置真实 EAS Project ID、APNs/FCM 和商店签名。
+1. 配置并验证 APNs / FCM、Apple 与 Google 商店签名。
 2. 在 iPhone / Android 真机完成登录、相机、通知、购买和恢复购买验证。
 3. 按 [内测构建说明](../docs/IOS-TESTFLIGHT-ANDROID-APK.md) 产出 Android APK、iOS 内测包或 TestFlight 构建。
 
