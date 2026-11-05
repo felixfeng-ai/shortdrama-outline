@@ -78,7 +78,7 @@ test("G2.2 成功后任务与资产互相引用，资产可按目标恢复", () 
 
 test("G3.2 回选旧版本：同一目标只保留一个采用版本，历史不删除", () => {
   const { db, project } = setup()
-  const task = createGenerationTask(db, {
+  const firstTask = createGenerationTask(db, {
     projectId: project.id,
     targetType: "shot",
     targetId: "shot-entity-1",
@@ -87,7 +87,7 @@ test("G3.2 回选旧版本：同一目标只保留一个采用版本，历史不
     prompt: "first keyframe",
   })
   const first = saveGeneratedAsset(db, {
-    taskId: task.id,
+    taskId: firstTask.id,
     projectId: project.id,
     targetType: "shot",
     targetId: "shot-entity-1",
@@ -98,8 +98,16 @@ test("G3.2 回选旧版本：同一目标只保留一个采用版本，历史不
     model: "model-a",
     prompt: "first keyframe",
   })
+  const secondTask = createGenerationTask(db, {
+    projectId: project.id,
+    targetType: "shot",
+    targetId: "shot-entity-1",
+    providerId: "siliconflow",
+    model: "model-a",
+    prompt: "second keyframe",
+  })
   const second = saveGeneratedAsset(db, {
-    taskId: task.id,
+    taskId: secondTask.id,
     projectId: project.id,
     targetType: "shot",
     targetId: "shot-entity-1",
@@ -108,7 +116,7 @@ test("G3.2 回选旧版本：同一目标只保留一个采用版本，历史不
     bytes: 64,
     providerId: "siliconflow",
     model: "model-a",
-    prompt: "first keyframe",
+    prompt: "second keyframe",
   })
 
   selectGeneratedAsset(db, project.id, second.id)

@@ -699,6 +699,41 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         WHERE idempotency_key IS NOT NULL;
     `,
   },
+  {
+    version: 16,
+    name: "generated-assets-one-per-task",
+    sql: `
+      -- 视频轮询可能被多个页面同时触发；同一任务只能有一条落盘资产。
+      -- 先清掉历史并发产生的重复行，保留任务当前引用、已采用或最早的一条。
+      DELETE FROM generated_assets
+      WHERE rowid IN (
+        SELECT rowid
+        FROM (
+          SELECT
+            rowid,
+            ROW_NUMBER() OVER (
+              PARTITION BY task_id
+              ORDER BY
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1
+                    FROM generation_tasks
+                    WHERE generation_tasks.asset_id = generated_assets.id
+                  ) THEN 0
+                  ELSE 1
+                END,
+                CASE WHEN selected_at IS NOT NULL THEN 0 ELSE 1 END,
+                created_at ASC,
+                rowid ASC
+            ) AS duplicate_rank
+          FROM generated_assets
+        )
+        WHERE duplicate_rank > 1
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_generated_assets_task_unique
+        ON generated_assets(task_id);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

@@ -575,10 +575,16 @@ export function saveGeneratedAsset(
     generationMeta?: Record<string, unknown>
   },
 ): GeneratedAsset {
+  // 供应商完成事件可能被并发轮询重复处理，任务 id 是天然幂等键。
+  const existing = db.prepare(
+    "SELECT * FROM generated_assets WHERE task_id = ?",
+  ).get(input.taskId) as AssetRow | undefined
+  if (existing) return toAsset(existing)
+
   const id = randomUUID()
   const now = Date.now()
-  db.prepare(
-    `INSERT INTO generated_assets
+  const result = db.prepare(
+    `INSERT OR IGNORE INTO generated_assets
       (id, task_id, project_id, target_type, target_id, storage_key, mime, bytes,
        provider_id, model, prompt, media_kind, duration_ms, width, height, fps,
        sha256, poster_storage_key, source_asset_ids_json, generation_meta_json,
@@ -607,6 +613,13 @@ export function saveGeneratedAsset(
     JSON.stringify(input.generationMeta ?? {}),
     now,
   )
+  if (Number(result.changes) === 0) {
+    const raced = db.prepare(
+      "SELECT * FROM generated_assets WHERE task_id = ?",
+    ).get(input.taskId) as AssetRow | undefined
+    if (raced) return toAsset(raced)
+    throw new Error("生成资产写入失败")
+  }
   return getGeneratedAsset(db, id, input.projectId)!
 }
 

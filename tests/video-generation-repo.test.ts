@@ -120,6 +120,41 @@ test("P0-V5 同一镜头的图片与视频分别维护采用版本", () => {
   assert.deepEqual(videos[0].generationMeta, { ratio: "9:16" })
 })
 
+test("P0-V5 同一次视频任务重复回写只保留一条资产", () => {
+  const { db, project } = setup()
+  const task = createGenerationTask(db, {
+    projectId: project.id,
+    targetType: "shot",
+    targetId: "shot-idempotent-video",
+    providerId: "minimax",
+    model: "MiniMax-H3-Lite",
+    prompt: "same task",
+    mediaKind: "video",
+  })
+  const input = {
+    taskId: task.id,
+    projectId: project.id,
+    targetType: "shot" as const,
+    targetId: "shot-idempotent-video",
+    storageKey: `generated/${project.id}/${task.id}-video.mp4`,
+    mime: "video/mp4",
+    bytes: 20,
+    providerId: "minimax",
+    model: "MiniMax-H3-Lite",
+    prompt: "same task",
+    mediaKind: "video" as const,
+  }
+
+  const first = saveGeneratedAsset(db, input)
+  const repeated = saveGeneratedAsset(db, input)
+
+  assert.equal(repeated.id, first.id)
+  assert.equal(
+    listGeneratedAssets(db, project.id, "shot", "shot-idempotent-video", "video").length,
+    1,
+  )
+})
+
 test("P0-V4e 批量任务预留费用、结算实付并收敛终态", () => {
   const { db, project } = setup()
   const batch = createGenerationBatch(db, {
