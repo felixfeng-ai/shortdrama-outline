@@ -6,8 +6,10 @@ import { AGENT_TOOL_SCHEMAS } from '@/lib/agent/tools'
 import { toWireMessages } from '@/lib/agent/wire'
 import { getDbForRequest } from '@/lib/assets/store'
 import { ARTIFACT_KINDS, latestSnapshot, listProjects } from '@/lib/assets/repo'
+import { listProjectDecisions, listProjectJudgments } from '@/lib/assets/decisions'
 import { resolveProjectOwner, resolveRequestIdentity } from '@/lib/auth/request'
 import { AiError, chatJson, chatWithTools } from '@/lib/deepseek'
+import { listEntityComments } from '@/lib/entity-comments'
 import {
   buildMobileAgentState,
   readMobileAgentPrompt,
@@ -60,6 +62,9 @@ export async function POST(req: Request) {
       projectTitle: project.title,
       snapshots,
       videoReadiness: videoView.readiness,
+      decisions: listProjectDecisions(db, project.id, 20),
+      judgments: listProjectJudgments(db, project.id, 20),
+      comments: listEntityComments(db, project.id),
       quota: {
         remaining: quota.remaining,
         limit: quota.limit,

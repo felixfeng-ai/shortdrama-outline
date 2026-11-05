@@ -1,11 +1,33 @@
 import { EMPTY_BRIEF } from './brief.ts'
 import { runAgentLoop, type AgentMessage, type ModelReply } from './agent/loop.ts'
-import { createToolExecutors, type AgentCard, type AgentState } from './agent/tools.ts'
+import {
+  createToolExecutors,
+  type AgentCard,
+  type AgentDecision,
+  type AgentEntityComment,
+  type AgentState,
+} from './agent/tools.ts'
 import type { ArtifactKind } from './assets/types.ts'
+import type { StepKey } from './types.ts'
 
 export const MOBILE_AGENT_MAX_CALLS = 3
 
 type SnapshotPayloads = Partial<Record<ArtifactKind, unknown>>
+
+const AGENT_STEPS = new Set<StepKey>([
+  'characters',
+  'acts',
+  'episodes',
+  'visuals',
+  'scenes',
+  'shots',
+])
+const COMMENT_TARGETS = new Set<AgentEntityComment['targetType']>([
+  'character',
+  'place',
+  'episode',
+  'shot',
+])
 
 export interface MobileAgentQuota {
   remaining: number
@@ -53,6 +75,9 @@ export function buildMobileAgentState(input: {
   snapshots: SnapshotPayloads
   quota: MobileAgentQuota
   videoReadiness?: AgentState["videoReadiness"]
+  decisions?: unknown
+  judgments?: unknown
+  comments?: unknown
 }): AgentState {
   const { projectTitle, snapshots, quota } = input
   const characters = readArray(snapshots.characters)
@@ -62,14 +87,59 @@ export function buildMobileAgentState(input: {
   const scenes = readArray(snapshots.scenes)
   const places = readArray(snapshots.visualPlaces)
   const shots = readArray(snapshots.shots)
+  const decisions: AgentDecision[] = readArray(input.decisions)
+    .map((decision): AgentDecision | null => {
+      const step = readText(decision.step) as StepKey
+      const question = readText(decision.question)
+      if (!AGENT_STEPS.has(step) || !question) return null
+      return {
+        id: readText(decision.id),
+        step,
+        question,
+        chosenValue: readText(decision.chosenValue),
+        reason: readText(decision.reason),
+        status: readText(decision.status) || 'proposed',
+        locked: decision.locked === true,
+      }
+    })
+    .filter((decision): decision is AgentDecision => decision !== null)
+    .slice(0, 20)
+  const judgments = readArray(input.judgments)
+    .map((judgment, index) => ({
+      id: readText(judgment.id) || `mobile-judgment-${index}`,
+      at: readNumber(judgment.createdAt) || readNumber(judgment.at),
+      step: readText(judgment.step),
+      action: readText(judgment.action),
+      reason: readText(judgment.reason),
+    }))
+    .filter((judgment) => judgment.action)
+    .slice(0, 10)
+  const entityComments: AgentEntityComment[] = readArray(input.comments)
+    .map((comment): AgentEntityComment | null => {
+      const targetType = readText(comment.targetType) as AgentEntityComment['targetType']
+      const targetId = readText(comment.targetId)
+      const body = readText(comment.body)
+      if (!COMMENT_TARGETS.has(targetType) || !targetId || !body) return null
+      return {
+        id: readText(comment.id),
+        targetType,
+        targetId,
+        targetName: readText(comment.targetName) || targetId,
+        body,
+        status: readText(comment.status) === 'resolved' ? 'resolved' : 'open',
+      }
+    })
+    .filter((comment): comment is AgentEntityComment => comment !== null)
+    .slice(0, 20)
 
   return {
     projectTitle,
     hasIdea: !!snapshots.idea,
     brief: { ...EMPTY_BRIEF },
-    judgments: [],
-    decisions: [],
+    judgments,
+    decisions,
     canonIssues: [],
+    entityComments,
     characters: characters.map((character) => ({
       name: readText(character.name),
       motivation: readText(character.motivation),

@@ -15,6 +15,11 @@ import {
 } from '@/lib/generation/repo'
 import { getPublicVideoCapabilities } from '@/lib/video/model'
 import { reconcileProjectVideoTasks } from '@/lib/video/reconcile'
+import {
+  listProjectDecisions,
+  listProjectJudgments,
+} from '@/lib/assets/decisions'
+import { listEntityComments } from '@/lib/entity-comments'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -64,6 +69,9 @@ export async function GET(req: Request) {
           assets: active ? listGeneratedAssets(db, active.id) : [],
           batches: active ? listGenerationBatches(db, active.id) : [],
           videoCapabilities: getPublicVideoCapabilities(),
+          decisions: active ? listProjectDecisions(db, active.id, 20) : [],
+          judgments: active ? listProjectJudgments(db, active.id, 20) : [],
+          comments: active ? listEntityComments(db, active.id) : [],
         }),
       ),
     )

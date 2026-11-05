@@ -24,6 +24,11 @@ import {
   getPublicVideoCapabilities,
   type PublicVideoCapabilities,
 } from './video/model.ts'
+import {
+  buildMobileAgentMemory,
+  EMPTY_MOBILE_AGENT_MEMORY,
+  type MobileAgentMemory,
+} from './mobile-memory.ts'
 
 export interface MobileContextQuota {
   remaining: number
@@ -97,6 +102,7 @@ export interface MobileContextData {
   videoTargets: MobileVideoTarget[]
   videoReadiness: MobileVideoReadiness
   batches: GenerationBatch[]
+  agentMemory: MobileAgentMemory
 }
 
 type SnapshotPayloads = Partial<Record<ArtifactKind, unknown>>
@@ -216,6 +222,9 @@ export function buildMobileContext(input: {
   assets?: readonly GeneratedAsset[]
   batches?: readonly GenerationBatch[]
   videoCapabilities?: PublicVideoCapabilities
+  decisions?: unknown
+  judgments?: unknown
+  comments?: unknown
 }): MobileContextData {
   const { projects, snapshots, quota, now } = input
   const videoCapabilities = input.videoCapabilities ?? getPublicVideoCapabilities({})
@@ -223,6 +232,13 @@ export function buildMobileContext(input: {
     shots: snapshots.shots,
     assets: [...(input.assets ?? [])],
     tasks: [...(input.tasks ?? [])],
+  })
+  const agentMemory = buildMobileAgentMemory({
+    visualCharacters: snapshots.visualCharacters,
+    visualPlaces: snapshots.visualPlaces,
+    decisions: input.decisions,
+    judgments: input.judgments,
+    comments: input.comments,
   })
   if (projects.length === 0) {
     return {
@@ -237,6 +253,7 @@ export function buildMobileContext(input: {
       videoTargets: videoView.targets,
       videoReadiness: videoView.readiness,
       batches: [],
+      agentMemory,
     }
   }
 
@@ -328,5 +345,6 @@ export function buildMobileContext(input: {
     videoTargets: videoView.targets,
     videoReadiness: videoView.readiness,
     batches: (input.batches ?? []).filter((batch) => batch.projectId === active.id),
+    agentMemory,
   }
 }
