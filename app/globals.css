@@ -131,6 +131,21 @@
   color: var(--signal-text);
 }
 .signal-desk .h-wordmark { color: var(--signal-text-3); }
+.signal-desk .h-brand,
+.signal-desk .h-lockup .h-brand {
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.signal-desk .h-wordmark {
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.signal-desk .h-lockup {
+  flex: 0 0 auto;
+}
 .signal-desk .h-ai {
   border: 1px solid color-mix(in srgb, var(--signal-acid) 38%, var(--signal-line));
   background: color-mix(in srgb, var(--signal-acid) 10%, var(--signal-panel));
@@ -153,6 +168,50 @@
   border-color: color-mix(in srgb, var(--signal-acid) 36%, var(--signal-line));
   background: color-mix(in srgb, var(--signal-acid) 7%, var(--signal-surface, var(--signal-panel)));
   color: var(--signal-acid);
+}
+.signal-desk .h-skill-entry {
+  border-color: color-mix(in srgb, var(--signal-acid) 36%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-acid) 7%, var(--signal-panel));
+  color: var(--signal-acid);
+}
+.signal-desk .h-skill-entry:hover {
+  border-color: color-mix(in srgb, var(--signal-acid) 62%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-acid) 12%, var(--signal-panel));
+}
+.signal-desk .h-skill-label-short {
+  display: none;
+}
+.signal-desk .h-docs-entry {
+  display: inline-flex;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid var(--signal-line);
+  border-radius: 6px;
+  background: var(--signal-panel);
+  color: var(--signal-text-3);
+  font-size: 11px;
+  font-weight: 600;
+}
+.signal-desk .h-docs-entry:hover {
+  border-color: color-mix(in srgb, var(--signal-blue) 36%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-blue) 7%, var(--signal-panel));
+  color: var(--signal-blue);
+}
+.signal-desk .h-docs-entry svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.signal-desk .h-docs-entry:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 2px;
 }
 .signal-desk .h-canvas:focus-visible,
 .signal-desk .release-trigger:focus-visible {
@@ -277,6 +336,72 @@
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.signal-rail-skill {
+  display: flex;
+  width: 48px;
+  min-height: 48px;
+  flex: 0 0 48px;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--signal-acid) 26%, var(--signal-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--signal-acid) 5%, var(--signal-panel));
+  color: var(--signal-acid);
+  font-size: 9px;
+  transition: border-color 160ms cubic-bezier(.23, 1, .32, 1), background-color 160ms;
+}
+.signal-rail-skill:hover {
+  border-color: color-mix(in srgb, var(--signal-acid) 56%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-acid) 10%, var(--signal-panel));
+}
+.signal-rail-skill svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.signal-rail-skill:focus-visible,
+.signal-desk .h-skill-entry:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 2px;
+}
+.signal-rail-docs {
+  display: flex;
+  width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--signal-line);
+  border-radius: 8px;
+  background: var(--signal-panel);
+  color: var(--signal-text-3);
+  font-size: 9px;
+}
+.signal-rail-docs:hover {
+  border-color: color-mix(in srgb, var(--signal-blue) 40%, var(--signal-line));
+  color: var(--signal-blue);
+}
+.signal-rail-docs svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.signal-rail-docs:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 2px;
 }
 .signal-rail .navpanel {
   width: 100%;
@@ -3941,6 +4066,65 @@
 }
 .shot-board {
   min-width: 0;
+}
+.shot-workspace-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0 0 9px;
+  padding: 4px;
+  border: 1px solid var(--signal-line);
+  border-radius: 7px;
+  background: var(--signal-panel);
+}
+.shot-workspace-tabs button {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 0 7px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--signal-text-3);
+  text-align: left;
+}
+.shot-workspace-tabs button > span {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8px;
+}
+.shot-workspace-tabs button b {
+  overflow: hidden;
+  color: var(--signal-text-2);
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shot-workspace-tabs button small {
+  overflow: hidden;
+  color: var(--signal-text-3);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shot-workspace-tabs button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--signal-acid) 32%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-acid) 8%, var(--signal-raised));
+}
+.shot-workspace-tabs button[aria-pressed="true"] > span,
+.shot-workspace-tabs button[aria-pressed="true"] b {
+  color: var(--signal-acid);
+}
+.shot-workspace-tabs button:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 2px;
 }
 .shot-board-toolbar {
   display: flex;
@@ -11944,5 +12128,1217 @@
   .signal-desk .agent-run-head button,
   .signal-desk .agent-run-actions button {
     transition: none;
+  }
+}
+
+/* Generic orchestration canvas: persisted nodes, edges and cross-tab drafts. */
+.canvas-graph-workspace {
+  display: grid;
+  height: clamp(520px, 62vh, 720px);
+  min-height: 520px;
+  grid-template-columns: minmax(0, 1fr) 292px;
+  overflow: hidden;
+  border: 1px solid var(--signal-line);
+  border-radius: 8px;
+  background: var(--signal-panel);
+}
+.canvas-graph-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+.canvas-graph-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid var(--signal-line);
+  background:
+    linear-gradient(90deg, rgba(142, 183, 231, .035), transparent 56%),
+    rgba(17, 21, 25, .78);
+}
+.canvas-graph-head > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.canvas-graph-head > div:first-child > span {
+  color: var(--signal-blue);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 7.5px;
+  letter-spacing: .06em;
+}
+.canvas-graph-head > div:first-child > strong {
+  overflow: hidden;
+  color: var(--signal-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.canvas-graph-head > div:first-child > small {
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8px;
+}
+.canvas-graph-status {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.canvas-graph-save,
+.canvas-graph-peers {
+  display: inline-flex;
+  min-height: 25px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid var(--signal-line);
+  border-radius: 999px;
+  color: var(--signal-text-3);
+  font-size: 8px;
+  white-space: nowrap;
+}
+.canvas-graph-save > i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--signal-text-3);
+}
+.canvas-graph-save.saved > i,
+.canvas-graph-save.remote > i {
+  background: var(--signal-acid);
+}
+.canvas-graph-save.saving > i,
+.canvas-graph-save.dirty > i {
+  background: var(--signal-blue);
+}
+.canvas-graph-save.conflict,
+.canvas-graph-save.error {
+  border-color: color-mix(in srgb, var(--signal-warning) 34%, var(--signal-line));
+  color: var(--signal-warning);
+}
+.canvas-graph-save.conflict > i,
+.canvas-graph-save.error > i {
+  background: var(--signal-warning);
+}
+.canvas-graph-status > button {
+  min-height: 27px;
+  border: 1px solid color-mix(in srgb, var(--signal-warning) 36%, var(--signal-line));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--signal-warning) 7%, transparent);
+  padding: 0 8px;
+  color: var(--signal-warning);
+  font-size: 8px;
+  cursor: pointer;
+}
+.canvas-graph-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--signal-line);
+  background: rgba(15, 19, 22, .48);
+}
+.canvas-graph-palette,
+.canvas-graph-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+.canvas-graph-palette > span {
+  margin-right: 3px;
+  color: var(--signal-text-3);
+  font-size: 8px;
+}
+.canvas-graph-palette button,
+.canvas-graph-controls button {
+  min-height: 30px;
+  border: 1px solid var(--signal-line);
+  border-radius: 5px;
+  background: transparent;
+  padding: 0 8px;
+  color: var(--signal-text-3);
+  font-size: 8.5px;
+  cursor: pointer;
+}
+.canvas-graph-palette button:nth-child(2) {
+  border-color: color-mix(in srgb, var(--signal-blue) 24%, var(--signal-line));
+  color: color-mix(in srgb, var(--signal-blue) 82%, var(--signal-text));
+}
+.canvas-graph-palette button:nth-child(3) {
+  border-color: color-mix(in srgb, var(--signal-warning) 24%, var(--signal-line));
+  color: color-mix(in srgb, var(--signal-warning) 82%, var(--signal-text));
+}
+.canvas-graph-palette button:nth-child(4) {
+  border-color: color-mix(in srgb, var(--signal-acid) 24%, var(--signal-line));
+  color: color-mix(in srgb, var(--signal-acid) 82%, var(--signal-text));
+}
+.canvas-graph-controls span {
+  min-width: 34px;
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8px;
+  text-align: center;
+}
+.canvas-graph-connect-banner {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 12px 0;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--signal-blue) 30%, var(--signal-line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--signal-blue) 5%, transparent);
+  color: var(--signal-blue);
+  font-size: 8.5px;
+}
+.canvas-graph-connect-banner button {
+  min-height: 27px;
+  border: 1px solid var(--signal-line);
+  border-radius: 4px;
+  background: transparent;
+  padding: 0 8px;
+  color: var(--signal-text-3);
+  font-size: 8px;
+  cursor: pointer;
+}
+.canvas-graph-error {
+  flex: 0 0 auto;
+  margin: 8px 12px 0;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--signal-warning) 30%, var(--signal-line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--signal-warning) 5%, transparent);
+  color: var(--signal-warning);
+  font-size: 8.5px;
+  line-height: 1.55;
+}
+.canvas-graph-viewport {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background-color: #101418;
+  background-image: radial-gradient(rgba(142, 183, 231, .12) 1px, transparent 1px);
+  background-size: 20px 20px;
+  cursor: grab;
+  touch-action: none;
+}
+.canvas-graph-viewport.is-panning {
+  cursor: grabbing;
+}
+.canvas-graph-viewport:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: -3px;
+}
+.canvas-graph-board {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  transition: transform 180ms cubic-bezier(.23, 1, .32, 1);
+}
+.canvas-graph-viewport.is-panning .canvas-graph-board {
+  transition: none;
+}
+.canvas-graph-edges {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 1200px;
+  height: 560px;
+  overflow: visible;
+  pointer-events: none;
+}
+.canvas-graph-edges path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--signal-blue) 58%, rgba(213, 224, 228, .18));
+  stroke-width: 1.5;
+}
+.canvas-graph-edges marker path {
+  fill: color-mix(in srgb, var(--signal-blue) 66%, rgba(213, 224, 228, .18));
+  stroke: none;
+}
+.canvas-graph-node {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+  border: 1px solid var(--signal-line-strong, rgba(213, 224, 228, .18));
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .018), transparent),
+    #1b2126;
+  box-shadow: 0 12px 24px -22px rgba(0, 0, 0, .9);
+  padding: 9px 10px;
+  color: var(--signal-text);
+  cursor: grab;
+  touch-action: none;
+  transition:
+    border-color 140ms cubic-bezier(.23, 1, .32, 1),
+    background-color 140ms cubic-bezier(.23, 1, .32, 1),
+    opacity 140ms cubic-bezier(.23, 1, .32, 1);
+}
+.canvas-graph-node.dragging {
+  z-index: 4;
+  cursor: grabbing;
+  opacity: .88;
+}
+.canvas-graph-node.selected {
+  border-color: color-mix(in srgb, var(--signal-acid) 62%, var(--signal-line));
+  background:
+    linear-gradient(180deg, rgba(196, 217, 138, .045), transparent),
+    #1d2429;
+}
+.canvas-graph-node.connect-source {
+  border-color: var(--signal-blue);
+}
+.canvas-graph-node.note {
+  border-top-color: color-mix(in srgb, var(--signal-blue) 48%, var(--signal-line));
+}
+.canvas-graph-node.decision {
+  border-top-color: color-mix(in srgb, var(--signal-warning) 52%, var(--signal-line));
+}
+.canvas-graph-node.deliverable {
+  border-top-color: color-mix(in srgb, var(--signal-acid) 56%, var(--signal-line));
+}
+.canvas-graph-node-kind {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 7px;
+  letter-spacing: .03em;
+}
+.canvas-graph-node-kind i {
+  color: var(--signal-blue);
+  font-size: 6.5px;
+  font-style: normal;
+}
+.canvas-graph-node > strong {
+  overflow: hidden;
+  color: var(--signal-text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.canvas-graph-node > p {
+  display: -webkit-box;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--signal-text-3);
+  font-size: 8.5px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.canvas-graph-node-meta {
+  margin-top: auto;
+  color: var(--signal-text-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 7px;
+}
+.canvas-graph-inspector {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  border-left: 1px solid var(--signal-line);
+  background: rgba(16, 20, 24, .68);
+  scrollbar-width: thin;
+}
+.canvas-graph-inspector-empty {
+  display: grid;
+  min-height: 100%;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
+  padding: 24px;
+  color: var(--signal-text-3);
+  text-align: center;
+}
+.canvas-graph-inspector-empty > span,
+.canvas-graph-inspector > header > span {
+  color: var(--signal-blue);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 7.5px;
+  letter-spacing: .05em;
+}
+.canvas-graph-inspector-empty > strong {
+  color: var(--signal-text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+.canvas-graph-inspector-empty > p {
+  max-width: 200px;
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.canvas-graph-inspector > header {
+  display: grid;
+  gap: 2px;
+  padding: 13px 13px 11px;
+  border-bottom: 1px solid var(--signal-line);
+}
+.canvas-graph-inspector > header > strong {
+  color: var(--signal-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.canvas-graph-readonly {
+  padding: 13px;
+  border-bottom: 1px solid var(--signal-line-soft);
+}
+.canvas-graph-readonly h3 {
+  margin: 0;
+  color: var(--signal-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.canvas-graph-readonly p {
+  margin: 5px 0 0;
+  color: var(--signal-text-3);
+  font-size: 9px;
+  line-height: 1.65;
+}
+.canvas-graph-fields {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--signal-line-soft);
+}
+.canvas-graph-fields label {
+  display: grid;
+  gap: 4px;
+}
+.canvas-graph-fields label > span {
+  color: var(--signal-text-3);
+  font-size: 8px;
+}
+.canvas-graph-fields input,
+.canvas-graph-fields textarea {
+  width: 100%;
+  border: 1px solid var(--signal-line);
+  border-radius: 5px;
+  background: var(--signal-bg);
+  padding: 7px 8px;
+  color: var(--signal-text-2);
+  font: inherit;
+  font-size: 9px;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+}
+.canvas-graph-fields input:focus,
+.canvas-graph-fields textarea:focus {
+  border-color: var(--signal-blue);
+}
+.canvas-graph-inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--signal-line-soft);
+}
+.canvas-graph-inspector-actions button,
+.canvas-graph-links button {
+  min-height: 31px;
+  border: 1px solid var(--signal-line);
+  border-radius: 5px;
+  background: transparent;
+  padding: 0 9px;
+  color: var(--signal-text-3);
+  font-size: 8.5px;
+  cursor: pointer;
+}
+.canvas-graph-inspector-actions button.primary {
+  border-color: color-mix(in srgb, var(--signal-acid) 40%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-acid) 7%, transparent);
+  color: var(--signal-acid);
+}
+.canvas-graph-inspector-actions button.danger {
+  border-color: color-mix(in srgb, var(--signal-warning) 36%, var(--signal-line));
+  color: var(--signal-warning);
+}
+.canvas-graph-links {
+  display: grid;
+  gap: 7px;
+  padding: 11px 12px 14px;
+}
+.canvas-graph-links > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.canvas-graph-links > header > span {
+  color: var(--signal-text-3);
+  font-size: 8px;
+}
+.canvas-graph-links > header > b {
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  place-items: center;
+  border: 1px solid var(--signal-line);
+  border-radius: 999px;
+  color: var(--signal-blue);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 7.5px;
+  font-weight: 500;
+}
+.canvas-graph-links > p {
+  margin: 0;
+  color: var(--signal-text-3);
+  font-size: 8.5px;
+  line-height: 1.55;
+}
+.canvas-graph-links ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.canvas-graph-links li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 6px 0;
+  border-top: 1px solid var(--signal-line-soft);
+}
+.canvas-graph-links li > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--signal-text-3);
+  font-size: 8px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.canvas-graph-links li > button {
+  width: 26px;
+  min-height: 26px;
+  flex: 0 0 26px;
+  padding: 0;
+}
+.canvas-graph-empty {
+  display: grid;
+  min-height: 360px;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  border: 1px dashed var(--signal-line);
+  border-radius: 8px;
+  color: var(--signal-text-3);
+  text-align: center;
+}
+.canvas-graph-empty strong {
+  color: var(--signal-text-2);
+  font-size: 13px;
+}
+.canvas-graph-empty p {
+  margin: 0;
+  font-size: 9.5px;
+}
+.canvas-graph-palette button:focus-visible,
+.canvas-graph-controls button:focus-visible,
+.canvas-graph-status button:focus-visible,
+.canvas-graph-connect-banner button:focus-visible,
+.canvas-graph-inspector-actions button:focus-visible,
+.canvas-graph-links button:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .canvas-graph-node:hover {
+    border-color: color-mix(in srgb, var(--signal-blue) 42%, rgba(213, 224, 228, .18));
+  }
+  .canvas-graph-palette button:hover,
+  .canvas-graph-controls button:hover,
+  .canvas-graph-inspector-actions button:hover,
+  .canvas-graph-links button:hover,
+  .canvas-graph-status button:hover {
+    background: var(--signal-raised);
+    color: var(--signal-text);
+  }
+}
+@media (max-width: 760px) {
+  .canvas-graph-workspace {
+    display: flex;
+    height: auto;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .canvas-graph-head {
+    display: grid;
+    gap: 8px;
+    padding: 11px 12px;
+  }
+  .canvas-graph-head > div:first-child > strong {
+    white-space: normal;
+  }
+  .canvas-graph-status {
+    justify-content: flex-start;
+  }
+  .canvas-graph-toolbar {
+    flex-wrap: wrap;
+    padding: 8px 10px;
+  }
+  .canvas-graph-palette,
+  .canvas-graph-controls {
+    width: 100%;
+  }
+  .canvas-graph-palette button,
+  .canvas-graph-controls button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .canvas-graph-viewport {
+    height: 390px;
+    min-height: 390px;
+    flex: none;
+  }
+  .canvas-graph-node {
+    padding: 8px;
+  }
+  .canvas-graph-inspector {
+    min-height: 150px;
+    border-top: 1px solid var(--signal-line);
+    border-left: 0;
+  }
+  .canvas-graph-inspector-actions button,
+  .canvas-graph-links button {
+    min-height: 44px;
+  }
+  .canvas-graph-links li > button {
+    width: 44px;
+    min-height: 44px;
+    flex-basis: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-graph-board,
+  .canvas-graph-node {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .shot-workspace-tabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shot-workspace-tabs button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .signal-desk .h-skill-entry {
+    width: auto;
+    padding: 0 9px;
+  }
+  .signal-desk .h-skill-entry .h-skill-label-full {
+    display: none;
+  }
+  .signal-desk .h-skill-entry .h-skill-label-short {
+    display: inline;
+  }
+  .signal-desk .h-docs-entry {
+    padding: 0 8px;
+  }
+}
+
+/* 大屏工作导航：品牌进入全高侧栏，菜单使用统一字体与描边。 */
+.signal-desk .signal-rail-brand {
+  display: none;
+}
+
+@media (min-width: 1360px) {
+  .signal-desk .h-top {
+    width: calc(100% - 224px);
+    height: 64px;
+    margin-left: 224px;
+    gap: 18px;
+    padding: 0 28px;
+    border-bottom-color: transparent;
+    background: #111518;
+    box-shadow: none;
+  }
+
+  .signal-desk .h-top .h-lockup,
+  .signal-desk .h-top .h-ai,
+  .signal-desk .h-top .h-div {
+    display: none;
+  }
+
+  .signal-desk .h-top .h-slogan {
+    display: inline-flex;
+    align-items: center;
+    color: var(--signal-text-2);
+    font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .signal-desk .h-top .h-quota,
+  .signal-desk .h-top .h-run,
+  .signal-desk .h-top .h-install {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .signal-desk .h-top .h-nav-utility {
+    display: none;
+  }
+
+  .signal-desk .h-main {
+    min-height: calc(100dvh - 64px);
+    margin-left: 224px;
+  }
+
+  .signal-desk .h-main > .signal-rail {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: 224px;
+    height: 100dvh;
+    flex: 0 0 224px;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 14px 18px;
+    border-right: 0;
+    background:
+      linear-gradient(180deg, rgba(15, 19, 22, .99), rgba(11, 15, 18, 1));
+  }
+
+  .signal-desk .signal-rail-brand {
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    gap: 11px;
+    margin: 0 8px 14px;
+    color: var(--signal-text);
+    font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    text-decoration: none;
+  }
+
+  .signal-desk .signal-rail-brand b {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
+  .signal-desk .signal-rail-brand span {
+    color: var(--signal-text-2);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    line-height: 1;
+  }
+
+  .signal-desk .signal-rail-brand:focus-visible {
+    border-radius: 6px;
+    outline: 2px solid rgba(142, 183, 231, .8);
+    outline-offset: 2px;
+  }
+
+  .signal-desk .signal-rail-logo {
+    display: none;
+  }
+
+  .signal-desk .signal-rail-utilities {
+    display: grid;
+    width: 100%;
+    gap: 3px;
+  }
+
+  .signal-desk .signal-rail-link {
+    display: flex;
+    width: 100%;
+    min-height: 50px;
+    flex: 0 0 50px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    margin: 0;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--signal-text-2);
+    font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: left;
+  }
+
+  .signal-desk .signal-rail-link:hover {
+    border: 0;
+    background: rgba(255, 255, 255, .045);
+    color: var(--signal-text);
+  }
+
+  .signal-desk .signal-rail-link svg {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    stroke-width: 1.7;
+  }
+
+  .signal-desk .signal-rail-skill,
+  .signal-desk .signal-rail-docs {
+    background: transparent;
+    color: var(--signal-text-2);
+  }
+
+  .signal-desk .signal-rail-divider {
+    display: block;
+    height: 1px;
+    margin: 16px 10px 14px;
+    background: rgba(213, 224, 228, .09);
+  }
+
+  .signal-desk .signal-rail .navpanel {
+    width: 100%;
+    padding: 0;
+  }
+
+  .signal-desk .signal-rail .navpanel ul {
+    gap: 3px;
+  }
+
+  .signal-desk .nav-section-divider {
+    display: block;
+    height: 1px;
+    margin: 15px 10px;
+    background: rgba(213, 224, 228, .09);
+  }
+
+  .signal-desk .signal-rail .navpanel button {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--signal-text-2);
+    font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    text-align: left;
+  }
+
+  .signal-desk .signal-rail .navpanel button:hover {
+    border: 0;
+    background: rgba(255, 255, 255, .045);
+    color: var(--signal-text);
+  }
+
+  .signal-desk .signal-rail .navpanel button.on {
+    border-color: transparent;
+    background: rgba(255, 255, 255, .055);
+    color: var(--signal-text);
+    box-shadow: none;
+  }
+
+  .signal-desk .signal-rail .navpanel button.on::before {
+    content: none;
+  }
+
+  .signal-desk .signal-rail .navpanel button.on svg {
+    stroke: var(--signal-text) !important;
+  }
+
+  .signal-desk .signal-rail .navpanel button.done {
+    border-color: transparent;
+    background: transparent;
+    color: var(--signal-text-2);
+  }
+
+  .signal-desk .signal-rail .navpanel button.done svg {
+    stroke: var(--signal-text-2);
+  }
+
+  .signal-desk .signal-rail .navpanel button.done::after {
+    width: 5px;
+    height: 5px;
+    flex: 0 0 5px;
+    margin-left: auto;
+    border-radius: 50%;
+    background: var(--signal-blue);
+    content: "";
+    opacity: .8;
+  }
+
+  .signal-desk .signal-rail .navpanel button svg {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    stroke-width: 1.7;
+  }
+
+  .signal-desk .signal-rail .navpanel button > span:first-child {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    place-items: center;
+  }
+
+  .signal-desk .signal-rail .navpanel button > span:last-child {
+    display: block;
+    width: auto;
+    overflow: visible;
+    color: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .signal-desk .signal-rail .navpanel button.on > span:last-child {
+    color: var(--signal-text);
+    font-weight: 600;
+  }
+
+  .signal-desk .signal-rail-label {
+    display: none;
+  }
+
+  .signal-desk .signal-rail-link:focus-visible,
+  .signal-desk .signal-rail .navpanel button:focus-visible {
+    outline: 2px solid rgba(142, 183, 231, .8);
+    outline-offset: -2px;
+  }
+}
+
+/* 顶栏默认是上下文，不是一排描边工具按钮。 */
+@media (min-width: 921px) {
+  .signal-desk .h-top :is(.h-canvas, .h-docs-entry, .h-install, .release-trigger) {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .signal-desk .h-top :is(.h-canvas, .h-docs-entry, .h-install, .release-trigger):hover {
+    border-color: transparent;
+    background: rgba(255, 255, 255, .045);
+  }
+
+  .signal-desk .h-top :is(.h-canvas, .h-docs-entry, .h-install, .release-trigger):focus-visible {
+    outline: 2px solid rgba(142, 183, 231, .78);
+    outline-offset: 2px;
+  }
+}
+
+@media (max-width: 1359px) {
+  .signal-desk .signal-rail {
+    width: 64px;
+    flex-basis: 64px;
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+  .signal-desk .signal-rail-utilities {
+    display: grid;
+    width: 100%;
+    gap: 5px;
+  }
+
+  .signal-desk .signal-rail-link {
+    width: 44px;
+    min-height: 44px;
+    flex-basis: 44px;
+    margin: 0 auto;
+    justify-content: center;
+  }
+
+  .signal-desk .signal-rail-link span,
+  .signal-desk .nav-section-divider {
+    display: none;
+  }
+
+  .signal-desk .signal-rail-divider {
+    width: 32px;
+    height: 1px;
+    margin: 9px auto;
+    background: var(--signal-line-soft);
+  }
+
+  .signal-desk .signal-rail .navpanel button {
+    width: 44px;
+    min-height: 44px;
+    margin: 0 auto;
+    flex-direction: column;
+    gap: 0;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .signal-desk .signal-rail .navpanel button > span:first-child {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+  }
+
+  .signal-desk .signal-rail .navpanel button > span:last-child {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-desk .signal-rail-link,
+  .signal-desk .signal-rail .navpanel button {
+    transition: none;
+  }
+}
+
+/* Agent 默认不占布局宽度：桌面只留一个可识别的 Veya 图标，按需展开浮层。 */
+.signal-desk {
+  --agent-dock-width: clamp(380px, 30vw, 420px);
+}
+
+.signal-desk .h-agent-fab {
+  display: none;
+}
+
+@media (min-width: 921px) {
+  .signal-desk .h-work {
+    padding-right: 86px;
+  }
+
+  .signal-desk .h-deck {
+    position: fixed;
+    top: 54px;
+    right: 0;
+    bottom: 0;
+    z-index: 48;
+    width: var(--agent-dock-width);
+    height: auto;
+    flex: none;
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    border-left: 1px solid rgba(213, 224, 228, .08);
+    border-radius: 14px 0 0 14px;
+    background:
+      linear-gradient(180deg, rgba(24, 29, 33, .99), rgba(16, 19, 23, 1) 78%);
+    box-shadow: -32px 0 80px -42px rgba(0, 0, 0, .92);
+    transform: translateX(calc(100% + 24px));
+    transition:
+      transform 240ms cubic-bezier(.23, 1, .32, 1),
+      opacity 180ms cubic-bezier(.23, 1, .32, 1),
+      visibility 0s linear 240ms;
+  }
+
+  .signal-desk .h-deck.open {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+    transition-delay: 0s;
+  }
+
+  .signal-desk .h-agent-fab {
+    position: fixed;
+    right: 20px;
+    bottom: 92px;
+    z-index: 49;
+    display: grid;
+    width: 56px;
+    height: 56px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--signal-acid) 34%, var(--signal-line));
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 24%, rgba(196, 217, 138, .14), transparent 48%),
+      #1a2118;
+    color: var(--signal-acid);
+    box-shadow:
+      0 14px 32px -18px rgba(0, 0, 0, .92),
+      inset 0 1px 0 rgba(255, 255, 255, .055);
+    cursor: pointer;
+    transition:
+      right 240ms cubic-bezier(.23, 1, .32, 1),
+      transform 160ms cubic-bezier(.23, 1, .32, 1),
+      border-color 160ms,
+      background-color 160ms;
+  }
+
+  .signal-desk .h-agent-fab.is-open {
+    right: calc(var(--agent-dock-width) + 14px);
+    border-color: color-mix(in srgb, var(--signal-acid) 52%, var(--signal-line));
+    background:
+      radial-gradient(circle at 34% 24%, rgba(196, 217, 138, .2), transparent 48%),
+      #20281c;
+  }
+
+  .signal-desk .h-agent-fab:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--signal-acid) 62%, var(--signal-line));
+  }
+
+  .signal-desk .h-agent-fab:active {
+    transform: scale(.97);
+  }
+
+  .signal-desk .h-agent-fab::after {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 7px;
+    height: 7px;
+    border: 2px solid #1a2118;
+    border-radius: 50%;
+    background: var(--signal-acid);
+    content: "";
+  }
+
+  .signal-desk .h-agent-fab:focus-visible {
+    outline: 2px solid var(--signal-blue);
+    outline-offset: 3px;
+  }
+
+  .signal-desk .h-agent-fab-face {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    transition: transform 180ms cubic-bezier(.23, 1, .32, 1);
+  }
+
+  .signal-desk .h-agent-fab:hover .h-agent-fab-face {
+    transform: rotate(-4deg) scale(1.04);
+  }
+
+  .signal-desk .h-agent-fab-face svg {
+    width: 30px;
+    height: 30px;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.65;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .signal-desk .h-agent-fab-face circle {
+    fill: currentColor;
+    stroke: none;
+  }
+
+  .signal-desk .h-agent-fab-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    display: grid;
+    min-width: 20px;
+    height: 20px;
+    place-items: center;
+    padding: 0 5px;
+    border: 2px solid var(--signal-bg);
+    border-radius: 999px;
+    background: var(--signal-warning);
+    color: #1b130f;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .signal-desk .h-agent-fab-close {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    display: grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid var(--signal-line);
+    border-radius: 50%;
+    background: var(--signal-raised);
+    color: var(--signal-text-2);
+    font-family: var(--font-latin), sans-serif;
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .signal-desk .h-agent-fab.has-unread::before {
+    position: absolute;
+    inset: -4px;
+    border: 1px solid color-mix(in srgb, var(--signal-warning) 62%, transparent);
+    border-radius: 50%;
+    content: "";
+    animation: agent-fab-ping 1.8s ease-out infinite;
+  }
+}
+
+@media (min-width: 1360px) {
+  .signal-desk .h-deck {
+    top: 64px;
+  }
+}
+
+@media (max-width: 920px) {
+  .signal-desk .h-agent-fab {
+    display: none;
+  }
+}
+
+@keyframes agent-fab-ping {
+  0% {
+    opacity: .7;
+    transform: scale(.92);
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-desk .h-deck,
+  .signal-desk .h-agent-fab,
+  .signal-desk .h-agent-fab-face {
+    transition: none;
+  }
+
+  .signal-desk .h-agent-fab.has-unread::before {
+    animation: none;
   }
 }

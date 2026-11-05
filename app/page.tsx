@@ -450,8 +450,9 @@ export default function Home() {
   /** 第 6 步当前镜头的属性检查器 */
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [activeShotQc, setActiveShotQc] = useState<ShotQcResult | null>(null)
-  /** 窄屏抽屉是否展开（桌面端是常驻右舱，这个状态不参与） */
+  /** Agent 工作舱是否展开：桌面为右侧浮层，窄屏为底部抽屉。 */
   const [deckOpen, setDeckOpen] = useState(false)
+  const agentFabRef = useRef<HTMLButtonElement>(null)
   /** 停在「产出」tab 时收到的新回答数；切到场记即清零 */
   const [agentUnread, setAgentUnread] = useState(0)
   /** 项目画布：全局节点视图，关键字段可直接修改 */
@@ -510,7 +511,12 @@ export default function Home() {
   useEffect(() => {
     if (!deckOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDeckOpen(false)
+      if (e.key === 'Escape') {
+        setDeckOpen(false)
+        if (window.matchMedia('(min-width: 921px)').matches) {
+          window.requestAnimationFrame(() => agentFabRef.current?.focus())
+        }
+      }
     }
     window.addEventListener('keydown', onKey)
     const mobile = window.matchMedia('(max-width: 920px)').matches
@@ -3366,7 +3372,7 @@ export default function Home() {
           <span className="h-wordmark">VEYAFRAME</span>
         </div>
         <span className="h-ai" title="全流程 AI 生成">AI</span>
-        <span className="h-slogan hidden lg:inline">一句想法 → 能出图的分镜</span>
+        <span className="h-slogan hidden lg:inline">一句想法 → 分镜、镜头视频与成片</span>
         <span className="h-div hidden lg:block" aria-hidden="true" />
         <QuotaBar refreshKey={quotaRefreshKey} inline episodeCount={episodeCount} />
 
@@ -3379,7 +3385,7 @@ export default function Home() {
 
         <button
           type="button"
-          className="h-canvas"
+          className="h-canvas h-nav-utility"
           onClick={() => openCanvas()}
           title="查看六步项目画布"
           aria-label="打开项目画布"
@@ -3395,14 +3401,27 @@ export default function Home() {
 
         <a
           href={skillsHref(projectId, view)}
-          className="h-canvas"
-          title="打开 Skill 创作入口"
-          aria-label="打开 Skill 创作入口"
+          className="h-canvas h-skill-entry h-nav-utility"
+          title="打开创作技能库"
+          aria-label="打开创作技能库"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m12 3 2.4 5.1 5.6.7-4.1 3.9 1.1 5.5L12 15.5l-5 2.7 1.1-5.5L4 8.8l5.6-.7L12 3Z" />
           </svg>
-          <span>Skill</span>
+          <span className="h-skill-label-full">创作技能</span>
+          <span className="h-skill-label-short">技能</span>
+        </a>
+        <a
+          className="h-docs-entry h-nav-utility"
+          href="/docs"
+          title="打开成剧使用教程"
+          aria-label="打开成剧使用教程"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
+            <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21.5v-16Z" />
+          </svg>
+          <span>教程</span>
         </a>
 
         <span className={`h-run ${anyRunning ? 'busy' : ''}`} aria-live="polite">
@@ -3488,28 +3507,58 @@ export default function Home() {
 
       <div className="h-main">
         <aside className="signal-rail" aria-label="创作步骤">
+          <a className="signal-rail-brand" href="/" aria-label="返回成剧工作台">
+            <b>成剧</b>
+            <span>VEYAFRAME</span>
+          </a>
           <span className="signal-rail-logo" aria-hidden="true">V</span>
-          <button
-            type="button"
-            className="signal-rail-canvas"
-            onClick={() => openCanvas()}
-            title="打开项目画布"
-            aria-label="打开项目画布"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="5" cy="6" r="2.2" />
-              <circle cx="19" cy="6" r="2.2" />
-              <circle cx="12" cy="18" r="2.2" />
-              <path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8" />
-            </svg>
-          </button>
+          <div className="signal-rail-utilities">
+            <button
+              type="button"
+              className="signal-rail-link signal-rail-canvas"
+              onClick={() => openCanvas()}
+              title="打开项目画布"
+              aria-label="打开项目画布"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="5" cy="6" r="2.2" />
+                <circle cx="19" cy="6" r="2.2" />
+                <circle cx="12" cy="18" r="2.2" />
+                <path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8" />
+              </svg>
+              <span>画布</span>
+            </button>
+            <a
+              className="signal-rail-link signal-rail-skill"
+              href={skillsHref(projectId, view)}
+              title="打开创作技能库"
+              aria-label="打开创作技能库"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m12 3 2.4 5.1 5.6.7-4.1 3.9 1.1 5.5L12 15.5l-5 2.7 1.1-5.5L4 8.8l5.6-.7L12 3Z" />
+              </svg>
+              <span>创作技能</span>
+            </a>
+            <a
+              className="signal-rail-link signal-rail-docs"
+              href="/docs"
+              title="打开成剧使用教程"
+              aria-label="打开成剧使用教程"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
+                <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21.5v-16Z" />
+              </svg>
+              <span>教程</span>
+            </a>
+          </div>
+          <span className="signal-rail-divider" aria-hidden="true" />
           <SideNav
             current={viewIndex}
             completed={stepCompleted}
             onJump={goToStep}
             canJump={canJump}
           />
-          <span className="signal-rail-label" aria-hidden="true">FLOW</span>
         </aside>
         <main className="h-work">
           {variantSession && (
@@ -4123,10 +4172,48 @@ export default function Home() {
         </main>
 
         {/*
-          产出舱：H 的右半屏。
-          data-theme 让它内部直接继承墨层 token；两个 tab 常驻挂载，
-          切走只是 display:none，对话与滚动位置都不会丢。
+          Agent 工作舱：
+          桌面默认收起为主工作面旁的 Veya 图标，点击后以浮层侧舱展开；
+          窄屏仍由底部抓手控制。内容常驻挂载，收起不会丢对话与滚动位置。
         */}
+        <button
+          ref={agentFabRef}
+          type="button"
+          className={`h-agent-fab ${deckOpen ? 'is-open' : ''} ${agentUnread > 0 ? 'has-unread' : ''}`}
+          aria-expanded={deckOpen}
+          aria-controls="veye-deck"
+          aria-label={
+            deckOpen
+              ? '收起 Veya Agent'
+              : agentUnread > 0
+                ? `打开 Veya Agent，${agentUnread} 条新消息`
+                : '打开 Veya Agent'
+          }
+          title={deckOpen ? '收起 Veya Agent' : '打开 Veya Agent'}
+          onClick={() => {
+            if (!deckOpen) {
+              setAgentOpen(true)
+              setInspectorOpen(false)
+            }
+            setDeckOpen((v) => !v)
+          }}
+        >
+          <span className="h-agent-fab-face" aria-hidden="true">
+            <svg viewBox="0 0 32 32">
+              <path d="M16 5.2c5.8 0 9.8 3.2 9.8 7.9 0 4.7-4 7.9-9.8 7.9-1.2 0-2.4-.16-3.5-.48L7.7 22.7l1.25-4.1C7.2 17.2 6.2 15.3 6.2 13.1c0-4.7 4-7.9 9.8-7.9Z" />
+              <circle cx="12.4" cy="13.1" r="1.15" />
+              <circle cx="19.6" cy="13.1" r="1.15" />
+              <path d="M12.6 17.2c1 1.2 2.1 1.8 3.4 1.8s2.4-.6 3.4-1.8" />
+              <path d="M24.8 4.4v4.1M22.75 6.45h4.1" />
+            </svg>
+          </span>
+          {agentUnread > 0 && (
+            <span className="h-agent-fab-count" aria-hidden="true">
+              {agentUnread > 9 ? '9+' : agentUnread}
+            </span>
+          )}
+          {deckOpen && <span className="h-agent-fab-close" aria-hidden="true">×</span>}
+        </button>
         {deckOpen && (
           <div
             className="h-deck-scrim"
@@ -4135,6 +4222,7 @@ export default function Home() {
           />
         )}
         <aside
+          id="veye-deck"
           className={`h-deck ${deckOpen ? 'open' : ''}`}
           data-theme="paper-light-dark-ai"
           aria-label="Veya 工作舱"
@@ -4149,7 +4237,10 @@ export default function Home() {
             onClick={() => {
               // 收起时这一行写的是「问进度、改某一镜」——展开就该落在场记，
               // 而不是把用户丢到「产出」tab 再自己找一遍
-              if (!deckOpen) setAgentOpen(true)
+              if (!deckOpen) {
+                setAgentOpen(true)
+                setInspectorOpen(false)
+              }
               setDeckOpen((v) => !v)
             }}
           >

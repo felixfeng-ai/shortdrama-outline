@@ -22,6 +22,7 @@ import type { SnapshotDto } from '@/lib/assets/api'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
 import ProductionMap from './ProductionMap'
+import CanvasGraphWorkspace from './CanvasGraphWorkspace'
 
 export type CanvasNodeId = StepKey | 'places'
 
@@ -195,7 +196,7 @@ export default function ProjectCanvas({
   const [restoreNotice, setRestoreNotice] = useState<string | null>(null)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([])
   const [generationAssets, setGenerationAssets] = useState<GeneratedAsset[]>([])
-  const [mapMode, setMapMode] = useState<'production' | 'flow'>('production')
+  const [mapMode, setMapMode] = useState<'production' | 'flow' | 'graph'>('production')
   const [priorityExpanded, setPriorityExpanded] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -273,7 +274,7 @@ export default function ProjectCanvas({
     requestClose(() => openRef.current(step))
   }
 
-  function switchMapMode(next: 'production' | 'flow') {
+  function switchMapMode(next: 'production' | 'flow' | 'graph') {
     if (next === mapMode) return
     if (selected) clearSelection()
     setMapMode(next)
@@ -719,9 +720,19 @@ export default function ProjectCanvas({
           六步流程
           <span>{Object.values(completed).filter(Boolean).length} / 6</span>
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mapMode === 'graph'}
+          className={mapMode === 'graph' ? 'active' : ''}
+          onClick={() => switchMapMode('graph')}
+        >
+          编排画布
+          <span>实时</span>
+        </button>
       </div>
 
-      <section className={`map-priority ${canvasActions.length ? 'has-issues' : 'is-clear'}`} aria-label="优先处理">
+      {mapMode !== 'graph' && <section className={`map-priority ${canvasActions.length ? 'has-issues' : 'is-clear'}`} aria-label="优先处理">
         <div className="map-priority-head">
           <span>
             <i aria-hidden="true" />
@@ -770,11 +781,17 @@ export default function ProjectCanvas({
             <p>{runningTaskCount > 0 ? '后台任务正在运行，当前没有待处理缺口' : '当前没有待处理项，可以继续检查版本或进入下一步'}</p>
           </div>
         )}
-      </section>
+      </section>}
 
       <div className="map-workspace">
         <div className="map-map-pane">
-          {mapMode === 'flow' ? (
+          {mapMode === 'graph' ? (
+            <CanvasGraphWorkspace
+              projectId={projectId}
+              projectTitle={projectTitle}
+              onOpenStep={requestOpenStep}
+            />
+          ) : mapMode === 'flow' ? (
             <>
           <div
             className={`map-stage-wrap canvas-viewport ${dragging ? 'dragging' : ''}`}
@@ -904,7 +921,7 @@ export default function ProjectCanvas({
           )}
         </div>
 
-        {selectedNode && (
+        {mapMode !== 'graph' && selectedNode && (
           <aside className="map-inspector" aria-labelledby="map-inspector-title">
             <div className="map-inspector-head">
               <div>

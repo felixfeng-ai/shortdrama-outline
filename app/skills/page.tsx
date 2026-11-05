@@ -3,8 +3,8 @@ import SkillCatalog from '@/components/SkillCatalog'
 import './skills.css'
 
 export const metadata: Metadata = {
-  title: 'Skill 创作入口 · 成剧',
-  description: '从小说改编、故事审校到分镜连续性和平台交付，用专业 Skill 启动短剧创作。',
+  title: '创作技能库 · 成剧 VeyaFrame',
+  description: '从小说改编、故事审校到分镜连续性和成片交付，用可确认的创作技能启动短剧生产。',
 }
 
 export default function SkillsPage() {

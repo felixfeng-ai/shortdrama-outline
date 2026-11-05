@@ -184,29 +184,29 @@ export default function LoginPanel() {
         <div className="auth-story-copy">
           <p className="auth-kicker">PROJECT CONTINUITY / ACCOUNT</p>
           <h1 id="auth-story-title">
-            先把戏<span className="auth-title-accent">做对</span>，<br />
-            再把镜头<span className="auth-title-accent">生成</span>。
+            把故事<span className="auth-title-accent">做对</span>，<br />
+            把这一集<span className="auth-title-accent">做成片</span>。
           </h1>
           <p className="auth-lede">
-            人物、场次、分镜和创作契约在同一条项目链里。改一处，看得见影响；换设备，也能接着写。
+            人物、场次、分镜、首帧、镜头视频和时间线在同一条项目链里。改一处，看得见影响；换设备，也能接着做。
           </p>
         </div>
 
         <div className="auth-proof-chain" aria-label="项目核心能力">
           <div className="auth-proof-node">
             <span className="auth-proof-index">01</span>
-            <strong>角色锚点</strong>
-            <small>贯穿全剧</small>
+            <strong>角色与场景</strong>
+            <small>跨镜一致</small>
           </div>
           <div className="auth-proof-node">
             <span className="auth-proof-index">02</span>
-            <strong>改动影响</strong>
-            <small>看得见下游</small>
+            <strong>镜头视频</strong>
+            <small>首帧可追溯</small>
           </div>
           <div className="auth-proof-node">
             <span className="auth-proof-index">03</span>
-            <strong>参考图不上传</strong>
-            <small>项目可带走</small>
+            <strong>时间线成片</strong>
+            <small>MP4 · SRT · BGM</small>
           </div>
         </div>
       </section>

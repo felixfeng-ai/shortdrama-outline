@@ -2,14 +2,15 @@
 
 # 成剧 VeyaFrame
 
-**短剧与漫剧的 AI 分镜台：一句想法，到能出图的分镜提示词**
+**短剧与漫剧的 AI 创作与成片工作台：从一句想法或已有原文，到分镜、镜头视频与时间线成片**
 
-**VeyaFrame — From one line to a storyboard you can generate.**
+**VeyaFrame — From a line or an existing script to a production-ready short drama.**
 
-独立短剧编剧的 AI 创作与资产工具。**打开网页就用，不装任何东西。**
+面向独立短剧与漫剧创作者的 AI 创作、镜头资产与成片工具。**打开网页就用，不装任何东西。**
 
 [![线上体验](https://img.shields.io/badge/🌐_线上体验-chenju.work-2ea44f?style=for-the-badge)](https://chenju.work)
-[![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
+[![使用教程](https://img.shields.io/badge/📘_使用教程-chenju.work%2Fdocs-C4D98A?style=for-the-badge)](https://chenju.work/docs)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tests](https://img.shields.io/badge/tests-node%3Atest-2ea44f?style=for-the-badge)](#测试)
 [![参考图不上传](https://img.shields.io/badge/本地参考图-不上传-important?style=for-the-badge)](#三条硬指标)
@@ -22,18 +23,33 @@
 <div align="center">
 
 ```
-一句话想法
+一句话想法 / 已有原文
     │
     ├─ ① 核心人物 ── ② 三幕大纲 ── ③ 分集剧情      ← 创作层：给人看的文本
     │
-    └─ ④ 视觉定妆 ── ⑤ 场次剧本 ── ⑥ 分镜提示词    ← 资产层：给出图工具的资产
+    ├─ ④ 视觉定妆 ── ⑤ 场次剧本 ── ⑥ 分镜与首帧    ← 资产层：给出图和视频工具的资产
+    │
+    └─ 镜头视频 ── TTS / BGM / SRT ── 时间线成片    ← 成片层：MP4 或外部交付
 ```
 
 </div>
 
-后三步产出的**不是剧本，是资产**：角色视觉锚点、每场戏的时空、每个镜头的英文提示词。
+后三步产出的**不是剧本，是资产**：角色视觉锚点、每场戏的时空、每个镜头的提示词与首帧。
 角色参考图始终存在你自己的硬盘上，**不会上传给成剧图像服务**。
-用户点击生成关键帧时，平台服务端使用通义万相新生成图片，并只把生成结果存进当前项目的数据目录。
+用户主动生成关键帧或镜头视频时，平台只保存新生成的结果；已采用首帧可以继续生成镜头视频，
+再进入按集时间线完成 TTS、BGM、SRT、MP4 和无损导出，也可以继续交给即梦、可灵或剪映精修。
+
+## 当前界面与导航
+
+当前工作台围绕“项目、步骤、产出”组织，不再把所有工具挤进顶栏：
+
+- **大屏桌面（≥1360px）**：品牌进入 224px 全高侧栏顶部，顶栏从侧栏右侧开始，只保留额度、运行状态和账号。侧栏统一使用无衬线字体、22px 图标和 15px 菜单正文；工作区入口与六步流程之间用发丝线分组，不再显示额外小标题。当前步骤使用整行浅填充，完成态只保留冷蓝小点。
+- **中等桌面（921–1359px）**：左侧目录收为 64px 图标轨，画布、创作技能与教程回到顶栏快捷入口。
+- **平板与手机（≤920px）**：左轨隐藏，六步回到顶栏胶囊；右侧 AI 场记折成底部抽屉，页面不产生横向滚动。
+- **第 6 步的三个工作区**：分镜、镜头视频、时间线成片是平级页签，各自只展示当前任务，不再埋在一条超长分镜页里。
+- **教程入口**：工作台和创作技能页都提供“教程”，完整说明见 [`/docs`](https://chenju.work/docs)。
+
+![成剧工作台：完整目录、当前步骤与 AI 场记](public/docs/tutorial/01-quick-start.png)
 
 ## 三条硬指标
 
@@ -73,6 +89,7 @@
 
 ## 目录
 
+- [当前界面与导航](#当前界面与导航)
 - [我解决的问题](#我解决的问题)
 - [这个工具不做什么](#这个工具不做什么)
 - [竞争格局：为什么这件事还值得做](#竞争格局为什么这件事还值得做)
@@ -98,7 +115,7 @@
 
 ## 我解决的问题
 
-独立短剧编剧（1-3 人小团队）最痛的三个问题：
+独立短剧编剧（1-3 人小团队）最常见的四个问题：
 
 ### 一、有灵感但写不出结构
 
@@ -112,20 +129,23 @@
 
 不知道每集结尾怎么留悬念让人想看下一集。短剧是 1-3 分钟一集、靠完播率和追更活着的品类，**没有钩子就没有下一集**。
 
-### 四、有了分镜也出不了图（真正的卡点）
+### 四、分镜之后，图像、视频和成片之间还是断的（真正的卡点）
 
-这是独立创作者最实际的一道坎：大纲写完了，接下来要拿即梦/可灵出图，但——
+这是独立创作者最实际的一道坎：分镜写完了，接下来还要分别找工具出图、生成视频、配音和剪辑，但——
 
 - 每个镜头的提示词得**自己编**，还要保证同一角色在几十个镜头里长得一样
 - 角色一多，「这一镜该拿哪几张参考图」全靠记，**双人同框必串脸**
+- 首帧、视频、台词、字幕和配乐散在不同平台，**版本对不上，返修也找不回来**
 - 换个平台、换个工具，之前攒的角色设定和参考图**全部重建**
 
-市面上的开源方案能解决这个，但**得先会装 Docker、会配数据库**——编剧为了用工具先变成工程师。
+市面上的方案有的只解决出图，有的只做无人值守成片；独立创作者真正需要的是既能保留判断权，
+又不用在十个工具之间手工搬素材。
 
-**所以成剧做了两件事：**
+**所以成剧做了三件事：**
 
 1. **把创作拆成六步工作流**，每一步单独编辑、单独重生成，人始终保留判断权（而不是一次性吐一大段文本）
 2. **把资产层做成本地优先**——角色锚点逐字注入每个镜头提示词保证一致；参考图存在你自己的文件夹，服务端连上传通道都没有
+3. **把镜头接到成片**——首帧可以直接生成镜头视频，再进入按集时间线完成 TTS、BGM、SRT 和 MP4；需要外部模型时仍可导出即梦、可灵或剪映交付包
 
 ---
 
@@ -135,12 +155,12 @@
 
 | 不做 | 为什么 |
 |---|---|
-| **不做一键跑完 30 集** | 平台内视频与最小成片按集、按镜推进；每个付费动作先确认，单实例逐集串行渲染，不承诺无人值守全自动 |
+| **不承诺无人值守跑完 30 集** | 平台内视频与最小成片按集、按镜推进；每个付费动作先确认，单实例逐集串行渲染，关键节点保留人工采用与返修 |
 | **不把模型部署成本转嫁给编剧** | 关键帧默认由平台通义万相服务生成；用户不需要理解 Provider、模型或 API Key |
-| **不做全自动成片** | 那是 [huobao-drama](https://github.com/chatfire-AI/huobao-drama) 的赛道。人在环里才有判断权 |
+| **不做无人值守的一键成片与自动发布** | 时间线负责可控成片，是否采用视频、如何修剪和何时发布仍由创作者决定 |
 | **不做团队协作 / 重型账号体系** | 不登录也能开始；手机号账号只负责找回项目和跨端归属，不做组织、成员和权限后台 |
-| **不做重部署分发** | 不提供 Docker 镜像——那是 Jellyfish 已经做好的事，我们只提供网页 |
-| **不做角色库 / 大纲以外的创作辅助** | 收窄。见[竞争格局](#竞争格局为什么这件事还值得做) |
+| **不做跨项目云图库 / 素材托管** | 跨项目只复用角色、地点和视觉宪法文本；本地参考图像素不进入服务端 |
+| **不做模型基础设施与私域发布后台** | 平台负责创作和执行链路，不自建通用模型云、买量后台或平台私有上传 API |
 
 ---
 
@@ -166,12 +186,12 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 | 部署 | Docker + MySQL + Redis + RustFS，要运维 | 需装 agent 会用 Claude Code | **零部署，浏览器打开就用** |
 | 图存哪 | 服务端对象存储（因为要跑视频生成，**必须**托管） | 本地，但需装环境 | **用户自己的文件夹，服务端无上传通道** |
 | 面向谁 | 会 Docker 的技术人 | 会用 AI agent 的开发者 | **编剧本人** |
-| 强度 | 重（全流程 + 出视频） | 重（十一技能流水线） | **轻（只做资产层）** |
+| 强度 | 重（全流程 + 出视频） | 重（十一技能流水线） | **轻（从创作到可控成片）** |
 
 ### 一句话说清我们的赌注
 
 > 不是「没人做」，是**已经有人做了，但都做得重**。我们赌的是「轻」这一侧：
-> **零部署 + 图在用户自己硬盘 + 用的人是编剧而不是工程师。**
+> **零部署 + 图在用户自己硬盘 + 分镜到成片可确认 + 用的人是编剧而不是工程师。**
 
 这是一个**更窄**的定位，也确实成立——但风险很明确：
 
@@ -182,9 +202,9 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 放弃是为了守住「轻」：
 
 - ❌ **不做无人值守的一键全剧**——平台内视频和最小成片按集推进，付费、采用和渲染都保留人工确认
-- ❌ **不做大纲之外的创作辅助**（角色库、团队协作、组织权限）
-- ❌ **不做重部署形态**（不做 Docker 分发、不做服务端存储）
-- ❌ **不再加功能**——能力清单已经和 Jellyfish 差不多了，再往上加是拿「轻」去换「全」，必输
+- ❌ **不做重型组织与投放后台**（团队权限、买量、自动发布、支付运营）
+- ❌ **不做跨项目图片托管**（本地参考图零上传，跨项目只复用文本设定）
+- ❌ **不做通用模型基础设施**——把精力放在创作判断、版本恢复和可控成片，而不是训练或托管基础模型
 
 ---
 
@@ -192,7 +212,7 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 
 - **短剧是现在 AI 内容创作最成熟的赛道，验证最快**——需求明确、节奏标准、好坏有客观标准（完播率）
 - **大纲是创作第一步，也是 AI 最能帮上忙的环节**——大纲对了，后面写正文才不会跑偏；大纲错了，后面写得再顺也是白写
-- **不贪多，先把「灵感 → 结构化大纲」这一步做透**
+- **不贪多，先把「灵感 / 原文 → 分镜 → 视频 → 成片」这条主链做稳**
 
 ---
 
@@ -220,14 +240,17 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 ⑥ 分镜        每镜：场景 / 出场角色 / 动作 / 运镜 / 英文提示词
                并标注「本镜该带哪几张角色参考图」
 ──────────  以上是资产层：产出给出图工具的提示词  ──────────
-复制全部  /  导出 .md  /  交付包 / 完整备份（zip）
+   ↓
+镜头视频      已采用首帧 → 模型 / 分辨率 / 时长 / 预算 → 候选视频
+   ↓
+时间线成片    TTS / BGM / SRT / 镜头顺序 → MP4 / 外部交付
 ```
 
 **这就是创作工具和「聊天机器人」的区别——人始终保留判断权。** 每一小步的结果都摆在台面上，用户改哪一步、重生成哪一步，自己说了算。
 
 **为什么后三步单独算一层**：前三步产出的是「给人读的文本」，后三步产出的是「给机器用的资产」——锚点串要逐字进提示词，镜头参数要直接填进出图平台。两种产物的正确性标准不一样，混在一起讲不清楚，界面上也用不同的颜色区分两层。
 
-**界面是双舱**：左边工作面是暖白底 + 发丝线分隔的连续清单（人物 / 大纲 / 分集都是行，不是一格格卡片），右边产出舱是近墨色面板，里头分「产出 / 场记」两个 tab——分镜视觉和 AI 场记长在同一块深色里。六步用顶部胶囊切换，一页只显示一步；窄屏（≤920px）右舱折成底部抽屉，收起只露一行输入。设计规范见 [DESIGN.md](DESIGN.md)。
+**界面是深色创作工作台**：大屏左侧是完整目录，中间是按步骤展开的完整工作面；Veya Agent 默认收起为右下角对话气泡图标，点击后才以浮层侧舱展开，不再永久挤压内容。进入分镜后侧舱提供“镜头预览 / Veya Agent / 镜头属性”，三步之外不再把视频和成片塞回分镜长页面，而是在第 6 步平级提供“分镜 / 镜头视频 / 时间线成片”。中等桌面收为图标轨，平板与手机把六步放回顶栏，Veya 折成底部抽屉。设计规范见 [DESIGN.md](DESIGN.md)。
 
 **下一步不是加功能，是加判断**：基座模型是公共的，情绪、审美、判断才是差异。判断层（意图卡、双版本选择、Look Book、判断日志、审片人）的目标与路线见 [JUDGMENT.md](JUDGMENT.md)；正确性与交付侧的方向见 [COMPETITION.md](COMPETITION.md)。
 
@@ -252,6 +275,8 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 ### 方式一：直接用（推荐，零安装）
 
 打开 **<https://chenju.work>** 即可。不需要注册、不需要安装。
+第一次使用可先看 **[成剧教程](https://chenju.work/docs)**：从一句想法或已有原文开始，
+依次完成人物、分集、定妆、场次、分镜、镜头视频、时间线成片和外部交付。
 
 ### 方式二：本地跑（要改代码 / 离线用）
 
@@ -281,6 +306,14 @@ npm run build
 | `ALIYUN_DASHSCOPE_API_KEY` | 是 | — | 阿里云百炼 Key，仅服务端使用，编剧端无感知 |
 | `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相文生图模型 |
 | `ALIYUN_IMAGE_EDIT_MODEL` | | `qwen-image-2.0-pro` | 带项目关键帧参考时的通义多图编辑模型 |
+| `VIDEO_GENERATION_ENABLED` | | `0` | 设为 `1` 开启平台内镜头视频 |
+| `MINIMAX_API_KEY` | 视频开启时必填 | — | 镜头视频服务端密钥，前端不可见 |
+| `MINIMAX_VIDEO_MODEL` | | `MiniMax-H3-Lite` | 默认视频模型 |
+| `MINIMAX_VIDEO_RESOLUTION` | | `768P` | 默认视频分辨率 |
+| `TTS_ENABLED` | | `0` | 设为 `1` 开放在线 TTS |
+| `MINIMAX_TTS_API_KEY` | TTS 开启时必填 | — | 可复用 `MINIMAX_API_KEY`，也可单独配置 |
+| `MINIMAX_TTS_PRICE_MICROS_PER_1K_CHARS` | TTS 开启时必填 | — | 每千字符采购价，单位微元，用于预算与预估 |
+| `FFMPEG_PATH` / `FFPROBE_PATH` | | 内置二进制 | 可选覆盖为系统 FFmpeg / FFprobe |
 | `WEB_PUSH_PUBLIC_KEY` | 通知功能必填 | — | Web Push VAPID 公钥，可以返回浏览器 |
 | `WEB_PUSH_PRIVATE_KEY` | 通知功能必填 | — | Web Push VAPID 私钥，只允许存在服务端 |
 | `WEB_PUSH_SUBJECT` | | `mailto:admin@chengju.work` | VAPID 联系主体 |
@@ -292,7 +325,7 @@ npm run build
 | `AUTH_CODE_GLOBAL_DAILY_LIMIT` | | `200` | 全站每连续 24 小时验证码发送预算 |
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 仅 localhost 联调时设为 `1` 返回开发验证码；生产域名永远拒绝 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 与生成文件的数据目录；生产环境建议放在仓库外 |
-| `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录 |
+| `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 平台生成的图片、视频、TTS 与成片目录 |
 | `CHENGJU_CLAIM_LEGACY_PROJECTS` | | 关闭 | 升级后把旧版无 owner 项目认领给首次访问会话时可设为 `1` |
 
 > `.env.local` 已在 `.gitignore` 中，不会被提交。密钥只在服务端使用，前端拿不到。
@@ -303,11 +336,13 @@ npm run build
 
 | | 层 | 选型 | 说明 |
 |---|---|---|---|
-| ⚛️ | 前端 | Next.js 14 App Router、React 18、TypeScript 5.5、Tailwind CSS 3 | 纯手写样式，没有引入 UI 组件库；支持深色/浅色主题与 PWA 安装 |
-| 🔌 | 后端 | Next.js Route Handlers + `middleware.ts` | 全栈一体；中间件负责匿名浏览器会话，业务路由统一读取 owner |
+| ⚛️ | 前端 | Next.js 16 App Router、React 19、TypeScript 5.5、Tailwind CSS 3 | 纯手写样式，没有引入 UI 组件库；包含工作台、创作技能、教程、项目画布与 PWA |
+| 🔌 | 后端 | Next.js Route Handlers + `proxy.ts` | 全栈一体；代理层负责匿名浏览器会话，业务路由统一读取 owner |
 | 🧠 | 文本模型 | DeepSeek（`deepseek-chat`） | OpenAI 兼容协议；结构化 JSON、SSE 流式、function calling |
 | 🎨 | 图像模型 | 阿里云通义万相 | 服务端托管密钥；文生图与多图参考编辑，浏览器不接触模型密钥 |
-| 🗄️ | 存储 | SQLite + 私有数据目录 | 项目、快照、血缘、图台账、账号、生成任务、关键帧、推送订阅、额度与生成检查点 |
+| 🎬 | 视频模型 | MiniMax（默认 `MiniMax-H3-Lite`） | 首帧驱动的图生视频、任务轮询、失败重试、候选采用与费用预估 |
+| 🔊 | 声音 | MiniMax 系统音色 TTS + 项目 BGM | 按角色绑定系统音色，批量生成对白音频；不支持声音克隆，BGM 需确认授权 |
+| 🗄️ | 存储 | SQLite + 私有数据目录 | 项目、快照、血缘、图台账、账号、图片/视频任务、时间线、渲染结果、推送订阅、额度和检查点 |
 | 🔐 | 账号 | 邮箱验证码优先，保留手机号验证码 + HttpOnly Refresh Session + 15 分钟 Access Token | Web 与 App 共用同一账号和项目归属；App 用短期 Bearer 访问、用 30 天 refresh token 换新 |
 | 📲 | PWA / 通知 | Manifest、Service Worker、Web Push、VAPID | 可安装、离线兜底、关键帧完成通知；不缓存 API 和个人图片 |
 | 📦 | 依赖 | 框架依赖 + `dotenv`、`web-push` | 功能层没有引入 UI 组件库、ORM、状态库或测试框架；ZIP 打包手写 |
@@ -319,7 +354,8 @@ npm run build
 
 ```text
 浏览器 / PWA / App
-├─ React 工作台：六步、项目画布、任务中心、判断层
+├─ React 工作台：完整目录、六步、项目画布、任务中心、判断层
+├─ 第 6 步工作区：分镜 / 镜头视频 / 时间线成片
 ├─ 本地图库：File System Access API / IndexedDB
 ├─ AI 场记：前端 ReAct 循环，工具只读或只产出待确认卡片
 └─ Service Worker：离线页、安装与通知点击回跳
@@ -328,12 +364,15 @@ npm run build
         └─ SSE（分集 / 分镜）
                 │
 Next.js Route Handlers
-├─ middleware：匿名会话 Cookie
+├─ proxy：匿名会话 Cookie
 ├─ auth：验证码登录、Web Refresh Cookie、App Access/Refresh
 ├─ project shares：只读审阅 token、撤销与文本快照
 ├─ 项目归属校验：项目 / 快照 / 任务 / 关键帧 / 推送订阅
 ├─ DeepSeek：结构化生成、流式生成、工具调用
 ├─ 通义万相：关键帧任务、轮询、下载与落盘
+├─ MiniMax：镜头视频任务、下载、重试与 TTS
+├─ 时间线：按集镜头顺序、音色、BGM、SRT 与不可变版本
+├─ FFmpeg：按集拼接镜头、混音并输出 MP4
 ├─ 生成检查点：长文分批续跑
 └─ 推送服务：成功 / 失败通知，失败不影响生成结果
         │
@@ -342,10 +381,13 @@ SQLite + 私有数据目录
 ├─ users / login_codes / email_login_codes / auth_sessions
 ├─ auth_rate_limits：验证码发送 IP 与全站窗口
 ├─ generation_tasks / generated_assets
+├─ timeline_drafts / timeline_versions
+├─ voice_profiles / project_bgm_tracks / video_renders
+├─ canvas_graphs / agent_action_runs
 ├─ project_shares
 ├─ text_generation_checkpoints
 ├─ push_subscriptions / usage_log
-└─ data/generated：仅保存用户主动生成的云端关键帧
+└─ data/generated：仅保存用户主动生成的图片、视频、音频与成片
 ```
 
 ### 核心数据模型
@@ -355,7 +397,12 @@ SQLite + 私有数据目录
 | `projects` | 项目标题、所有者、创建与更新时间；所有业务数据都挂在项目下 |
 | `snapshots` / `lineage` | 每一步产物的版本、父快照和影响范围；用于过期判断与回溯 |
 | `ref_images` | 本地参考图台账，只存 `vaultKey`、SHA-256、归属和元数据 |
-| `generation_tasks` / `generated_assets` | 关键帧任务状态、历史版本、采用状态和私有图片文件 |
+| `generation_tasks` / `generated_assets` | 图片与视频任务状态、历史候选、采用状态和私有媒体文件 |
+| `generation_batches` | 批量图片/视频批次、预算预留、逐项状态和幂等关系 |
+| `timeline_drafts` / `timeline_versions` | 按集时间线草稿与确认后的不可变版本 |
+| `voice_profiles` / `project_bgm_tracks` | 项目角色系统音色绑定与已确认授权的配乐轨 |
+| `video_renders` | MP4、SRT、manifest 的渲染状态、版本和私有文件记录 |
+| `canvas_graphs` / `agent_action_runs` | 编排画布状态与 Agent 执行/回滚记录 |
 | `text_generation_checkpoints` | 分集/分镜的输入签名、批次游标、已生成内容和稳定 stamp |
 | `users` / `login_codes` / `email_login_codes` / `auth_sessions` | 邮箱或手机号用户、验证码哈希和可撤销会话 |
 | `project_context` | 项目级 Brief、视觉宪法、集数与乐观锁版本 |
@@ -417,6 +464,9 @@ DEEPSEEK_MODEL="<你的推理接入点 ID>"
 | **人物生成** | 要求角色之间有**天然的对立关系**（利益/立场/情感冲突），动机必须能被剧情推动，性格用**行为倾向**描述而不是「善良」「勇敢」这类空词 |
 | **三幕大纲** | 按标准三幕结构给每一幕定死功能：第一幕结尾把主角推进无法回头的境地，第二幕中点必须有反转、结尾是最大低谷，第三幕用成长后的方式解决核心矛盾 |
 | **分集剧情** | 强调短剧节奏：每集必须有冲突推进、**钩子必须是「未解决的问题」**（新危机爆发/秘密揭开/决定被打断）；冲突强度按选定集数递进：开头抓人、中段升级、末段连续高潮 |
+| **视觉定妆** | 把角色外貌、发型、服装、配饰、辨识特征与整体气质编译成稳定英文锚点；字段顺序固定、编译幂等，不重新发明人物，只负责“上妆” |
+| **场次剧本** | 按“一场戏 = 一个连续时空”拆分，带集号、地点、出场人物、本场剧情和动作；保证每集有足够场次承接分镜 |
+| **分镜** | 每镜带集号、场次、地点、出场角色、动作、景别、运镜、画幅、时长、台词与提示词；逐字注入角色和地点锚点，模型不得重复改写外貌 |
 
 还有一个变体 Prompt 用于「换一个」和「+ 添加角色」——只生成一个角色，并把现有阵容传给模型要求它互补。
 
@@ -435,9 +485,13 @@ DEEPSEEK_MODEL="<你的推理接入点 ID>"
 chengju/
 ├── app/
 │   ├── layout.tsx                  # 根布局、字体、元信息、PWA 声明
-│   ├── manifest.ts                 # PWA Manifest
-│   ├── globals.css                 # Tailwind 入口、Signal Desk 双舱主题
+│   ├── manifest.ts                  # PWA Manifest
+│   ├── globals.css                 # Tailwind 入口、Signal Desk 主题与响应式导航
 │   ├── page.tsx                    # 工作台状态编排：六步、项目、任务、恢复、判断层
+│   ├── docs/page.tsx               # 使用教程：快速开始、六步、视频、时间线、导出
+│   ├── skills/page.tsx             # 创作技能库
+│   ├── login/page.tsx              # 邮箱 / 手机号登录
+│   ├── localize/[projectId]/       # 短剧出海本地化工作区
 │   ├── share/[token]/page.tsx      # 无需登录的只读项目审阅页
 │   └── api/
 │       ├── auth/                   # 验证码登录、refresh、设备会话、logout
@@ -452,7 +506,13 @@ chengju/
 │       ├── impact/                 # 上游改动影响范围
 │       ├── refs/                   # 本地参考图台账，只收引用与指纹
 │       ├── generations/            # 关键帧任务、历史资产、回选
-│       ├── generated-assets/       # 私有生成图片响应
+│       ├── generated-assets/       # 私有图片 / 视频 / 音频响应
+│       ├── video/generations/      # 镜头视频任务、批量提交与轮询
+│       ├── video/renders/          # 时间线渲染、MP4/SRT/manifest 下载
+│       ├── audio/tts/              # 对白 TTS 与批量 TTS
+│       ├── audio/bgm/              # 项目配乐轨与文件
+│       ├── audio/voice-profiles/   # 角色系统音色绑定
+│       ├── timelines/              # 按集时间线草稿、版本与素材顺序
 │       ├── push/subscription/      # Web Push 订阅
 │       ├── agent/                  # AI 场记的一次模型往返
 │       ├── assistant/              # 单镜助手
@@ -465,6 +525,8 @@ chengju/
 │       ├── quota/                  # 额度查询
 │       └── health/                 # 健康检查
 ├── components/
+│   ├── SideNav.tsx                 # 大屏完整目录 / 中等桌面图标轨
+│   ├── DocsGuide.tsx               # 工作型教程与真实界面标注
 │   ├── SignalOverview.tsx          # 项目状态总览
 │   ├── ProjectCanvas.tsx           # 项目画布与搜索/筛选
 │   ├── IdeaPanel.tsx               # 想法输入与生成入口
@@ -475,6 +537,8 @@ chengju/
 │   ├── EpisodeList.tsx             # 分集、A/B 与续写
 │   ├── SceneList.tsx               # 场次与地点
 │   ├── ShotList.tsx / ShotCard.tsx # 分镜卡片、台词、景别、运镜、参考图
+│   ├── ShotVideoPanel.tsx          # 镜头视频、候选采用与批量任务
+│   ├── EpisodeTimelinePanel.tsx    # 时间线、TTS、BGM、SRT 与成片渲染
 │   ├── KeyframePanel.tsx           # 通义关键帧、历史回选、任务状态
 │   ├── GenerationTaskPanel.tsx     # 任务中心、单条/批量重试
 │   ├── VisualAnchorPanel.tsx       # 定妆与批量出图工具箱
@@ -494,6 +558,9 @@ chengju/
 │   ├── agent/                      # ReAct 循环、工具 schema、消息协议
 │   ├── assets/                     # 资源、锚点、血缘、本地图库、审阅分享、SQLite 读写
 │   ├── generation/                 # 通义关键帧、任务、文件、检查点、导出
+│   ├── video/                      # MiniMax 视频任务、下载、重试与渲染
+│   ├── audio/                      # TTS、系统音色与 BGM
+│   ├── timeline/                   # 按集时间线草稿、版本与 FFmpeg 渲染计划
 │   ├── push/                       # 订阅、通知内容、发送与失效清理
 │   ├── deepseek.ts                 # JSON / 流式 / 工具调用 / 超时 / 重试
 │   ├── partial-json.ts             # 从半截 JSON 中提取已闭合元素
@@ -506,7 +573,7 @@ chengju/
 ├── specs/                          # 能力规格：认证、检查点、任务恢复、PWA、推送等
 ├── tests/                          # 全量 node:test 回归与协议测试
 ├── public/                         # sw.js、offline.html、图标等静态资源
-├── middleware.ts                   # 匿名会话 Cookie 注入
+├── proxy.ts                        # 匿名会话 Cookie 注入（Next.js 16 代理层）
 ├── deploy/
 │   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
 │   └── cicd-deploy.sh              # 服务器端部署脚本：停服 → 构建 → 启动
@@ -568,7 +635,6 @@ chengju/
 | DELETE | `/api/auth/sessions` | `{ sessionId }` | 撤销指定设备会话 |
 | POST | `/api/ideas` | `{ idea, genre, count? }` | 想法联想与题材推荐 |
 
-登录界面使用独立页面 `/login?next=...`，不从工作台弹出覆盖内容的 modal。`next` 只接受站内路径，登录成功后返回原来的步骤。
 | POST | `/api/characters` | `{ idea, mode?, existing? }` | `{ characters: Character[] }` |
 | POST | `/api/acts` | `{ idea, characters }` | `{ acts: Act[] }` |
 | POST | `/api/episodes` | `{ idea, characters, acts, count, start?, resume? }` | **SSE 事件流**，支持分批与断点续跑 |
@@ -591,6 +657,16 @@ chengju/
 | POST | `/api/generations` | `{ projectId, targetType, targetId, prompt, aspect }` | `{ task, asset, referenceCount }`；服务端自动选择项目已采用关键帧，不接受浏览器密钥或模型配置 |
 | PATCH | `/api/generations` | `{ projectId, assetId }` | `{ asset }`；在历史关键帧里回选一版 |
 | GET | `/api/generated-assets/:id` | — | 私有图片响应；校验项目归属后返回 PNG/JPEG/WebP |
+| GET | `/api/video/generations` | `?projectId=&targetId=` | 视频任务、候选资产与批次；读取前会收敛供应商状态 |
+| POST | `/api/video/generations` | `{ projectId, targetId, prompt, model?, resolution?, duration?, sourceAssetId?, maxBudgetMicros }` | 提交首帧驱动或文生视频任务，返回任务与批次；付费前校验预算 |
+| PATCH | `/api/video/generations` | `{ projectId, action, assetId? / taskId? }` | 采用候选、取消任务或重试失败任务 |
+| GET / POST | `/api/timelines/[episode]` | `GET ?projectId=`；`POST { projectId }` | 读取时间线草稿与历史版本，或按集初始化时间线 |
+| PUT | `/api/timelines/[episode]/draft` | `{ projectId, expectedRevision, payload }` | 保存按集时间线草稿；revision 冲突返回 409 |
+| GET / POST | `/api/audio/tts` | `GET ?projectId=`；`POST { projectId, shotId, maxBudgetMicros }` | 读取对白音频任务，或为指定镜头生成 TTS |
+| POST | `/api/audio/tts/batch` | `{ projectId, episode, maxBudgetMicros }` | 按集批量生成有台词镜头的对白音频 |
+| GET / POST | `/api/audio/voice-profiles` | `{ projectId, characterId, voiceId }` | 读取或绑定角色系统音色；不支持声音克隆 |
+| POST | `/api/video/renders` | `{ projectId, episode, timelineVersionId }` | 固化时间线版本并提交 MP4/SRT/manifest 渲染 |
+| GET | `/api/video/renders/[id]` | — | 渲染状态；完成后可分别下载 MP4、SRT 和 manifest |
 | GET | `/api/push/subscription` | — | 返回 VAPID 公钥与当前设备订阅状态 |
 | POST | `/api/push/subscription` | `{ subscription }` | 保存或幂等更新当前设备订阅 |
 | DELETE | `/api/push/subscription` | `{ endpoint }` | 关闭当前设备通知 |
@@ -600,6 +676,8 @@ chengju/
 | GET | `/api/share/[token]` | — | 无需登录读取故事 + 六步文本快照；不返回本地图库、生成文件或 owner |
 | GET | `/api/quota` | — | 当前身份额度、全站额度与完整项目成本 |
 | GET | `/api/health` | — | 服务健康检查 |
+
+登录界面使用独立页面 `/login?next=...`，不从工作台弹出覆盖内容的 modal。`next` 只接受站内路径，登录成功后返回原来的步骤。
 
 项目条可生成 `/share/:token` 只读审阅链接。token 只保存哈希、7 天有效、重新生成会撤销旧链接；审阅页只开放故事和六步文本产物，不提供编辑或私有资产。
 
@@ -655,7 +733,7 @@ interface Episode {
 
 不登录也能完整使用，但匿名数据需要绑定到一个浏览器身份：
 
-- `middleware.ts` 为首次访问设置高熵 `chengju_sid` Cookie；本地开发使用稳定会话，避免重启后项目丢失。
+- `proxy.ts` 为首次访问设置高熵 `chengju_sid` Cookie；本地开发使用稳定会话，避免重启后项目丢失。
 - Web 默认使用邮箱验证码登录；验证码只保存哈希，5 分钟有效，并有发送冷却和小时上限。
 - 邮箱登录不依赖短信供应商。生产环境通过 Resend 发信，发件域名必须完成 SPF、DKIM 和 DMARC 配置；未配置或发送失败时不会返回开发验证码。
 - 验证码发送另有持久化风控：只信任 Nginx 写入的 `X-Real-IP`，同一 IP 每 10 分钟最多 5 次、每 24 小时最多 20 次，全站每 24 小时最多 200 次；窗口计数写入 SQLite，服务重启不清零。
@@ -781,6 +859,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 关键帧任务控制 | ✅ 已完成 | 支持停止等待、取消状态和失败重试；取消不会写入关键帧资产 |
 | 项目生成任务中心 | ✅ 已完成 | 汇总等待、运行、成功、失败与取消任务；支持目标去重、单条重试和确认后串行批量重试 |
 | 分镜制作工作台 | ✅ 已完成 | 集场镜树、镜头卡流、右侧检查器；桌面与手机共用同一镜头数据 |
+| 实时编排画布 | ✅ 已完成 | 在制作地图、六步流程之外新增通用编排视图；支持系统/人工节点、拖动、连线、自动保存、revision 冲突保护和同浏览器标签页实时同步；不复制六步正文，也不宣称跨设备协作 |
 | 镜头生产质检与批量返修 | ✅ 已完成 | 镜头卡直接标出缺锚点、旧参考、缺图与参数问题；可筛选问题镜头、确定性修复 Prompt 并进入批量返修 |
 | 平台导出适配层 | ✅ 已完成 | 通用、即梦、可灵、剪映和结构化 JSON 五种目标；各自提供 Profile、操作说明、纯提示词粘贴文件与差异预检；剪映输出镜头顺序、台词字幕表和稳定 manifest，不伪造私有 `.draft` 工程，不接平台私有 API |
 | 生成任务超时恢复 | ✅ 已完成 | 刷新任务列表时把超过安全时限的 queued/running 任务转为 failed；活跃任务和终态任务不误处理 |
@@ -831,7 +910,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 只读项目审阅链接 | 🟡 | 本地功能与测试已完成；仍需提交、部署，并验证匿名访问、7 天过期、重新生成撤销、私有资产不泄露 |
 | 本地目录系统授权 | 🟡 | 扫描、缩略图、中文名挂图和刷新恢复已自动化验证；仍需在真实 Chrome/Edge 的系统目录授权弹窗中完成人工验收 |
 | 多实例与任务队列 | 📋 | 当前 SQLite、额度和检查点按单进程设计；扩容前需要 Postgres、持久队列、Redis 原子限流、任务幂等和多实例恢复 |
-| 运维与可观测性 | 🟡 | 已有 SQLite `busy_timeout`、一致性数据库快照、生成图片备份、SHA-256 manifest、非覆盖恢复 CLI 和部署前完整备份；系统 cron、异地备份、容量监控、服务告警、崩溃监控和正式恢复演练仍待配置 |
+| 运维与可观测性 | 🟡 | 已有 SQLite `busy_timeout`、一致性数据库快照、生成媒体备份、SHA-256 manifest、非覆盖恢复 CLI 和部署前完整备份；系统 cron、异地备份、容量监控、服务告警、崩溃监控和正式恢复演练仍待配置 |
 | 内容安全与合规 | 🟡 | 已有下载响应 AI 标识、导出包来源清单、可见 AI 声明、本地内容风险预检、隐私/条款/内容规则与举报入口；正式内容审核、人工处置 SLA、版权授权记录与法律文本终审仍待完成 |
 | 团队协作 | 🟡 | 个人实体批注、多 Agent 会话、版本分支和可导出的逐镜生产台账已完成；项目成员邀请、审批分配、角色权限和团队操作记录仍待开发 |
 | 订阅与支付 | 📋 | 套餐、订单、计费、额度充值、退款和发票能力尚未开发 |
@@ -858,7 +937,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 
 > 商标不随许可证授予。「成剧」「chengju」是项目名，改完请换名字。
 
-### 自建（三种方式，按省事程度排）
+### 自建（两种方式，按省事程度排）
 
 自建意味着你用自己的 API Key，**不受托管版额度限制**。
 
@@ -888,21 +967,7 @@ npm run build
 npm start          # 默认 3000 端口
 ```
 
-#### 方式 B：Docker
-
-```bash
-docker build -t chengju .
-docker run -d --name chengju \
-  -p 3000:3000 \
-  -e DEEPSEEK_API_KEY=sk-xxx \
-  -v chengju-data:/app/data \
-  chengju
-```
-
-> `-v` 那个挂载别省：SQLite 库（项目 / 快照 / 血缘 / 额度）就放在 `/app/data`，
-> 不挂载的话容器一删数据就没了。
-
-#### 方式 C：PM2 + Nginx（生产）
+#### 方式 B：PM2 + Nginx（生产）
 
 仓库里带了现成的配置：
 
@@ -933,6 +998,12 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `ALIYUN_DASHSCOPE_API_KEY` | ✅ | — | 通义万相服务端密钥；浏览器不接触 |
 | `ALIYUN_IMAGE_MODEL` | | `wanx2.1-t2i-turbo` | 通义万相模型名 |
 | `ALIYUN_IMAGE_EDIT_MODEL` | | `qwen-image-2.0-pro` | 带项目关键帧参考时使用的多图编辑模型 |
+| `VIDEO_GENERATION_ENABLED` / `MINIMAX_API_KEY` | 视频开启时必填 | 关闭 | 开启镜头视频时必须提供服务端 MiniMax Key |
+| `MINIMAX_VIDEO_MODEL` / `MINIMAX_VIDEO_RESOLUTION` | | `MiniMax-H3-Lite` / `768P` | 平台默认视频模型与分辨率 |
+| `TTS_ENABLED` / `MINIMAX_TTS_API_KEY` | TTS 开启时必填 | 关闭 | 开启在线对白 TTS 时必须提供密钥与真实计价 |
+| `MINIMAX_TTS_MODEL` | | `speech-02-hd` | 系统音色 TTS 模型 |
+| `MINIMAX_TTS_PRICE_MICROS_PER_1K_CHARS` | TTS 开启时必填 | — | 每千字符采购价，单位微元 |
+| `FFMPEG_PATH` / `FFPROBE_PATH` | | 内置二进制 | 可选覆盖为系统媒体工具路径 |
 | `AUTH_SECRET` | 登录功能必填 | — | 生产环境必须设置强随机值；验证码与散列密钥分离保存 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只放服务端 |
 | `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `成剧 VeyaFrame <login@chenju.work>` |
@@ -944,7 +1015,7 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `API_*_GLOBAL_DAILY_LIMIT` | | 见 `.env.example` | 各调用组的全站 24 小时预算；超限返回 429 和 `Retry-After` |
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 只在 localhost 配合开发验证码；生产域名即使误开也不会生效 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
-| `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 云端关键帧文件目录；仅用户主动生成后写入 |
+| `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 图片、视频、TTS 与成片文件目录；仅用户主动生成后写入 |
 | `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的额度（1 个完整项目 = 13，默认够跑 5 个项目） |
 | `CHENGJU_DAILY_UNITS_GLOBAL` | | `3900` | 全站每天熔断阈值（约 300 个项目/天） |
 | `CHENGJU_TZ` | | `Asia/Shanghai` | 额度按哪个时区切日（服务器在 UTC 时尤其要留意） |
@@ -1027,7 +1098,7 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
 
 ### 数据备份与恢复
 
-生产备份会先通过 SQLite `VACUUM INTO` 生成一致性数据库快照，再复制 `generated/` 图片，并写入包含 SHA-256 的 `manifest.json`：
+生产备份会先通过 SQLite `VACUUM INTO` 生成一致性数据库快照，再复制 `generated/` 下的图片、视频、音频与成片，并写入包含 SHA-256 的 `manifest.json`：
 
 ```bash
 cd /opt/chengju
@@ -1070,24 +1141,6 @@ CI 是主路径。要手动触发就在 GitHub Actions 页面点 **Run workflow*
 
 > Vercel 的可用时长取决于当前套餐和运行时。短集数可以试跑；60 集分 6 批、整条流最长 600 秒，
 > 更适合部署在支持长连接和后台任务的 Node 环境。`*.vercel.app` 在国内访问也经常被污染或很慢。
-
-### Docker
-
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-```bash
-docker build -t chengju .
-docker run -p 3000:3000 -e DEEPSEEK_API_KEY=sk-xxx chengju
-```
 
 ---
 

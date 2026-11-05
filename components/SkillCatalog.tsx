@@ -406,9 +406,10 @@ export default function SkillCatalog() {
       <header className="topbar">
         <div className="brand"><b>成剧</b><span>VEYAFRAME</span><span className="ai">AI</span></div>
         <nav className="top-nav" aria-label="主导航">
-          <a href={skillsHref(project?.id ?? null, returnStep)} className="active" aria-current="page">Skill</a>
+          <a href={skillsHref(project?.id ?? null, returnStep)} className="active" aria-current="page">创作技能</a>
           <a href={workspaceHref(project?.id ?? null, returnStep)}>项目</a>
           <a href={canvasHref(project?.id ?? null, returnStep)}>画布</a>
+          <a href="/docs">教程</a>
         </nav>
         <span className="top-spacer" />
         <div className="top-meta">
@@ -430,13 +431,13 @@ export default function SkillCatalog() {
 
       <main className="page">
         <section className="hero" aria-labelledby="pageTitle">
-          <p className="hero-kicker">CREATIVE WORKFLOWS</p>
+          <p className="hero-kicker">CREATIVE METHODS / CONTROLLED RUNS</p>
           <h1 id="pageTitle">
-            <span>Skill</span>
+            <span>创作技能</span>
             <span className="title-separator" aria-hidden="true">·</span>
-            你的短剧创作入口
+            从想法、原文到成片
           </h1>
-          <p>从一句想法、已有原文或当前项目开始。发送前先看清会读取什么、产出什么。</p>
+          <p>从一句想法、已有小说或当前项目开始。每条创作技能先展示会读取什么、产出什么；写入和付费前仍由你确认。</p>
 
           <form
             className="composer"
@@ -507,11 +508,11 @@ export default function SkillCatalog() {
               <button
                 className="tool-button"
                 type="button"
-                aria-label="选择 Skill"
+                aria-label="选择创作技能"
                 onClick={() => document.getElementById('skill-catalog')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2.8 2 4.3 4.7.5-3.5 3.2 1 4.6-4.2-2.3-4.2 2.3 1-4.6-3.5-3.2 4.7-.5 2-4.3Z" /></svg>
-                <span>选择 Skill</span>
+                <span>选择创作技能</span>
               </button>
               {selectedSkill && (
                 <span className="selected-skill visible">
@@ -593,11 +594,11 @@ export default function SkillCatalog() {
               )}
             </div>
             <div className={readiness && !readiness.ready ? 'needs-input' : ''}>
-              <span>Skill 前置</span>
+              <span>技能前置</span>
               <b>{selectedSkill ? selectedSkill.title : '场记自动匹配'}</b>
               <small>
                 {!selectedSkill
-                  ? '发送后先判断适合的 Skill'
+                  ? '发送后先判断适合的创作技能'
                   : !resourcesReady
                     ? '正在核对项目状态…'
                     : readiness?.ready
@@ -620,7 +621,7 @@ export default function SkillCatalog() {
             <div className="skill-recommendations-grid">
               {!recommendationsReady ? (
                 <div className="skill-recommendations-loading" role="status">
-                  正在读取当前项目事实，再匹配 Skill…
+              正在读取当前项目事实，再匹配创作技能…
                 </div>
               ) : recommendations.map((recommendation, index) => (
                 <button
@@ -669,7 +670,7 @@ export default function SkillCatalog() {
 
         <section id="skill-catalog" className="catalog" aria-labelledby="catalogTitle">
           <div className="catalog-head">
-            <h2 id="catalogTitle" className="catalog-title">Skill</h2>
+            <h2 id="catalogTitle" className="catalog-title">创作技能库</h2>
             <div className="library-tabs" role="tablist" aria-label="技能集合">
               {([
                 ['recommend', '推荐'],
@@ -689,12 +690,12 @@ export default function SkillCatalog() {
               ))}
             </div>
             <label className="catalog-search">
-              <span className="sr-only">搜索 Skill</span>
+              <span className="sr-only">搜索创作技能</span>
               <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="4.5" /><path d="m12 12 4 4" /></svg>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="搜索 Skill" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="搜索创作技能" />
             </label>
           </div>
-          <div className="catalog-filters" aria-label="Skill 分类">
+          <div className="catalog-filters" aria-label="创作技能分类">
             {CATEGORIES.map((item) => (
               <button
                 key={item}
@@ -728,7 +729,7 @@ export default function SkillCatalog() {
                   <p>{skill.summary}</p>
                   <span className="skill-meta">
                     <span className="official-mark">V</span>
-                    <b>官方 Skill</b><i />
+                    <b>官方技能</b><i />
                     <span>{skill.meta}</span>
                   </span>
                 </span>
@@ -736,13 +737,13 @@ export default function SkillCatalog() {
               </button>
             ))}
           </div>
-          {skills.length === 0 && <div className="catalog-empty" style={{ display: 'block' }}>当前集合还没有内容，或没有匹配的 Skill。</div>}
+          {skills.length === 0 && <div className="catalog-empty" style={{ display: 'block' }}>当前集合还没有内容，或没有匹配的创作技能。</div>}
           <footer className="library-footer">
             <span>
               <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 3.5 6v4c0 4 2.7 6.2 6.5 7 3.8-.8 6.5-3 6.5-7V6L10 3Z" /><path d="m7.5 10 1.7 1.7 3.5-3.7" /></svg>
-              官方 Skill 经过版本与权限审核，正文只在场记运行时按需加载
+              官方创作技能经过版本与权限审核，正文只在场记运行时按需加载
             </span>
-            <span>Skill 入口 · 写入前需要确认</span>
+            <span>创作技能入口 · 写入前需要确认</span>
           </footer>
           <nav className="legal-links" aria-label="内测合规说明">
             <a href="/legal">隐私、条款与内容规则</a>

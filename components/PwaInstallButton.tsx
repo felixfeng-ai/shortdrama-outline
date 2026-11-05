@@ -7,14 +7,35 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
 }
 
+async function syncServiceWorker() {
+  if (!('serviceWorker' in navigator)) return
+  if (process.env.NODE_ENV === 'production') {
+    const registration = await navigator.serviceWorker.register('/sw.js')
+    await registration.update().catch(() => {})
+    return
+  }
+
+  /*
+   * 开发服务器会不断生成新的 HMR chunk。旧 Service Worker 的 cache-first
+   * 会把已经删除的模块继续返回给浏览器，表现为 “module factory is not available”。
+   * 开发环境主动注销 SW 并清掉站点 shell 缓存，避免本地调试被旧 chunk 污染。
+   */
+  const registrations = await navigator.serviceWorker.getRegistrations()
+  await Promise.all(registrations.map((registration) => registration.unregister()))
+  if ('caches' in window) {
+    const keys = await caches.keys()
+    await Promise.all(
+      keys.filter((key) => key.startsWith('chengju-shell-')).map((key) => caches.delete(key)),
+    )
+  }
+}
+
 export default function PwaInstallButton() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [installTarget, setInstallTarget] = useState<'桌面' | '主屏'>('桌面')
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      void navigator.serviceWorker.register('/sw.js').catch(() => {})
-    }
+    void syncServiceWorker().catch(() => {})
 
     const mobileQuery = window.matchMedia('(max-width: 820px), (pointer: coarse)')
     const syncInstallTarget = () => setInstallTarget(mobileQuery.matches ? '主屏' : '桌面')

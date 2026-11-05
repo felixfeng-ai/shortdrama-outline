@@ -38,3 +38,14 @@ test("P3/P4 Service Worker 提供离线页、缓存静态资源且绕过 API 与
   assert.ok(offline.includes("需要联网"), "离线页没有说明")
   assert.equal(/https?:\/\//.test(offline.replace(/https:\/\/chenju\.work/g, "")), false, "离线页含外部依赖")
 })
+
+test("P5 开发环境清理旧 Service Worker，Next 静态块使用网络优先", () => {
+  const source = fs.readFileSync("components/PwaInstallButton.tsx", "utf8")
+  const sw = fs.readFileSync("public/sw.js", "utf8")
+
+  assert.match(source, /process\.env\.NODE_ENV === 'production'/)
+  assert.match(source, /getRegistrations\(\)/)
+  assert.match(source, /\.unregister\(\)/)
+  assert.match(sw, /chengju-shell-v3/)
+  assert.match(sw, /url\.pathname\.startsWith\('\/_next\/static\/'\)[\s\S]{0,500}event\.respondWith\([\s\S]{0,300}fetch\(request\)/)
+})

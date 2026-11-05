@@ -872,6 +872,23 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON agent_action_runs(project_id, after_snapshot_id);
     `,
   },
+  {
+    version: 20,
+    name: "canvas-graphs",
+    sql: `
+      -- 画布编排只保存节点关系与人工判断，不复制六步正文；
+      -- revision 用于阻止多个标签页或设备互相静默覆盖。
+      CREATE TABLE IF NOT EXISTS canvas_graphs (
+        project_id  TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        revision    INTEGER NOT NULL,
+        graph_json  TEXT NOT NULL,
+        updated_by  TEXT NOT NULL,
+        updated_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_canvas_graphs_updated
+        ON canvas_graphs(updated_at);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

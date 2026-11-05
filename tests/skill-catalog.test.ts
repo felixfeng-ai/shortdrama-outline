@@ -50,7 +50,7 @@ test("SKILL4 正式页面复用真实 Agent，而不是静态假对话", () => {
   assert.ok(app.includes("skillsHref(projectId, view)"))
   assert.ok(catalog.includes("requestedProjectId"))
   assert.ok(catalog.includes("new URLSearchParams(window.location.search)"))
-  assert.ok(catalog.includes("<span>Skill</span>"))
+  assert.ok(catalog.includes("<span>创作技能</span>"))
   assert.ok(catalog.includes("title-separator"))
   assert.ok(catalog.includes("localMaterialInput"))
 })

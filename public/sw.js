@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chengju-shell-v2'
+const CACHE_NAME = 'chengju-shell-v3'
 const SHELL = ['/offline.html', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', (event) => {
@@ -41,8 +41,27 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  if (url.pathname.startsWith('/_next/static/')) {
+    /*
+     * 新 chunk 必须优先联网。旧版本曾用 cache-first，部署或 HMR 后会把
+     * 已不存在的模块继续返回给浏览器；离线时才退回缓存。
+     */
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {})
+          return response
+        })
+        .catch(async () => {
+          const cached = await caches.match(request)
+          return cached || Response.error()
+        }),
+    )
+    return
+  }
+
   if (
-    url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/fonts/') ||
     url.pathname === '/icon.svg' ||
     url.pathname === '/manifest.webmanifest'

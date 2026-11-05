@@ -83,7 +83,8 @@ test("SDA7 舒适版必须拉开底色、正文和辅助色层级", () => {
 })
 
 test("SDA8 桌面左轨和 AI 舱必须采用舒适版信息节奏", () => {
-  assert.ok(css.includes("width: 60px;"), "左轨没有为图标和短文案留出空间")
+  assert.ok(css.includes(".signal-desk .h-main > .signal-rail"), "左轨缺少桌面完整导航样式")
+  assert.ok(css.includes("width: 224px;"), "左轨没有为完整菜单文案留出空间")
   assert.ok(
     css.includes(".signal-desk .signal-rail .navpanel button > span:last-child { display: block; }"),
     "左轨仍只显示图标，用户无法辨认步骤",
@@ -96,7 +97,7 @@ test("SDA8 桌面左轨和 AI 舱必须采用舒适版信息节奏", () => {
 })
 
 test("SDA9 舒适版窄屏保留灵感助手，并让六步使用短标签", () => {
-  assert.ok(sideNavSrc.includes("{step.short}"), "桌面左轨没有使用便于扫读的短标签")
+  assert.ok(sideNavSrc.includes("{step.nav}"), "桌面左轨没有使用完整步骤名称")
   assert.ok(stepPillsSrc.includes("pill-short"), "手机顶栏没有独立的短标签")
   assert.ok(
     !css.includes(".signal-desk .idea-tools {\n    display: none;"),
@@ -152,8 +153,8 @@ test("SDA15 顶栏额度、画布与完成状态必须作为一组靠最右", ()
     "桌面顶栏右侧操作组没有推到最右侧",
   )
   assert.ok(
-    css.includes(".signal-desk .h-canvas { margin-left: auto; }"),
-    "中等宽度和手机端没有右侧操作组的自动推手",
+    css.includes(".signal-desk .h-top .h-nav-utility"),
+    "大屏顶栏没有把工作区快捷键移入侧栏",
   )
 })
 

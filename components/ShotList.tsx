@@ -76,6 +76,7 @@ export default function ShotList({
   const [qcFilter, setQcFilter] = useState<'all' | 'issues'>('all')
   const [qcNotice, setQcNotice] = useState<string | null>(null)
   const [treeOpen, setTreeOpen] = useState(true)
+  const [workspaceMode, setWorkspaceMode] = useState<'storyboard' | 'video' | 'timeline'>('storyboard')
   const [generationAssets, setGenerationAssets] = useState<GeneratedAsset[]>([])
   const [videoAssets, setVideoAssets] = useState<GeneratedAsset[]>([])
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([])
@@ -409,6 +410,38 @@ export default function ShotList({
           </p>
         </div>
 
+        <nav className="shot-workspace-tabs" aria-label="分镜工作区">
+          <button
+            type="button"
+            aria-pressed={workspaceMode === 'storyboard'}
+            onClick={() => setWorkspaceMode('storyboard')}
+          >
+            <span>01</span>
+            <b>分镜</b>
+            <small>质检、首帧与镜头卡</small>
+          </button>
+          <button
+            type="button"
+            aria-pressed={workspaceMode === 'video'}
+            onClick={() => setWorkspaceMode('video')}
+          >
+            <span>02</span>
+            <b>镜头视频</b>
+            <small>{videoAssets.length} 条候选</small>
+          </button>
+          <button
+            type="button"
+            aria-pressed={workspaceMode === 'timeline'}
+            onClick={() => setWorkspaceMode('timeline')}
+          >
+            <span>03</span>
+            <b>时间线成片</b>
+            <small>按集渲染与下载</small>
+          </button>
+        </nav>
+
+        {workspaceMode === 'storyboard' && (
+          <>
         <section className={`shot-qc-bar ${qcCounts.issueShots > 0 ? 'has-issues' : 'is-clear'}`} aria-label="镜头质检汇总">
           <div className="shot-qc-head">
             <div className="shot-qc-filter" role="group" aria-label="镜头质检筛选">
@@ -488,8 +521,11 @@ export default function ShotList({
           onEnsureProject={onEnsureProject}
           look={look}
         />
+          </>
+        )}
 
-        <BatchVideoPanel
+        {workspaceMode === 'video' && (
+          <BatchVideoPanel
           projectId={projectId}
           onEnsureProject={onEnsureProject}
           shots={visibleShots}
@@ -499,8 +535,11 @@ export default function ShotList({
               ? '批量生成全剧镜头视频'
               : `批量生成${selectedEpisodeLabel}镜头视频`
           }
-        />
+          />
+        )}
 
+        {workspaceMode === 'timeline' && (
+          <>
         <EpisodeTimelinePanel
           projectId={projectId}
           onEnsureProject={onEnsureProject}
@@ -524,7 +563,10 @@ export default function ShotList({
           }))}
           episode={episodeFilter}
         />
+          </>
+        )}
 
+        {workspaceMode === 'storyboard' && (
         <div className="shot-board-flow">
           {groups.map((group) => (
             <section key={group.episode} className="shot-board-episode">
@@ -569,6 +611,7 @@ export default function ShotList({
             </div>
           )}
         </div>
+        )}
       </section>
 
       <span className="sr-only" aria-live="polite">

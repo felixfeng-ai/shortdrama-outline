@@ -2,9 +2,8 @@
 
 // 左侧六步导航（对齐 concept-reference.png 的左栏）。
 //
-// 造形规则：图标 + 标题 + 一句说明；当前步是「浅玫底 + 左侧朱砂竖条」，
-// 已完成的步在图标右上角点一颗朱砂勾，未解锁的整条压暗。
-// 不再用圆形数字徽标——参考图的左栏没有数字，靠图标与状态色区分。
+// 造型规则：大屏是完整文字目录，小屏收成图标轨。
+// 当前步只用整行浅填充和图标强调，不使用亮色大底或左侧竖条。
 import type { StepKey } from '@/lib/types'
 import { STEPS } from '@/lib/types'
 
@@ -75,11 +74,11 @@ export default function SideNav({ current, completed, onJump, canJump }: Props) 
 
           <span className="min-w-0 flex-1">
             <span
-              className={`block truncate text-[15.5px] ${
+              className={`block truncate text-[13.5px] ${
                 isCurrent ? 'font-semibold text-accent-700' : isDone ? 'text-done-700' : 'text-ink-700'
               }`}
             >
-              {step.short}
+              {step.nav}
             </span>
           </span>
         </button>
@@ -89,9 +88,12 @@ export default function SideNav({ current, completed, onJump, canJump }: Props) 
 
   return (
     <nav aria-label="创作流程" className="navpanel">
-      {/* 参考图的左栏就是一串图标 + 名称，不分段、不写说明 */}
       <ul className="space-y-1.5">
-        {[...story, ...asset].map(renderItem)}
+        {story.map(renderItem)}
+      </ul>
+      <span className="nav-section-divider" aria-hidden="true" />
+      <ul className="space-y-1.5">
+        {asset.map(renderItem)}
       </ul>
     </nav>
   )
