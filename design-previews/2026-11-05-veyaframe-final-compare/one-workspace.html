@@ -1,0 +1,4001 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>方向一 · 单一创作工作台</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./compare.css">
+  <style>
+    body {
+      background: var(--bg);
+    }
+
+    .workspace {
+      display: grid;
+      min-height: 100dvh;
+      grid-template-columns: 232px minmax(0, 1fr);
+    }
+
+    .side {
+      position: sticky;
+      top: 0;
+      display: flex;
+      height: 100dvh;
+      min-width: 0;
+      flex-direction: column;
+      padding: 18px 14px 14px;
+      background: var(--side);
+    }
+
+    .side::after {
+      position: absolute;
+      top: 16px;
+      right: 0;
+      bottom: 16px;
+      width: 1px;
+      background: rgba(255, 255, 255, .045);
+      content: "";
+    }
+
+    .workspace-switcher {
+      display: flex;
+      min-height: 44px;
+      align-items: center;
+      gap: 9px;
+      margin: 17px 0 18px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .workspace-switcher span {
+      display: grid;
+      min-width: 0;
+      flex: 1;
+      gap: 1px;
+    }
+
+    .workspace-switcher b {
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 12.5px;
+      font-weight: 580;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .workspace-switcher small {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .workspace-switcher svg {
+      width: 14px;
+      height: 14px;
+      color: var(--faint);
+    }
+
+    .side-scroll {
+      min-height: 0;
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .nav-group {
+      display: grid;
+      gap: 3px;
+      padding: 11px 0 16px;
+    }
+
+    .nav-group + .nav-group {
+      border-top: 1px solid rgba(255, 255, 255, .045);
+    }
+
+    .nav-label {
+      padding: 0 10px 6px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), color 150ms var(--ease);
+    }
+
+    .nav-item svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 17px;
+      color: var(--faint);
+      stroke-width: 1.45;
+    }
+
+    .nav-item span {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav-item:hover {
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .nav-item.is-active {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    .nav-item.is-active svg {
+      color: var(--ink);
+    }
+
+    .nav-item .count {
+      display: grid;
+      min-width: 20px;
+      height: 20px;
+      place-items: center;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #222628;
+      color: #c8cecd;
+      font-size: 11px;
+    }
+
+    .nav-item .step-state {
+      width: 5px;
+      height: 5px;
+      flex: 0 0 5px;
+      border-radius: 50%;
+      background: #596367;
+    }
+
+    .nav-item.is-done .step-state {
+      background: var(--accent);
+    }
+
+    .nav-item.is-current {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    .nav-item.is-current .step-state {
+      background: var(--primary);
+    }
+
+    .side-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 8px 2px;
+      border-top: 1px solid rgba(255, 255, 255, .05);
+    }
+
+    .side-user .avatar {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--surface-3);
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .side-user span {
+      display: grid;
+      min-width: 0;
+      gap: 1px;
+    }
+
+    .side-user b {
+      font-size: 12.5px;
+      font-weight: 560;
+    }
+
+    .side-user small {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .workspace-main {
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      min-height: 56px;
+      align-items: center;
+      gap: 16px;
+      padding: 0 28px;
+      background: var(--bg);
+    }
+
+    .mobile-brand {
+      display: none;
+      align-items: center;
+      gap: 7px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 640;
+    }
+
+    .mobile-brand svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .crumb {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      align-items: center;
+      gap: 7px;
+      overflow: hidden;
+      color: var(--faint);
+      font-size: 11.5px;
+      white-space: nowrap;
+    }
+
+    .crumb b {
+      overflow: hidden;
+      color: var(--muted);
+      font-weight: 540;
+      text-overflow: ellipsis;
+    }
+
+    .crumb svg {
+      width: 12px;
+      height: 12px;
+      flex: 0 0 12px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .mode-strip {
+      display: flex;
+      justify-content: center;
+      padding: 20px 30px 0;
+    }
+
+    .mode-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 4px;
+      border-radius: 999px;
+      background: var(--surface-2);
+    }
+
+    .mode-switch button {
+      min-height: 34px;
+      padding: 0 15px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--faint);
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), color 150ms var(--ease);
+    }
+
+    .mode-switch button:hover {
+      color: var(--ink);
+    }
+
+    .mode-switch button.is-active {
+      background: var(--primary);
+      color: var(--primary-ink);
+      font-weight: 650;
+    }
+
+    .announcement-shell {
+      width: min(1320px, calc(100% - 60px));
+      margin: 10px auto 0;
+    }
+
+    .announcement-bar {
+      display: flex;
+      min-height: 36px;
+      align-items: center;
+      gap: 9px;
+      padding: 0 9px 0 12px;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+    }
+
+    .announcement-dot {
+      width: 5px;
+      height: 5px;
+      flex: 0 0 5px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .announcement-label {
+      flex: 0 0 auto;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .announcement-copy {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .announcement-copy b {
+      color: var(--ink);
+      font-weight: 560;
+    }
+
+    .announcement-action,
+    .announcement-close {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--faint);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .announcement-action {
+      flex: 0 0 auto;
+      padding: 0 9px;
+      background: var(--surface-2);
+      color: var(--muted);
+    }
+
+    .announcement-close {
+      width: 26px;
+      flex: 0 0 26px;
+      padding: 0;
+    }
+
+    .announcement-action:hover,
+    .announcement-close:hover {
+      background: var(--surface-3);
+      color: var(--ink);
+    }
+
+    .announcement-detail {
+      display: grid;
+      gap: 8px;
+      padding: 13px 14px;
+      background: var(--surface);
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      animation: page-enter 180ms var(--ease);
+    }
+
+    .announcement-detail[hidden] {
+      display: none;
+    }
+
+    .announcement-detail header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .announcement-detail b {
+      font-size: 12.5px;
+      font-weight: 590;
+    }
+
+    .announcement-detail time {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .announcement-detail ul {
+      display: grid;
+      gap: 4px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .announcement-detail li {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .announcement-detail li::before {
+      margin-right: 6px;
+      color: var(--accent);
+      content: "·";
+    }
+
+    .save-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 5px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .save-state i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .workspace-content {
+      width: min(1320px, 100%);
+      margin: 0 auto;
+      padding: 30px 30px 86px;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    .page-head h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 630;
+      line-height: 1.2;
+    }
+
+    .page-head p {
+      margin: 7px 0 0;
+      color: var(--faint);
+      font-size: 12.5px;
+    }
+
+    .page-head-actions {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 16px;
+      padding: 20px;
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .command-copy {
+      min-width: 0;
+    }
+
+    .command-state {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .command h2 {
+      margin: 7px 0 0;
+      font-size: 22px;
+      font-weight: 610;
+      line-height: 1.35;
+    }
+
+    .command p {
+      max-width: 760px;
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .command-actions {
+      display: grid;
+      justify-items: end;
+      gap: 9px;
+    }
+
+    .command-actions .button {
+      min-height: 40px;
+    }
+
+    .chat-home {
+      display: grid;
+      width: min(980px, 100%);
+      gap: 18px;
+      margin: 0 auto 22px;
+      padding-top: 20px;
+    }
+
+    .chat-intro {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .chat-intro > div {
+      min-width: 0;
+    }
+
+    .chat-context {
+      margin: 0 0 7px;
+      color: var(--faint);
+      font-size: 12.5px;
+    }
+
+    .chat-intro h1 {
+      margin: 0;
+      font-size: clamp(28px, 2.6vw, 32px);
+      font-weight: 640;
+      line-height: 1.2;
+    }
+
+    .chat-intro p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.65;
+    }
+
+    .chat-intro-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+
+    .chat-composer {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .chat-composer textarea {
+      width: 100%;
+      min-height: 112px;
+      resize: vertical;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.65;
+      outline: 0;
+    }
+
+    .chat-composer textarea::placeholder {
+      color: #92999b;
+    }
+
+    .composer-foot {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding-top: 11px;
+      border-top: 1px solid rgba(255, 255, 255, .05);
+    }
+
+    .composer-tool {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      gap: 5px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .composer-tool:hover {
+      background: var(--surface-3);
+      color: var(--ink);
+    }
+
+    .composer-tool svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .composer-mode {
+      margin-left: auto;
+      color: var(--faint);
+      font-size: 11.5px;
+      white-space: nowrap;
+    }
+
+    .chat-send {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: var(--primary);
+      color: var(--primary-ink);
+      cursor: pointer;
+    }
+
+    .chat-send svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .chat-prompts {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .chat-prompts button {
+      min-height: 31px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .chat-prompts button:hover {
+      background: var(--surface-3);
+      color: var(--ink);
+    }
+
+    .chat-project-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .chat-project-strip > span {
+      flex: 0 0 auto;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .chat-project-strip b {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 540;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chat-project-strip .button {
+      min-height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .chat-thread {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .chat-message {
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      width: min(760px, 88%);
+      justify-self: start;
+      min-width: 0;
+      padding: 14px;
+      border-radius: var(--radius);
+      background: var(--surface);
+      animation: page-enter 220ms var(--ease);
+    }
+
+    .chat-message.user {
+      width: min(620px, 76%);
+      justify-self: end;
+      background: var(--surface-2);
+    }
+
+    .chat-message header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .chat-message header b {
+      color: var(--muted);
+      font-weight: 560;
+    }
+
+    .chat-message p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.68;
+    }
+
+    .chat-message p strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .chat-message-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .chat-message-actions button {
+      min-height: 29px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--surface-3);
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .chat-step-row {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .chat-step-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chat-step-row button {
+      display: inline-flex;
+      min-height: 28px;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 5px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--faint);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .chat-step-row button i {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .chat-step-row button.is-current {
+      background: var(--surface-3);
+      color: var(--ink);
+    }
+
+    .step-track {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 7px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .05);
+    }
+
+    .step-track button {
+      display: grid;
+      min-height: 46px;
+      grid-template-columns: 15px minmax(0, 1fr);
+      align-items: center;
+      gap: 7px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--faint);
+      font-size: 11.5px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .step-track button:hover {
+      background: var(--surface);
+      color: var(--muted);
+    }
+
+    .step-track button.is-current {
+      background: var(--surface-3);
+      color: var(--ink);
+    }
+
+    .step-track i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #4f585b;
+    }
+
+    .step-track button.is-done i {
+      background: var(--accent);
+    }
+
+    .step-track button.is-current i {
+      background: var(--primary);
+    }
+
+    .step-track span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .current-panel {
+      min-width: 0;
+      padding: 20px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .panel-head p {
+      margin: 4px 0 0;
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .current-preview {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 19px;
+      align-items: stretch;
+    }
+
+    .current-image-wrap {
+      position: relative;
+      min-height: 190px;
+      overflow: hidden;
+      border-radius: var(--radius-sm);
+      background: var(--surface-3);
+    }
+
+    .current-image {
+      width: 100%;
+      height: 100%;
+      min-height: 190px;
+      object-fit: cover;
+      filter: saturate(.72) brightness(.78);
+    }
+
+    .image-badge {
+      position: absolute;
+      right: 9px;
+      bottom: 9px;
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(8, 9, 10, .84);
+      color: #d9e3e2;
+      font-size: 11.5px;
+    }
+
+    .current-copy {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .current-copy h3 {
+      margin: 4px 0 0;
+      font-size: 22px;
+      font-weight: 610;
+      line-height: 1.35;
+    }
+
+    .current-copy p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .current-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 13px;
+    }
+
+    .issue-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      margin-top: auto;
+      padding-top: 16px;
+      width: 100%;
+    }
+
+    .issue-copy {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .issue-copy svg {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 15px;
+      margin-top: 2px;
+    }
+
+    .issue-row .button {
+      min-height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .shot-list {
+      display: grid;
+      margin-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, .05);
+    }
+
+    .shot-row {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 54px;
+      border-bottom: 1px solid rgba(255, 255, 255, .045);
+    }
+
+    .shot-row:last-child {
+      border-bottom: 0;
+    }
+
+    .shot-index {
+      color: var(--faint);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .shot-row b {
+      display: block;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 540;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .shot-row small {
+      display: block;
+      margin-top: 2px;
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .right-rail {
+      display: grid;
+      gap: 12px;
+    }
+
+    .rail-panel {
+      padding: 14px;
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .rail-panel h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .pulse-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .pulse-item {
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+    }
+
+    .pulse-item span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .pulse-item b {
+      display: block;
+      margin-top: 3px;
+      font-size: 19px;
+      font-weight: 520;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pulse-item b em {
+      margin-left: 3px;
+      color: var(--faint);
+      font-size: 11.5px;
+      font-style: normal;
+    }
+
+    .next-action {
+      display: grid;
+      gap: 9px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, .05);
+    }
+
+    .next-action span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .next-action b {
+      font-size: 13px;
+      font-weight: 570;
+      line-height: 1.5;
+    }
+
+    .next-action button {
+      justify-self: start;
+      min-height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .method-list {
+      display: grid;
+      gap: 3px;
+      margin-top: 10px;
+    }
+
+    .method-row {
+      display: flex;
+      min-height: 36px;
+      align-items: center;
+      gap: 9px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .method-row:hover {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    .method-row svg {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+      color: var(--accent);
+    }
+
+    .method-row span {
+      display: grid;
+      min-width: 0;
+      gap: 1px;
+    }
+
+    .method-row b {
+      font-size: 12.5px;
+      font-weight: 560;
+    }
+
+    .method-row small {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .artifacts {
+      margin-top: 24px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 11px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .section-head a,
+    .section-head button {
+      border: 0;
+      background: transparent;
+      color: var(--faint);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .artifact-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .artifact-card {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      padding: 10px;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), transform 150ms var(--ease);
+    }
+
+    .artifact-card:hover {
+      background: var(--surface-2);
+      transform: translateY(-1px);
+    }
+
+    .artifact-card img {
+      width: 82px;
+      height: 66px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      filter: saturate(.72) brightness(.8);
+    }
+
+    .artifact-copy {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+
+    .artifact-copy small {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .artifact-copy b {
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 570;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .artifact-copy span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .page-panel {
+      animation: page-enter 240ms var(--ease);
+    }
+
+    @keyframes page-enter {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .subpage {
+      width: min(1320px, 100%);
+      margin: 0 auto;
+      padding: 30px 30px 86px;
+    }
+
+    .subpage-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 22px;
+      margin-bottom: 20px;
+    }
+
+    .subpage-head h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 630;
+      line-height: 1.2;
+    }
+
+    .subpage-head p {
+      margin: 7px 0 0;
+      color: var(--faint);
+      font-size: 13px;
+    }
+
+    .skills-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .skill-hero {
+      display: grid;
+      max-width: 860px;
+      gap: 9px;
+      margin: 0 auto 20px;
+      text-align: center;
+    }
+
+    .skill-hero h1 {
+      margin: 0;
+      font-size: clamp(28px, 2.8vw, 32px);
+      font-weight: 640;
+      line-height: 1.2;
+    }
+
+    .skill-hero p {
+      max-width: 720px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.7;
+    }
+
+    .skill-start-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .skill-start-tabs button {
+      min-height: 32px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--faint);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .skill-start-tabs button.is-active {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    .skill-composer {
+      display: grid;
+      width: min(960px, 100%);
+      gap: 11px;
+      margin: 0 auto;
+      padding: 16px;
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .skill-composer textarea {
+      width: 100%;
+      min-height: 102px;
+      resize: vertical;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1.65;
+      outline: 0;
+    }
+
+    .skill-composer textarea::placeholder {
+      color: #92999b;
+    }
+
+    .skill-context-strip {
+      display: grid;
+      width: min(960px, 100%);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      margin: 12px auto 18px;
+      overflow: hidden;
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, .05);
+    }
+
+    .skill-context-strip div {
+      display: grid;
+      gap: 4px;
+      padding: 13px 14px;
+      background: var(--surface);
+    }
+
+    .skill-context-strip span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .skill-context-strip b {
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 550;
+      line-height: 1.55;
+    }
+
+    .skill-suggestions {
+      display: flex;
+      width: min(960px, 100%);
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 7px;
+      margin: 0 auto 20px;
+    }
+
+    .skill-suggestions button {
+      min-height: 31px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .skill-library-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .skill-library-head h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 610;
+    }
+
+    .skill-library-head span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .skills-main,
+    .skill-plan {
+      min-width: 0;
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .skills-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 13px;
+      border-bottom: 1px solid rgba(255, 255, 255, .05);
+    }
+
+    .skills-search {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 0 11px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+    }
+
+    .skills-search svg {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 15px;
+      color: var(--faint);
+    }
+
+    .skills-search input {
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 12.5px;
+      outline: 0;
+    }
+
+    .skills-search input::placeholder {
+      color: var(--faint);
+    }
+
+    .skill-tabs {
+      display: flex;
+      gap: 3px;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+    }
+
+    .skill-tab {
+      min-height: 28px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--faint);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .skill-tab.is-active {
+      background: var(--surface-3);
+      color: var(--ink);
+    }
+
+    .skill-category-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 11px 13px;
+      border-bottom: 1px solid rgba(255, 255, 255, .05);
+      scrollbar-width: none;
+    }
+
+    .skill-category-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .skill-category {
+      min-height: 31px;
+      flex: 0 0 auto;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--faint);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .skill-category.is-active {
+      background: var(--surface-3);
+      color: var(--ink);
+    }
+
+    .skill-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 13px;
+    }
+
+    .skill-row {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: 116px minmax(0, 1fr);
+      align-items: stretch;
+      gap: 0;
+      padding: 0;
+      overflow: hidden;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), transform 150ms var(--ease);
+    }
+
+    .skill-row:hover {
+      background: var(--surface-3);
+      transform: translateY(-1px);
+    }
+
+    .skill-row.is-active {
+      background: var(--surface-3);
+    }
+
+    .skill-row.is-active .skill-card-media {
+      box-shadow: inset 0 0 0 1px rgba(141, 200, 220, .62);
+    }
+
+    .skill-card-media {
+      position: relative;
+      min-height: 146px;
+      overflow: hidden;
+      background: var(--surface-3);
+    }
+
+    .skill-card-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: saturate(.74) brightness(.76);
+    }
+
+    .skill-card-media em {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      display: inline-flex;
+      min-height: 23px;
+      align-items: center;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: rgba(8, 9, 10, .86);
+      color: #d9dedd;
+      font-size: 11px;
+      font-style: normal;
+    }
+
+    .skill-copy {
+      display: grid;
+      min-width: 0;
+      gap: 4px;
+      align-content: start;
+      padding: 13px 12px 9px;
+    }
+
+    .skill-copy h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 590;
+    }
+
+    .skill-copy p {
+      max-width: 100%;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+
+    .skill-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 2px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .skill-side {
+      display: flex;
+      grid-column: 1 / -1;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 12px 11px 128px;
+    }
+
+    .skill-side b {
+      color: #9fd5e4;
+      font-size: 11.5px;
+      font-weight: 560;
+    }
+
+    .skill-side small {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .skills-empty {
+      display: grid;
+      min-height: 280px;
+      place-items: center;
+      padding: 30px;
+      color: var(--faint);
+      font-size: 12.5px;
+      text-align: center;
+    }
+
+    .skill-plan {
+      padding: 18px;
+    }
+
+    .plan-status {
+      display: block;
+      margin-top: 5px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .skill-plan h2 {
+      margin: 4px 0 0;
+      font-size: 20px;
+      font-weight: 610;
+      line-height: 1.35;
+    }
+
+    .skill-plan > p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+
+    .plan-context {
+      display: grid;
+      gap: 0;
+      margin-top: 15px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .055);
+    }
+
+    .plan-context div {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 10px;
+      padding: 7px 0;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .plan-context b {
+      color: var(--muted);
+      font-weight: 540;
+      line-height: 1.55;
+    }
+
+    .plan-steps {
+      display: grid;
+      gap: 7px;
+      margin-top: 13px;
+    }
+
+    .plan-step {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .plan-step i {
+      display: grid;
+      width: 18px;
+      height: 18px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--surface-3);
+      color: var(--accent);
+      font-size: 10px;
+      font-style: normal;
+    }
+
+    .skill-plan .button {
+      width: 100%;
+      min-height: 40px;
+      margin-top: 16px;
+      font-size: 12.5px;
+    }
+
+    .canvas-subpage {
+      width: min(1320px, 100%);
+      margin: 0 auto;
+      padding: 22px 30px 82px;
+    }
+
+    .canvas-live-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 12px;
+    }
+
+    .canvas-live-head > div {
+      display: grid;
+      gap: 3px;
+    }
+
+    .canvas-live-head h1 {
+      margin: 0;
+      font-size: 25px;
+      font-weight: 620;
+    }
+
+    .canvas-live-head span {
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .canvas-live-head .button {
+      min-height: 34px;
+      padding: 0 11px;
+      font-size: 12px;
+    }
+
+    .live-canvas-frame {
+      display: block;
+      width: 100%;
+      height: max(680px, calc(100dvh - 190px));
+      border: 0;
+      border-radius: var(--radius);
+      background: #0c0f11;
+    }
+
+    .canvas-page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+
+    .canvas-page-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .canvas-page-title h1 {
+      margin: 0;
+      font-size: 25px;
+      font-weight: 620;
+    }
+
+    .canvas-page-title span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .canvas-page-actions {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .canvas-page-actions .button {
+      min-height: 34px;
+      padding: 0 11px;
+      font-size: 12px;
+    }
+
+    .orchestration-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .orchestration-side {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      padding: 16px;
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .orchestration-side > span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .orchestration-side h2 {
+      margin: 5px 0 0;
+      font-size: 20px;
+      font-weight: 620;
+    }
+
+    .orchestration-side > p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+
+    .orchestration-side img {
+      width: 100%;
+      height: 148px;
+      margin-top: 14px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      filter: saturate(.72) brightness(.8);
+    }
+
+    .orchestration-actions {
+      display: flex;
+      gap: 7px;
+      margin-top: 13px;
+    }
+
+    .orchestration-actions .button {
+      min-height: 35px;
+      flex: 1;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+
+    .dependency-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 17px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, .055);
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .dependency-list {
+      display: grid;
+      margin-top: 5px;
+    }
+
+    .dependency-row {
+      display: flex;
+      min-height: 38px;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid rgba(255, 255, 255, .045);
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .dependency-row:first-child {
+      border-top: 0;
+    }
+
+    .dependency-row span {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .dependency-row button {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border: 0;
+      border-radius: 4px;
+      background: var(--surface-2);
+      color: var(--faint);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .orchestration-side > .button {
+      min-height: 38px;
+      margin-top: 14px;
+      font-size: 12px;
+    }
+
+    .project-board {
+      position: relative;
+      min-height: 680px;
+      overflow: hidden;
+      border-radius: var(--radius);
+      background-color: #0c0f11;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='1' cy='1' r='.65' fill='%23353c3f'/%3E%3C/svg%3E");
+    }
+
+    .canvas-board-bar {
+      display: flex;
+      min-height: 50px;
+      align-items: center;
+      gap: 9px;
+      padding: 0 15px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .canvas-board-bar button {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      gap: 5px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .canvas-board-bar svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .canvas-board-bar .zoom {
+      margin-left: auto;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .canvas-node-field {
+      position: relative;
+      height: 590px;
+      overflow: hidden;
+    }
+
+    .canvas-links {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .canvas-links path {
+      fill: none;
+      stroke: rgba(141, 200, 220, .32);
+      stroke-width: 1.2;
+    }
+
+    .canvas-node {
+      position: absolute;
+      display: flex;
+      width: 170px;
+      min-height: 108px;
+      flex-direction: column;
+      gap: 5px;
+      padding: 11px 12px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 150ms var(--ease), background-color 150ms var(--ease);
+    }
+
+    .canvas-node:hover {
+      background: var(--surface-3);
+    }
+
+    .canvas-node.is-selected {
+      border-color: rgba(141, 200, 220, .72);
+      background: #172329;
+    }
+
+    .canvas-node-kind {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .canvas-node-kind em {
+      color: #83b9d0;
+      font-style: normal;
+    }
+
+    .canvas-node b {
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 570;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .canvas-node p {
+      display: -webkit-box;
+      margin: 0;
+      overflow: hidden;
+      color: var(--faint);
+      font-size: 11.5px;
+      line-height: 1.55;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .canvas-node footer {
+      margin-top: auto;
+      color: #8f999b;
+      font-size: 11px;
+    }
+
+    .project-node-story {
+      top: 230px;
+      left: 24px;
+    }
+
+    .project-node-characters {
+      top: 90px;
+      left: 200px;
+    }
+
+    .project-node-visuals {
+      top: 345px;
+      left: 200px;
+    }
+
+    .project-node-episodes {
+      top: 90px;
+      left: 385px;
+    }
+
+    .project-node-scenes {
+      top: 300px;
+      left: 385px;
+    }
+
+    .project-node-shot {
+      top: 90px;
+      left: 565px;
+      width: 180px;
+      min-height: 156px;
+    }
+
+    .project-node-output {
+      top: 365px;
+      left: 565px;
+      width: 180px;
+    }
+
+    .canvas-agent-bar {
+      position: absolute;
+      right: 20px;
+      bottom: 16px;
+      left: 20px;
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      gap: 9px;
+      width: min(620px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 6px 7px 6px 12px;
+      border-radius: var(--radius);
+      background: var(--surface-3);
+      box-shadow: 0 18px 48px -28px #000;
+    }
+
+    .canvas-agent-bar input {
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 12.5px;
+      outline: 0;
+    }
+
+    .canvas-agent-bar input::placeholder {
+      color: var(--faint);
+    }
+
+    .canvas-detail {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      margin-top: 10px;
+      padding: 14px;
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .canvas-detail img {
+      width: 170px;
+      height: 108px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      filter: saturate(.72) brightness(.8);
+    }
+
+    .canvas-detail-copy {
+      min-width: 0;
+    }
+
+    .canvas-detail-copy span {
+      color: var(--faint);
+      font-size: 11.5px;
+    }
+
+    .canvas-detail-copy h2 {
+      margin: 3px 0 0;
+      font-size: 18px;
+      font-weight: 610;
+    }
+
+    .canvas-detail-copy p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+
+    .canvas-detail-actions {
+      display: flex;
+      gap: 7px;
+    }
+
+    .canvas-detail-actions .button {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .mobile-nav {
+      display: none;
+    }
+
+    @media (max-width: 1080px) {
+      .workspace {
+        grid-template-columns: 76px minmax(0, 1fr);
+      }
+
+      .side {
+        align-items: center;
+        padding-right: 9px;
+        padding-left: 9px;
+      }
+
+      .brand small,
+      .workspace-switcher span,
+      .workspace-switcher > svg,
+      .nav-label,
+      .nav-item span,
+      .nav-item .count,
+      .side-user span {
+        display: none;
+      }
+
+      .workspace-switcher {
+        justify-content: center;
+        width: 44px;
+        padding: 0;
+      }
+
+      .nav-group {
+        width: 100%;
+      }
+
+      .nav-item {
+        justify-content: center;
+        padding: 0;
+      }
+
+      .workspace-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .right-rail {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .skills-layout {
+        grid-template-columns: minmax(0, 1fr) 280px;
+      }
+
+      .orchestration-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .project-node-shot,
+      .project-node-output {
+        left: 565px;
+      }
+    }
+
+    @media (max-width: 780px) {
+      .workspace {
+        display: block;
+      }
+
+      .side {
+        display: none;
+      }
+
+      .topbar {
+        min-height: 54px;
+        padding: 0 15px;
+      }
+
+      .mobile-brand {
+        display: inline-flex;
+        flex: 0 0 auto;
+      }
+
+      .crumb span,
+      .save-state,
+      .topbar-actions .button.secondary {
+        display: none;
+      }
+
+      .topbar-actions .button {
+        min-height: 34px;
+        padding: 0 11px;
+      }
+
+      .workspace-content {
+        padding: 22px 16px 92px;
+      }
+
+      .mode-strip {
+        justify-content: flex-start;
+        padding: 12px 14px 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .announcement-shell {
+        width: calc(100% - 28px);
+        margin-top: 8px;
+      }
+
+      .announcement-label {
+        display: none;
+      }
+
+      .announcement-copy {
+        font-size: 12px;
+      }
+
+      .announcement-detail header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .mode-strip::-webkit-scrollbar {
+        display: none;
+      }
+
+      .mode-switch {
+        flex: 0 0 auto;
+      }
+
+      .chat-home {
+        padding-top: 8px;
+      }
+
+      .chat-intro {
+        display: grid;
+        gap: 14px;
+      }
+
+      .chat-intro h1 {
+        font-size: 26px;
+      }
+
+      .chat-intro-actions {
+        width: 100%;
+      }
+
+      .chat-intro-actions .button {
+        flex: 1;
+        min-height: 42px;
+      }
+
+      .chat-composer textarea {
+        min-height: 132px;
+        font-size: 15px;
+      }
+
+      .composer-foot {
+        flex-wrap: wrap;
+      }
+
+      .composer-mode {
+        order: 5;
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .chat-send {
+        order: 4;
+        margin-left: auto;
+      }
+
+      .chat-project-strip {
+        display: grid;
+        gap: 8px;
+      }
+
+      .chat-project-strip b {
+        white-space: normal;
+      }
+
+      .chat-project-strip .button {
+        width: 100%;
+        min-height: 40px;
+      }
+
+      .chat-thread {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .chat-message,
+      .chat-message.user {
+        width: 100%;
+        justify-self: stretch;
+      }
+
+      .subpage {
+        padding: 22px 16px 92px;
+      }
+
+      .subpage-head {
+        display: grid;
+        gap: 14px;
+      }
+
+      .subpage-head .button {
+        width: 100%;
+        min-height: 42px;
+      }
+
+      .canvas-subpage {
+        padding: 20px 16px 92px;
+      }
+
+      .canvas-live-head {
+        display: grid;
+        gap: 12px;
+      }
+
+      .canvas-live-head .button {
+        width: 100%;
+        min-height: 42px;
+      }
+
+      .live-canvas-frame {
+        height: 860px;
+        min-height: 860px;
+      }
+
+      .page-head {
+        display: grid;
+        gap: 14px;
+      }
+
+      .page-head-actions {
+        width: 100%;
+      }
+
+      .page-head-actions .button {
+        flex: 1;
+        min-height: 42px;
+      }
+
+      .page-head-actions .icon-button {
+        border: 1px solid var(--line);
+      }
+
+      .command {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        padding: 17px;
+      }
+
+      .command-actions {
+        justify-items: stretch;
+      }
+
+      .command-actions .button {
+        width: 100%;
+      }
+
+      .step-track {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .step-track::-webkit-scrollbar {
+        display: none;
+      }
+
+      .step-track button {
+        min-width: 88px;
+        flex: 0 0 88px;
+      }
+
+      .current-preview {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .current-image-wrap {
+        min-height: 180px;
+      }
+
+      .current-image {
+        min-height: 180px;
+      }
+
+      .issue-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .issue-row .button {
+        width: 100%;
+        min-height: 40px;
+      }
+
+      .right-rail {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .skills-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .skills-toolbar {
+        display: grid;
+      }
+
+      .skill-hero {
+        text-align: left;
+      }
+
+      .skill-hero h1 {
+        font-size: 29px;
+      }
+
+      .skill-hero p {
+        margin-left: 0;
+      }
+
+      .skill-start-tabs {
+        justify-content: flex-start;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .skill-start-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .skill-composer {
+        padding: 14px;
+      }
+
+      .skill-composer textarea {
+        min-height: 132px;
+        font-size: 15px;
+      }
+
+      .skill-context-strip {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .skill-list {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .skill-row {
+        grid-template-columns: 104px minmax(0, 1fr);
+      }
+
+      .skill-side {
+        grid-column: 2;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 0 10px 10px;
+      }
+
+      .canvas-page-head {
+        display: grid;
+        align-items: start;
+      }
+
+      .canvas-page-actions {
+        width: 100%;
+      }
+
+      .canvas-page-actions .button {
+        flex: 1;
+        min-height: 42px;
+      }
+
+      .project-board {
+        min-height: 0;
+        overflow: visible;
+        background-image: none;
+      }
+
+      .canvas-board-bar {
+        padding: 0 2px 9px;
+      }
+
+      .canvas-board-bar > span:not(.zoom) {
+        display: none;
+      }
+
+      .canvas-node-field {
+        display: grid;
+        height: auto;
+        gap: 9px;
+        overflow: visible;
+      }
+
+      .canvas-links {
+        display: none;
+      }
+
+      .canvas-node {
+        position: relative;
+        top: auto !important;
+        left: auto !important;
+        width: 100%;
+      }
+
+      .project-node-shot {
+        min-height: 148px;
+      }
+
+      .canvas-agent-bar {
+        display: none;
+      }
+
+      .canvas-detail {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .canvas-detail img {
+        width: 100%;
+        height: 180px;
+      }
+
+      .canvas-detail-actions {
+        display: grid;
+      }
+
+      .canvas-detail-actions .button {
+        min-height: 42px;
+      }
+
+      .orchestration-side {
+        margin-top: 10px;
+      }
+
+      .orchestration-side img {
+        height: 190px;
+      }
+
+      .artifact-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .artifact-card {
+        min-height: 78px;
+      }
+
+      .mobile-nav {
+        position: fixed;
+        z-index: 30;
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        padding: 5px;
+        border-radius: 11px;
+        background: rgba(20, 22, 24, .96);
+        box-shadow: 0 16px 44px -26px #000;
+      }
+
+      .mobile-nav button {
+        display: grid;
+        min-height: 50px;
+        place-items: center;
+        gap: 2px;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .mobile-nav button.is-active {
+        background: var(--surface-3);
+        color: var(--ink);
+      }
+
+      .mobile-nav svg {
+        width: 17px;
+        height: 17px;
+      }
+
+      .agent-launcher {
+        display: none;
+      }
+
+      .toast {
+        bottom: 76px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="workspace">
+    <aside class="side" aria-label="工作区导航">
+      <a class="brand" href="#">
+        <svg viewBox="0 0 30 30" aria-hidden="true"><path d="M5 9 15 3l10 6v12l-10 6-10-6z"/><path d="m10 11 5 9 5-9"/></svg>
+        <b>VeyaFrame</b>
+        <small>成剧</small>
+      </a>
+
+      <button class="workspace-switcher" type="button" aria-label="切换工作区">
+        <span><b>我的创作空间</b><small>个人工作区</small></span>
+        <svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg>
+      </button>
+
+      <div class="side-scroll">
+        <nav aria-label="工作区">
+          <div class="nav-group">
+            <span class="nav-label">工作区</span>
+            <button class="nav-item is-active" type="button" data-page-target="home">
+              <svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9H4z"/><path d="M9 20v-6h6v6"/></svg>
+              <span>首页</span>
+            </button>
+            <button class="nav-item" type="button" data-message="我的项目">
+              <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>
+              <span>我的项目</span>
+            </button>
+            <button class="nav-item" type="button" data-message="项目待办">
+              <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="m8 12 2.5 2.5L16 9"/></svg>
+              <span>项目待办</span>
+              <i class="count">1</i>
+            </button>
+            <button class="nav-item" type="button" data-page-target="skills">
+              <svg viewBox="0 0 24 24"><path d="m12 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><path d="m19 16 1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/></svg>
+              <span>创作技能</span>
+            </button>
+            <button class="nav-item" type="button" data-message="资产库">
+              <svg viewBox="0 0 24 24"><path d="M4 8h16v11H4z"/><path d="M8 8V5h8v3M4 12h16"/></svg>
+              <span>资产库</span>
+            </button>
+          </div>
+        </nav>
+
+        <nav aria-label="当前项目步骤">
+          <div class="nav-group">
+            <span class="nav-label">快递员的最后一单</span>
+            <button class="nav-item is-done is-current" type="button" data-step="shots">
+              <i class="step-state"></i><span>分镜</span>
+            </button>
+            <button class="nav-item is-done" type="button" data-step="characters">
+              <i class="step-state"></i><span>核心人物</span>
+            </button>
+            <button class="nav-item is-done" type="button" data-step="acts">
+              <i class="step-state"></i><span>三幕大纲</span>
+            </button>
+            <button class="nav-item is-done" type="button" data-step="episodes">
+              <i class="step-state"></i><span>分集剧情</span>
+            </button>
+            <button class="nav-item is-done" type="button" data-step="visuals">
+              <i class="step-state"></i><span>角色定妆</span>
+            </button>
+            <button class="nav-item is-done" type="button" data-step="scenes">
+              <i class="step-state"></i><span>场次剧本</span>
+            </button>
+          </div>
+        </nav>
+
+        <nav aria-label="项目工具">
+          <div class="nav-group">
+            <span class="nav-label">项目工具</span>
+            <button class="nav-item" type="button" data-page-target="canvas">
+              <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M7 8l4 8M17 8l-4 8"/></svg>
+              <span>编排画布</span>
+            </button>
+            <button class="nav-item" type="button" data-message="产物中心">
+              <svg viewBox="0 0 24 24"><path d="m12 3 8 5-8 5-8-5z"/><path d="m4 13 8 5 8-5"/></svg>
+              <span>产物中心</span>
+            </button>
+            <button class="nav-item" type="button" data-message="生产台账">
+              <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              <span>生产台账</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      <div class="side-user">
+        <span class="avatar">冯</span>
+        <span><b>冯小满</b><small>65 额度 · 已保存</small></span>
+      </div>
+    </aside>
+
+    <main class="workspace-main">
+      <header class="topbar">
+        <a class="mobile-brand" href="#" aria-label="VeyaFrame 首页">
+          <svg viewBox="0 0 30 30" aria-hidden="true"><path d="M5 9 15 3l10 6v12l-10 6-10-6z"/><path d="m10 11 5 9 5-9"/></svg>
+          <span>VeyaFrame</span>
+        </a>
+        <div class="crumb">
+          <span id="crumbSection">我的项目</span>
+          <svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>
+          <b id="crumbName">示例 · 快递员的最后一单</b>
+        </div>
+        <div class="topbar-actions">
+          <span class="save-state"><i></i>全部更改已保存</span>
+          <button class="button secondary" type="button" data-tool="export">导出交付包</button>
+          <button class="icon-button" type="button" aria-label="更多项目工具">
+            <svg viewBox="0 0 20 20"><circle cx="4" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></svg>
+          </button>
+          <span class="avatar" style="display:grid;width:30px;height:30px;place-items:center;border-radius:50%;background:var(--surface-3);color:var(--muted);font-size:11.5px">冯</span>
+        </div>
+      </header>
+
+      <section class="announcement-shell" id="announcementShell" aria-label="产品公告">
+        <div class="announcement-bar">
+          <i class="announcement-dot" aria-hidden="true"></i>
+          <span class="announcement-label">产品更新</span>
+          <span class="announcement-copy"><b>v2026.11.04</b> · Veya Agent 与品牌统一</span>
+          <button class="announcement-action" id="announcementToggle" type="button" aria-expanded="false" aria-controls="announcementDetail">查看更新</button>
+          <button class="announcement-close" id="announcementClose" type="button" aria-label="关闭产品公告">×</button>
+        </div>
+        <div class="announcement-detail" id="announcementDetail" hidden>
+          <header><b>Veya Agent 与品牌统一</b><time datetime="2026-11-04T23:53:00+08:00">2026-11-04 23:53</time></header>
+          <ul>
+            <li>AI 场记升级为 Veya Agent，会话选择与新建会话统一为一条控制栏。</li>
+            <li>浏览器标题、favicon、PWA 名称统一为 VeyaFrame。</li>
+            <li>内测条款、隐私说明、统一法务页脚与登录协议确认上线。</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="mode-strip">
+        <div class="mode-switch" role="tablist" aria-label="创作模式">
+          <button class="is-active" type="button" role="tab" aria-selected="true" data-page-target="home">总览</button>
+          <button type="button" role="tab" aria-selected="false" data-page-target="skills">创作</button>
+          <button type="button" role="tab" aria-selected="false" data-page-target="canvas">画布</button>
+        </div>
+      </div>
+
+      <div class="workspace-content page-panel" data-page-panel="home">
+        <header class="page-head">
+          <div>
+            <h1>继续创作</h1>
+            <p>示例 · 快递员的最后一单 · 悬疑 · 3 集 · 最后保存 10:42</p>
+          </div>
+          <div class="page-head-actions">
+            <button class="button secondary" type="button" data-page-target="canvas">
+              <svg viewBox="0 0 20 20"><circle cx="5" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="10" cy="15" r="1.5"/><path d="M6.5 5h7M6 6.5l3 7M14 6.5l-3 7"/></svg>
+              编排画布
+            </button>
+            <button class="button" id="headContinue" type="button">
+              继续分镜
+              <svg viewBox="0 0 20 20"><path d="M4 10h12M11 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="command" aria-labelledby="commandTitle">
+          <div class="command-copy">
+            <h2 id="commandTitle">先补苏婉的定妆参考，再返修第 03 镜</h2>
+            <div class="command-state">
+              <span class="status-pill warning"><i class="status-dot"></i>1 个阻断</span>
+              <span>当前任务 · 第 6 步</span>
+            </div>
+            <p>镜头 03 的双人画面缺少苏婉参考图，同时已被标记为需返修。处理这张图后，当前集就可以进入视频生成。</p>
+          </div>
+          <div class="command-actions">
+            <button class="button" id="commandContinue" type="button">处理阻断</button>
+            <button class="button ghost" type="button" id="agentInline">让 Veya 检查</button>
+          </div>
+          <div class="step-track" aria-label="六步创作进度">
+            <button class="is-done" type="button" data-step="characters"><i></i><span>核心人物</span></button>
+            <button class="is-done" type="button" data-step="acts"><i></i><span>三幕大纲</span></button>
+            <button class="is-done" type="button" data-step="episodes"><i></i><span>分集剧情</span></button>
+            <button class="is-done" type="button" data-step="visuals"><i></i><span>角色定妆</span></button>
+            <button class="is-done" type="button" data-step="scenes"><i></i><span>场次剧本</span></button>
+            <button class="is-done is-current" type="button" data-step="shots"><i></i><span>分镜</span></button>
+          </div>
+        </section>
+
+        <div class="workspace-grid">
+          <section class="panel current-panel" aria-labelledby="currentTitle">
+            <header class="panel-head">
+              <div>
+                <h2 id="currentTitle">当前工作</h2>
+                <p id="currentStatus">3 个镜头 · 1 个待处理 · 第 1 集</p>
+              </div>
+              <span class="status-pill accent" id="currentPill">分镜审阅</span>
+            </header>
+
+            <div class="current-preview">
+              <div class="current-image-wrap">
+                <img class="current-image" id="currentImage" src="../../public/skills/manor.png" alt="老宅门廊的镜头参考">
+                <span class="image-badge"><i class="status-dot"></i><span id="imageLabel">镜头 03 · 10 秒</span></span>
+              </div>
+              <div class="current-copy">
+                <span class="meta" id="workKicker">第 1 集 · 场次 03 · 老宅门廊</span>
+                <h3 id="workTitle">雨停在门外</h3>
+                <p id="workBody">门开了一条缝，苏婉只看了一眼他手里的信就关上；门缝里掉出一张泛黄车票。镜头首帧已完成，但苏婉的定妆参考尚未挂入。</p>
+                <div class="current-meta">
+                  <span class="status-pill">双人中景</span>
+                  <span class="status-pill">9:16</span>
+                  <span class="status-pill warning" id="workStatus">缺苏婉参考图</span>
+                </div>
+                <div class="issue-row">
+                  <div class="issue-copy">
+                    <svg viewBox="0 0 20 20"><path d="M10 3 18 17H2z"/><path d="M10 8v4M10 15h.01"/></svg>
+                    <span>修改角色定妆后，镜头 03 会被标记为待复核，不会静默覆盖已有关键帧。</span>
+                  </div>
+                  <button class="button secondary" id="fixBlocker" type="button">去补定妆</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="shot-list" aria-label="当前集镜头">
+              <div class="shot-row">
+                <span class="shot-index num">01</span>
+                <span><b>陈默撑伞站在铁门外</b><small>第 1 集 · 城郊别墅门外 · 中景</small></span>
+                <span class="status-pill accent">已出图</span>
+              </div>
+              <div class="shot-row">
+                <span class="shot-index num">02</span>
+                <span><b>门内递出一份文件</b><small>第 1 集 · 城郊别墅门外 · 近景</small></span>
+                <span class="status-pill">待制作</span>
+              </div>
+              <div class="shot-row">
+                <span class="shot-index num">03</span>
+                <span><b>苏婉关门，车票落下</b><small>第 3 集 · 苏婉家旧楼门口 · 双人中景</small></span>
+                <span class="status-pill warning">需返修</span>
+              </div>
+            </div>
+          </section>
+
+          <aside class="right-rail" aria-label="项目状态">
+            <section class="rail-panel">
+              <h3>项目脉搏</h3>
+              <div class="pulse-grid">
+                <div class="pulse-item"><span>分集</span><b>3<em>集</em></b></div>
+                <div class="pulse-item"><span>场次</span><b>3<em>场</em></b></div>
+                <div class="pulse-item"><span>镜头</span><b>3<em>镜</em></b></div>
+                <div class="pulse-item"><span>阻断</span><b style="color:var(--danger)">1<em>项</em></b></div>
+              </div>
+            </section>
+
+            <section class="rail-panel">
+              <h3>下一步</h3>
+              <div class="next-action">
+                <span>最早解除阻塞的动作</span>
+                <b>为苏婉生成一张单人定妆，并采用为当前角色锚点。</b>
+                <button class="button secondary" id="railFix" type="button">前往角色定妆</button>
+              </div>
+            </section>
+
+            <section class="rail-panel">
+              <h3>可调用的创作方法</h3>
+              <div class="method-list">
+                <button class="method-row" type="button" data-method="镜头连续性检查">
+                  <svg viewBox="0 0 20 20"><path d="M4 4h12v12H4z"/><path d="m7 10 2 2 4-5"/></svg>
+                  <span><b>镜头连续性检查</b><small>定位缺图、锚点与返修</small></span>
+                </button>
+                <button class="method-row" type="button" data-method="故事医生">
+                  <svg viewBox="0 0 20 20"><path d="M10 3v14M3 10h14"/><circle cx="10" cy="10" r="6"/></svg>
+                  <span><b>故事医生</b><small>检查钩子与节奏</small></span>
+                </button>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <section class="artifacts" aria-labelledby="artifactTitle">
+          <header class="section-head">
+            <h2 id="artifactTitle">最近产物</h2>
+            <button type="button" data-tool="artifacts">查看版本历史</button>
+          </header>
+          <div class="artifact-grid">
+            <button class="artifact-card" type="button" data-artifact="分集剧情">
+              <img src="../../public/skills/story.png" alt="分集剧情中的人物参考">
+              <span class="artifact-copy"><small>第 3 步 · v2</small><b>暴雨夜的签收</b><span>3 集 · 钩子已补齐</span></span>
+            </button>
+            <button class="artifact-card" type="button" data-artifact="角色定妆">
+              <img src="../../public/skills/story.png" alt="陈默的角色定妆参考">
+              <span class="artifact-copy"><small>第 4 步 · v3</small><b>陈默 · 苏婉 · 沈之遥</b><span>2 人已挂图 · 1 人待补</span></span>
+            </button>
+            <button class="artifact-card" type="button" data-artifact="分镜">
+              <img src="../../public/skills/manor.png" alt="老宅门廊镜头参考">
+              <span class="artifact-copy"><small>第 6 步 · v1</small><b>3 个镜头</b><span>1 个已出图 · 1 个待返修</span></span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div class="subpage page-panel" data-page-panel="skills" hidden>
+        <header class="skill-hero">
+          <h1>创作技能 · 从想法、原文到成片</h1>
+          <p>从一句想法、已有小说或当前项目开始。每条创作技能先展示会读取什么、产出什么；写入和付费前仍由你确认。</p>
+        </header>
+
+        <div class="skill-start-tabs" role="tablist" aria-label="技能启动方式">
+          <button class="is-active" type="button" data-skill-start="idea">从想法开始</button>
+          <button type="button" data-skill-start="novel">从小说剧本开始</button>
+          <button type="button" data-skill-start="project">继续当前项目</button>
+        </div>
+
+        <form class="skill-composer" id="skillComposer">
+          <label class="sr-only" for="skillInput">描述想使用的创作技能</label>
+          <textarea id="skillInput" placeholder="写下故事灵感，例如：一个快递员意外继承了百万遗产，条件却是替原主人完成七桩未竟的交易。"></textarea>
+          <div class="composer-foot">
+            <button class="composer-tool" type="button" data-message="添加小说或剧本文本">
+              <svg viewBox="0 0 20 20"><path d="M4 4h12v12H4z"/><path d="M7 8h6M7 11h6"/></svg>
+              原文
+            </button>
+            <button class="composer-tool" type="button" data-message="添加项目资产">
+              <svg viewBox="0 0 20 20"><path d="M4 5h12v10H4z"/><path d="m7 12 3-3 2 2 2-3"/></svg>
+              项目资产
+            </button>
+            <button class="composer-tool" type="button" data-message="选择创作技能">
+              <svg viewBox="0 0 20 20"><path d="m10 3 2 4 4 2-4 2-2 4-2-4-4-2 4-2z"/></svg>
+              选择创作技能
+            </button>
+            <span class="composer-mode">发送后先匹配技能</span>
+            <button class="chat-send" type="submit" aria-label="提交创作技能需求">
+              <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+            </button>
+          </div>
+        </form>
+
+        <div class="skill-context-strip">
+          <div><span>本次读取</span><b>快递员的最后一单 · 3 个镜头 · 当前第 6 步</b></div>
+          <div><span>技能前置</span><b>写入前确认；缺失参考会先列为阻断</b></div>
+          <div><span>预期产出</span><b>报告、返修队列或下一步计划</b></div>
+        </div>
+
+        <div class="skill-suggestions" aria-label="技能建议">
+          <button type="button" data-skill-prompt="检查第 03 镜的角色锚点和首尾帧">检查镜头 03 的连续性</button>
+          <button type="button" data-skill-prompt="检查陈默、苏婉、沈之遥的人物 Canon">检查人物 Canon</button>
+          <button type="button" data-skill-prompt="检查三集钩子与节奏">检查三集钩子与节奏</button>
+        </div>
+
+        <div class="skill-library-head">
+          <h2>创作技能库</h2>
+          <button class="button secondary" type="button" data-message="管理我的技能">管理我的技能</button>
+        </div>
+
+        <div class="skills-layout">
+          <section class="skills-main" aria-label="技能列表">
+            <div class="skills-toolbar">
+              <label class="skills-search">
+                <svg viewBox="0 0 20 20"><circle cx="9" cy="9" r="5"/><path d="m13 13 4 4"/></svg>
+                <input id="skillSearch" type="search" placeholder="搜索技能、用途或产物" aria-label="搜索创作技能">
+              </label>
+              <div class="skill-tabs" role="tablist" aria-label="技能范围">
+                <button class="skill-tab is-active" type="button" data-skill-tab="recommend">基于项目推荐</button>
+                <button class="skill-tab" type="button" data-skill-tab="favorite">已收藏</button>
+                <button class="skill-tab" type="button" data-skill-tab="mine">我的技能</button>
+              </div>
+            </div>
+
+            <div class="skill-category-row" aria-label="技能分类">
+              <button class="skill-category is-active" type="button" data-skill-category="全部">全部</button>
+              <button class="skill-category" type="button" data-skill-category="小说改编">小说改编</button>
+              <button class="skill-category" type="button" data-skill-category="短剧开发">短剧开发</button>
+              <button class="skill-category" type="button" data-skill-category="视觉一致性">视觉一致性</button>
+              <button class="skill-category" type="button" data-skill-category="分镜制作">分镜制作</button>
+              <button class="skill-category" type="button" data-skill-category="交付效率">交付效率</button>
+            </div>
+
+            <h2 class="sr-only">基于当前项目推荐的技能</h2>
+            <div class="skill-list" id="skillList">
+              <button class="skill-row is-active" type="button" data-skill="continuity" data-category="分镜制作" data-favorite="true" data-mine="false">
+                <span class="skill-card-media"><img src="../../public/skills/continuity.png" alt="镜头连续性检查技能预览"><em>分镜</em></span>
+                <span class="skill-copy">
+                  <h3>镜头连续性检查</h3>
+                  <p>检查第 03 镜的首尾帧、角色锚点、参考图版本与跨场衔接，生成可逐镜处理的返修队列。</p>
+                  <span class="skill-meta">读取：分镜 · 定妆 · 场次　产出：连续性报告、返修队列</span>
+                </span>
+                <span class="skill-side"><b>最匹配当前阻断</b><small>只读 · 确定性优先</small></span>
+              </button>
+              <button class="skill-row" type="button" data-skill="canon" data-category="视觉一致性" data-favorite="false" data-mine="false">
+                <span class="skill-card-media"><img src="../../public/skills/canon.png" alt="人物 Canon 检查技能预览"><em>检查</em></span>
+                <span class="skill-copy">
+                  <h3>人物 Canon 检查</h3>
+                  <p>核对陈默、苏婉、沈之遥的关系、时间线、地点与道具状态，优先找出确定性冲突。</p>
+                  <span class="skill-meta">读取：人物 · 定妆 · 场次 · 分镜　产出：Canon 冲突清单</span>
+                </span>
+                <span class="skill-side"><b>适合当前项目</b><small>只读优先</small></span>
+              </button>
+              <button class="skill-row" type="button" data-skill="story" data-category="短剧开发" data-favorite="false" data-mine="false">
+                <span class="skill-card-media"><img src="../../public/skills/story.png" alt="故事医生技能预览"><em>审校</em></span>
+                <span class="skill-copy">
+                  <h3>故事医生</h3>
+                  <p>检查三集钩子、节奏、动机和结构塌陷，输出可以跳转到具体集数的修订清单。</p>
+                  <span class="skill-meta">读取：三幕 · 分集　产出：节奏诊断、修订清单</span>
+                </span>
+                <span class="skill-side"><b>主链检查</b><small>只读</small></span>
+              </button>
+              <button class="skill-row" type="button" data-skill="delivery" data-category="交付效率" data-favorite="false" data-mine="false">
+                <span class="skill-card-media"><img src="../../public/skills/delivery.png" alt="平台交付预检技能预览"><em>交付</em></span>
+                <span class="skill-copy">
+                  <h3>平台交付预检</h3>
+                  <p>按目标平台检查时长、画幅、锚点和缺失文件，把阻断项与提醒项直接写进报告。</p>
+                  <span class="skill-meta">读取：分镜 · 采用图 · 平台参数　产出：阻断项、交付预检</span>
+                </span>
+                <span class="skill-side"><b>交付前运行</b><small>纯计算 · 0 模型调用</small></span>
+              </button>
+              <button class="skill-row" type="button" data-skill="adaptation" data-category="小说改编" data-favorite="true" data-mine="false">
+                <span class="skill-card-media"><img src="../../public/skills/manor.png" alt="小说与剧本改编技能预览"><em>改编</em></span>
+                <span class="skill-copy">
+                  <h3>小说 / 剧本改编</h3>
+                  <p>拆解章节与人物关系，先把原著圣经和分集计划做对，再进入六步生产。</p>
+                  <span class="skill-meta">读取：小说 / 剧本原文　产出：原著圣经、改编计划</span>
+                </span>
+                <span class="skill-side"><b>已收藏</b><small>确认后写入</small></span>
+              </button>
+              <button class="skill-row" type="button" data-skill="cost" data-category="交付效率" data-favorite="true" data-mine="false">
+                <span class="skill-card-media"><img src="../../public/skills/manor.png" alt="成本规划技能预览"><em>预算</em></span>
+                <span class="skill-copy">
+                  <h3>成本规划</h3>
+                  <p>估算批次、重试、参考图和整剧成本，先给出更省的执行顺序，不直接生成图片。</p>
+                  <span class="skill-meta">读取：分集 · 分镜 · 定价　产出：成本估算、批次顺序</span>
+                </span>
+                <span class="skill-side"><b>已收藏</b><small>纯计算 · 不生成图片</small></span>
+              </button>
+            </div>
+            <div class="skills-empty" id="skillsEmpty" hidden>还没有个人 Skill。你的个人方法会以版本保存，不会覆盖已有版本。</div>
+          </section>
+
+          <aside class="skill-plan" id="skillPlan" aria-label="技能执行计划">
+            <h2 id="planTitle">镜头连续性检查</h2>
+            <span class="plan-status">执行计划 · 先确认再运行</span>
+            <p id="planDescription">检查第 03 镜的首尾帧、角色锚点、参考图版本与跨场衔接，生成可逐镜处理的返修队列。</p>
+            <div class="plan-context">
+              <div><span>当前上下文</span><b>3 个镜头 · 1 个缺苏婉参考图 · 1 个需返修</b></div>
+              <div><span>将读取</span><b id="planInput">分镜、定妆、场次</b></div>
+              <div><span>将产出</span><b id="planOutput">连续性报告、逐镜返修队列</b></div>
+              <div><span>写入边界</span><b id="planPolicy">只读，不自动修改项目</b></div>
+            </div>
+            <div class="plan-steps">
+              <div class="plan-step"><i>1</i><span>确认当前项目版本与镜头范围</span></div>
+              <div class="plan-step"><i>2</i><span>运行确定性检查，再补充模型判断</span></div>
+              <div class="plan-step"><i>3</i><span>输出报告与逐镜返修入口</span></div>
+            </div>
+            <button class="button" id="openSkillPlan" type="button">带入 Agent 执行计划</button>
+          </aside>
+        </div>
+      </div>
+
+      <div class="subpage page-panel" data-page-panel="canvas" hidden>
+        <header class="canvas-live-head">
+          <div><h1>画布</h1><span>复用线上真实编排画布 · 可拖拽、缩放、连线并自动同步</span></div>
+          <a class="button secondary" href="http://localhost:3216/preview/canvas" target="_blank" rel="noreferrer">在新窗口打开</a>
+        </header>
+        <iframe
+          class="live-canvas-frame"
+          id="liveCanvasFrame"
+          data-src="http://localhost:3216/preview/canvas"
+          title="线上实时编排画布"
+        ></iframe>
+
+        <div class="canvas-static-fallback" hidden>
+        <header class="canvas-page-head">
+          <div class="canvas-page-title">
+            <button class="icon-button" type="button" data-page-target="home" aria-label="返回创作模式">
+              <svg viewBox="0 0 20 20"><path d="m12 5-5 5 5 5"/></svg>
+            </button>
+            <div>
+              <h1>编排画布</h1>
+              <span>快递员的最后一单 · 7 节点 · 9 条依赖 · 已保存</span>
+            </div>
+          </div>
+          <div class="canvas-page-actions">
+            <button class="button secondary" type="button" data-message="画布已适应当前窗口">适应视图</button>
+            <button class="button" type="button" data-page-target="home">返回创作</button>
+          </div>
+        </header>
+
+        <div class="orchestration-layout">
+        <section class="project-board" aria-label="快递员的最后一单项目画布">
+          <div class="canvas-board-bar">
+            <span>添加节点</span>
+            <button type="button" data-message="添加场次节点"><svg viewBox="0 0 20 20"><path d="M10 3v14M3 10h14"/></svg>场次</button>
+            <button type="button" data-message="添加镜头节点"><svg viewBox="0 0 20 20"><path d="M10 3v14M3 10h14"/></svg>镜头</button>
+            <button type="button" data-message="添加备注节点"><svg viewBox="0 0 20 20"><path d="M10 3v14M3 10h14"/></svg>备注</button>
+            <span class="zoom">82%</span>
+          </div>
+
+          <div class="canvas-node-field">
+            <svg class="canvas-links" viewBox="0 0 900 590" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <marker id="project-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M0 0 10 5 0 10z" fill="#8dc8dc" stroke="none"/>
+                </marker>
+              </defs>
+              <path d="M194 280 C200 280 200 140 200 140" marker-end="url(#project-arrow)"/>
+              <path d="M194 294 C200 294 200 395 200 395" marker-end="url(#project-arrow)"/>
+              <path d="M370 140 C378 140 378 140 385 140" marker-end="url(#project-arrow)"/>
+              <path d="M370 395 C378 395 378 350 385 350" marker-end="url(#project-arrow)"/>
+              <path d="M555 140 C560 140 562 140 565 140" marker-end="url(#project-arrow)"/>
+              <path d="M555 350 C560 350 562 415 565 415" marker-end="url(#project-arrow)"/>
+              <path d="M655 230 C655 285 655 325 655 365" marker-end="url(#project-arrow)"/>
+            </svg>
+
+            <button class="canvas-node project-node-story" type="button" data-project-node="story">
+              <span class="canvas-node-kind">故事 <em>起点</em></span>
+              <b>七桩未竟的交易</b>
+              <p>快递员继承遗产，却必须替陌生人完成七件事。</p>
+              <footer>已保存 v3</footer>
+            </button>
+            <button class="canvas-node project-node-characters" type="button" data-project-node="characters">
+              <span class="canvas-node-kind">人物 <em>3 人</em></span>
+              <b>陈默 / 苏婉 / 沈之遥</b>
+              <p>三个人都在隐瞒一笔与遗产有关的旧账。</p>
+              <footer>关系已建立</footer>
+            </button>
+            <button class="canvas-node project-node-visuals" type="button" data-project-node="visuals">
+              <span class="canvas-node-kind">角色定妆 <em>2 人挂图</em></span>
+              <b>雨夜里克制的生活感</b>
+              <p>冷青雨夜、旧便利店、暖色最后一盏灯。</p>
+              <footer>苏婉待补图</footer>
+            </button>
+            <button class="canvas-node project-node-episodes" type="button" data-project-node="episodes">
+              <span class="canvas-node-kind">分集 <em>3 集</em></span>
+              <b>暴雨夜的签收</b>
+              <p>签完字才发现，继承人一栏写着自己的名字。</p>
+              <footer>3 集钩子已建立</footer>
+            </button>
+            <button class="canvas-node project-node-scenes" type="button" data-project-node="scenes">
+              <span class="canvas-node-kind">场次 03 <em>第 1 集</em></span>
+              <b>老宅门廊</b>
+              <p>苏婉第一次把信封交给陈默，却故意说错收件人。</p>
+              <footer>3 个镜头 · 可继续拆解</footer>
+            </button>
+            <button class="canvas-node project-node-shot is-selected" type="button" data-project-node="shot">
+              <span class="canvas-node-kind">镜头 03 <em>7 秒</em></span>
+              <b>雨停在门外</b>
+              <p>苏婉关门，旧车票从门缝落下。</p>
+              <footer>缺苏婉参考 · 需返修</footer>
+            </button>
+            <button class="canvas-node project-node-output" type="button" data-project-node="output">
+              <span class="canvas-node-kind">交付 <em>第 1 集</em></span>
+              <b>镜头清单 + 执行单</b>
+              <p>已采用图和平台参数会进入同一个交付包。</p>
+              <footer>1 个阻断待处理</footer>
+            </button>
+          </div>
+
+          <form class="canvas-agent-bar" id="canvasAgentBar">
+            <span class="agent-mark">V</span>
+            <input aria-label="在画布中询问 Veya" placeholder="问节点关系、下游影响，或让 Veya 检查整条生产链">
+            <button class="agent-send" type="submit" aria-label="发送">
+              <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+            </button>
+          </form>
+        </section>
+
+        <aside class="orchestration-side" aria-label="选中节点详情">
+          <span id="projectNodeKicker">制作步骤 · 分镜</span>
+          <h2 id="projectNodeTitle">分镜</h2>
+          <p id="projectNodeBody">动作、台词与生成参数。当前选中镜头 03，缺苏婉参考并标记需返修。</p>
+          <img id="projectNodeImage" src="../../public/skills/manor.png" alt="镜头 03 的场景参考">
+          <div class="orchestration-actions">
+            <button class="button secondary" type="button" id="projectNodeEdit">打开对应步骤</button>
+            <button class="button" type="button" data-message="画布节点连接模式已打开">连接节点</button>
+          </div>
+          <div class="dependency-head"><span>依赖关系</span><span id="dependencyCount">4</span></div>
+          <div class="dependency-list" id="dependencyList">
+            <div class="dependency-row"><span>分集剧情 → 分镜</span><button type="button" data-message="移除依赖">×</button></div>
+            <div class="dependency-row"><span>角色定妆 → 分镜</span><button type="button" data-message="移除依赖">×</button></div>
+            <div class="dependency-row"><span>场次剧本 → 分镜</span><button type="button" data-message="移除依赖">×</button></div>
+            <div class="dependency-row"><span>地点锚点 → 分镜</span><button type="button" data-message="移除依赖">×</button></div>
+          </div>
+          <button class="button secondary" type="button" id="projectNodeAgent">让 Agent 修改当前节点</button>
+        </aside>
+        </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" aria-label="移动端导航">
+    <button class="is-active" type="button" data-page-target="home"><svg viewBox="0 0 20 20"><path d="m3 9 7-6 7 6v8H3z"/></svg><span>首页</span></button>
+    <button type="button"><svg viewBox="0 0 20 20"><path d="M3 4h14v12H3z"/><path d="M6 8h8M6 12h5"/></svg><span>项目</span></button>
+    <button type="button"><svg viewBox="0 0 20 20"><path d="m6 10 2.5 2.5L14 7"/><circle cx="10" cy="10" r="7"/></svg><span>待办</span></button>
+    <button type="button" data-page-target="skills"><svg viewBox="0 0 20 20"><path d="m10 3 2 4 4 2-4 2-2 4-2-4-4-2 4-2z"/></svg><span>技能</span></button>
+    <button type="button"><svg viewBox="0 0 20 20"><circle cx="10" cy="7" r="3"/><path d="M4 17c1-3 3-4 6-4s5 1 6 4"/></svg><span>我的</span></button>
+  </nav>
+
+  <button class="agent-launcher" id="agentToggle" type="button" aria-label="打开 Veya Agent" aria-expanded="false">
+    <svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4.5M9.5 4.5h5"/><circle cx="9.5" cy="13.5" r=".8" fill="currentColor" stroke="none"/><circle cx="14.5" cy="13.5" r=".8" fill="currentColor" stroke="none"/><path d="M10 16.5h4"/></svg>
+    <em>3</em>
+  </button>
+
+  <aside class="agent-sheet" id="agentSheet" aria-label="Veya Agent">
+    <header class="agent-head">
+      <span class="agent-mark">V</span>
+      <span class="agent-head-copy"><b>Veya Agent</b><small>可读取项目状态，写入前先确认</small></span>
+      <button class="icon-button" id="agentClose" type="button" aria-label="收起 Agent">
+        <svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg>
+      </button>
+    </header>
+    <div class="agent-context"><span>正在看</span><b>示例 · 快递员的最后一单</b><span>· 第 6 步 · 分镜</span></div>
+    <div class="agent-body">
+      <p class="agent-answer"><strong>当前唯一阻断来自第 03 镜。</strong><br>苏婉已有文字锚点，但还没有可复用定妆图。先补定妆，再返修镜头，能避免后续画面串脸。</p>
+      <div class="agent-suggestions">
+        <button class="agent-suggestion" type="button" data-proposal="补苏婉定妆">
+          <span><b>补苏婉定妆，再返修第 03 镜</b><small>基于缺图与返修状态生成待确认计划</small></span>
+          <svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg>
+        </button>
+        <button class="agent-suggestion" type="button" data-proposal="检查连续性">
+          <span><b>检查第 1 集首尾帧是否连续</b><small>调用镜头连续性检查</small></span>
+          <svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg>
+        </button>
+        <button class="agent-suggestion" type="button" data-proposal="检查追看率">
+          <span><b>检查三集钩子是否撑得住</b><small>调用故事医生，只读分析</small></span>
+          <svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"/></svg>
+        </button>
+      </div>
+      <div class="agent-proposal" id="agentProposal" hidden>
+        <span class="status-pill accent">待确认</span>
+        <b id="proposalTitle">调整计划</b>
+        <p id="proposalBody">Agent 会先给出目标和下游影响，不会直接修改项目。</p>
+        <div class="agent-proposal-actions">
+          <button type="button" id="proposalCancel">取消</button>
+          <button type="button" id="proposalApply">确认执行</button>
+        </div>
+      </div>
+    </div>
+    <form class="agent-compose" id="agentForm">
+      <input aria-label="向 Veya Agent 提问" placeholder="问项目进度、修改人物，或检查这一集">
+      <button class="agent-send" type="submit" aria-label="发送">
+        <svg viewBox="0 0 24 24"><path d="m5 12 14-7-4 14-3-6-7-1Z"/></svg>
+      </button>
+    </form>
+  </aside>
+
+  <div class="modal-backdrop" id="stepModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <section class="modal">
+      <header class="modal-head">
+        <div><span id="modalKicker">第 6 步 · 分镜</span><h2 id="modalTitle">雨停在门外</h2></div>
+        <button class="icon-button" id="modalClose" type="button" aria-label="关闭">
+          <svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg>
+        </button>
+      </header>
+      <div class="modal-body">
+        <img class="modal-image" id="modalImage" src="../../public/skills/manor.png" alt="当前创作步骤的视觉参考">
+        <p class="modal-copy" id="modalBody"></p>
+        <div class="modal-actions">
+          <button class="button secondary" id="modalCancel" type="button">返回工作台</button>
+          <button class="button" id="modalOpen" type="button">继续当前步骤</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const stepData = {
+      characters: {
+        nav: '第 1 步 · 核心人物',
+        title: '陈默、苏婉和沈之遥',
+        body: '三个人被同一笔遗产牵引：陈默想拥有一个家，苏婉想等一句道歉，沈之遥只想尽快拿回钱。',
+        image: '../../public/skills/story.png',
+        alt: '核心人物参考',
+        status: '3 人 · 动机与弧光已完成',
+        pill: '人物已建立',
+        command: '复查三个人物是否都能推动下一场戏',
+        detail: '当前项目有三名核心人物，动机和人物弧光均已填写。下一步可以检查苏婉的视觉定妆，再进入分镜返修。'
+      },
+      acts: {
+        nav: '第 2 步 · 三幕大纲',
+        title: '七桩交易，三次关系反转',
+        body: '第一幕让陈默意外继承遗产，第二幕用七桩交易牵出苏婉与沈之遥，第三幕把真正的交付变成一句迟到四十年的道歉。',
+        image: '../../public/skills/manor.png',
+        alt: '三幕故事氛围参考',
+        status: '3 幕 · 7 个关键情节点',
+        pill: '结构已完成',
+        command: '检查第三幕的放弃是否足够成立',
+        detail: '故事医生可以只读检查三幕推进、主角动机和结尾回收，不会直接修改正文。'
+      },
+      episodes: {
+        nav: '第 3 步 · 分集剧情',
+        title: '暴雨夜的签收',
+        body: '陈默冒雨把包裹送到城郊别墅，收件人却是三天前去世的独居老人。签完字后，他发现继承人一栏写着自己的名字。',
+        image: '../../public/skills/story.png',
+        alt: '分集剧情参考',
+        status: '3 集 · 每集都有结尾钩子',
+        pill: '钩子已建立',
+        command: '检查三集钩子是否持续升级',
+        detail: '目前三集分别提供身份反转、继承条件和旧车票三个钩子。可以用故事医生检查追看动力。'
+      },
+      visuals: {
+        nav: '第 4 步 · 角色定妆',
+        title: '雨夜里克制的生活感',
+        body: '陈默与苏婉的视觉锚点已经建立，沈之遥也有完整文字描述。镜头 03 仍缺苏婉的可用参考图。',
+        image: '../../public/skills/story.png',
+        alt: '角色定妆参考',
+        status: '2 人已挂图 · 1 人待补',
+        pill: '1 人待补图',
+        command: '补苏婉定妆，再挂入镜头 03',
+        detail: '补图后会把镜头 03 标记为待复核，并保留原有版本。修改不会绕过确认直接覆盖。'
+      },
+      scenes: {
+        nav: '第 5 步 · 场次剧本',
+        title: '老宅门廊',
+        body: '苏婉第一次把信封交给陈默，却故意说错了收件人。陈默没有拆穿，只在门廊下记住了信封上的旧地址。',
+        image: '../../public/skills/manor.png',
+        alt: '老宅门廊场次参考',
+        status: '3 场 · 1 场关联缺图镜头',
+        pill: '场次已完成',
+        command: '复核场次 03 的门廊动作',
+        detail: '场次 03 已拆成三个镜头。修改本场动作会标记下游镜头待复核，不会静默覆盖分镜。'
+      },
+      shots: {
+        nav: '第 6 步 · 分镜',
+        title: '雨停在门外',
+        body: '门开了一条缝，苏婉只看了一眼他手里的信就关上；门缝里掉出一张泛黄车票。镜头首帧已完成，但苏婉的定妆参考尚未挂入。',
+        image: '../../public/skills/manor.png',
+        alt: '老宅门廊镜头参考',
+        status: '3 镜 · 1 镜需返修',
+        pill: '分镜审阅',
+        command: '先补苏婉的定妆参考，再返修第 03 镜',
+        detail: '镜头 03 同时存在缺苏婉参考图与返修状态。建议先去定妆补齐锚点，再回到分镜处理画面。'
+      }
+    };
+
+    const skillData = {
+      continuity: {
+        title: '镜头连续性检查',
+        description: '检查第 03 镜的首尾帧、角色锚点、参考图版本与跨场衔接，生成可逐镜处理的返修队列。',
+        input: '分镜、定妆、场次',
+        output: '连续性报告、逐镜返修队列',
+        policy: '只读，不自动修改项目'
+      },
+      canon: {
+        title: '人物 Canon 检查',
+        description: '核对陈默、苏婉、沈之遥的关系、时间线、地点与道具状态，优先找出确定性冲突。',
+        input: '人物、定妆、场次、分镜',
+        output: 'Canon 冲突清单',
+        policy: '只读优先，冲突需要人工确认'
+      },
+      story: {
+        title: '故事医生',
+        description: '检查三集钩子、节奏、动机和结构塌陷，输出可以跳转到具体集数的修订清单。',
+        input: '三幕、分集、场景',
+        output: '节奏诊断、修订清单',
+        policy: '只读，不覆盖正文'
+      },
+      delivery: {
+        title: '平台交付预检',
+        description: '按目标平台检查时长、画幅、锚点和缺失文件，把阻断项与提醒项直接写进报告。',
+        input: '分镜、采用图、平台参数',
+        output: '阻断项、平台交付预检',
+        policy: '纯计算，不创建付费任务'
+      },
+      adaptation: {
+        title: '小说 / 剧本改编',
+        description: '拆解章节与人物关系，先把原著圣经和分集计划做对，再进入六步生产。',
+        input: '小说或剧本原文',
+        output: '原著圣经、改编计划',
+        policy: '确认后写入新版本'
+      },
+      cost: {
+        title: '成本规划',
+        description: '估算批次、重试、参考图和整剧成本，先给出更省的执行顺序，不直接生成图片。',
+        input: '分集、分镜、平台定价',
+        output: '成本估算、批次顺序',
+        policy: '纯计算，不生成图片'
+      }
+    };
+
+    const projectNodeData = {
+      story: {
+        kicker: '制作步骤 · 故事起点',
+        title: '故事起点',
+        body: '一个快递员意外继承百万遗产，条件却是替原主人完成七桩未竟的交易。每一笔交易都指向同一段被隐瞒的旧事。',
+        image: '../../public/skills/manor.png',
+        alt: '故事氛围参考',
+        step: 'characters',
+        deps: []
+      },
+      characters: {
+        kicker: '制作步骤 · 核心人物',
+        title: '核心人物',
+        body: '三个人被同一笔遗产牵引：陈默想拥有一个家，苏婉想等一句道歉，沈之遥只想尽快拿回钱。',
+        image: '../../public/skills/story.png',
+        alt: '人物参考',
+        step: 'characters',
+        deps: ['故事起点 → 核心人物']
+      },
+      visuals: {
+        kicker: '制作步骤 · 角色定妆',
+        title: '角色定妆',
+        body: '陈默和苏婉的定妆已完成。苏婉尚缺可用定妆图，补图后镜头 03 会被标记为待复核。',
+        image: '../../public/skills/story.png',
+        alt: '角色定妆参考',
+        step: 'visuals',
+        deps: ['核心人物 → 角色定妆']
+      },
+      episodes: {
+        kicker: '制作步骤 · 分集剧情',
+        title: '分集剧情',
+        body: '陈默冒雨把包裹送到城郊别墅，收件人却是三天前去世的独居老人。签完字后，他发现继承人一栏写着自己的名字。',
+        image: '../../public/skills/story.png',
+        alt: '分集剧情参考',
+        step: 'episodes',
+        deps: ['三幕大纲 → 分集剧情']
+      },
+      scenes: {
+        kicker: '制作步骤 · 场次剧本',
+        title: '场次剧本',
+        body: '苏婉第一次把信封交给陈默，却故意说错了收件人。陈默没有拆穿，只在门廊下记住了信封上的旧地址。',
+        image: '../../public/skills/manor.png',
+        alt: '老宅门廊场景参考',
+        step: 'scenes',
+        deps: ['分集剧情 → 场次剧本', '角色定妆 → 场次剧本']
+      },
+      shot: {
+        kicker: '制作步骤 · 分镜',
+        title: '分镜',
+        body: '苏婉关门，旧车票从门缝落下。当前缺苏婉定妆参考并标记需返修，先去定妆区补图，再重新生成视频候选。',
+        image: '../../public/skills/manor.png',
+        alt: '镜头 03 的场景参考',
+        step: 'shots',
+        deps: ['分集剧情 → 分镜', '角色定妆 → 分镜', '场次剧本 → 分镜', '地点锚点 → 分镜']
+      },
+      output: {
+        kicker: '交付节点 · 第 1 集',
+        title: '交付',
+        body: '交付包会包含已采用图、平台参数、镜头清单和 AI 来源清单。当前有 1 个阻断项，解除后才能导出无缺图的执行单。',
+        image: '../../public/docs/tutorial/05-export.png',
+        alt: '交付流程参考',
+        step: 'shots',
+        deps: ['分镜 → 交付', '采用图 → 交付']
+      }
+    };
+
+    let currentStep = 'shots';
+    let currentPage = 'home';
+    let activeSkill = 'continuity';
+    let activeProjectNode = 'shot';
+    const toast = document.getElementById('toast');
+    const announcementShell = document.getElementById('announcementShell');
+    const announcementDetail = document.getElementById('announcementDetail');
+    const announcementToggle = document.getElementById('announcementToggle');
+    const announcementKey = 'veyaframe-preview-release:v2026.11.04';
+    let announcementDismissed = false;
+    try {
+      announcementDismissed = window.localStorage.getItem(announcementKey) === '1';
+    } catch {
+      announcementDismissed = false;
+    }
+    announcementShell.hidden = announcementDismissed;
+    let toastTimer;
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+    }
+
+    function setPage(page) {
+      const nextPage = ['home', 'skills', 'canvas'].includes(page) ? page : 'home';
+      currentPage = nextPage;
+      document.querySelectorAll('[data-page-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.pagePanel !== nextPage;
+      });
+      document.querySelectorAll('.side .nav-item[data-page-target]').forEach((item) => {
+        item.classList.toggle('is-active', item.dataset.pageTarget === nextPage);
+      });
+      if (nextPage !== 'home') {
+        document.querySelectorAll('.side .nav-item[data-step]').forEach((item) => item.classList.remove('is-current'));
+      } else {
+        document.querySelectorAll('.side .nav-item[data-step]').forEach((item) => {
+          item.classList.toggle('is-current', item.dataset.step === currentStep);
+        });
+      }
+      document.querySelectorAll('.mobile-nav [data-page-target]').forEach((item) => {
+        item.classList.toggle('is-active', item.dataset.pageTarget === nextPage);
+      });
+      document.querySelectorAll('.mode-switch [data-page-target]').forEach((item) => {
+        const active = item.dataset.pageTarget === nextPage;
+        item.classList.toggle('is-active', active);
+        item.setAttribute('aria-selected', String(active));
+      });
+      const meta = {
+        home: { section: '我的项目', name: '示例 · 快递员的最后一单' },
+        skills: { section: '我的项目', name: '创作' },
+        canvas: { section: '我的项目', name: '画布' }
+      }[nextPage];
+      document.getElementById('crumbSection').textContent = meta.section;
+      document.getElementById('crumbName').textContent = meta.name;
+      announcementShell.hidden = announcementDismissed || nextPage === 'canvas';
+      if (nextPage === 'canvas') {
+        const frame = document.getElementById('liveCanvasFrame');
+        if (frame && !frame.getAttribute('src')) frame.setAttribute('src', frame.dataset.src);
+      }
+      document.querySelector('.mobile-nav').style.display = nextPage === 'canvas' ? 'none' : '';
+      document.getElementById('agentToggle').style.display = nextPage === 'canvas' ? 'none' : '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setStep(key) {
+      const data = stepData[key];
+      if (!data) return;
+      setPage('home');
+      currentStep = key;
+      document.querySelectorAll('[data-step]').forEach((item) => {
+        item.classList.toggle('is-current', item.dataset.step === key);
+      });
+      document.getElementById('commandTitle').textContent = data.command;
+      document.getElementById('workKicker').textContent = data.nav;
+      document.getElementById('workTitle').textContent = data.title;
+      document.getElementById('workBody').textContent = data.body;
+      document.getElementById('currentImage').src = data.image;
+      document.getElementById('currentImage').alt = data.alt;
+      document.getElementById('imageLabel').textContent = data.nav;
+      document.getElementById('currentStatus').textContent = data.status;
+      document.getElementById('currentPill').textContent = data.pill;
+      document.getElementById('workStatus').textContent = data.status;
+      document.getElementById('headContinue').textContent = '继续' + data.nav.split('·')[1].trim();
+    }
+
+    function updateSkillPlan(key) {
+      const data = skillData[key];
+      if (!data) return;
+      activeSkill = key;
+      document.querySelectorAll('[data-skill]').forEach((row) => {
+        row.classList.toggle('is-active', row.dataset.skill === key);
+      });
+      document.getElementById('planTitle').textContent = data.title;
+      document.getElementById('planDescription').textContent = data.description;
+      document.getElementById('planInput').textContent = data.input;
+      document.getElementById('planOutput').textContent = data.output;
+      document.getElementById('planPolicy').textContent = data.policy;
+    }
+
+    function filterSkills() {
+      const query = document.getElementById('skillSearch').value.trim().toLowerCase();
+      const tab = document.querySelector('.skill-tab.is-active')?.dataset.skillTab ?? 'recommend';
+      const category = document.querySelector('.skill-category.is-active')?.dataset.skillCategory ?? '全部';
+      let visible = 0;
+      document.querySelectorAll('[data-skill]').forEach((row) => {
+        const favoriteMatch = tab !== 'favorite' || row.dataset.favorite === 'true';
+        const mineMatch = tab !== 'mine';
+        const categoryMatch = category === '全部' || row.dataset.category === category;
+        const searchMatch = !query || row.textContent.toLowerCase().includes(query);
+        const show = favoriteMatch && mineMatch && categoryMatch && searchMatch;
+        row.hidden = !show;
+        if (show) visible += 1;
+      });
+      document.getElementById('skillsEmpty').hidden = visible > 0;
+    }
+
+    function selectProjectNode(button) {
+      const data = projectNodeData[button.dataset.projectNode];
+      if (!data) return;
+      activeProjectNode = button.dataset.projectNode;
+      document.querySelectorAll('[data-project-node]').forEach((node) => {
+        node.classList.toggle('is-selected', node === button);
+      });
+      document.getElementById('projectNodeKicker').textContent = data.kicker;
+      document.getElementById('projectNodeTitle').textContent = data.title;
+      document.getElementById('projectNodeBody').textContent = data.body;
+      document.getElementById('projectNodeImage').src = data.image;
+      document.getElementById('projectNodeImage').alt = data.alt;
+      const dependencyList = document.getElementById('dependencyList');
+      dependencyList.replaceChildren();
+      document.getElementById('dependencyCount').textContent = String(data.deps.length);
+      data.deps.forEach((label) => {
+        const row = document.createElement('div');
+        row.className = 'dependency-row';
+        const text = document.createElement('span');
+        text.textContent = label;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', '移除依赖：' + label);
+        remove.addEventListener('click', () => showToast('Demo 中不删除系统依赖'));
+        row.append(text, remove);
+        dependencyList.appendChild(row);
+      });
+    }
+
+    function appendChatExchange(prompt) {
+      const thread = document.getElementById('chatThread');
+      const user = document.createElement('article');
+      user.className = 'chat-message user';
+      const userHead = document.createElement('header');
+      const userWho = document.createElement('b');
+      const userTime = document.createElement('span');
+      userWho.textContent = '你';
+      userTime.textContent = '刚刚';
+      userHead.append(userWho, userTime);
+      const userBody = document.createElement('p');
+      userBody.textContent = prompt;
+      user.append(userHead, userBody);
+
+      const agent = document.createElement('article');
+      agent.className = 'chat-message';
+      const agentHead = document.createElement('header');
+      const agentWho = document.createElement('b');
+      const agentState = document.createElement('span');
+      agentWho.textContent = 'Veya Agent';
+      agentState.textContent = '读取了当前项目';
+      agentHead.append(agentWho, agentState);
+      const agentBody = document.createElement('p');
+      const response = /03|卡|分镜|返修/.test(prompt)
+        ? '第 03 镜的阻断来自苏婉定妆参考缺失，同时镜头被标为需返修。先补参考，再重新生成视频候选，才不会把缺图问题带进下一层。'
+        : /苏婉|动机/.test(prompt)
+          ? '苏婉当前的核心是“想听一句道歉，但绝不先开口”。可以把旧车票作为她主动松动的物证，不直接解释情绪。'
+          : /钩子|节奏|三集/.test(prompt)
+            ? '三集目前分别由身份反转、继承条件和旧车票承担钩子。最值得先检查的是第三集结尾是否会把旧车票过早解释完。'
+            : '我会先读取当前项目版本、第 6 步分镜和镜头 03 的状态，再给出可确认的修改范围与下游影响。';
+      agentBody.textContent = response;
+      const actions = document.createElement('div');
+      actions.className = 'chat-message-actions';
+      const canvasButton = document.createElement('button');
+      canvasButton.type = 'button';
+      canvasButton.textContent = '在编排画布查看';
+      canvasButton.addEventListener('click', () => setPage('canvas'));
+      const planButton = document.createElement('button');
+      planButton.type = 'button';
+      planButton.textContent = '生成修改计划';
+      planButton.addEventListener('click', () => setAgent(true));
+      actions.append(canvasButton, planButton);
+      agent.append(agentHead, agentBody, actions);
+      thread.append(user, agent);
+      agent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function openStepModal() {
+      const data = stepData[currentStep];
+      document.getElementById('modalKicker').textContent = data.nav;
+      document.getElementById('modalTitle').textContent = data.title;
+      document.getElementById('modalBody').textContent = data.detail;
+      document.getElementById('modalImage').src = data.image;
+      document.getElementById('modalImage').alt = data.alt;
+      const modal = document.getElementById('stepModal');
+      modal.hidden = false;
+      requestAnimationFrame(() => modal.classList.add('is-open'));
+      document.getElementById('modalClose').focus();
+    }
+
+    function closeStepModal() {
+      const modal = document.getElementById('stepModal');
+      modal.classList.remove('is-open');
+      modal.hidden = true;
+    }
+
+    function setAgent(open) {
+      document.getElementById('agentSheet').classList.toggle('is-open', open);
+      document.getElementById('agentToggle').setAttribute('aria-expanded', String(open));
+    }
+
+    document.querySelectorAll('[data-step]').forEach((button) => {
+      button.addEventListener('click', () => setStep(button.dataset.step));
+    });
+
+    document.getElementById('headContinue').addEventListener('click', openStepModal);
+    document.getElementById('commandContinue').addEventListener('click', () => {
+      setStep('visuals');
+      showToast('已切到角色定妆：先补苏婉参考图');
+    });
+    document.getElementById('fixBlocker').addEventListener('click', () => {
+      setStep('visuals');
+      showToast('已定位到苏婉定妆');
+    });
+    document.getElementById('railFix').addEventListener('click', () => {
+      setStep('visuals');
+      showToast('已定位到苏婉定妆');
+    });
+    document.getElementById('modalClose').addEventListener('click', closeStepModal);
+    document.getElementById('modalCancel').addEventListener('click', closeStepModal);
+    document.getElementById('modalOpen').addEventListener('click', () => {
+      closeStepModal();
+      showToast('已在当前工作台定位：' + stepData[currentStep].nav);
+    });
+    document.getElementById('stepModal').addEventListener('mousedown', (event) => {
+      if (event.target === event.currentTarget) closeStepModal();
+    });
+
+    document.querySelectorAll('[data-page-target]').forEach((button) => {
+      button.addEventListener('click', () => setPage(button.dataset.pageTarget));
+    });
+    announcementToggle.addEventListener('click', () => {
+      const open = announcementDetail.hidden;
+      announcementDetail.hidden = !open;
+      announcementToggle.setAttribute('aria-expanded', String(open));
+    });
+    document.getElementById('announcementClose').addEventListener('click', () => {
+      announcementDismissed = true;
+      announcementShell.hidden = true;
+      try {
+        window.localStorage.setItem(announcementKey, '1');
+      } catch {
+        // 隐私模式只影响本次关闭状态。
+      }
+    });
+    document.getElementById('creationComposer')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = document.getElementById('creationInput');
+      const prompt = input.value.trim();
+      if (!prompt) {
+        input.focus();
+        showToast('先描述想推进的戏或要检查的问题');
+        return;
+      }
+      appendChatExchange(prompt);
+      input.value = '';
+    });
+    document.querySelectorAll('[data-chat-prompt]').forEach((button) => {
+      button.addEventListener('click', () => {
+        appendChatExchange(button.dataset.chatPrompt);
+      });
+    });
+    document.querySelectorAll('[data-skill-start]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-skill-start]').forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+        const input = document.getElementById('skillInput');
+        input.value = '';
+        input.placeholder = {
+          idea: '写下故事灵感，例如：一个快递员意外继承了百万遗产，条件却是替原主人完成七桩未竟的交易。',
+          novel: '粘贴小说或剧本片段，Veya 会先拆解人物关系与原文结构。',
+          project: '告诉 Veya 想用哪条技能继续当前项目，例如：检查第 03 镜的连续性。'
+        }[button.dataset.skillStart];
+        input.focus();
+      });
+    });
+    document.querySelectorAll('[data-skill-prompt]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const input = document.getElementById('skillInput');
+        input.value = button.dataset.skillPrompt;
+        input.focus();
+      });
+    });
+    document.getElementById('skillComposer').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = document.getElementById('skillInput');
+      const prompt = input.value.trim();
+      if (!prompt) {
+        input.focus();
+        showToast('先写下想法、原文或要检查的项目问题');
+        return;
+      }
+      const data = skillData[activeSkill];
+      setAgent(true);
+      document.getElementById('proposalTitle').textContent = '已匹配创作技能：' + data.title;
+      document.getElementById('proposalBody').textContent =
+        `本次输入：${prompt}。读取：${data.input}。产出：${data.output}。${data.policy}。`;
+      document.getElementById('agentProposal').hidden = false;
+    });
+    document.querySelectorAll('[data-message]').forEach((button) => {
+      button.addEventListener('click', () => showToast(button.dataset.message));
+    });
+    document.querySelectorAll('.skill-tab').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.skill-tab').forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+        filterSkills();
+      });
+    });
+    document.querySelectorAll('[data-skill-category]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-skill-category]').forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+        filterSkills();
+      });
+    });
+    document.getElementById('skillSearch').addEventListener('input', filterSkills);
+    document.querySelectorAll('[data-skill]').forEach((button) => {
+      button.addEventListener('click', () => {
+        updateSkillPlan(button.dataset.skill);
+        if (window.innerWidth <= 1080) {
+          document.getElementById('skillPlan').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+    document.getElementById('openSkillPlan').addEventListener('click', () => {
+      const data = skillData[activeSkill];
+      setAgent(true);
+      document.getElementById('proposalTitle').textContent = '待确认：' + data.title;
+      document.getElementById('proposalBody').textContent =
+        `读取：${data.input}。产出：${data.output}。${data.policy}。`;
+      document.getElementById('agentProposal').hidden = false;
+    });
+    document.querySelectorAll('[data-project-node]').forEach((button) => {
+      button.addEventListener('click', () => {
+        selectProjectNode(button);
+        if (window.innerWidth <= 780) {
+          document.querySelector('.orchestration-side').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+    document.getElementById('projectNodeEdit').addEventListener('click', () => {
+      const data = projectNodeData[activeProjectNode];
+      if (data) setStep(data.step);
+    });
+    document.getElementById('projectNodeAgent').addEventListener('click', () => {
+      const data = projectNodeData[activeProjectNode];
+      setAgent(true);
+      document.getElementById('proposalTitle').textContent = '待确认：处理「' + data.title + '」';
+      document.getElementById('proposalBody').textContent = data.body + ' Agent 会先给出修改范围与下游影响，不会直接覆盖当前版本。';
+      document.getElementById('agentProposal').hidden = false;
+    });
+    document.getElementById('canvasAgentBar').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const data = projectNodeData[activeProjectNode];
+      setAgent(true);
+      document.getElementById('proposalTitle').textContent = '画布上下文 · ' + data.title;
+      document.getElementById('proposalBody').textContent = '已读取当前节点与上下游关系。你可以继续描述要调整的戏，Agent 不会直接写入。';
+      document.getElementById('agentProposal').hidden = false;
+    });
+
+    document.querySelectorAll('[data-tool]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const labels = {
+          artifacts: '打开产物中心：当前有分集、定妆与分镜三个最新版本',
+          ledger: '打开生产台账：3 镜中 1 个需返修',
+          export: '导出交付包前会先检查缺图与阻断项'
+        };
+        showToast(labels[button.dataset.tool] || '项目工具');
+      });
+    });
+    document.querySelectorAll('[data-method]').forEach((button) => {
+      button.addEventListener('click', () => {
+        setAgent(true);
+        showToast('已带入方法：' + button.dataset.method);
+      });
+    });
+    document.querySelectorAll('[data-artifact]').forEach((button) => {
+      button.addEventListener('click', () => showToast('打开产物版本：' + button.dataset.artifact));
+    });
+    document.querySelectorAll('.mobile-nav button').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.mobile-nav button').forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+      });
+    });
+
+    document.getElementById('agentToggle').addEventListener('click', () => setAgent(!document.getElementById('agentSheet').classList.contains('is-open')));
+    document.getElementById('agentClose').addEventListener('click', () => setAgent(false));
+    document.getElementById('agentInline').addEventListener('click', () => setAgent(true));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        setAgent(false);
+        closeStepModal();
+      }
+    });
+
+    const proposals = {
+      '补苏婉定妆': {
+        title: '待确认：补苏婉定妆并挂入镜头 03',
+        body: '目标：苏婉定妆参考。影响：镜头 03 会被标记为待复核，已有版本保留。不会自动创建付费生成任务。'
+      },
+      '检查连续性': {
+        title: '待确认：运行镜头连续性检查',
+        body: '目标：第 1 集与第 3 集的角色、场景和首尾帧。只读分析，不修改项目。'
+      },
+      '检查追看率': {
+        title: '待确认：运行故事医生',
+        body: '目标：三集钩子、节奏和结构塌陷。只读分析，不写回正文。'
+      }
+    };
+
+    document.querySelectorAll('[data-proposal]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const proposal = proposals[button.dataset.proposal];
+        document.getElementById('proposalTitle').textContent = proposal.title;
+        document.getElementById('proposalBody').textContent = proposal.body;
+        document.getElementById('agentProposal').hidden = false;
+      });
+    });
+    document.getElementById('proposalCancel').addEventListener('click', () => {
+      document.getElementById('agentProposal').hidden = true;
+    });
+    document.getElementById('proposalApply').addEventListener('click', () => {
+      document.getElementById('agentProposal').hidden = true;
+      showToast('已生成待确认动作；正式版会写入新版本');
+    });
+    document.getElementById('agentForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      showToast('Agent 已读取当前项目上下文');
+    });
+  </script>
+</body>
+</html>

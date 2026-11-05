@@ -12,6 +12,7 @@ type ToolTab = 'comments' | 'assets' | 'branches'
 
 interface Props {
   open: boolean
+  initialTab?: ToolTab
   onClose: () => void
   projectId: string | null
   entities: AgentEntity[]
@@ -46,6 +47,7 @@ const TOOL_TABS: Array<{
 
 export default function ProjectToolsPanel({
   open,
+  initialTab = 'comments',
   onClose,
   projectId,
   entities,
@@ -60,6 +62,10 @@ export default function ProjectToolsPanel({
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const openCount = comments.filter((comment) => comment.status === 'open').length
+
+  useEffect(() => {
+    if (open) setActiveTool(initialTab)
+  }, [open, initialTab])
 
   useEffect(() => {
     if (!open) return

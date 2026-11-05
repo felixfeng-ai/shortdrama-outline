@@ -13,6 +13,7 @@ import {
   type AuthUserDto,
 } from '@/lib/auth/client'
 import { safeReturnPath } from '@/lib/auth/return-to'
+import VeyaBrandMark from './VeyaBrandMark'
 
 type LoginStep = 'email' | 'code'
 
@@ -170,7 +171,7 @@ export default function LoginPanel() {
     <main className="auth-page">
       <header className="auth-topbar">
         <a className="auth-brand" href="/" aria-label="成剧 VeyaFrame 首页">
-          <span className="auth-brand-mark" aria-hidden="true">V</span>
+          <span className="auth-brand-mark" aria-hidden="true"><VeyaBrandMark /></span>
           <span className="auth-brand-name">VeyaFrame</span>
           <span className="auth-brand-cn">成剧</span>
         </a>
@@ -184,29 +185,30 @@ export default function LoginPanel() {
         <div className="auth-story-copy">
           <p className="auth-kicker">PROJECT CONTINUITY / ACCOUNT</p>
           <h1 id="auth-story-title">
-            把故事<span className="auth-title-accent">做对</span>，<br />
-            把这一集<span className="auth-title-accent">做成片</span>。
+            把判断留在创作里，<br />
+            把故事做成<span className="auth-title-accent">可拍的成片</span>。
           </h1>
           <p className="auth-lede">
-            人物、场次、分镜、首帧、镜头视频和时间线在同一条项目链里。改一处，看得见影响；换设备，也能接着做。
+            AI 负责拆解、执行与补全，人的判断负责 Canon、情绪和审美。
+            角色跨镜一致性可检查，每次修改先看影响，确认后写入新版本。
           </p>
         </div>
 
         <div className="auth-proof-chain" aria-label="项目核心能力">
           <div className="auth-proof-node">
             <span className="auth-proof-index">01</span>
-            <strong>角色与场景</strong>
-            <small>跨镜一致</small>
+            <strong>Canon 与人物</strong>
+            <small>跨镜一致性可检查</small>
           </div>
           <div className="auth-proof-node">
             <span className="auth-proof-index">02</span>
-            <strong>镜头视频</strong>
-            <small>首帧可追溯</small>
+            <strong>镜头与首帧</strong>
+            <small>生成来源可追溯</small>
           </div>
           <div className="auth-proof-node">
             <span className="auth-proof-index">03</span>
-            <strong>时间线成片</strong>
-            <small>MP4 · SRT · BGM</small>
+            <strong>版本与交付</strong>
+            <small>确认后写入新版本</small>
           </div>
         </div>
       </section>

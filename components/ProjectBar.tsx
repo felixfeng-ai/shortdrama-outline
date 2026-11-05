@@ -415,7 +415,7 @@ export default function ProjectBar({
             className="mt-1.5 w-full rounded-chip border border-dashed border-surface-line-2 px-3 py-1.5 text-[11px]
               text-ink-500 transition-colors hover:border-accent-300 hover:text-accent-700"
           >
-            载入示例项目（六步都有内容，不花额度）
+            载入示例项目（六步都有内容，不消耗创作额度）
           </button>
         </div>
       </SmoothCollapse>

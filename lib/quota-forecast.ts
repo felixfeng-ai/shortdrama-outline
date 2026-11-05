@@ -27,7 +27,7 @@ export function forecastQuota(
       known: false,
       affordable: true,
       shortBy: 0,
-      label: `本步 ${safeUnits} 单位 · 额度读取中`,
+      label: `本步 ${safeUnits} 单位 · 创作额度读取中`,
     }
   }
 
@@ -40,6 +40,6 @@ export function forecastQuota(
     shortBy,
     label: shortBy === 0
       ? `本步 ${safeUnits} 单位 · 剩余 ${current}`
-      : `本步 ${safeUnits} 单位 · 剩余 ${current} · 额度不足（差 ${shortBy}）`,
+      : `本步 ${safeUnits} 单位 · 剩余 ${current} · 创作额度不足（差 ${shortBy}）`,
   }
 }

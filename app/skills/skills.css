@@ -9,9 +9,9 @@
       --text: #dfe4e2;
       --text-2: #b6c0c5;
       --text-3: #8b969d;
-      --acid: #c4d98a;
-      --acid-strong: #d4e5aa;
-      --blue: #8eb7e7;
+      --acid: #8dc8dc;
+      --acid-strong: #a7daec;
+      --blue: #8dc8dc;
       --warning: #d58d73;
       --font-ui: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
       --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
@@ -33,10 +33,10 @@
     .skill-page button, .skill-page textarea, .skill-page input { font: inherit; }
     .skill-page button { color: inherit; }
     .skill-page button:focus-visible, .skill-page textarea:focus-visible, .skill-page input:focus-visible {
-      outline: 2px solid rgba(196, 217, 138, .8);
+      outline: 1px solid rgba(141, 200, 220, .72);
       outline-offset: 2px;
     }
-    .skill-page ::selection { background: rgba(196, 217, 138, .22); }
+    .skill-page ::selection { background: rgba(141, 200, 220, .22); }
     .skill-page .sr-only {
       position: absolute;
       width: 1px;
@@ -77,17 +77,17 @@
     .skill-page .brand span {
       color: var(--text-2);
       font-family: var(--font-mono);
-      font-size: 8.5px;
+      font-size: 11px;
       letter-spacing: .16em;
       padding-left: 10px;
       border-left: 1px solid var(--line);
     }
     .skill-page .brand .ai {
       padding: 1px 5px;
-      border: 1px solid rgba(196, 217, 138, .28);
+      border: 1px solid rgba(141, 200, 220, .28);
       border-radius: 4px;
       color: var(--acid);
-      font-size: 8px;
+      font-size: 11px;
       letter-spacing: 0;
     }
     .skill-page .top-nav {
@@ -115,7 +115,7 @@
       gap: 13px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 11px;
       white-space: nowrap;
     }
     .skill-page .top-project {
@@ -150,6 +150,14 @@
       margin: 0 auto;
       padding: 46px 0 150px;
     }
+    .skill-page.skill-page-embedded {
+      min-height: 0;
+      background: transparent;
+    }
+    .skill-page.skill-page-embedded .page {
+      width: 100%;
+      padding: 4px 0 120px;
+    }
     .skill-page .hero {
       display: grid;
       justify-items: center;
@@ -159,7 +167,7 @@
       margin: 0 0 7px;
       color: var(--acid);
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: .12em;
     }
     .skill-page .hero h1 {
@@ -195,8 +203,8 @@
       transition: border-color 180ms var(--ease), background-color 180ms var(--ease);
     }
     .skill-page .composer:focus-within {
-      border-color: rgba(196, 217, 138, .42);
-      background: #1c1f21;
+      border-color: var(--line);
+      background: var(--panel);
     }
     .skill-page .intake-modes {
       display: flex;
@@ -233,16 +241,17 @@
       line-height: 1.65;
     }
     .skill-page .composer textarea::placeholder { color: var(--text-3); }
+    .skill-page .composer textarea:focus-visible { outline: none; }
     .skill-page .intake-mode-hint {
       margin: 0 21px 8px;
       color: var(--text-3);
-      font-size: 10.5px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .source-consent {
       margin: -3px 21px 8px;
       color: var(--text-3);
-      font-size: 10px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .composer-toolbar {
@@ -269,7 +278,7 @@
       opacity: .5;
     }
     .skill-page .tool-button.source-save {
-      border-color: rgba(196, 217, 138, .18);
+      border-color: rgba(141, 200, 220, .18);
       color: var(--acid);
     }
     .skill-page .tool-button svg {
@@ -288,11 +297,11 @@
       max-width: 220px;
       margin-left: 5px;
       padding: 4px 7px;
-      border: 1px solid rgba(196, 217, 138, .2);
+      border: 1px solid rgba(141, 200, 220, .2);
       border-radius: 999px;
-      background: rgba(196, 217, 138, .055);
+      background: rgba(141, 200, 220, .055);
       color: var(--acid);
-      font-size: 9px;
+      font-size: 11px;
     }
     .skill-page .selected-skill.visible { display: inline-flex; }
     .skill-page .selected-skill span {
@@ -318,10 +327,10 @@
       flex: 0 0 auto;
       place-items: center;
       margin-left: auto;
-      border: 1px solid rgba(196, 217, 138, .45);
+      border: 1px solid rgba(141, 200, 220, .45);
       border-radius: 50%;
       background: var(--acid);
-      color: #1b2115;
+      color: #071014;
       transition: background-color 150ms, transform 120ms;
     }
     .skill-page .send-button:hover { background: var(--acid-strong); }
@@ -348,7 +357,7 @@
       gap: 12px;
       min-height: 30px;
       color: var(--text-3);
-      font-size: 10px;
+      font-size: 11px;
     }
     .skill-page .project-materials-head > span {
       color: var(--text-2);
@@ -368,7 +377,7 @@
       border-radius: 3px;
       color: var(--blue);
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 11px;
     }
     .skill-page .material-copy {
       display: grid;
@@ -386,7 +395,7 @@
     .skill-page .material-copy small {
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 9.5px;
+      font-size: 11px;
     }
     .skill-page .project-material-row > button {
       min-height: 26px;
@@ -396,7 +405,7 @@
       border-radius: 4px;
       background: transparent;
       color: var(--text-3);
-      font-size: 9.5px;
+      font-size: 11px;
     }
     .skill-page .project-material-row > button:hover {
       border-color: rgba(213, 141, 115, .28);
@@ -407,7 +416,7 @@
       margin: 0;
       padding: 0 12px 10px;
       color: var(--text-3);
-      font-size: 10px;
+      font-size: 11px;
     }
     .skill-page .intake-preflight {
       display: grid;
@@ -431,7 +440,7 @@
     .skill-page .intake-preflight span {
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 9.5px;
+      font-size: 11px;
     }
     .skill-page .intake-preflight b {
       overflow: hidden;
@@ -444,7 +453,7 @@
     .skill-page .intake-preflight small {
       overflow: hidden;
       color: var(--text-3);
-      font-size: 10px;
+      font-size: 11px;
       line-height: 1.5;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -455,11 +464,11 @@
       min-height: 28px;
       margin-top: 4px;
       padding: 0 8px;
-      border: 1px solid rgba(196, 217, 138, .32);
+      border: 1px solid rgba(141, 200, 220, .32);
       border-radius: 4px;
-      background: rgba(196, 217, 138, .045);
+      background: rgba(141, 200, 220, .045);
       color: var(--acid);
-      font-size: 9px;
+      font-size: 11px;
     }
     .skill-page .quick-prompts {
       display: flex;
@@ -477,7 +486,7 @@
       color: var(--text-3);
       font-size: 11px;
     }
-    .skill-page .quick-prompts button:hover { border-color: rgba(196, 217, 138, .3); color: var(--acid); }
+    .skill-page .quick-prompts button:hover { border-color: rgba(141, 200, 220, .3); color: var(--acid); }
 
     .skill-page .skill-recommendations {
       width: min(910px, 100%);
@@ -491,7 +500,7 @@
       gap: 12px;
       margin-bottom: 6px;
       color: var(--text-2);
-      font-size: 10px;
+      font-size: 11px;
     }
     .skill-page .skill-recommendations-head span {
       color: var(--text-2);
@@ -500,7 +509,7 @@
     .skill-page .skill-recommendations-head small {
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 8.5px;
+      font-size: 11px;
     }
     .skill-page .skill-recommendations-grid {
       display: grid;
@@ -535,17 +544,17 @@
       padding: 10px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 11px;
     }
     .skill-page .skill-recommendations-grid > button.active {
-      background: rgba(196, 217, 138, .045);
-      box-shadow: inset 0 0 0 1px rgba(196, 217, 138, .24);
+      background: rgba(141, 200, 220, .045);
+      box-shadow: inset 0 0 0 1px rgba(141, 200, 220, .24);
     }
     .skill-page .skill-recommendation-index {
       padding-top: 1px;
       color: var(--acid);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
       font-variant-numeric: tabular-nums;
     }
     .skill-page .skill-recommendation-copy {
@@ -563,7 +572,7 @@
       display: -webkit-box;
       overflow: hidden;
       color: var(--text-3);
-      font-size: 9px;
+      font-size: 11px;
       line-height: 1.45;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
@@ -573,7 +582,7 @@
       overflow: hidden;
       color: var(--blue);
       font-family: var(--font-mono);
-      font-size: 7.5px;
+      font-size: 11px;
       font-style: normal;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -599,7 +608,7 @@
       padding: 14px 15px 13px;
       border-bottom: 1px solid var(--line);
       background:
-        linear-gradient(90deg, rgba(196, 217, 138, .035), transparent 62%);
+        linear-gradient(90deg, rgba(141, 200, 220, .035), transparent 62%);
     }
     .skill-page .execution-plan-head > div {
       display: grid;
@@ -609,7 +618,7 @@
     .skill-page .execution-plan-kicker {
       color: var(--acid);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
       letter-spacing: .08em;
     }
     .skill-page .execution-plan-head h2 {
@@ -623,7 +632,7 @@
       max-width: 670px;
       margin: 1px 0 0;
       color: var(--text-3);
-      font-size: 10.5px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .execution-plan-close {
@@ -665,13 +674,13 @@
       margin: 0;
       color: var(--text-2);
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 500;
     }
     .skill-page .execution-plan-section-head span {
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
     }
     .skill-page .execution-plan-steps ol {
       margin: 0;
@@ -690,7 +699,7 @@
       padding-top: 1px;
       color: var(--blue);
       font-family: var(--font-mono);
-      font-size: 8.5px;
+      font-size: 11px;
       font-variant-numeric: tabular-nums;
     }
     .skill-page .execution-step-copy {
@@ -708,7 +717,7 @@
       margin: 0;
       overflow-wrap: anywhere;
       color: var(--text-2);
-      font-size: 10px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .execution-step-copy p span {
@@ -716,7 +725,7 @@
       min-width: 28px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
     }
     .skill-page .execution-plan-side {
       min-width: 0;
@@ -737,12 +746,12 @@
     .skill-page .execution-plan-metrics small {
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
     }
     .skill-page .execution-plan-metrics b {
       overflow-wrap: anywhere;
       color: var(--text-2);
-      font-size: 9.5px;
+      font-size: 11px;
       font-weight: 500;
       line-height: 1.5;
     }
@@ -762,7 +771,7 @@
       padding-left: 10px;
       overflow-wrap: anywhere;
       color: var(--text-2);
-      font-size: 9px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .execution-plan-block li::before {
@@ -779,7 +788,7 @@
     .skill-page .execution-plan-recovery p {
       margin: 6px 0 0;
       color: var(--text-3);
-      font-size: 8.5px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .execution-plan-action-wrap {
@@ -798,7 +807,7 @@
     }
     .skill-page .execution-plan-action-copy p {
       margin: 0;
-      font-size: 8.5px;
+      font-size: 11px;
       line-height: 1.5;
     }
     .skill-page .execution-plan-ready {
@@ -812,11 +821,11 @@
       align-items: center;
       justify-content: center;
       gap: 7px;
-      border: 1px solid rgba(196, 217, 138, .5);
+      border: 1px solid rgba(141, 200, 220, .5);
       border-radius: 5px;
       background: var(--acid);
-      color: #1b2115;
-      font-size: 10.5px;
+      color: #071014;
+      font-size: 11px;
       font-weight: 600;
       transition:
         background-color 150ms var(--ease),
@@ -829,14 +838,14 @@
     }
     .skill-page .execution-plan-action-copy > small {
       color: var(--text-3);
-      font-size: 7.5px;
+      font-size: 11px;
       line-height: 1.5;
       text-align: left;
     }
     .skill-page .execution-plan-blocked,
     .skill-page .execution-plan-warning {
       margin: 0;
-      font-size: 8.5px;
+      font-size: 11px;
       line-height: 1.5;
     }
     .skill-page .execution-plan-blocked { color: var(--warning); }
@@ -899,7 +908,7 @@
       border-radius: 6px;
       background: var(--panel);
       color: var(--text);
-      font-size: 10.5px;
+      font-size: 11px;
     }
     .skill-page .catalog-search input::placeholder { color: var(--text-3); }
     .skill-page .catalog-filters {
@@ -915,7 +924,7 @@
       border-radius: 6px;
       background: transparent;
       color: var(--text-3);
-      font-size: 10px;
+      font-size: 11px;
     }
     .skill-page .filter-button:hover { border-color: var(--line-strong); color: var(--text-2); }
     .skill-page .filter-button.active {
@@ -945,12 +954,12 @@
         transform 120ms var(--ease);
     }
     .skill-page .skill-card:hover {
-      border-color: rgba(196, 217, 138, .28);
+      border-color: rgba(141, 200, 220, .28);
       background: var(--raised);
     }
     .skill-page .skill-card.selected {
-      border-color: rgba(196, 217, 138, .65);
-      box-shadow: inset 0 0 0 1px rgba(196, 217, 138, .12);
+      border-color: rgba(141, 200, 220, .65);
+      box-shadow: inset 0 0 0 1px rgba(141, 200, 220, .12);
     }
     .skill-page .skill-card:active { transform: scale(.993); }
     .skill-page .skill-visual {
@@ -984,7 +993,7 @@
     }
     .skill-page .visual-number .skill-visual::after {
       background:
-        repeating-linear-gradient(0deg, rgba(196, 217, 138, .055) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(0deg, rgba(141, 200, 220, .055) 0 1px, transparent 1px 24px),
         rgba(7, 9, 10, .27);
     }
     .skill-page .visual-badge {
@@ -998,7 +1007,7 @@
       background: rgba(14, 16, 18, .72);
       color: var(--text);
       font-family: var(--font-mono);
-      font-size: 7.5px;
+      font-size: 11px;
       backdrop-filter: blur(5px);
     }
     .skill-page .visual-count {
@@ -1008,8 +1017,7 @@
       bottom: 8px;
       color: rgba(255, 255, 255, .76);
       font-family: var(--font-mono);
-      font-size: 8px;
-      text-shadow: 0 1px 8px rgba(0, 0, 0, .9);
+      font-size: 11px;
     }
     .skill-page .skill-content {
       display: flex;
@@ -1042,7 +1050,7 @@
       padding-top: 9px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 9.5px;
+      font-size: 11px;
     }
     .skill-page .official-mark {
       display: grid;
@@ -1051,9 +1059,9 @@
       place-items: center;
       border-radius: 50%;
       background: var(--acid);
-      color: #1b2115;
+      color: #071014;
       font-family: var(--font-ui);
-      font-size: 8px;
+      font-size: 11px;
       font-weight: 700;
     }
     .skill-page .skill-meta b { color: var(--text-3); font-weight: 500; }
@@ -1090,7 +1098,7 @@
       padding-top: 10px;
       border-top: 1px solid var(--line);
       color: var(--text-3);
-      font-size: 10px;
+      font-size: 11px;
     }
     .skill-page .library-footer span {
       display: inline-flex;
@@ -1119,7 +1127,7 @@
       margin: 0 0 7px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
       letter-spacing: .08em;
     }
     .skill-page .personal-skills-head h2 {
@@ -1132,7 +1140,7 @@
       display: block;
       margin-top: 5px;
       color: var(--text-3);
-      font-size: 9.5px;
+      font-size: 11px;
     }
     .skill-page .personal-skills-head > button {
       min-height: 34px;
@@ -1141,11 +1149,11 @@
       border-radius: 7px;
       background: var(--raised);
       color: var(--text-2);
-      font-size: 9.5px;
+      font-size: 11px;
       cursor: pointer;
     }
     .skill-page .personal-skills-head > button:hover {
-      border-color: rgba(196, 217, 138, .35);
+      border-color: rgba(141, 200, 220, .35);
       color: var(--acid);
     }
     .skill-page .personal-skills-body {
@@ -1180,7 +1188,7 @@
     }
     .skill-page .personal-skill-list > button:hover,
     .skill-page .personal-skill-list > button.active {
-      background: rgba(196, 217, 138, .055);
+      background: rgba(141, 200, 220, .055);
       color: var(--text);
     }
     .skill-page .personal-skill-list > button.active {
@@ -1194,7 +1202,7 @@
     .skill-page .personal-skill-list b {
       overflow: hidden;
       color: inherit;
-      font-size: 9.5px;
+      font-size: 11px;
       font-weight: 520;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1202,7 +1210,7 @@
     .skill-page .personal-skill-list small,
     .skill-page .personal-skill-list i {
       color: var(--text-3);
-      font-size: 7.8px;
+      font-size: 11px;
       font-style: normal;
     }
     .skill-page .personal-skill-empty {
@@ -1212,7 +1220,7 @@
       border: 0;
       background: transparent;
       color: var(--text-3);
-      font-size: 9px;
+      font-size: 11px;
       line-height: 1.7;
       text-align: left;
     }
@@ -1231,7 +1239,7 @@
     .skill-page .personal-skill-fields label.wide { grid-column: 1 / -1; }
     .skill-page .personal-skill-fields label > span {
       color: var(--text-3);
-      font-size: 8px;
+      font-size: 11px;
     }
     .skill-page .personal-skill-fields input,
     .skill-page .personal-skill-fields textarea {
@@ -1242,13 +1250,13 @@
       outline: none;
       background: var(--bg);
       color: var(--text);
-      font-size: 9.5px;
+      font-size: 11px;
       line-height: 1.6;
       resize: vertical;
     }
     .skill-page .personal-skill-fields input:focus,
     .skill-page .personal-skill-fields textarea:focus {
-      border-color: rgba(196, 217, 138, .42);
+      border-color: rgba(141, 200, 220, .42);
     }
     .skill-page .personal-skill-versions {
       display: flex;
@@ -1257,7 +1265,7 @@
       padding: 9px 16px;
       border-top: 1px solid var(--line-soft);
       color: var(--text-3);
-      font-size: 8px;
+      font-size: 11px;
     }
     .skill-page .personal-skill-versions b {
       padding: 2px 5px;
@@ -1280,7 +1288,7 @@
       flex: 1;
       margin: 0;
       color: var(--text-3);
-      font-size: 8.5px;
+      font-size: 11px;
     }
     .skill-page .personal-skill-actions button {
       min-height: 32px;
@@ -1289,11 +1297,11 @@
       border-radius: 6px;
       background: var(--raised);
       color: var(--text-2);
-      font-size: 8.8px;
+      font-size: 11px;
       cursor: pointer;
     }
     .skill-page .personal-skill-actions button.primary {
-      border-color: rgba(196, 217, 138, .38);
+      border-color: rgba(141, 200, 220, .38);
       background: var(--acid);
       color: #151711;
       font-weight: 600;
@@ -1308,7 +1316,7 @@
       gap: 12px;
       margin-top: 8px;
       color: var(--text-3);
-      font-size: 9px;
+      font-size: 11px;
     }
     .skill-page .legal-links a { color: inherit; }
     .skill-page .legal-links a:hover { color: var(--text-2); }
@@ -1318,43 +1326,48 @@
       z-index: 40;
       right: 24px;
       bottom: 22px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 11px 7px 7px;
+      display: grid;
+      width: 56px;
+      height: 56px;
+      place-items: center;
+      padding: 0;
       border: 1px solid var(--line-strong);
-      border-radius: 999px;
+      border-radius: 50%;
       background: var(--raised);
       color: var(--text-2);
-      box-shadow: 0 16px 38px -26px rgba(0, 0, 0, .96);
+      box-shadow: none;
       transition: border-color 160ms, background-color 160ms, transform 120ms;
     }
-    .skill-page .agent-entry:hover { border-color: rgba(196, 217, 138, .45); background: #25292d; }
+    .skill-page .agent-entry:hover { border-color: rgba(141, 200, 220, .45); background: #25292d; }
     .skill-page .agent-entry:active { transform: scale(.98); }
     .skill-page .agent-avatar {
       display: grid;
-      width: 34px;
-      height: 34px;
+      width: 44px;
+      height: 44px;
       place-items: center;
       border-radius: 50%;
       background: var(--acid);
-      color: #1b2115;
-      font-size: 11px;
-      font-weight: 700;
+      color: #071014;
     }
-    .skill-page .agent-entry-copy {
-      display: grid;
-      gap: 0;
-      text-align: left;
+    .skill-page .agent-avatar svg {
+      width: 27px;
+      height: 27px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.65;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
-    .skill-page .agent-entry-copy b { color: var(--text); font-size: 10.5px; font-weight: 600; }
-    .skill-page .agent-entry-copy span { color: var(--text-3); font-size: 8px; }
     .skill-page .agent-entry > i {
-      width: 6px;
-      height: 6px;
+      position: absolute;
+      right: 4px;
+      bottom: 7px;
+      width: 8px;
+      height: 8px;
+      border: 2px solid var(--raised);
       border-radius: 50%;
       background: var(--blue);
-      box-shadow: 0 0 0 3px rgba(142, 183, 231, .08);
+      box-shadow: 0 0 0 2px rgba(141, 200, 220, .08);
     }
 
     .skill-page .agent-scrim {
@@ -1376,7 +1389,7 @@
       flex-direction: column;
       border-left: 1px solid var(--line-strong);
       background: var(--panel);
-      box-shadow: -30px 0 80px -48px rgba(0, 0, 0, 1);
+      box-shadow: none;
       transform: translateX(102%);
       transition: transform 220ms var(--ease);
     }
@@ -1391,14 +1404,14 @@
     }
     .skill-page .agent-heading { min-width: 0; flex: 1; }
     .skill-page .agent-heading b { display: block; font-size: 12px; font-weight: 600; }
-    .skill-page .agent-heading span { display: block; color: var(--text-3); font-size: 8.5px; }
+    .skill-page .agent-heading span { display: block; color: var(--text-3); font-size: 11px; }
     .skill-page .agent-ready {
       padding: 2px 6px;
       border-radius: 999px;
       background: rgba(142, 183, 231, .08);
       color: var(--blue);
       font-family: var(--font-mono);
-      font-size: 7.5px;
+      font-size: 11px;
     }
     .skill-page .agent-close {
       display: grid;
@@ -1423,7 +1436,7 @@
       background: rgba(142, 183, 231, .03);
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: 11px;
     }
     .skill-page .agent-context b { color: var(--blue); font-weight: 500; }
     .skill-page .agent-messages {
@@ -1465,7 +1478,7 @@
       text-align: left;
       font-size: 11px;
     }
-    .skill-page .agent-suggestion:hover { border-color: rgba(196, 217, 138, .28); background: var(--raised); color: var(--text-2); }
+    .skill-page .agent-suggestion:hover { border-color: rgba(141, 200, 220, .28); background: var(--raised); color: var(--text-2); }
     .skill-page .agent-suggestion span { flex: 1; }
     .skill-page .agent-suggestion svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; }
     .skill-page .message-user {
@@ -1490,7 +1503,7 @@
       gap: 6px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: 11px;
       opacity: 0;
       transform: translateY(4px);
       animation: process-in 180ms var(--ease) forwards;
@@ -1526,8 +1539,8 @@
       border-bottom: 1px solid var(--line);
     }
     .skill-page .continuity-report-head > span { display: grid; gap: 2px; }
-    .skill-page .continuity-report-head b { color: var(--text); font-size: 10.5px; font-weight: 600; }
-    .skill-page .continuity-report-head small { color: var(--text-3); font-size: 8px; }
+    .skill-page .continuity-report-head b { color: var(--text); font-size: 11px; font-weight: 600; }
+    .skill-page .continuity-report-head small { color: var(--text-3); font-size: 11px; }
     .skill-page .continuity-report-head em {
       flex: none;
       padding: 3px 6px;
@@ -1536,7 +1549,7 @@
       background: rgba(213, 141, 115, .06);
       color: var(--warning);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
       font-style: normal;
     }
     .skill-page .continuity-stats {
@@ -1553,7 +1566,7 @@
     }
     .skill-page .continuity-stats > span:last-child { border-right: 0; }
     .skill-page .continuity-stats b { color: var(--text); font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
-    .skill-page .continuity-stats small { color: var(--text-3); font-size: 7.5px; }
+    .skill-page .continuity-stats small { color: var(--text-3); font-size: 11px; }
     .skill-page .continuity-list { display: grid; gap: 0; }
     .skill-page .continuity-row {
       padding: 9px 10px;
@@ -1566,34 +1579,34 @@
       align-items: baseline;
       gap: 7px;
     }
-    .skill-page .continuity-row-head b { color: var(--text); font-size: 9.5px; font-weight: 600; }
+    .skill-page .continuity-row-head b { color: var(--text); font-size: 11px; font-weight: 600; }
     .skill-page .continuity-row-head span {
       overflow: hidden;
       color: var(--text-3);
-      font-size: 8.5px;
+      font-size: 11px;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .skill-page .continuity-row-head i {
       color: var(--warning);
       font-family: var(--font-mono);
-      font-size: 7.5px;
+      font-size: 11px;
       font-style: normal;
     }
     .skill-page .continuity-row p {
       margin: 5px 0 6px;
       color: var(--text-2);
-      font-size: 9px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .continuity-actions { display: flex; flex-wrap: wrap; gap: 4px; }
     .skill-page .continuity-actions span {
       padding: 2px 5px;
-      border: 1px solid rgba(196, 217, 138, .2);
+      border: 1px solid rgba(141, 200, 220, .2);
       border-radius: 3px;
-      background: rgba(196, 217, 138, .035);
+      background: rgba(141, 200, 220, .035);
       color: var(--acid);
-      font-size: 7.5px;
+      font-size: 11px;
     }
     .skill-page .continuity-clear {
       display: grid;
@@ -1601,8 +1614,8 @@
       padding: 16px 11px;
       color: var(--text-2);
     }
-    .skill-page .continuity-clear b { color: var(--acid); font-size: 10px; font-weight: 600; }
-    .skill-page .continuity-clear span { color: var(--text-3); font-size: 8.5px; }
+    .skill-page .continuity-clear b { color: var(--acid); font-size: 11px; font-weight: 600; }
+    .skill-page .continuity-clear span { color: var(--text-3); font-size: 11px; }
     .skill-page .continuity-report-foot {
       display: flex;
       flex-wrap: wrap;
@@ -1613,7 +1626,7 @@
       background: rgba(9, 12, 14, .24);
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 7.5px;
+      font-size: 11px;
     }
     .skill-page .continuity-report-foot span::after {
       content: "·";
@@ -1624,11 +1637,11 @@
       min-height: 28px;
       margin-left: auto;
       padding: 0 8px;
-      border: 1px solid rgba(196, 217, 138, .3);
+      border: 1px solid rgba(141, 200, 220, .3);
       border-radius: 4px;
       background: transparent;
       color: var(--acid);
-      font-size: 8.5px;
+      font-size: 11px;
     }
     .skill-page .deterministic-report {
       margin-top: 10px;
@@ -1646,15 +1659,15 @@
       border-bottom: 1px solid var(--line);
     }
     .skill-page .deterministic-report-head > span { display: grid; gap: 2px; }
-    .skill-page .deterministic-report-head b { color: var(--text); font-size: 10.5px; font-weight: 600; }
-    .skill-page .deterministic-report-head small { color: var(--text-3); font-size: 8px; }
+    .skill-page .deterministic-report-head b { color: var(--text); font-size: 11px; font-weight: 600; }
+    .skill-page .deterministic-report-head small { color: var(--text-3); font-size: 11px; }
     .skill-page .deterministic-report-head em {
       padding: 3px 6px;
-      border: 1px solid rgba(196, 217, 138, .22);
+      border: 1px solid rgba(141, 200, 220, .22);
       border-radius: 999px;
       color: var(--acid);
       font-family: var(--font-mono);
-      font-size: 8px;
+      font-size: 11px;
       font-style: normal;
       white-space: nowrap;
     }
@@ -1662,7 +1675,7 @@
       margin: 0;
       padding: 10px 11px;
       color: var(--text-2);
-      font-size: 9.5px;
+      font-size: 11px;
       line-height: 1.65;
     }
     .skill-page .deterministic-metrics {
@@ -1680,7 +1693,7 @@
     }
     .skill-page .deterministic-metrics > span:last-child { border-right: 0; }
     .skill-page .deterministic-metrics b { color: var(--text); font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
-    .skill-page .deterministic-metrics small { color: var(--text-3); font-size: 7.5px; }
+    .skill-page .deterministic-metrics small { color: var(--text-3); font-size: 11px; }
     .skill-page .deterministic-items { display: grid; }
     .skill-page .deterministic-item {
       display: grid;
@@ -1695,16 +1708,16 @@
       border-radius: 3px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 7px;
+      font-size: 11px;
     }
     .skill-page .deterministic-item.blocking > span { border-color: rgba(213, 141, 115, .32); color: var(--warning); }
     .skill-page .deterministic-item.warning > span { border-color: rgba(213, 141, 115, .22); color: var(--warning); }
-    .skill-page .deterministic-item b { color: var(--text-2); font-size: 9px; font-weight: 500; }
+    .skill-page .deterministic-item b { color: var(--text-2); font-size: 11px; font-weight: 500; }
     .skill-page .deterministic-item p {
       grid-column: 2;
       margin: 0;
       color: var(--text-3);
-      font-size: 8.5px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .deterministic-tips {
@@ -1717,7 +1730,7 @@
     .skill-page .deterministic-tips p {
       margin: 0;
       color: var(--text-3);
-      font-size: 8px;
+      font-size: 11px;
       line-height: 1.55;
     }
     .skill-page .deterministic-report-foot {
@@ -1728,17 +1741,17 @@
       padding: 8px 10px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 7.5px;
+      font-size: 11px;
     }
     .skill-page .deterministic-report-foot button {
       min-height: 28px;
       margin-left: auto;
       padding: 0 8px;
-      border: 1px solid rgba(196, 217, 138, .3);
+      border: 1px solid rgba(141, 200, 220, .3);
       border-radius: 4px;
       background: transparent;
       color: var(--acid);
-      font-size: 8.5px;
+      font-size: 11px;
     }
     .skill-page .plan-card {
       margin-top: 9px;
@@ -1747,8 +1760,8 @@
       border-radius: 6px;
       background: rgba(213, 141, 115, .045);
     }
-    .skill-page .plan-card h3 { margin: 0; color: var(--warning); font-size: 10.5px; font-weight: 600; }
-    .skill-page .plan-card p { margin: 4px 0 8px; color: var(--text-2); font-size: 9.5px; line-height: 1.6; }
+    .skill-page .plan-card h3 { margin: 0; color: var(--warning); font-size: 11px; font-weight: 600; }
+    .skill-page .plan-card p { margin: 4px 0 8px; color: var(--text-2); font-size: 11px; line-height: 1.6; }
     .skill-page .plan-row {
       display: flex;
       align-items: center;
@@ -1760,7 +1773,7 @@
       border-radius: 4px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 8.5px;
+      font-size: 11px;
     }
     .skill-page .plan-row b { color: var(--text-2); font-weight: 500; }
     .skill-page .plan-actions { display: flex; gap: 5px; margin-top: 8px; }
@@ -1771,9 +1784,9 @@
       border-radius: 4px;
       background: var(--panel);
       color: var(--text-3);
-      font-size: 9px;
+      font-size: 11px;
     }
-    .skill-page .plan-actions button.confirm { border-color: rgba(196, 217, 138, .35); color: var(--acid); }
+    .skill-page .plan-actions button.confirm { border-color: rgba(141, 200, 220, .35); color: var(--acid); }
     .skill-page .agent-compose {
       display: flex;
       gap: 7px;
@@ -1789,7 +1802,7 @@
       border-radius: 5px;
       background: var(--raised);
       color: var(--text);
-      font-size: 10px;
+      font-size: 11px;
     }
     .skill-page .agent-compose input::placeholder { color: var(--text-3); }
     .skill-page .agent-compose button {
@@ -1800,7 +1813,7 @@
       border: 0;
       border-radius: 5px;
       background: var(--acid);
-      color: #1b2115;
+      color: #071014;
     }
     .skill-page .agent-compose button:disabled { opacity: .55; cursor: wait; }
     .skill-page .agent-compose svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
@@ -1809,7 +1822,7 @@
       padding: 0 13px 10px;
       color: var(--text-3);
       font-family: var(--font-mono);
-      font-size: 7.5px;
+      font-size: 11px;
     }
     @keyframes process-in {
       to { opacity: 1; transform: translateY(0); }
@@ -1946,3 +1959,85 @@
   color: var(--text);
 }
 .skill-page .page-shell { min-height: 100dvh; }
+
+/*
+ * 嵌入「创作」模式时沿用技能库的真实内容和交互，只收紧视觉：
+ * 标题回到应用层级，主操作用白色，运行与选中态用冷蓝。
+ */
+.skill-page.skill-page-embedded {
+  --acid: var(--signal-blue);
+  --acid-strong: #a8ccf3;
+  --font-ui: var(--font-latin);
+  --font-mono: var(--font-latin);
+  font-variant-numeric: tabular-nums;
+}
+.skill-page-embedded .hero {
+  justify-items: start;
+  text-align: left;
+}
+.skill-page-embedded .hero-kicker {
+  display: none;
+}
+.skill-page-embedded .hero h1 {
+  max-width: 760px;
+  font-size: clamp(24px, 2.2vw, 32px);
+  font-weight: 560;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+.skill-page-embedded .hero h1 span {
+  color: var(--text);
+}
+.skill-page-embedded .hero h1 .title-separator {
+  color: var(--text-3);
+}
+.skill-page-embedded .hero > p {
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.skill-page-embedded .composer {
+  width: 100%;
+  max-width: 980px;
+  margin-top: 18px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.skill-page-embedded .composer:focus-within {
+  border-color: var(--line);
+  background: var(--panel);
+}
+.skill-page-embedded .send-button {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+.skill-page-embedded .send-button:hover {
+  background: #ffffff;
+}
+.skill-page-embedded .catalog {
+  margin-top: 30px;
+}
+.skill-page-embedded .catalog-title {
+  font-size: 20px;
+}
+.skill-page-embedded .skill-card.selected {
+  border-color: color-mix(in srgb, var(--blue) 48%, var(--line));
+}
+.skill-page-embedded .library-tab.active {
+  border-bottom-color: var(--blue);
+}
+.skill-page-embedded .agent-entry {
+  border-color: var(--line-strong);
+  background: var(--panel);
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .skill-page-embedded .hero h1 {
+    font-size: 24px;
+  }
+  .skill-page-embedded .hero > p {
+    font-size: 12px;
+  }
+}

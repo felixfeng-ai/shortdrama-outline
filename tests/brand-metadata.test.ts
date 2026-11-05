@@ -16,7 +16,7 @@ test("品牌元数据以 VeyaFrame 为最新名称并引用新图标", () => {
   assert.match(legal, /内测条款与隐私说明 · VeyaFrame/)
   assert.match(report, /内容举报 · VeyaFrame/)
 
-  assert.match(icon, /fill="#13171A"/)
-  assert.match(icon, /stroke="#C4D98A"/)
+  assert.match(icon, /fill="#08090A"/)
+  assert.match(icon, /stroke="#F0F2EF"/)
   assert.doesNotMatch(icon, />剧</)
 })

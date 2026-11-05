@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>方案 C · Node Desk</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./base.css">
+  <style>
+    :root {
+      --bg: #080a0b;
+      --board: #0d1012;
+      --node: #15191c;
+      --node-2: #1a1f22;
+      --ink: #e9eeed;
+      --muted: #9ba3a5;
+      --faint: #727b7e;
+      --line: #242a2d;
+      --accent: #9dc6e9;
+      --accent-ink: #07131b;
+      --warm: #d6c39c;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+    }
+
+    body {
+      background: var(--bg);
+    }
+
+    .node-app {
+      display: grid;
+      min-height: 100dvh;
+      grid-template-columns: 66px minmax(0, 1fr);
+      grid-template-rows: 58px minmax(0, 1fr);
+    }
+
+    .node-top {
+      position: relative;
+      z-index: 20;
+      grid-column: 1 / -1;
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 18px;
+      padding: 0 20px;
+      background: #090b0c;
+    }
+
+    .node-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 650;
+    }
+
+    .node-brand svg {
+      width: 27px;
+      height: 27px;
+      stroke-width: 1.45;
+    }
+
+    .node-brand small {
+      color: #929a9d;
+      font-size: 11px;
+      letter-spacing: .12em;
+    }
+
+    .node-project {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      align-items: center;
+      gap: 8px;
+      color: #767e81;
+      font-size: 11px;
+    }
+
+    .node-project b {
+      overflow: hidden;
+      color: #d8dddc;
+      font-weight: 520;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .node-status {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 12px;
+      color: #777f82;
+      font-size: 11px;
+    }
+
+    .node-status span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .node-status i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .node-avatars {
+      display: flex;
+      align-items: center;
+      padding-left: 5px;
+    }
+
+    .node-avatars span {
+      display: grid;
+      width: 26px;
+      height: 26px;
+      margin-left: -5px;
+      place-items: center;
+      border: 2px solid #090b0c;
+      border-radius: 50%;
+      background: #272d30;
+      color: #bbc2c1;
+      font-size: 11px;
+    }
+
+    .node-rail {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 18px 7px;
+      background: #090b0c;
+    }
+
+    .node-rail::after {
+      position: absolute;
+      top: 16px;
+      right: 0;
+      bottom: 16px;
+      width: 1px;
+      background: rgba(255, 255, 255, .045);
+      content: "";
+    }
+
+    .node-rail button {
+      display: grid;
+      width: 52px;
+      min-height: 49px;
+      place-items: center;
+      gap: 2px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #747c7f;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), color 150ms var(--ease);
+    }
+
+    .node-rail button.is-active {
+      background: #171b1d;
+      color: #e4e9e8;
+    }
+
+    .node-rail svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 1.45;
+    }
+
+    .node-rail span {
+      font-size: 11px;
+    }
+
+    .node-rail .rail-bottom {
+      margin-top: auto;
+    }
+
+    .node-main {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(rgba(157, 198, 233, .12) .8px, transparent .8px),
+        var(--board);
+      background-size: 20px 20px;
+    }
+
+    .node-toolbar {
+      position: absolute;
+      z-index: 7;
+      top: 15px;
+      left: 17px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node-toolbar > span {
+      color: #969fa2;
+      font-size: 11px;
+    }
+
+    .tool-button {
+      display: inline-flex;
+      min-height: 31px;
+      align-items: center;
+      gap: 5px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 5px;
+      background: #151a1d;
+      color: #a4abad;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .tool-button svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .node-controls {
+      position: absolute;
+      z-index: 7;
+      right: 18px;
+      bottom: 88px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 6px;
+      background: rgba(21, 26, 29, .92);
+      color: #8b9497;
+    }
+
+    .node-controls button {
+      display: grid;
+      min-width: 28px;
+      height: 28px;
+      place-items: center;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .node-controls span {
+      min-width: 34px;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .node-map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1120px;
+      height: 760px;
+      transform-origin: top left;
+    }
+
+    .node-links {
+      position: absolute;
+      inset: 0;
+      width: 1120px;
+      height: 760px;
+      pointer-events: none;
+    }
+
+    .node-links path {
+      fill: none;
+      stroke: rgba(157, 198, 233, .34);
+      stroke-width: 1.15;
+    }
+
+    .work-node {
+      position: absolute;
+      display: flex;
+      width: 208px;
+      min-height: 108px;
+      flex-direction: column;
+      gap: 5px;
+      padding: 11px 12px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: var(--node);
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+      transition:
+        border-color 140ms var(--ease),
+        background-color 140ms var(--ease),
+        transform 140ms var(--ease);
+    }
+
+    .work-node:hover {
+      background: var(--node-2);
+    }
+
+    .work-node.is-selected {
+      border-color: rgba(157, 198, 233, .72);
+      background: #192127;
+    }
+
+    .work-node .node-kind {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #7f898c;
+      font-size: 11px;
+    }
+
+    .work-node .node-kind em {
+      color: #739bb8;
+      font-style: normal;
+    }
+
+    .work-node b {
+      overflow: hidden;
+      color: #e1e6e5;
+      font-size: 13px;
+      font-weight: 580;
+      line-height: 1.4;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .work-node p {
+      display: -webkit-box;
+      margin: 0;
+      overflow: hidden;
+      color: #8b9497;
+      font-size: 11px;
+      line-height: 1.55;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .work-node footer {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: auto;
+      color: #929b9e;
+      font-size: 11px;
+    }
+
+    .work-node footer i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #78a4c2;
+    }
+
+    .node-story {
+      left: 80px;
+      top: 235px;
+    }
+
+    .node-characters {
+      left: 330px;
+      top: 90px;
+    }
+
+    .node-visual {
+      left: 330px;
+      top: 365px;
+    }
+
+    .node-scenes {
+      left: 575px;
+      top: 235px;
+    }
+
+    .node-shot {
+      left: 810px;
+      top: 70px;
+      width: 210px;
+      min-height: 165px;
+    }
+
+    .node-shot .shot-thumb {
+      width: 100%;
+      height: 69px;
+      object-fit: cover;
+      border-radius: 5px;
+      filter: saturate(.72) brightness(.77);
+    }
+
+    .node-video {
+      left: 810px;
+      top: 355px;
+    }
+
+    .node-output {
+      left: 810px;
+      top: 555px;
+    }
+
+    .selection-badge {
+      position: absolute;
+      z-index: 8;
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: #e4e9e7;
+      color: #101315;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .inspector {
+      position: absolute;
+      z-index: 9;
+      top: 60px;
+      right: 18px;
+      display: flex;
+      width: 310px;
+      max-height: calc(100dvh - 170px);
+      flex-direction: column;
+      overflow-y: auto;
+      border-radius: 9px;
+      background: #171b1e;
+      box-shadow: 0 28px 70px -36px #000;
+    }
+
+    .inspector.is-hidden {
+      display: none;
+    }
+
+    .inspector-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 16px 11px;
+    }
+
+    .inspector-head > div {
+      display: grid;
+      gap: 2px;
+    }
+
+    .inspector-head span {
+      color: #7c8689;
+      font-size: 11px;
+    }
+
+    .inspector-head h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .inspector-close {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      flex: 0 0 28px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: #20262a;
+      color: #9aa3a5;
+      cursor: pointer;
+    }
+
+    .inspector-close svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .inspector-image {
+      width: calc(100% - 28px);
+      height: 132px;
+      margin: 0 14px;
+      object-fit: cover;
+      border-radius: 6px;
+      filter: saturate(.72) brightness(.8);
+    }
+
+    .inspector-copy {
+      display: grid;
+      gap: 12px;
+      padding: 13px 15px;
+    }
+
+    .inspector-copy section {
+      display: grid;
+      gap: 4px;
+    }
+
+    .inspector-copy span {
+      color: #8b9598;
+      font-size: 11px;
+    }
+
+    .inspector-copy p {
+      margin: 0;
+      color: #afb7b8;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .inspector-actions {
+      display: flex;
+      gap: 6px;
+      padding: 0 14px 14px;
+    }
+
+    .inspector-actions button {
+      min-height: 34px;
+      flex: 1;
+      border: 0;
+      border-radius: 5px;
+      background: #22292d;
+      color: #c6cdcd;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .inspector-actions button.primary {
+      background: #e8edea;
+      color: #101315;
+      font-weight: 650;
+    }
+
+    .agent-dock {
+      position: absolute;
+      z-index: 11;
+      bottom: 18px;
+      left: 50%;
+      display: flex;
+      width: min(650px, calc(100% - 52px));
+      min-height: 52px;
+      align-items: center;
+      gap: 11px;
+      padding: 7px 8px 7px 14px;
+      border-radius: 10px;
+      background: #181d20;
+      box-shadow: 0 26px 62px -34px #000;
+      transform: translateX(-50%);
+    }
+
+    .agent-mobile-toggle {
+      display: none;
+    }
+
+    .agent-dock-mark {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      flex: 0 0 28px;
+      place-items: center;
+      border-radius: 50%;
+      background: #e8edea;
+      color: #101315;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .agent-dock input {
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      background: transparent;
+      color: #e4e9e8;
+      font-size: 11.5px;
+      outline: 0;
+    }
+
+    .agent-dock input::placeholder {
+      color: #929b9e;
+    }
+
+    .agent-dock-context {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      gap: 5px;
+      padding: 0 7px;
+      border-radius: 5px;
+      background: #111416;
+      color: #7b8588;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .agent-dock-context b {
+      color: #aeb7b8;
+      font-weight: 520;
+    }
+
+    .agent-send {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: #ecf0ee;
+      color: #101315;
+      cursor: pointer;
+    }
+
+    .agent-send svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.8;
+    }
+
+    @media (min-width: 761px) and (max-width: 1400px) {
+      .node-story {
+        left: 40px;
+      }
+
+      .node-characters,
+      .node-visual {
+        left: 230px;
+      }
+
+      .node-scenes {
+        left: 430px;
+      }
+
+      .node-shot,
+      .node-video,
+      .node-output {
+        left: 570px;
+      }
+
+      .node-links {
+        display: none;
+      }
+    }
+
+    @media (min-width: 761px) and (max-width: 1180px) {
+      .inspector {
+        display: none;
+      }
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .node-rail button:hover {
+        background: #15191b;
+        color: #cbd1d0;
+      }
+      .work-node:hover {
+        transform: translateY(-1px);
+      }
+      .tool-button:hover,
+      .node-controls button:hover,
+      .inspector-actions button:hover {
+        background: #232a2e;
+        color: #eef1ef;
+      }
+      .inspector-actions button.primary:hover {
+        background: #fff;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .node-app {
+        grid-template-columns: 58px minmax(0, 1fr);
+      }
+      .node-rail {
+        padding-right: 5px;
+        padding-left: 5px;
+      }
+      .node-rail button {
+        width: 46px;
+      }
+      .inspector {
+        top: auto;
+        right: 14px;
+        bottom: 82px;
+        width: 290px;
+        max-height: 360px;
+      }
+      .node-shot {
+        left: 570px;
+      }
+      .node-controls {
+        display: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .node-app {
+        display: block;
+      }
+      .node-top {
+        min-height: 56px;
+        padding: 0 14px;
+      }
+      .node-brand small,
+      .node-status span:not(:first-child),
+      .node-avatars,
+      .node-project > span {
+        display: none;
+      }
+      .node-status {
+        margin-left: auto;
+      }
+      .node-rail {
+        display: none;
+      }
+      .node-main {
+        min-height: calc(100dvh - 56px);
+        overflow-y: auto;
+        padding: 58px 14px 90px;
+        background:
+          radial-gradient(rgba(157, 198, 233, .1) .8px, transparent .8px),
+          var(--board);
+        background-size: 18px 18px;
+      }
+      .node-toolbar {
+        top: 12px;
+        left: 14px;
+      }
+      .node-toolbar > span {
+        display: none;
+      }
+      .node-map {
+        position: relative;
+        display: grid;
+        width: 100%;
+        height: auto;
+        gap: 9px;
+      }
+      .node-links {
+        display: none;
+      }
+      .work-node {
+        position: relative;
+        top: auto !important;
+        left: auto !important;
+        width: 100%;
+        min-height: 96px;
+      }
+      .node-shot {
+        min-height: 158px;
+      }
+      .inspector {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        max-height: none;
+        margin-top: 10px;
+      }
+      .agent-dock {
+        position: fixed;
+        display: none;
+        right: 12px;
+        bottom: 12px;
+        left: 12px;
+        width: auto;
+        transform: none;
+      }
+      .agent-dock.is-open {
+        display: flex;
+      }
+      .agent-mobile-toggle {
+        position: absolute;
+        z-index: 13;
+        top: 12px;
+        right: 16px;
+        bottom: auto;
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border: 0;
+        border-radius: 50%;
+        background: #e8edea;
+        color: #101315;
+        cursor: pointer;
+        box-shadow: 0 18px 44px -24px #000;
+      }
+      .agent-mobile-toggle.is-hidden {
+        display: none;
+      }
+      .agent-mobile-toggle span {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border: 1px solid rgba(16, 19, 21, .2);
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 750;
+      }
+      .agent-dock-context {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="node-app">
+    <header class="node-top">
+      <a class="node-brand" href="#" aria-label="VeyaFrame">
+        <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 8 14 3l9 5v13l-9 5-9-5z"/><path d="m9 10 5 8 5-8"/></svg>
+        <b>VeyaFrame</b>
+        <small>NODE DESK</small>
+      </a>
+      <div class="node-project"><span>项目</span><b>快递员的最后一单</b><span>／ 分镜编排</span></div>
+      <div class="node-status">
+        <span><i></i>已保存</span>
+        <span>12 节点</span>
+        <span>1 个阻断</span>
+      </div>
+      <div class="node-avatars" aria-label="协作者">
+        <span>冯</span><span>苏</span><span>+2</span>
+      </div>
+    </header>
+
+    <nav class="node-rail" aria-label="项目导航">
+      <button type="button"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9H4z"/><path d="M9 20v-6h6v6"/></svg><span>首页</span></button>
+      <button type="button"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg><span>项目</span></button>
+      <button class="is-active" type="button"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M7 8l4 8M17 8l-4 8"/></svg><span>画布</span></button>
+      <button type="button"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m7 16 4-5 3 3 3-4"/></svg><span>资产</span></button>
+      <button type="button"><svg viewBox="0 0 24 24"><path d="M12 3v3M5 10h14v8H5z"/><path d="M9 14h6"/></svg><span>Agent</span></button>
+      <button class="rail-bottom" type="button"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>更多</span></button>
+    </nav>
+
+    <main class="node-main" id="nodeMain">
+      <div class="node-toolbar">
+        <span>添加节点</span>
+        <button class="tool-button" type="button"><svg viewBox="0 0 20 20"><path d="M10 3v14M3 10h14"/></svg>场次</button>
+        <button class="tool-button" type="button"><svg viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M6 8h8M6 12h5"/></svg>镜头</button>
+        <button class="tool-button" type="button"><svg viewBox="0 0 20 20"><path d="M4 5h12v10H4z"/><path d="m7 12 3-3 2 2 2-3"/></svg>参考图</button>
+        <button class="tool-button" type="button"><svg viewBox="0 0 20 20"><path d="M5 5h10v10H5z"/><path d="M8 8h4M8 11h4"/></svg>备注</button>
+      </div>
+
+      <div class="node-map" id="nodeMap">
+        <svg class="node-links" viewBox="0 0 1120 760" aria-hidden="true">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0 0 10 5 0 10z" fill="#9dc6e9" stroke="none"/>
+            </marker>
+          </defs>
+          <path d="M288 285 C307 285 310 150 330 150" marker-end="url(#arrow)"/>
+          <path d="M288 295 C307 295 310 425 330 425" marker-end="url(#arrow)"/>
+          <path d="M538 150 C555 150 558 300 575 300" marker-end="url(#arrow)"/>
+          <path d="M538 425 C555 425 558 360 575 360" marker-end="url(#arrow)"/>
+          <path d="M783 300 C795 300 798 160 810 160" marker-end="url(#arrow)"/>
+          <path d="M783 320 C795 320 795 420 810 420" marker-end="url(#arrow)"/>
+          <path d="M918 485 C918 520 918 530 918 555" marker-end="url(#arrow)"/>
+        </svg>
+
+        <button class="work-node node-story" type="button" data-node="story">
+          <span class="node-kind">故事 <em>起点</em></span>
+          <b>七桩未竟的交易</b>
+          <p>快递员继承遗产，却必须替陌生人完成七件事。</p>
+          <footer><i></i>已保存 v3</footer>
+        </button>
+        <button class="work-node node-characters" type="button" data-node="characters">
+          <span class="node-kind">人物 <em>3 人</em></span>
+          <b>陈默 / 苏婉 / 沈之遥</b>
+          <p>每个人都在隐瞒一笔与遗产有关的旧账。</p>
+          <footer><i></i>关系已建立</footer>
+        </button>
+        <button class="work-node node-visual" type="button" data-node="visuals">
+          <span class="node-kind">视觉定妆 <em>2 人</em></span>
+          <b>雨夜里克制的生活感</b>
+          <p>冷青雨夜、旧便利店、暖色最后一盏灯。</p>
+          <footer><i></i>1 人待出图</footer>
+        </button>
+        <button class="work-node node-scenes is-selected" type="button" data-node="scene" aria-pressed="true">
+          <span class="node-kind">场次 03 <em>第 1 集</em></span>
+          <b>老宅门廊</b>
+          <p>苏婉第一次把信封交给陈默，却故意说错了收件人。</p>
+          <footer><i></i>3 个镜头 · 可继续拆解</footer>
+        </button>
+        <button class="work-node node-shot" type="button" data-node="shot">
+          <span class="node-kind">镜头 01 <em>10 秒</em></span>
+          <img class="shot-thumb" src="../../public/skills/manor.png" alt="老宅门廊的场景参考">
+          <b>雨停在门外</b>
+          <footer><i></i>已有关键帧 · 可生成视频</footer>
+        </button>
+        <button class="work-node node-video" type="button" data-node="video">
+          <span class="node-kind">镜头视频 <em>待开始</em></span>
+          <b>陈默接信的动作</b>
+          <p>首帧、运镜和 10 秒时长已就绪。</p>
+          <footer><i></i>预计 1.4 积分</footer>
+        </button>
+        <button class="work-node node-output" type="button" data-node="output">
+          <span class="node-kind">交付 <em>第 1 集</em></span>
+          <b>镜头清单 + 执行单</b>
+          <p>已采用图和平台参数会进入同一个交付包。</p>
+          <footer><i></i>1 个阻断待处理</footer>
+        </button>
+      </div>
+
+      <div class="node-controls" aria-label="画布缩放">
+        <button type="button" aria-label="缩小">−</button><span>82%</span><button type="button" aria-label="放大">+</button><button type="button">适应</button>
+      </div>
+
+      <aside class="inspector" id="inspector" aria-label="节点属性">
+        <header class="inspector-head">
+          <div><span>第 1 集 · 场次 03</span><h2 id="inspectorTitle">老宅门廊</h2></div>
+          <button class="inspector-close" id="inspectorClose" type="button" aria-label="关闭节点属性"><svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg></button>
+        </header>
+        <img class="inspector-image" id="inspectorImage" src="../../public/skills/manor.png" alt="场次场景参考">
+        <div class="inspector-copy">
+          <section><span>本场剧情</span><p id="inspectorBody">苏婉第一次把信封交给陈默，却故意说错了收件人。陈默没有拆穿，只在门廊下记住了信封上的旧地址。</p></section>
+          <section><span>下游影响</span><p>拆成 3 个镜头；镜头 01 已有关键帧，镜头 02–03 尚未生成。修改本场动作会标记下游镜头待复核。</p></section>
+        </div>
+        <div class="inspector-actions"><button type="button">打开场次</button><button class="primary" type="button" data-notify="已把“调整开场节奏”预填给 Veya Agent。">让 Agent 修改</button></div>
+      </aside>
+
+      <button class="agent-mobile-toggle" id="agentMobileToggle" type="button" aria-label="打开 Veya Agent" aria-expanded="false">
+        <span>V</span>
+      </button>
+
+      <form class="agent-dock" id="agentForm">
+        <span class="agent-dock-mark">V</span>
+        <span class="agent-dock-context">正在看 <b>场次 03 · 老宅门廊</b></span>
+        <input aria-label="告诉 Veya Agent 下一步" placeholder="告诉 Veya 下一步，或直接描述要改的戏…">
+        <button class="agent-send" type="submit" aria-label="发送">
+          <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+        </button>
+      </form>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    const nodeData = {
+      story: {
+        kicker: '故事起点', title: '七桩未竟的交易',
+        body: '一个快递员意外继承百万遗产，条件却是替原主人完成七桩未竟的交易。每一笔交易都指向同一段被隐瞒的旧事。',
+        image: '../../public/skills/manor.png', alt: '故事氛围参考'
+      },
+      characters: {
+        kicker: '核心人物 · 3 人', title: '陈默 / 苏婉 / 沈之遥',
+        body: '三个人被同一笔遗产牵引：陈默想拥有一个家，苏婉想等一句道歉，沈之遥只想尽快拿回钱。',
+        image: '../../public/skills/story.png', alt: '人物参考'
+      },
+      visuals: {
+        kicker: '视觉定妆 · 2 人', title: '雨夜里克制的生活感',
+        body: '陈默和苏婉的定妆已完成。角色锚点会逐字进入后续镜头，缺图角色会明确标在本节点上。',
+        image: '../../public/skills/story.png', alt: '角色定妆参考'
+      },
+      scene: {
+        kicker: '第 1 集 · 场次 03', title: '老宅门廊',
+        body: '苏婉第一次把信封交给陈默，却故意说错了收件人。陈默没有拆穿，只在门廊下记住了信封上的旧地址。',
+        image: '../../public/skills/manor.png', alt: '老宅门廊场景参考'
+      },
+      shot: {
+        kicker: '镜头 01 · 10 秒', title: '雨停在门外',
+        body: '全景推近门廊。陈默接住信封，雨水沿檐角落下；苏婉的手没有松开。',
+        image: '../../public/skills/manor.png', alt: '镜头首帧参考'
+      },
+      video: {
+        kicker: '镜头视频 · 待开始', title: '陈默接信的动作',
+        body: '首帧、10 秒时长和画幅已准备。生成视频前会确认预算，不会自动创建付费任务。',
+        image: '../../public/skills/manor.png', alt: '镜头视频参考'
+      },
+      output: {
+        kicker: '交付 · 第 1 集', title: '镜头清单 + 执行单',
+        body: '交付包会包含已采用图、平台参数、镜头清单和 AI 来源清单。当前有 1 个阻断项。',
+        image: '../../public/docs/tutorial/05-export.png', alt: '交付流程参考'
+      }
+    };
+
+    const inspector = document.getElementById('inspector');
+    const title = document.getElementById('inspectorTitle');
+    const body = document.getElementById('inspectorBody');
+    const image = document.getElementById('inspectorImage');
+    const toast = document.getElementById('toast');
+    let toastTimer;
+
+    function notify(message) {
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+    }
+
+    function selectNode(button) {
+      const data = nodeData[button.dataset.node];
+      if (!data) return;
+      document.querySelectorAll('.work-node').forEach((item) => {
+        item.classList.remove('is-selected');
+        item.setAttribute('aria-pressed', 'false');
+      });
+      button.classList.add('is-selected');
+      button.setAttribute('aria-pressed', 'true');
+      inspector.querySelector('.inspector-head span').textContent = data.kicker;
+      title.textContent = data.title;
+      body.textContent = data.body;
+      image.src = data.image;
+      image.alt = data.alt;
+      inspector.classList.remove('is-hidden');
+    }
+
+    document.querySelectorAll('.work-node').forEach((button) => {
+      button.addEventListener('click', () => selectNode(button));
+    });
+    document.getElementById('inspectorClose').addEventListener('click', () => inspector.classList.add('is-hidden'));
+    document.querySelectorAll('[data-notify]').forEach((button) => {
+      button.addEventListener('click', () => notify(button.dataset.notify));
+    });
+    const agentForm = document.getElementById('agentForm');
+    const agentToggle = document.getElementById('agentMobileToggle');
+    agentToggle.addEventListener('click', () => {
+      agentForm.classList.add('is-open');
+      agentToggle.classList.add('is-hidden');
+      agentToggle.setAttribute('aria-expanded', 'true');
+      agentForm.querySelector('input').focus();
+    });
+    agentForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      notify('交互 Demo：正式版会把问题送入当前项目的 Veya Agent。');
+      agentForm.classList.remove('is-open');
+      agentToggle.classList.remove('is-hidden');
+      agentToggle.setAttribute('aria-expanded', 'false');
+    });
+  </script>
+</body>
+</html>

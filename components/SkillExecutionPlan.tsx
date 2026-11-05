@@ -34,7 +34,7 @@ export default function SkillExecutionPlan({
     : !readiness.ready
       ? `还缺：${readiness.missing.join('、')}`
       : quotaBlocked
-        ? `剩余 ${quotaRemaining} 额度，不足以启动本轮`
+        ? `剩余 ${quotaRemaining} 创作额度，不足以启动本轮`
         : null
 
   return (
@@ -64,7 +64,7 @@ export default function SkillExecutionPlan({
           )}
           {quotaTight && (
             <p className="execution-plan-warning" role="status">
-              当前剩余 {quotaRemaining} 额度；本轮最多使用 {plan.units.max}，到顶会自动停止。
+              当前剩余 {quotaRemaining} 创作额度；本轮最多使用 {plan.units.max}，到顶会自动停止。
             </p>
           )}
           <small>打开 Agent 不等于写入；所有修改仍逐项确认。</small>
@@ -103,7 +103,7 @@ export default function SkillExecutionPlan({
         <aside className="execution-plan-side">
           <div className="execution-plan-metrics">
             <span>
-              <small>额度上限</small>
+              <small>创作额度上限</small>
               <b>{plan.units.label}</b>
             </span>
             <span>

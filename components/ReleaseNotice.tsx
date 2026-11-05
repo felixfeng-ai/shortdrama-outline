@@ -1,6 +1,6 @@
 'use client'
 
-// 产品更新入口：不再占用首页内容区，只在顶栏留一个带新消息角标的图标。
+// 平台公告入口：不再占用首页内容区，只在顶栏留一个带新消息角标的图标。
 import { useEffect, useRef, useState } from 'react'
 import SmoothCollapse from './SmoothCollapse'
 import {
@@ -64,10 +64,10 @@ export default function ReleaseNotice() {
         ref={triggerRef}
         type="button"
         className="release-trigger"
-        aria-label="查看产品更新"
+        aria-label="查看平台公告"
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="产品更新"
+        title="平台公告"
         onClick={() => setOpen((value) => !value)}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -80,11 +80,11 @@ export default function ReleaseNotice() {
         <div
           className="release-popover"
           role="dialog"
-          aria-label={`产品更新 ${LATEST_PRODUCT_RELEASE.version}`}
+          aria-label={`平台公告 ${LATEST_PRODUCT_RELEASE.version}`}
         >
           <div className="release-popover-head">
             <span className="release-dot" aria-hidden="true" />
-            <b>产品更新</b>
+            <b>平台公告</b>
             <button type="button" onClick={() => setOpen(false)} aria-label="收起更新说明">×</button>
           </div>
           <div className="release-meta">

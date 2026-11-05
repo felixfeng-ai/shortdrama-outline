@@ -21,8 +21,10 @@ import {
 import type { SnapshotDto } from '@/lib/assets/api'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
+import type { WorkspaceMode } from '@/lib/app-nav'
 import ProductionMap from './ProductionMap'
 import CanvasGraphWorkspace from './CanvasGraphWorkspace'
+import WorkspaceModeTabs from './WorkspaceModeTabs'
 
 export type CanvasNodeId = StepKey | 'places'
 
@@ -74,6 +76,11 @@ interface Props {
   projectId: string | null
   projectTitle: string
   currentStepLabel: string
+  /** 顶层「画布」模式默认落到真实可拖拽的编排画布。 */
+  initialMode?: 'production' | 'flow' | 'graph'
+  /** 画布是全屏覆盖层，但三种全局模式仍要在顶栏可见、可切换。 */
+  workspaceMode?: WorkspaceMode
+  onWorkspaceModeChange?: (mode: WorkspaceMode) => void
   onEdit: (node: CanvasNodeId, itemId: string, field: string, value: string, mode: 'edit' | 'undo') => Promise<void>
   onLoadVersions: (node: CanvasNodeId) => Promise<SnapshotDto[]>
   onRestoreVersion: (node: CanvasNodeId, payload: unknown) => Promise<void>
@@ -157,6 +164,9 @@ export default function ProjectCanvas({
   projectId,
   projectTitle,
   currentStepLabel,
+  initialMode = 'production',
+  workspaceMode,
+  onWorkspaceModeChange,
   onEdit,
   onLoadVersions,
   onRestoreVersion,
@@ -196,7 +206,7 @@ export default function ProjectCanvas({
   const [restoreNotice, setRestoreNotice] = useState<string | null>(null)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([])
   const [generationAssets, setGenerationAssets] = useState<GeneratedAsset[]>([])
-  const [mapMode, setMapMode] = useState<'production' | 'flow' | 'graph'>('production')
+  const [mapMode, setMapMode] = useState<'production' | 'flow' | 'graph'>(initialMode)
   const [priorityExpanded, setPriorityExpanded] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -676,7 +686,7 @@ export default function ProjectCanvas({
       aria-describedby="project-canvas-desc"
     >
       <div className="map-bar">
-        <b id="project-canvas-title">
+        <h1 id="project-canvas-title">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="5" cy="6" r="2.2" />
             <circle cx="19" cy="6" r="2.2" />
@@ -684,8 +694,19 @@ export default function ProjectCanvas({
             <path d="M7.2 6h9.6M6.2 8l4.6 8M17.8 8l-4.6 8" />
           </svg>
           项目画布
-        </b>
+        </h1>
         <span id="project-canvas-desc">先看优先处理，再点节点查看全貌、版本与关键字段</span>
+        {workspaceMode && onWorkspaceModeChange && (
+          <div className="canvas-mode-switch">
+            <WorkspaceModeTabs
+              mode={workspaceMode}
+              onChange={(next) => {
+                if (next === 'canvas') return
+                requestClose(() => onWorkspaceModeChange(next))
+              }}
+            />
+          </div>
+        )}
         <div className="map-project-context" aria-label={`当前项目 ${projectTitle}，来源步骤 ${currentStepLabel}`}>
           <strong>{projectTitle}</strong>
           <i aria-hidden="true">·</i>

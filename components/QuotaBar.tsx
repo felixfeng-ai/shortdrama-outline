@@ -44,7 +44,7 @@ export default function QuotaBar({
 
   if (failed) return null
   if (!quota) {
-    if (inline) return <span className="h-quota" aria-hidden="true">额度 —</span>
+    if (inline) return <span className="h-quota" aria-hidden="true">创作额度 —</span>
     if (compact) {
       return <div className="hidden h-6 w-52 animate-pulse rounded-chip bg-surface-soft sm:block" aria-hidden="true" />
     }
@@ -64,7 +64,7 @@ export default function QuotaBar({
       ? { box: 'border-accent-200 bg-accent-50', text: 'text-accent-700', bar: 'bg-accent-400' }
       : { box: 'border-surface-line bg-surface-soft', text: 'text-ink-600', bar: 'bg-ink-300' }
 
-  const label = exhausted ? '今日额度已用完' : '今日剩余额度'
+  const label = exhausted ? '今日创作额度已用完' : '今日剩余创作额度'
   /*
     一行只留一个数字体系。
     原文案是「可跑 1 个完整项目（13/26）」——括号里是额度单位、前面是项目数，
@@ -79,7 +79,7 @@ export default function QuotaBar({
     : quota.projectsLeft >= 1
       ? `可跑 ${quota.projectsLeft} 个完整项目`
       : '还能跑几步（不够一个完整项目）'
-  const detail = `本日额度 ${quota.remaining}/${quota.limit} 单位（1 个完整项目 = 13 单位）`
+  const detail = `本日创作额度 ${quota.remaining}/${quota.limit} 单位（1 个完整项目 = 13 单位）`
 
   // 顶栏内联版：只留数字，明细进 title
   if (inline) {
@@ -87,7 +87,7 @@ export default function QuotaBar({
     const projects = Math.floor(quota.remaining / Math.max(1, perProject))
     // 这里不再引用 10 集口径的「可跑 N 个完整项目」，否则和按集数估算的数字自相矛盾
     const inlineTitle = exhausted
-      ? `${label}（本日 ${quota.remaining}/${quota.limit} 单位）。明天恢复，或自建实例使用自己的 API Key。`
+      ? `${label}（本日 ${quota.remaining}/${quota.limit} 单位），明天按北京时间恢复。`
       : `${label}：本日 ${quota.remaining}/${quota.limit} 单位。按 ${episodeCount} 集/部估算，每部约 ${perProject} 单位，约可跑 ${projects} 部。`
     return (
       <span
@@ -95,7 +95,7 @@ export default function QuotaBar({
         style={exhausted || low ? { color: 'rgb(var(--c-accent-700))' } : undefined}
         title={inlineTitle}
       >
-        {exhausted ? '额度用尽' : `额度 ${quota.remaining}/${quota.limit} · ${projects} 部`}
+        {exhausted ? '创作额度用尽' : `创作额度 ${quota.remaining}/${quota.limit} · ${projects} 部`}
       </span>
     )
   }
@@ -135,7 +135,7 @@ export default function QuotaBar({
 
       {exhausted && (
         <p className={`mt-1.5 text-[11px] leading-relaxed ${tone.text}`}>
-          额度每天恢复。也可以把代码拿去自建，用你自己的 API Key，不受限制。
+          今日创作额度将在北京时间零点恢复。
         </p>
       )}
     </div>

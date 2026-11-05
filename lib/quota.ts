@@ -149,11 +149,11 @@ export function chargeQuota(
   const snap = getQuota(db, identity, now)
 
   if (snap.globalUsed + units > snap.globalLimit) {
-    throw new QuotaError("今日全站生成额度已用完，请明天再来")
+    throw new QuotaError("今日全站创作额度已用完，请明天再来")
   }
   if (snap.used + units > snap.limit) {
     throw new QuotaError(
-      `今日额度已用完（已用 ${snap.used}/${snap.limit}）。明天恢复，或自建实例使用自己的 API Key`,
+      `今日创作额度已用完（已用 ${snap.used}/${snap.limit}）。请明天再来`,
     )
   }
 

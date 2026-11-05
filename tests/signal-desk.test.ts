@@ -5,6 +5,9 @@ import fs from "node:fs"
 const layoutSrc = fs.readFileSync("app/layout.tsx", "utf8")
 const pageSrc = fs.readFileSync("app/page.tsx", "utf8")
 const css = fs.readFileSync("app/globals.css", "utf8")
+const workspaceCss = fs.readFileSync("app/workspace-shell.css", "utf8")
+const workspaceSidebarSrc = fs.readFileSync("components/WorkspaceSidebar.tsx", "utf8")
+const workspaceHomeSrc = fs.readFileSync("components/WorkspaceHome.tsx", "utf8")
 const projectSrc = fs.readFileSync("components/ProjectBar.tsx", "utf8")
 const ideaSrc = fs.readFileSync("components/IdeaPanel.tsx", "utf8")
 const agentSrc = fs.readFileSync("components/AgentDock.tsx", "utf8")
@@ -34,16 +37,16 @@ const richTextSrc = fs.existsSync("components/AgentRichText.tsx")
 
 test("SDA1 Signal Desk 主题挂在根节点，不改业务组件 API", () => {
   assert.ok(layoutSrc.includes('className="signal-desk"'), "根节点缺少 signal-desk 类")
-  assert.ok(css.includes(".signal-desk"), "缺少 Signal Desk 主题作用域")
-  assert.ok(css.includes("--c-surface: 19 23 26"), "画布底色仍不是舒适版石墨")
-  assert.ok(css.includes("--signal-acid: #c4d98a"), "主操作色仍不是低饱和鼠尾草绿")
+  assert.ok(pageSrc.includes("wfx-workspace"), "正式工作区没有切到确认稿主题")
+  assert.ok(workspaceCss.includes("--wfx-bg: #08090a"), "页面底色不是确认稿近黑")
+  assert.ok(workspaceCss.includes("--wfx-accent: #8dc8dc"), "运行态不是确认稿冷蓝")
 })
 
 test("SDA2 桌面六步导航进入左侧轨道，窄屏仍可回到顶栏", () => {
-  assert.ok(pageSrc.includes("signal-rail"), "页面没有左侧步骤轨道")
-  assert.ok(pageSrc.includes("<SideNav"), "左侧轨道没有复用六步导航组件")
-  assert.ok(css.includes(".signal-rail"), "缺少左侧轨道样式")
-  assert.ok(css.includes(".signal-desk .h-pills"), "缺少桌面顶栏步骤隐藏规则")
+  assert.ok(pageSrc.includes("<WorkspaceSidebar"), "页面没有完整工作区侧栏")
+  assert.ok(workspaceSidebarSrc.includes("orderWorkspaceSteps"), "侧栏没有复用步骤排序")
+  assert.ok(workspaceCss.includes(".wfx-side"), "缺少工作区侧栏样式")
+  assert.ok(workspaceCss.includes(".wfx-mobile-nav"), "缺少窄屏底部导航")
 })
 
 test("SDA3 动效强度 8 只作用于运行态和过渡，并有 reduced-motion 兜底", () => {
@@ -76,20 +79,17 @@ test("SDA6 窄屏顶栏步骤和 AI 抽屉必须沿用 Signal Desk 状态色", (
 })
 
 test("SDA7 舒适版必须拉开底色、正文和辅助色层级", () => {
-  assert.ok(css.includes("--signal-text: #dfe4e2"), "正文仍偏纯白，长时间阅读会眩光")
-  assert.ok(css.includes("--signal-text-3: #8b969d"), "辅助文字对比度没有校准")
-  assert.ok(css.includes("--signal-line: rgba(213, 224, 228, .11)"), "边界仍是高对比硬线")
-  assert.ok(css.includes("--signal-blue: #8eb7e7"), "运行态仍是电光蓝")
+  assert.ok(workspaceCss.includes("--wfx-ink: #f0f2ef"), "正文不是确认稿主文字色")
+  assert.ok(workspaceCss.includes("--wfx-muted: #b0b5b5"), "辅助文字层级缺失")
+  assert.ok(workspaceCss.includes("--wfx-line: rgba(255, 255, 255, .075)"), "边界不是确认稿弱分隔")
+  assert.ok(workspaceCss.includes("--wfx-accent: #8dc8dc"), "运行态不是确认稿冷蓝")
 })
 
 test("SDA8 桌面左轨和 AI 舱必须采用舒适版信息节奏", () => {
-  assert.ok(css.includes(".signal-desk .h-main > .signal-rail"), "左轨缺少桌面完整导航样式")
-  assert.ok(css.includes("width: 224px;"), "左轨没有为完整菜单文案留出空间")
-  assert.ok(
-    css.includes(".signal-desk .signal-rail .navpanel button > span:last-child { display: block; }"),
-    "左轨仍只显示图标，用户无法辨认步骤",
-  )
-  assert.ok(pageSrc.includes("signal-rail-logo"), "左轨顶部缺少 Lime 品牌块")
+  assert.ok(workspaceCss.includes("width: 232px;"), "侧栏不是确认稿宽度")
+  assert.ok(workspaceCss.includes("font-size: 13px;"), "侧栏菜单正文节奏不正确")
+  assert.ok(workspaceSidebarSrc.includes('aria-label="当前项目步骤"'), "侧栏缺少当前项目分组")
+  assert.ok(workspaceHomeSrc.includes("wfx-current-preview"), "首页当前工作不是确认稿结构")
   assert.ok(
     css.includes("width: clamp(360px, 30vw, 400px);"),
     "AI 舱仍过宽，挤压主工作区",
@@ -112,8 +112,8 @@ test("SDA10 窄屏 AI 抽屉必须占满视口，不继承桌面固定宽度", (
   )
 })
 
-test("SDA11 首页主区必须包含 STORY COMMAND、六步轨道与当前任务决策区", () => {
-  assert.ok(ideaSrc.includes("STORY COMMAND"), "故事主卡缺少 STORY COMMAND 标识")
+test("SDA11 首页主区必须包含故事指令、六步轨道与当前任务决策区", () => {
+  assert.ok(ideaSrc.includes("故事指令"), "故事主卡缺少“故事指令”标识")
   assert.ok(ideaSrc.includes("story-tools-toggle"), "灵感助手没有可展开入口")
   assert.ok(pageSrc.includes("<SignalOverview"), "首页没有挂载六步与项目状态总览")
   assert.ok(overviewSrc.includes("signal-flow"), "缺少图片 demo 的六步轨道")

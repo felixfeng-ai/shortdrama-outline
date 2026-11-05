@@ -121,7 +121,7 @@ test("Q6 超过单人日额度时抛 QuotaError(429)，且不再计入用量", (
   assert.equal(getQuota(db, id).used, usedBefore, "被拒绝的请求不应计入用量")
 })
 
-test("Q7 超限文案含「额度已用完」与自建出路", () => {
+test("Q7 超限文案使用创作额度口径，并说明次日恢复而不把 API Key 推给用户", () => {
   const db = memDb()
   const id = "ip-broke"
   while (getQuota(db, id).remaining >= 1) chargeQuota(db, id, "characters")
@@ -130,8 +130,9 @@ test("Q7 超限文案含「额度已用完」与自建出路", () => {
     chargeQuota(db, id, "characters")
     assert.fail("应该抛错")
   } catch (e) {
-    assert.match((e as Error).message, /额度已用完/)
-    assert.match((e as Error).message, /自建|API Key/, "要给用户一条出路，不能只说不行")
+    assert.match((e as Error).message, /创作额度已用完/)
+    assert.match((e as Error).message, /明天/)
+    assert.doesNotMatch((e as Error).message, /API Key|自建/)
   }
 })
 

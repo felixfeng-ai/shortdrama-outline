@@ -412,7 +412,7 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
   },
   {
     name: 'get_quota',
-    description: '查今日剩余额度，以及还能跑几个完整项目。用户问「还能用几次」时调用。',
+    description: '查今日剩余创作额度，以及还能跑几个完整项目。用户问「还能用几次」时调用。',
     parameters: { type: 'object', properties: {}, required: [] },
   },
   {
@@ -427,7 +427,7 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
   },
   {
     name: 'search_docs',
-    description: '在这款工具自己的说明文档里检索：怎么导出、怎么拿到出图平台生成视频、怎么批量出定妆图、首尾帧怎么衔接、额度怎么算、图存在哪。回答操作类问题必须先查它，并引用出处。',
+    description: '在这款工具自己的说明文档里检索：怎么导出、怎么拿到出图平台生成视频、怎么批量出定妆图、首尾帧怎么衔接、创作额度怎么算、图存在哪。回答操作类问题必须先查它，并引用出处。',
     parameters: {
       type: 'object',
       properties: { question: { type: 'string', description: '用户的原话或改写后的问题' } },
@@ -643,8 +643,8 @@ const DOC_SNIPPETS: { source: string; title: string; text: string; keys: string[
   },
   {
     source: 'README.md#额度',
-    title: '额度怎么算',
-    text: '跑完一条完整流程（六步）花 13 单位；默认每个身份每天 65 单位，约 5 个完整项目。关键词联想与助手提问各算 1 单位。额度按北京时间每天恢复。',
+    title: '创作额度怎么算',
+    text: '跑完一条完整流程（六步）花 13 单位；默认每个身份每天 65 单位，约 5 个完整项目。关键词联想与助手提问各算 1 单位。创作额度按北京时间每天恢复。',
     keys: ['额度', '收费', '多少', '限制', '次数', '钱', '成本'],
   },
   {
@@ -958,10 +958,10 @@ export function createToolExecutors(
     },
 
     get_quota: () => {
-      if (!state.quota) return { ok: false, content: '额度信息暂时读不到（接口没返回）。' }
+      if (!state.quota) return { ok: false, content: '创作额度信息暂时读不到（接口没返回）。' }
       return {
         ok: true,
-        content: `今日剩余 ${state.quota.remaining}/${state.quota.limit} 单位，按 10 集/部估算还能跑 ${state.quota.projectsLeft} 部；集数越多，每部消耗的批次额度越高。`,
+        content: `今日剩余创作额度 ${state.quota.remaining}/${state.quota.limit} 单位，按 10 集/部估算还能跑 ${state.quota.projectsLeft} 部；集数越多，每部消耗的批次创作额度越高。`,
       }
     },
 

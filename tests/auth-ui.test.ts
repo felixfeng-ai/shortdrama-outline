@@ -3,9 +3,11 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 
 test("登录使用独立页面，不再覆盖工作台弹层", () => {
-  const page = fs.readFileSync("app/page.tsx", "utf8")
+  const topbar = fs.readFileSync("components/WorkspaceTopbar.tsx", "utf8")
+  const sidebar = fs.readFileSync("components/WorkspaceSidebar.tsx", "utf8")
   const button = fs.readFileSync("components/AuthButton.tsx", "utf8")
-  assert.ok(page.includes("<AuthButton"))
+  assert.ok(topbar.includes("<AuthButton"))
+  assert.ok(sidebar.includes("<AuthButton"))
   assert.ok(button.includes("/login"))
   assert.ok(!button.includes('role="dialog"'))
   assert.ok(!button.includes('className="fixed inset-0'))
