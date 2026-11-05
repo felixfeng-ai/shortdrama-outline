@@ -34,7 +34,9 @@ export function corsHeaders(origin: string): Record<string, string> {
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type,Authorization,X-Chengju-Client,X-Chengju-Device',
+      'Content-Type,Authorization,Range,X-Chengju-Client,X-Chengju-Device',
+    'Access-Control-Expose-Headers':
+      'Content-Length,Content-Range,Accept-Ranges,Content-Disposition',
     'Access-Control-Max-Age': '600',
     Vary: 'Origin',
   }

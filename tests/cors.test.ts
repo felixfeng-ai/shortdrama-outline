@@ -25,5 +25,7 @@ test('CORS supports Bearer and app device headers', () => {
   assert.equal(headers['Access-Control-Allow-Credentials'], 'true')
   assert.match(headers['Access-Control-Allow-Headers'], /Authorization/)
   assert.match(headers['Access-Control-Allow-Headers'], /X-Chengju-Device/)
+  assert.match(headers['Access-Control-Allow-Headers'], /Range/)
+  assert.match(headers['Access-Control-Expose-Headers'], /Content-Range/)
   assert.equal(isLoopbackHost('chenju.work'), false)
 })
