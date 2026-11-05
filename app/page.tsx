@@ -26,6 +26,7 @@ import DecisionPanel from '@/components/DecisionPanel'
 import CanonPanel from '@/components/CanonPanel'
 import type { AssetLibrarySource } from '@/components/AssetLibraryPanel'
 import ProjectToolsPanel from '@/components/ProjectToolsPanel'
+import ArtifactCenter from '@/components/ArtifactCenter'
 import LookBookCard from '@/components/LookBookCard'
 import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
@@ -60,6 +61,11 @@ import {
 } from '@/lib/variant-decision'
 import AgentDock from '@/components/AgentDock'
 import type { AgentCard, AgentState } from '@/lib/agent/tools'
+import { buildAgentActionPlan } from '@/lib/agent/plan'
+import {
+  applyAgentAction as recordAgentAction,
+  rollbackAgentRun,
+} from '@/lib/agent/runs-client'
 import { applyTextFieldEdit } from '@/lib/agent/edits'
 import ShotList from '@/components/ShotList'
 import ShotInspector from '@/components/ShotInspector'
@@ -452,6 +458,14 @@ export default function Home() {
   const [canvasOpen, setCanvasOpen] = useState(false)
   /** 低频项目工具：默认不挂载内容，按需打开 */
   const [projectToolsOpen, setProjectToolsOpen] = useState(false)
+  /** 项目级产物中心：版本、真实差异与 Agent 待确认队列 */
+  const [artifactCenterOpen, setArtifactCenterOpen] = useState(false)
+  const [artifactSnapshots, setArtifactSnapshots] = useState<
+    Partial<Record<ArtifactKind, SnapshotDto<unknown>[]>>
+  >({})
+  const [artifactLoading, setArtifactLoading] = useState(false)
+  const [artifactError, setArtifactError] = useState<string | null>(null)
+  const [pendingAgentCards, setPendingAgentCards] = useState<AgentCard[]>([])
   const [canvasFocus, setCanvasFocus] = useState<{
     node: CanvasNodeId
     itemId: string
@@ -461,7 +475,17 @@ export default function Home() {
   const [agentSeed, setAgentSeed] = useState<{ id: number; text: string } | null>(null)
   useEffect(() => {
     setProjectToolsOpen(false)
+    setArtifactCenterOpen(false)
+    if (!projectId) {
+      setArtifactSnapshots({})
+      setArtifactError(null)
+      setPendingAgentCards([])
+    }
   }, [projectId])
+  const artifactKindCount = useMemo(
+    () => ARTIFACT_KINDS.filter((kind) => (artifactSnapshots[kind]?.length ?? 0) > 0).length,
+    [artifactSnapshots],
+  )
   /** 用户手动点过 tab 之后，不再自动切换 */
   const tabTouched = useRef(false)
   const hasDeckOutput = view === 'shots' && shots.length > 0
@@ -1308,6 +1332,20 @@ export default function Home() {
     setCanvasOpen(false)
   }
 
+  const openArtifactCenter = () => {
+    setArtifactCenterOpen(true)
+    if (projectId) void refreshArtifactSnapshots(projectId)
+  }
+
+  /** 产物中心只负责把用户送回 Agent；确认动作仍由原卡片执行。 */
+  const openAgentFromArtifactCenter = () => {
+    setArtifactCenterOpen(false)
+    setDeckOpen(true)
+    setAgentOpen(true)
+    setInspectorOpen(false)
+    setAgentUnread(0)
+  }
+
   /** 点左栏/窄屏步骤条：切到那一步，并把页面滚回顶部 */
   const goToStep = (key: StepKey) => {
     const nextSearch = withCanvasQuery(withStepQuery(window.location.search, key), false)
@@ -1953,6 +1991,26 @@ export default function Home() {
    * 只恢复内容不为空的项目：用户可能只是点过「生成」但失败了，
    * 那种空壳项目不该在每次打开时弹一句「已恢复」。
    */
+  async function refreshArtifactSnapshots(pid: string) {
+    setArtifactLoading(true)
+    setArtifactError(null)
+    try {
+      const pairs = await Promise.all(
+        ARTIFACT_KINDS.map(async (kind) => [
+          kind,
+          await listSnapshots<unknown>(pid, kind),
+        ] as const),
+      )
+      setArtifactSnapshots(
+        Object.fromEntries(pairs) as Partial<Record<ArtifactKind, SnapshotDto<unknown>[]>>,
+      )
+    } catch (error) {
+      setArtifactError(error instanceof Error ? error.message : "产物版本读取失败")
+    } finally {
+      setArtifactLoading(false)
+    }
+  }
+
   /**
    * 把一个项目的快照全部读回工作台。挂载恢复与手动切换共用这一段，
    * 免得「切项目」和「刷新恢复」两套逻辑各写一遍、迟早分叉。
@@ -1972,6 +2030,8 @@ export default function Home() {
       listRefs(pid).catch(() => []),
     ])
     const byKind = Object.fromEntries(pairs) as Record<ArtifactKind, SnapshotDto<unknown>[]>
+    setArtifactSnapshots(byKind)
+    setArtifactError(null)
     const attachmentGroups = groupAttachments(refs)
     const latestOf = <T,>(kind: ArtifactKind): T | null => (byKind[kind]?.[0]?.payload as T | undefined) ?? null
 
@@ -3040,7 +3100,12 @@ export default function Home() {
   }
 
   /** 助手提议改写某一镜 → 按稳定 ID 写回；目标正文已漂移时拒绝覆盖 */
-  function applyAgentCard(card: Extract<AgentCard, { kind: 'shot-edit' }>) {
+  async function applyAgentCard(card: Extract<AgentCard, { kind: 'shot-edit' }>) {
+    if (!projectId) {
+      const message = '请先保存项目，再执行可回滚的 Agent 修改。'
+      setNotice(message)
+      return { ok: false, message }
+    }
     const result = applyTextFieldEdit(shots, {
       targetId: card.targetId,
       field: card.target,
@@ -3053,6 +3118,16 @@ export default function Home() {
       setNotice(result.message)
       return { ok: false, message: result.message }
     }
+    const plan = buildAgentActionPlan(card)
+    if (!plan) return { ok: false, message: '这条建议没有可执行的写入计划。' }
+    try {
+      await recordAgentAction(projectId, plan, shots, result.items)
+      void refreshArtifactSnapshots(projectId)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '执行计划保存失败，请重试。'
+      setNotice(message)
+      return { ok: false, message }
+    }
     setShots(result.items)
     const message = `${result.message}（${card.summary}）`
     setNotice(message)
@@ -3060,7 +3135,15 @@ export default function Home() {
   }
 
   async function applyAgentEntityCard(card: Extract<AgentCard, { kind: 'entity-edit' }>) {
+    if (!projectId) {
+      const message = '请先保存项目，再执行可回滚的 Agent 修改。'
+      setNotice(message)
+      return { ok: false, message }
+    }
     let result: { status: 'current' | 'drift' | 'missing'; message: string } | null = null
+    let beforePayload: unknown[] = []
+    let afterPayload: unknown[] = []
+    let commit: () => void = () => {}
     if (card.targetType === 'character') {
       const next = applyTextFieldEdit(characters, {
         targetId: card.targetId,
@@ -3071,7 +3154,9 @@ export default function Home() {
         label: card.targetName,
       })
       result = next
-      if (next.status === 'current') setCharacters(next.items)
+      beforePayload = characters
+      afterPayload = next.items
+      commit = () => setCharacters(next.items)
     } else if (card.targetType === 'place') {
       const next = applyTextFieldEdit(places, {
         targetId: card.targetId,
@@ -3082,7 +3167,9 @@ export default function Home() {
         label: card.targetName,
       })
       result = next
-      if (next.status === 'current') setPlaces(next.items)
+      beforePayload = places
+      afterPayload = next.items
+      commit = () => setPlaces(next.items)
     } else if (card.targetType === 'episode') {
       const next = applyTextFieldEdit(episodes, {
         targetId: card.targetId,
@@ -3093,7 +3180,9 @@ export default function Home() {
         label: card.targetName,
       })
       result = next
-      if (next.status === 'current') setEpisodes(next.items)
+      beforePayload = episodes
+      afterPayload = next.items
+      commit = () => setEpisodes(next.items)
     } else {
       const next = applyTextFieldEdit(shots, {
         targetId: card.targetId,
@@ -3104,13 +3193,26 @@ export default function Home() {
         label: card.targetName,
       })
       result = next
-      if (next.status === 'current') setShots(next.items)
+      beforePayload = shots
+      afterPayload = next.items
+      commit = () => setShots(next.items)
     }
     if (!result || result.status !== 'current') {
       const message = result?.message ?? '目标已不存在，本次没有写入。'
       setNotice(message)
       return { ok: false, message }
     }
+    const plan = buildAgentActionPlan(card)
+    if (!plan) return { ok: false, message: '这条建议没有可执行的写入计划。' }
+    try {
+      await recordAgentAction(projectId, plan, beforePayload, afterPayload)
+      void refreshArtifactSnapshots(projectId)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '执行计划保存失败，请重试。'
+      setNotice(message)
+      return { ok: false, message }
+    }
+    commit()
     const related = entityComments.find((comment) =>
       comment.status === 'open'
       && comment.targetType === card.targetType
@@ -3127,6 +3229,38 @@ export default function Home() {
     const message = `${result.message}（${card.summary}）`
     setNotice(message)
     return { ok: true, message }
+  }
+
+  async function handleRollbackAgentRun(runId: string): Promise<{ ok: boolean; message: string }> {
+    if (!projectId) return { ok: false, message: '请先保存项目，再回滚执行记录。' }
+    try {
+      const result = await rollbackAgentRun(projectId, runId)
+      if (!Array.isArray(result.payload)) {
+        throw new Error('回滚内容格式不完整，本次没有覆盖工作台。')
+      }
+      if (result.run.artifactKind === 'characters') setCharacters(result.payload as Character[])
+      else if (result.run.artifactKind === 'acts') setActs(result.payload as Act[])
+      else if (result.run.artifactKind === 'episodes') setEpisodes(result.payload as Episode[])
+      else if (result.run.artifactKind === 'visualCharacters') {
+        setVisuals(result.payload as VisualCharacter[])
+        setVisualsBuiltFrom(charactersSig)
+      } else if (result.run.artifactKind === 'scenes') {
+        setScenes(result.payload as AssetScene[])
+      } else if (result.run.artifactKind === 'visualPlaces') {
+        setPlaces(result.payload as VisualPlace[])
+      } else if (result.run.artifactKind === 'shots') {
+        setShots(result.payload as Shot[])
+      }
+      if (result.run.artifactKind === 'visualCharacters') void refreshImpact(projectId)
+      void refreshArtifactSnapshots(projectId)
+      const message = `已回滚「${result.run.summary}」，并生成新版本 v${result.snapshot.version}。`
+      setNotice(message)
+      return { ok: true, message }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '回滚失败，请重试。'
+      setNotice(message)
+      return { ok: false, message }
+    }
   }
 
   async function applyAgentDecision(card: {
@@ -3340,6 +3474,18 @@ export default function Home() {
         onReuseAsset={reuseLibraryAsset}
       />
 
+      <ArtifactCenter
+        open={artifactCenterOpen}
+        onClose={() => setArtifactCenterOpen(false)}
+        projectId={projectId}
+        snapshots={artifactSnapshots}
+        pendingCards={pendingAgentCards}
+        loading={artifactLoading}
+        error={artifactError}
+        onRefresh={projectId ? () => { void refreshArtifactSnapshots(projectId) } : undefined}
+        onOpenAgent={openAgentFromArtifactCenter}
+      />
+
       <div className="h-main">
         <aside className="signal-rail" aria-label="创作步骤">
           <span className="signal-rail-logo" aria-hidden="true">V</span>
@@ -3442,6 +3588,8 @@ export default function Home() {
                   onCopyAll={() => { void handleCopyAll() }}
                   onCopyLink={() => { void handleCopyProjectLink() }}
                   onCopyReviewLink={() => { void handleCopyReviewLink() }}
+                  onOpenArtifacts={projectId ? openArtifactCenter : undefined}
+                  artifactKindCount={artifactKindCount}
                   onOpenTools={() => setProjectToolsOpen(true)}
                   toolsAvailable={Boolean(projectId) && !firstRun}
                   exportTarget={exportTarget}
@@ -4108,6 +4256,7 @@ export default function Home() {
                   // 正停在场记里就不用提示；停在镜头预览时才点亮角标
                   if (!agentOpen) setAgentUnread((n) => n + 1)
                 }}
+                onPendingCardsChange={setPendingAgentCards}
                 context={
                   view === 'shots' && activeShot
                     ? `第 ${activeShot.shot} 镜 · ${activeShot.scene || '未命名场景'}`
@@ -4117,6 +4266,7 @@ export default function Home() {
                 onApplyEntityCard={applyAgentEntityCard}
                 onApplyDecision={(card) => { void applyAgentDecision(card) }}
                 onRegenerate={regenerateByAgent}
+                onRollbackAgentRun={handleRollbackAgentRun}
                 projectId={projectId}
                 onOpenStep={(step) => {
                   goToStep(step)

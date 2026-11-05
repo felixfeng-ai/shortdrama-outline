@@ -34,6 +34,8 @@ interface Props {
   onCopyAll: () => void
   onCopyLink: () => void
   onCopyReviewLink: () => void
+  onOpenArtifacts?: () => void
+  artifactKindCount: number
   onOpenTools: () => void
   toolsAvailable: boolean
   exportTarget: PlatformExportTarget
@@ -67,6 +69,8 @@ export default function ProjectBar({
   onCopyAll,
   onCopyLink,
   onCopyReviewLink,
+  onOpenArtifacts,
+  artifactKindCount,
   onOpenTools,
   toolsAvailable,
   exportTarget,
@@ -153,12 +157,28 @@ export default function ProjectBar({
         )}
         <button
           type="button"
+          onClick={onOpenArtifacts}
+          disabled={!artifactKindCount && !onOpenArtifacts}
+          aria-label="打开产物中心"
+          title="查看项目产物版本与 Agent 待确认项"
+          className="artifact-center-trigger shrink-0 inline-flex min-h-9 items-center gap-1.5 rounded-pill border border-surface-line px-2.5 py-1.5 text-xs text-ink-600
+            transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true" className="h-3.5 w-3.5 fill-none stroke-current [stroke-width:1.4]">
+            <path d="m4 6 6-3 6 3-6 3-6-3Z" />
+            <path d="m4 10 6 3 6-3M4 14l6 3 6-3" />
+          </svg>
+          产物
+          <span className="artifact-center-count">{artifactKindCount}</span>
+        </button>
+        <button
+          type="button"
           onClick={onOpenTools}
           disabled={!toolsAvailable}
           aria-label="打开项目工具"
           title="实体批注、跨项目资产与版本分支"
           className="project-tools-trigger shrink-0 inline-flex min-h-9 items-center gap-1.5 rounded-pill border border-surface-line px-2.5 py-1.5 text-xs text-ink-600
-            transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
+            transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <svg viewBox="0 0 20 20" aria-hidden="true" className="h-3.5 w-3.5 fill-none stroke-current [stroke-width:1.45]">
             <path d="M3.5 5h13M3.5 10h13M3.5 15h13" />

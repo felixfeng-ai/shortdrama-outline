@@ -19,10 +19,16 @@ import {
 import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
 import { createToolExecutors, type AgentCard, type AgentState } from '@/lib/agent/tools'
 import { inspectEditTarget, type EditTargetStatus } from '@/lib/agent/edits'
+import { buildAgentActionPlan } from '@/lib/agent/plan'
+import { listAgentRuns } from '@/lib/agent/runs-client'
+import type { AgentActionRunDto } from '@/lib/agent/runs'
 import { STEPS, type StepKey } from '@/lib/types'
 import SmoothCollapse from './SmoothCollapse'
 import StreamingText from './StreamingText'
 import AgentRichText from './AgentRichText'
+import AgentRunPanel from './AgentRunPanel'
+
+type MaybePromise<T> = T | Promise<T>
 
 interface Props {
   /** 页面当前状态的快照（工具只读它） */
@@ -38,11 +44,13 @@ interface Props {
   context?: string
   /** 一轮回答结束（含失败说明）时通知外层，用来点亮未读角标 */
   onNewMessage?: () => void
+  /** 把当前会话中的待确认卡同步到项目级产物中心 */
+  onPendingCardsChange?: (cards: AgentCard[]) => void
   /** 用户确认「改写某一镜」后，页面负责写回去 */
-  onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => {
+  onApplyCard: (card: Extract<AgentCard, { kind: 'shot-edit' }>) => MaybePromise<{
     ok: boolean
     message: string
-  }
+  }>
   /** 用户确认实体级建议后，页面按稳定实体 id 写回对应字段 */
   onApplyEntityCard: (card: Extract<AgentCard, { kind: 'entity-edit' }>) => Promise<{
     ok: boolean
@@ -59,6 +67,8 @@ interface Props {
   projectId?: string | null
   /** 从画布等入口带入的问题；只预填，不自动发送 */
   seedPrompt?: { id: number; text: string } | null
+  /** 页面负责恢复快照与同步工作台内存状态 */
+  onRollbackAgentRun?: (runId: string) => Promise<{ ok: boolean; message: string }>
 }
 
 /** 一轮里的一个"过程步骤"（查了什么、拿到什么） */
@@ -207,6 +217,7 @@ export default function AgentDock({
   variant = 'floating',
   context,
   onNewMessage,
+  onPendingCardsChange,
   onApplyCard,
   onApplyEntityCard,
   onApplyLocalization,
@@ -215,6 +226,7 @@ export default function AgentDock({
   onOpenStep,
   seedPrompt,
   projectId,
+  onRollbackAgentRun,
 }: Props) {
   const [lines, setLines] = useState<Line[]>([])
   const [threads, setThreads] = useState<Array<{ id: string; title: string; messageCount: number }>>([])
@@ -223,13 +235,70 @@ export default function AgentDock({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [degraded, setDegraded] = useState(false)
+  const [runs, setRuns] = useState<AgentActionRunDto[]>([])
+  const [runsLoading, setRunsLoading] = useState(false)
+  const [runsError, setRunsError] = useState<string | null>(null)
+  const [rollingBackId, setRollingBackId] = useState<string | null>(null)
   const busyRef = useRef(false)
+  const projectRef = useRef(projectId)
   const listRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  projectRef.current = projectId
   const missingSteps = STEPS.filter((step) => !state.completed[step.key])
   const missingSummary = missingSteps.length > 0
     ? `还有 ${missingSteps.length} 个步骤未完成：${missingSteps.slice(0, 2).map((step) => step.short).join('、')}。我可以直接带你过去。`
     : '六步产物已经齐了。我可以继续帮你审分镜、查返修或整理导出清单。'
+
+  useEffect(() => {
+    const cards = lines.flatMap((line) => line.role === 'card' ? [line.card] : [])
+    onPendingCardsChange?.(cards)
+  }, [lines, onPendingCardsChange])
+
+  useEffect(() => {
+    if (!projectId) {
+      setRuns([])
+      setRunsError(null)
+      return
+    }
+    setRuns([])
+    setRunsError(null)
+    void refreshRuns()
+    // 项目切换时重新读取；refreshRuns 只依赖当前 projectId。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
+  async function refreshRuns() {
+    if (!projectId) return
+    const requestedProjectId = projectId
+    setRunsLoading(true)
+    setRunsError(null)
+    try {
+      const nextRuns = await listAgentRuns(requestedProjectId)
+      if (projectRef.current === requestedProjectId) setRuns(nextRuns)
+    } catch (error) {
+      if (projectRef.current === requestedProjectId) {
+        setRunsError(error instanceof Error ? error.message : '执行记录读取失败')
+      }
+    } finally {
+      if (projectRef.current === requestedProjectId) setRunsLoading(false)
+    }
+  }
+
+  async function rollbackRun(runId: string) {
+    if (!onRollbackAgentRun || rollingBackId) return
+    setRollingBackId(runId)
+    setRunsError(null)
+    try {
+      const result = await onRollbackAgentRun(runId)
+      push({ role: 'note', text: result.message })
+      if (result.ok) await refreshRuns()
+      else setRunsError(result.message)
+    } catch (error) {
+      setRunsError(error instanceof Error ? error.message : '回滚失败，请重试')
+    } finally {
+      setRollingBackId(null)
+    }
+  }
 
   async function loadThread(threadId: string) {
     if (!projectId) return
@@ -308,6 +377,12 @@ export default function AgentDock({
   const push = (line: Line) => {
     setLines((prev) => [...prev, line])
     scrollToEnd()
+  }
+
+  const removeCard = (card: AgentCard) => {
+    setLines((current) => current.filter((item) =>
+      item.role !== 'card' || item.card !== card
+    ))
   }
 
   /** 追加一个过程步骤（同一轮里连续的过程合并成一个块） */
@@ -524,6 +599,17 @@ export default function AgentDock({
             </div>
           )}
 
+          {projectId && onRollbackAgentRun && (
+            <AgentRunPanel
+              runs={runs}
+              loading={runsLoading}
+              error={runsError}
+              rollingBackId={rollingBackId}
+              onRefresh={() => { void refreshRuns() }}
+              onRollback={rollbackRun}
+            />
+          )}
+
           {variant === 'docked' && context && (
             <div className="deck-ctx">正在看 <b>{context}</b></div>
           )}
@@ -607,23 +693,54 @@ export default function AgentDock({
               }
               // 待确认卡片：用户点了才真正改
               const editStatus = inspectCardTarget(line.card, state)
-              const editBlocked = line.card.kind === 'video-plan'
+              const actionPlan = buildAgentActionPlan(line.card)
+              const planBlocked = Boolean(actionPlan && !projectId)
+              const editBlocked = planBlocked || (line.card.kind === 'video-plan'
                 ? false
-                : editStatus !== 'current'
+                : editStatus !== 'current')
               return (
                 <div key={i} className="prop agent-line-in">
                   <p className="prop-h">
                     {cardHeading(line.card)}
                   </p>
-                  <p className="prop-b">
-                    {cardBody(line.card)}
-                  </p>
+                  {actionPlan ? (
+                    <div className="agent-plan-brief">
+                      <div className="agent-plan-brief-head">
+                        <span>执行计划</span>
+                        <em>{projectId ? '可回滚' : '需保存项目'}</em>
+                      </div>
+                      <p>
+                        <b>目标</b>
+                        {actionPlan.targetLabel}
+                        <i>{actionPlan.fieldLabel}</i>
+                      </p>
+                      <dl>
+                        <div>
+                          <dt>原值</dt>
+                          <dd>{actionPlan.before || '空'}</dd>
+                        </div>
+                        <div>
+                          <dt>目标值</dt>
+                          <dd>{actionPlan.after}</dd>
+                        </div>
+                      </dl>
+                      <ul>
+                        {actionPlan.impact.map((item) => <li key={item}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="prop-b">
+                      {cardBody(line.card)}
+                    </p>
+                  )}
                   {line.card.kind === 'decision' && (
                     <p className="prop-b">
                       候选：{line.card.options.join(' / ')}
                     </p>
                   )}
-                  {(line.card.kind === 'shot-edit' || line.card.kind === 'entity-edit') && editBlocked && (
+                  {(line.card.kind === 'shot-edit' || line.card.kind === 'entity-edit')
+                    && editBlocked
+                    && !planBlocked && (
                     <p className="text-[11px] leading-relaxed text-ink-400" role="status">
                       {editStatus === 'drift'
                         ? '目标已改动。这条建议基于旧内容，不会覆盖当前文本；请让 Agent 重新读取。'
@@ -637,28 +754,27 @@ export default function AgentDock({
                       onClick={() => {
                         void (async () => {
                           if (line.card.kind === 'shot-edit') {
-                            const result = onApplyCard(line.card)
-                            if (result.ok) {
-                              setLines((current) => current.filter((item) =>
-                                !(item.role === 'card' && item.card === line.card)
-                              ))
-                            }
+                            const result = await onApplyCard(line.card)
+                            if (result.ok) removeCard(line.card)
                             push({ role: 'note', text: result.message })
+                            if (result.ok && projectId) await refreshRuns()
                           } else if (line.card.kind === 'entity-edit') {
                             const result = await onApplyEntityCard(line.card)
-                            if (result.ok) {
-                              setLines((current) => current.filter((item) =>
-                                !(item.role === 'card' && item.card === line.card)
-                              ))
-                            }
+                            if (result.ok) removeCard(line.card)
                             push({ role: 'note', text: result.message })
+                            if (result.ok && projectId) await refreshRuns()
                           } else if (line.card.kind === 'localization-edit') {
-                            if (onApplyLocalization) onApplyLocalization(line.card)
+                            if (onApplyLocalization) {
+                              onApplyLocalization(line.card)
+                              removeCard(line.card)
+                            }
                             else push({ role: 'note', text: '请在海外本地化工作区确认这条修改。' })
                           } else if (line.card.kind === 'decision') {
                             onApplyDecision(line.card)
+                            removeCard(line.card)
                             push({ role: 'note', text: '已提交这条创作决策。' })
                           } else if (line.card.kind === 'video-plan') {
+                            removeCard(line.card)
                             push({ role: 'note', text: '视频预算已记录，尚未创建付费任务。' })
                           } else if (
                             line.card.kind === 'video-rework'
@@ -671,20 +787,28 @@ export default function AgentDock({
                             push({ role: 'note', text: '提案已记录，尚未自动执行。' })
                           } else {
                             onRegenerate(line.card.step)
+                            removeCard(line.card)
                             push({ role: 'note', text: '已按你的确认重跑该步骤。' })
                           }
                         })()
                       }}
                       className="ok disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      {editBlocked ? '需重新读取' : cardPrimaryLabel(line.card)}
+                      {planBlocked
+                        ? '需保存项目'
+                        : editBlocked
+                          ? '需重新读取'
+                          : actionPlan ? '执行计划' : cardPrimaryLabel(line.card)}
                     </button>
                     <button
                       type="button"
-                      onClick={() => push({ role: 'note', text: '已忽略这条建议。' })}
+                      onClick={() => {
+                        removeCard(line.card)
+                        push({ role: 'note', text: '已忽略这条建议。' })
+                      }}
                       className="no"
                     >
-                      忽略
+                      {actionPlan ? '取消计划' : '忽略'}
                     </button>
                   </div>
                 </div>

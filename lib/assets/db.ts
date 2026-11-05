@@ -841,6 +841,37 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON video_renders(status, created_at);
     `,
   },
+  {
+    version: 19,
+    name: "agent-action-runs",
+    sql: `
+      -- 每次可回滚的 Agent 文本修改都同时关联 before/after 快照。
+      -- 记录只描述“执行过什么”，正文真相仍以 snapshots 为准。
+      CREATE TABLE IF NOT EXISTS agent_action_runs (
+        id                   TEXT PRIMARY KEY,
+        project_id           TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        owner_id             TEXT NOT NULL,
+        action_kind          TEXT NOT NULL,
+        artifact_kind        TEXT NOT NULL,
+        target_type          TEXT NOT NULL,
+        target_id            TEXT NOT NULL,
+        target_label         TEXT NOT NULL,
+        field                TEXT NOT NULL,
+        summary              TEXT NOT NULL,
+        before_snapshot_id   TEXT NOT NULL REFERENCES snapshots(id) ON DELETE RESTRICT,
+        after_snapshot_id    TEXT NOT NULL REFERENCES snapshots(id) ON DELETE RESTRICT,
+        rollback_snapshot_id TEXT REFERENCES snapshots(id) ON DELETE SET NULL,
+        status               TEXT NOT NULL DEFAULT 'applied',
+        created_at           INTEGER NOT NULL,
+        rolled_back_at       INTEGER
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_agent_action_runs_project
+        ON agent_action_runs(project_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_agent_action_runs_after
+        ON agent_action_runs(project_id, after_snapshot_id);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {
