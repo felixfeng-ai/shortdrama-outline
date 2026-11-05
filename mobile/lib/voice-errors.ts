@@ -1,4 +1,24 @@
-export function voiceErrorMessage(code: string, _rawMessage?: string): string | null {
+export interface VoiceAvailabilityInput {
+  available: boolean;
+  platform: string;
+  services: readonly string[];
+}
+
+export function voiceAvailabilityMessage(input: VoiceAvailabilityInput): string | null {
+  if (!input.available) {
+    return '当前设备没有可用的语音识别服务，请在系统设置中启用语音服务';
+  }
+  if (input.platform === 'android' && input.services.length === 0) {
+    return '设备未安装或未启用系统语音识别服务，请检查系统语音设置';
+  }
+  return null;
+}
+
+export function voiceErrorMessage(
+  code: string,
+  rawMessage?: string,
+  nativeCode?: number,
+): string | null {
   switch (code) {
     case 'aborted':
       return null;
@@ -21,7 +41,13 @@ export function voiceErrorMessage(code: string, _rawMessage?: string): string | 
       return '语音识别正在忙，请稍后再试';
     case 'too-many-requests':
       return '语音识别请求太频繁，请稍后再试';
+    case 'client':
+      return '系统语音服务启动失败，请检查系统语音识别设置';
     default:
-      return '语音识别没有启动，请稍后重试';
+      if (/abort/i.test(rawMessage ?? '')) return null;
+      if (/service|recognizer|not.?available/i.test(rawMessage ?? '') || nativeCode === 5) {
+        return '系统语音服务不可用，请检查系统语音识别设置';
+      }
+      return '系统语音识别被中断，请再试一次';
   }
 }

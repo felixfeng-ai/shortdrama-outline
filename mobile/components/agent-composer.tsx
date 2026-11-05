@@ -4,7 +4,15 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { colors, radii, spacing, type } from '@/constants/tokens';
 import type { AgentMode, AgentPhase } from '@/lib/agent-session';
@@ -13,7 +21,10 @@ import {
   readPickedImage,
 } from '@/lib/media-input';
 import { useMediaAttachments } from '@/lib/media-attachment-store';
-import { voiceErrorMessage } from '@/lib/voice-errors';
+import {
+  voiceAvailabilityMessage,
+  voiceErrorMessage,
+} from '@/lib/voice-errors';
 
 export function AgentComposer({
   mode,
@@ -46,6 +57,7 @@ export function AgentComposer({
   const [voicePreparing, setVoicePreparing] = useState(false);
   const [mediaError, setMediaError] = useState('');
   const voiceBaseRef = useRef('');
+  const voiceActiveRef = useRef(false);
   const onChangeTextRef = useRef(onChangeText);
 
   useEffect(() => {
@@ -58,28 +70,35 @@ export function AgentComposer({
       onChangeTextRef.current(appendVoiceTranscript(voiceBaseRef.current, transcript));
     });
     const start = ExpoSpeechRecognitionModule.addListener('start', () => {
+      voiceActiveRef.current = true;
       setVoicePreparing(false);
       setRecognizing(true);
       setMediaError('');
     });
     const end = ExpoSpeechRecognitionModule.addListener('end', () => {
+      voiceActiveRef.current = false;
       setVoicePreparing(false);
       setRecognizing(false);
     });
     const error = ExpoSpeechRecognitionModule.addListener('error', (event) => {
+      voiceActiveRef.current = false;
       setVoicePreparing(false);
       setRecognizing(false);
-      const message = voiceErrorMessage(event.error, event.message);
+      const message = voiceErrorMessage(event.error, event.message, event.code);
       setMediaError(message ?? '');
     });
     return () => {
+      const wasActive = voiceActiveRef.current;
+      voiceActiveRef.current = false;
       result.remove();
       start.remove();
       end.remove();
       error.remove();
-      try {
-        ExpoSpeechRecognitionModule.abort();
-      } catch {}
+      if (wasActive) {
+        try {
+          ExpoSpeechRecognitionModule.abort();
+        } catch {}
+      }
     };
   }, []);
 
@@ -121,17 +140,29 @@ export function AgentComposer({
     setMediaError('');
     if (recognizing) {
       ExpoSpeechRecognitionModule.stop();
+      voiceActiveRef.current = false;
       setRecognizing(false);
       return;
     }
     if (voicePreparing) return;
     setVoicePreparing(true);
     try {
+      const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+      const services = Platform.OS === 'android'
+        ? ExpoSpeechRecognitionModule.getSpeechRecognitionServices()
+        : [];
+      const availability = voiceAvailabilityMessage({
+        available,
+        platform: Platform.OS,
+        services,
+      });
+      if (availability) throw new Error(availability);
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
       if (!permission.granted) throw new Error('麦克风或语音识别权限未开启');
       voiceBaseRef.current = value;
       setVoicePreparing(false);
       setRecognizing(true);
+      voiceActiveRef.current = true;
       ExpoSpeechRecognitionModule.start({
         lang: 'zh-CN',
         interimResults: true,
@@ -139,6 +170,7 @@ export function AgentComposer({
         maxAlternatives: 1,
       });
     } catch (reason) {
+      voiceActiveRef.current = false;
       setVoicePreparing(false);
       setRecognizing(false);
       setMediaError(reason instanceof Error ? reason.message : '语音识别不可用');
