@@ -32,6 +32,13 @@ export function checkProductionReadiness(
     errors.push("AUTH_EMAIL_FROM 格式不正确")
   }
 
+  const videoEnabled = /^(1|true|yes|on)$/i.test(value(env, "VIDEO_GENERATION_ENABLED"))
+  if (videoEnabled && !value(env, "MINIMAX_API_KEY")) {
+    errors.push("VIDEO_GENERATION_ENABLED 已开启，但缺少 MINIMAX_API_KEY")
+  } else if (!videoEnabled) {
+    warnings.push("视频生成未启用，App 只能生成关键帧")
+  }
+
   const pushPublic = value(env, "WEB_PUSH_PUBLIC_KEY")
   const pushPrivate = value(env, "WEB_PUSH_PRIVATE_KEY")
   if (Boolean(pushPublic) !== Boolean(pushPrivate)) {
