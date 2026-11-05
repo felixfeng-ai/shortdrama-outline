@@ -134,6 +134,16 @@ export interface AgentState {
   completed: Record<StepKey, boolean>
   shots: AgentShot[]
   expiredShots: number
+  /** 只读视频生产快照；用于回答缺口，不代表已创建任何付费任务。 */
+  videoReadiness?: {
+    totalShots: number
+    frameReady: number
+    videoReady: number
+    missingFrame: number
+    missingVideo: number
+    activeTasks: number
+    failedTasks: number
+  }
   quota: { remaining: number; limit: number; projectsLeft: number } | null
   sourceMaterials?: SourceMaterialInput[]
 }
@@ -634,6 +644,9 @@ export function createToolExecutors(
         ok: true,
         content: [
           `项目『${state.projectTitle || '未命名'}』：${stepLine}。分镜共 ${state.shots.length} 镜。`,
+          state.videoReadiness
+            ? `视频：共 ${state.videoReadiness.totalShots} 镜，${state.videoReadiness.videoReady} 镜已有采用视频；${state.videoReadiness.missingFrame} 镜缺首帧，${state.videoReadiness.missingVideo} 镜缺视频；${state.videoReadiness.activeTasks} 个视频任务进行中，${state.videoReadiness.failedTasks} 个视频任务异常。`
+            : '',
           todos.length > 0 ? `待处理：${todos.map((item) => item.text).join('；')}` : '当前没有待处理项。',
           briefLine,
           logLine,

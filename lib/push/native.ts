@@ -11,6 +11,7 @@ export interface NativePushData {
   targetId: string
   assetId?: string | null
   targetLabel?: string
+  mediaKind?: "image" | "video" | "audio"
 }
 
 export async function sendNativePushToOwner(

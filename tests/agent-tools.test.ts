@@ -92,6 +92,28 @@ test("AT2b 项目状态向场记提供创作契约 V2", () => {
   assert.match(r.content, /最终落点：从只想活命走到愿意为真相承担代价/)
 })
 
+test("AT2c 项目状态说明镜头视频就绪度，不触发付费任务", () => {
+  const r = createToolExecutors(state({
+    videoReadiness: {
+      totalShots: 8,
+      frameReady: 6,
+      videoReady: 3,
+      missingFrame: 2,
+      missingVideo: 5,
+      activeTasks: 1,
+      failedTasks: 1,
+    },
+  })).get_project_status({})
+
+  assert.equal(r.ok, true)
+  assert.match(r.content, /8 镜/)
+  assert.match(r.content, /3 镜已有采用视频/)
+  assert.match(r.content, /2 镜缺首帧/)
+  assert.match(r.content, /5 镜缺视频/)
+  assert.match(r.content, /1 个视频任务进行中/)
+  assert.match(r.content, /1 个视频任务异常/)
+})
+
 test("AT3 分镜审计：镜数、缺图（带镜号与角色）、掉锚点、返修都说到", () => {
   const r = createToolExecutors(
     state({

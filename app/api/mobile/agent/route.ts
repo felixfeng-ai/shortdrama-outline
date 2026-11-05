@@ -13,6 +13,8 @@ import {
   readMobileAgentPrompt,
   runMobileAgentTurn,
 } from '@/lib/mobile-agent'
+import { buildMobileVideoView } from '@/lib/mobile-video'
+import { listGeneratedAssets, listGenerationTasks } from '@/lib/generation/repo'
 import { FULL_PROJECT_COST, chargeQuota, getQuota } from '@/lib/quota'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
@@ -49,9 +51,15 @@ export async function POST(req: Request) {
       ]),
     )
     const quota = getQuota(db, identity)
+    const videoView = buildMobileVideoView({
+      shots: snapshots.shots,
+      assets: listGeneratedAssets(db, project.id),
+      tasks: listGenerationTasks(db, project.id),
+    })
     const state = buildMobileAgentState({
       projectTitle: project.title,
       snapshots,
+      videoReadiness: videoView.readiness,
       quota: {
         remaining: quota.remaining,
         limit: quota.limit,

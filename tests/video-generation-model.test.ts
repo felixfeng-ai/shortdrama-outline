@@ -5,6 +5,7 @@ import {
   buildMiniMaxVideoRequest,
   estimateVideoCostMicros,
   getMiniMaxVideoConfig,
+  getPublicVideoCapabilities,
   parseMiniMaxVideoSubmission,
   parseMiniMaxVideoTask,
 } from "../lib/video/model.ts"
@@ -49,6 +50,29 @@ test("P0-V1 按模型、分辨率和时长估算人民币成本", () => {
     () => estimateVideoCostMicros({ model: "MiniMax-H3-Lite", resolution: "768P", duration: 3 }),
     /时长必须在 4-15 秒/,
   )
+})
+
+test("App 视频能力只暴露可用模型和价格，不泄露服务端密钥", () => {
+  const enabled = getPublicVideoCapabilities({
+    VIDEO_GENERATION_ENABLED: "1",
+    MINIMAX_API_KEY: "server-secret-key",
+    MINIMAX_VIDEO_MODEL: "MiniMax-H3-Lite",
+    MINIMAX_VIDEO_RESOLUTION: "768P",
+  })
+  assert.equal(enabled.enabled, true)
+  assert.equal(enabled.defaultModel, "MiniMax-H3-Lite")
+  assert.equal(enabled.defaultResolution, "768P")
+  assert.equal(
+    enabled.models.find((model) => model.id === "MiniMax-H3-Lite")?.pricesPerSecond["768P"],
+    0.26,
+  )
+  assert.equal(JSON.stringify(enabled).includes("server-secret-key"), false)
+
+  const disabled = getPublicVideoCapabilities({
+    VIDEO_GENERATION_ENABLED: "0",
+    MINIMAX_API_KEY: "server-secret-key",
+  })
+  assert.equal(disabled.enabled, false)
 })
 
 test("P0-V2 图生视频请求使用首帧 data URI，不泄露服务端路径", () => {

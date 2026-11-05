@@ -4,10 +4,8 @@ import { InputError, errorResponse, ok } from "@/lib/api"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { getDbForRequest } from "@/lib/assets/store"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
-import { writeGeneratedVideo } from "@/lib/generation/files"
 import {
   cancelGenerationTask,
-  completeGenerationTask,
   createGenerationBatch,
   failGenerationTask,
   getGeneratedAsset,
@@ -16,13 +14,9 @@ import {
   listGeneratedAssets,
   listGenerationBatches,
   listGenerationTasks,
-  markGenerationTaskRunning,
-  saveGeneratedAsset,
   selectGeneratedAsset,
-  updateGenerationProviderStatus,
 } from "@/lib/generation/repo"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
-import { notifyGenerationFinished } from "@/lib/push/service"
 import {
   estimateVideoCostMicros,
   getMiniMaxVideoConfig,
@@ -30,10 +24,9 @@ import {
 } from "@/lib/video/model"
 import {
   cancelMiniMaxVideo,
-  downloadMiniMaxVideo,
-  queryMiniMaxVideo,
 } from "@/lib/video/service"
 import { createAndSubmitVideoTask, findProjectShot } from "@/lib/video/tasks"
+import { reconcileProjectVideoTasks } from "@/lib/video/reconcile"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -49,135 +42,6 @@ function integer(value: unknown, fallback: number): number {
   return Number.isFinite(number) ? Math.floor(number) : fallback
 }
 
-async function reconcileVideoTasks(
-  db: ReturnType<typeof getDbForRequest>,
-  projectId: string,
-  ownerId: string,
-): Promise<void> {
-  const now = Date.now()
-  const tasks = listGenerationTasks(db, projectId, undefined, undefined, "video")
-    .filter((task) =>
-      (task.status === "queued" || task.status === "running")
-      && Boolean(task.providerTaskId)
-      && (task.nextPollAt ?? 0) <= now
-    )
-    .slice(0, 6)
-
-  for (const task of tasks) {
-    try {
-      const state = await queryMiniMaxVideo(task.providerTaskId!)
-      if (state.status === "queued" || state.status === "running") {
-        if (state.status === "running") markGenerationTaskRunning(db, task.id)
-        updateGenerationProviderStatus(db, task.id, {
-          providerStatus: state.status,
-          nextPollAt: Date.now() + 5_000,
-        })
-        continue
-      }
-      if (state.status === "canceled") {
-        updateGenerationProviderStatus(db, task.id, {
-          providerStatus: state.status,
-          nextPollAt: Date.now() + 60_000,
-        })
-        cancelGenerationTask(db, task.id, "供应商已取消")
-        continue
-      }
-      if (state.status === "failed") {
-        updateGenerationProviderStatus(db, task.id, {
-          providerStatus: state.status,
-          nextPollAt: Date.now() + 60_000,
-        })
-        const failed = failGenerationTask(
-          db,
-          task.id,
-          publicVideoGenerationError(state.error),
-        )
-        await notifyGenerationFinished(db, ownerId, {
-          taskId: task.id,
-          targetType: task.targetType,
-          status: "failed",
-          mediaKind: "video",
-          error: failed.error,
-          projectId: task.projectId,
-          targetId: task.targetId,
-          assetId: null,
-        }).catch(() => undefined)
-        continue
-      }
-      if (state.status !== "succeeded") continue
-
-      const video = await downloadMiniMaxVideo(state.videoUrl)
-      const file = writeGeneratedVideo(
-        projectId,
-        `${task.id}-video`,
-        video.bytes,
-        video.mime,
-      )
-      const request = task.request ?? {}
-      const sourceAssetId = typeof request.sourceAssetId === "string"
-        ? request.sourceAssetId
-        : null
-      const requestedDuration = integer(request.duration, 0)
-      const durationMs = state.durationSeconds !== null
-        ? Math.round(state.durationSeconds * 1000)
-        : requestedDuration > 0
-          ? requestedDuration * 1000
-          : null
-      const asset = saveGeneratedAsset(db, {
-        taskId: task.id,
-        projectId,
-        targetType: task.targetType,
-        targetId: task.targetId,
-        storageKey: file.storageKey,
-        mime: video.mime,
-        bytes: file.bytes,
-        providerId: task.providerId,
-        model: task.model,
-        prompt: task.prompt,
-        mediaKind: "video",
-        durationMs,
-        width: null,
-        height: null,
-        fps: null,
-        sha256: video.sha256,
-        posterStorageKey: null,
-        sourceAssetIds: sourceAssetId ? [sourceAssetId] : [],
-        generationMeta: {
-          providerTaskId: task.providerTaskId,
-          providerStatus: state.status,
-          resolution: state.resolution,
-          ratio: state.ratio,
-          usage: state.usage,
-        },
-      })
-      if (request.autoSelect === true) selectGeneratedAsset(db, projectId, asset.id)
-      updateGenerationProviderStatus(db, task.id, {
-        providerStatus: state.status,
-        nextPollAt: Date.now() + 60_000,
-      })
-      const completed = completeGenerationTask(db, task.id, asset.id)
-      await notifyGenerationFinished(db, ownerId, {
-        taskId: task.id,
-        targetType: task.targetType,
-        status: "succeeded",
-        mediaKind: "video",
-        projectId: task.projectId,
-        targetId: task.targetId,
-        assetId: completed.assetId,
-      }).catch(() => undefined)
-    } catch (error) {
-      updateGenerationProviderStatus(db, task.id, {
-        providerStatus: "query_error",
-        nextPollAt: Date.now() + 15_000,
-      })
-      console.warn("[video] 任务对账失败", {
-        taskId: task.id,
-        message: error instanceof Error ? error.message : String(error),
-      })
-    }
-  }
-}
-
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
@@ -186,7 +50,7 @@ export async function GET(req: Request) {
     const db = getDbForRequest()
     const ownerId = resolveProjectOwner(db, req)
     assertProjectAccess(db, projectId, ownerId)
-    await reconcileVideoTasks(db, projectId, ownerId)
+    await reconcileProjectVideoTasks(db, projectId, ownerId)
     return NextResponse.json(ok({
       tasks: listGenerationTasks(
         db,

@@ -96,6 +96,7 @@ export async function notifyGenerationFinished(
         targetId: input.targetId,
         assetId: input.assetId ?? null,
         targetLabel: input.targetLabel,
+        mediaKind: input.mediaKind,
       }
     : null
   const [web, native] = await Promise.all([

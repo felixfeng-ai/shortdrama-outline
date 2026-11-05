@@ -52,6 +52,7 @@ export function buildMobileAgentState(input: {
   projectTitle: string
   snapshots: SnapshotPayloads
   quota: MobileAgentQuota
+  videoReadiness?: AgentState["videoReadiness"]
 }): AgentState {
   const { projectTitle, snapshots, quota } = input
   const characters = readArray(snapshots.characters)
@@ -131,6 +132,7 @@ export function buildMobileAgentState(input: {
       dialogue: readText(shot.dialogue),
     })),
     expiredShots: 0,
+    videoReadiness: input.videoReadiness,
     quota,
     sourceMaterials: [],
   }

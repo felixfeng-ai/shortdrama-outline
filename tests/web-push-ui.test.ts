@@ -34,11 +34,11 @@ test("关键帧生成成功或失败都会触发完成通知", () => {
 })
 
 test("视频任务成功或失败都会触发视频完成通知", () => {
-  const route = read("app/api/video/generations/route.ts")
-  assert.ok(route.includes("notifyGenerationFinished"))
-  assert.ok(route.includes('mediaKind: "video"'))
-  assert.match(route, /status:\s*["']succeeded["']/)
-  assert.match(route, /status:\s*["']failed["']/)
+  const reconcile = read("lib/video/reconcile.ts")
+  assert.ok(reconcile.includes("notifyGenerationFinished"))
+  assert.ok(reconcile.includes('mediaKind: "video"'))
+  assert.match(reconcile, /status:\s*["']succeeded["']/)
+  assert.match(reconcile, /status:\s*["']failed["']/)
 })
 
 test("浏览器推送订阅有超时兜底，不会无限停在忙碌态", () => {

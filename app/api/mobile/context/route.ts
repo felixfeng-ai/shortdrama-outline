@@ -8,9 +8,13 @@ import { resolveProjectOwner, resolveRequestIdentity } from '@/lib/auth/request'
 import { buildMobileContext } from '@/lib/mobile-context'
 import { FULL_PROJECT_COST, getQuota } from '@/lib/quota'
 import {
+  listGeneratedAssets,
+  listGenerationBatches,
   listGenerationTasks,
   reconcileStaleGenerationTasks,
 } from '@/lib/generation/repo'
+import { getPublicVideoCapabilities } from '@/lib/video/model'
+import { reconcileProjectVideoTasks } from '@/lib/video/reconcile'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,7 +37,14 @@ export async function GET(req: Request) {
           ]),
         )
       : {}
-    if (active) reconcileStaleGenerationTasks(db, active.id)
+    if (active) {
+      reconcileStaleGenerationTasks(db, active.id)
+      // 工作区刷新不能被视频供应商的长轮询拖住；对账仍在后台继续。
+      await Promise.race([
+        reconcileProjectVideoTasks(db, active.id, ownerId),
+        new Promise<void>((resolve) => setTimeout(resolve, 1_500)),
+      ])
+    }
     const quota = getQuota(db, resolveRequestIdentity(db, req))
 
     return NextResponse.json(
@@ -50,6 +61,9 @@ export async function GET(req: Request) {
           now: Date.now(),
           activeProjectId: active?.id,
           tasks: active ? listGenerationTasks(db, active.id) : [],
+          assets: active ? listGeneratedAssets(db, active.id) : [],
+          batches: active ? listGenerationBatches(db, active.id) : [],
+          videoCapabilities: getPublicVideoCapabilities(),
         }),
       ),
     )

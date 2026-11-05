@@ -10,9 +10,20 @@ import { buildCharacterKeyframePrompt } from './generation/prompt.ts'
 import { buildPlaceImagePrompt } from './assets/anchors.ts'
 import type {
   GenerationStatus,
+  GeneratedAsset,
+  GenerationBatch,
   GenerationTargetType,
   GenerationTask,
 } from './generation/types.ts'
+import {
+  buildMobileVideoView,
+  type MobileVideoReadiness,
+  type MobileVideoTarget,
+} from './mobile-video.ts'
+import {
+  getPublicVideoCapabilities,
+  type PublicVideoCapabilities,
+} from './video/model.ts'
 
 export interface MobileContextQuota {
   remaining: number
@@ -60,6 +71,10 @@ export interface MobileContextTask {
   createdAt: number
   startedAt: number | null
   finishedAt: number | null
+  mediaKind: 'image' | 'video' | 'audio'
+  batchId: string | null
+  estimatedCostMicros: number
+  actualCostMicros: number
 }
 
 export interface MobileGenerationTarget {
@@ -78,6 +93,10 @@ export interface MobileContextData {
   quota: MobileContextQuota
   tasks: MobileContextTask[]
   generationTargets: MobileGenerationTarget[]
+  videoCapabilities: PublicVideoCapabilities
+  videoTargets: MobileVideoTarget[]
+  videoReadiness: MobileVideoReadiness
+  batches: GenerationBatch[]
 }
 
 type SnapshotPayloads = Partial<Record<ArtifactKind, unknown>>
@@ -194,8 +213,17 @@ export function buildMobileContext(input: {
   now: number
   activeProjectId?: string | null
   tasks?: readonly GenerationTask[]
+  assets?: readonly GeneratedAsset[]
+  batches?: readonly GenerationBatch[]
+  videoCapabilities?: PublicVideoCapabilities
 }): MobileContextData {
   const { projects, snapshots, quota, now } = input
+  const videoCapabilities = input.videoCapabilities ?? getPublicVideoCapabilities({})
+  const videoView = buildMobileVideoView({
+    shots: snapshots.shots,
+    assets: [...(input.assets ?? [])],
+    tasks: [...(input.tasks ?? [])],
+  })
   if (projects.length === 0) {
     return {
       activeProject: null,
@@ -205,6 +233,10 @@ export function buildMobileContext(input: {
       quota,
       tasks: [],
       generationTargets: [],
+      videoCapabilities,
+      videoTargets: videoView.targets,
+      videoReadiness: videoView.readiness,
+      batches: [],
     }
   }
 
@@ -248,6 +280,10 @@ export function buildMobileContext(input: {
       createdAt: task.createdAt,
       startedAt: task.startedAt,
       finishedAt: task.finishedAt,
+      mediaKind: task.mediaKind ?? 'image',
+      batchId: task.batchId ?? null,
+      estimatedCostMicros: task.estimatedCostMicros ?? 0,
+      actualCostMicros: task.actualCostMicros ?? 0,
     }))
   const generationTargets: MobileGenerationTarget[] = [
     ...readArray(snapshots.visualCharacters).map((item) => ({
@@ -288,5 +324,9 @@ export function buildMobileContext(input: {
     quota,
     tasks,
     generationTargets,
+    videoCapabilities,
+    videoTargets: videoView.targets,
+    videoReadiness: videoView.readiness,
+    batches: (input.batches ?? []).filter((batch) => batch.projectId === active.id),
   }
 }

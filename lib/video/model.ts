@@ -47,6 +47,21 @@ export interface MiniMaxVideoConfig {
   defaultResolution: MiniMaxVideoResolution
 }
 
+export interface PublicVideoModelCapability {
+  id: MiniMaxVideoModel
+  minDuration: number
+  maxDuration: number
+  resolutions: MiniMaxVideoResolution[]
+  pricesPerSecond: Partial<Record<MiniMaxVideoResolution, number>>
+}
+
+export interface PublicVideoCapabilities {
+  enabled: boolean
+  defaultModel: MiniMaxVideoModel
+  defaultResolution: MiniMaxVideoResolution
+  models: PublicVideoModelCapability[]
+}
+
 export interface MiniMaxVideoRequest {
   url: string
   body: Record<string, unknown>
@@ -85,6 +100,32 @@ function resolutionFrom(value: string | undefined): MiniMaxVideoResolution {
     throw new InputError("视频分辨率不支持")
   }
   return resolution
+}
+
+export function getPublicVideoCapabilities(
+  env: Record<string, string | undefined> = process.env,
+): PublicVideoCapabilities {
+  const configuredModel = env.MINIMAX_VIDEO_MODEL?.trim()
+  const configuredResolution = env.MINIMAX_VIDEO_RESOLUTION?.trim()
+  const defaultModel = configuredModel && configuredModel in MODEL_CONFIGS
+    ? configuredModel as MiniMaxVideoModel
+    : MINIMAX_VIDEO_DEFAULT_MODEL
+  const defaultResolution = configuredResolution
+    && ["480P", "768P", "2K"].includes(configuredResolution)
+    ? configuredResolution as MiniMaxVideoResolution
+    : MINIMAX_VIDEO_DEFAULT_RESOLUTION
+  return {
+    enabled: truthyFlag(env.VIDEO_GENERATION_ENABLED) && Boolean(env.MINIMAX_API_KEY?.trim()),
+    defaultModel,
+    defaultResolution,
+    models: (Object.keys(MODEL_CONFIGS) as MiniMaxVideoModel[]).map((id) => ({
+      id,
+      minDuration: MODEL_CONFIGS[id].minDuration,
+      maxDuration: MODEL_CONFIGS[id].maxDuration,
+      resolutions: Object.keys(MODEL_CONFIGS[id].pricesPerSecond) as MiniMaxVideoResolution[],
+      pricesPerSecond: { ...MODEL_CONFIGS[id].pricesPerSecond },
+    })),
+  }
 }
 
 export function getMiniMaxVideoConfig(
