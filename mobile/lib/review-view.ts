@@ -52,6 +52,21 @@ export function buildReviewMediaSource(
   return { uri, headers };
 }
 
+export function buildReviewVideoSource(
+  baseUrl: string,
+  asset: ReviewAsset,
+  headers: Record<string, string>,
+): {
+  uri: string;
+  headers: Record<string, string>;
+  contentType: 'progressive';
+} {
+  return {
+    ...buildReviewMediaSource(baseUrl, asset, headers),
+    contentType: 'progressive',
+  };
+}
+
 /** 保留旧调用名，图片和视频共用同一套鉴权 URL 拼装。 */
 export const buildReviewImageSource = buildReviewMediaSource;
 

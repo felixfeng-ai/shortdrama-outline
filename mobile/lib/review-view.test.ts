@@ -4,6 +4,7 @@ import test from 'node:test';
 import type { ReviewAsset } from './review-api.ts';
 import {
   buildReviewMediaSource,
+  buildReviewVideoSource,
   initialReviewAsset,
   reviewFileName,
   reviewMediaKinds,
@@ -71,4 +72,8 @@ test('视频版本使用 MP4 文件名，并能与图片分开审片', () => {
   assert.deepEqual(reviewMediaKinds(assets), ['image', 'video'])
   assert.deepEqual(reviewVersions(assets, 'video').map((item) => item.id), ['video-1'])
   assert.equal(reviewFileName(video), 'shot-shot-1-video-1.mp4')
+  assert.equal(
+    buildReviewVideoSource('http://127.0.0.1:3200', video, {}).contentType,
+    'progressive',
+  )
 });

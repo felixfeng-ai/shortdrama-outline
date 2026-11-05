@@ -37,6 +37,7 @@ import {
 } from '@/lib/review-api';
 import {
   buildReviewMediaSource,
+  buildReviewVideoSource,
   initialReviewAsset,
   reviewMediaKinds,
   reviewAspectRatio,
@@ -112,6 +113,9 @@ export default function ReviewScreen() {
   const current = versions.find((asset) => asset.id === currentId) ?? null;
   const currentSource = current
     ? buildReviewMediaSource(workspaceApiBaseUrl, current, imageHeaders)
+    : null;
+  const currentVideoSource = current?.mediaKind === 'video'
+    ? buildReviewVideoSource(workspaceApiBaseUrl, current, imageHeaders)
     : null;
   const comparePair = current
     ? [current, ...versions.filter((asset) => asset.id !== current.id)].slice(0, 2)
@@ -309,7 +313,11 @@ export default function ReviewScreen() {
                             key={asset.id}
                             label={`${targetLabel}，对比 ${index === 0 ? 'A' : 'B'}`}
                             muted
-                            source={source}
+                            source={buildReviewVideoSource(
+                              workspaceApiBaseUrl,
+                              asset,
+                              imageHeaders,
+                            )}
                             aspectRatio={reviewAspectRatio(asset.targetType)}
                           />
                         ) : (
@@ -342,11 +350,11 @@ export default function ReviewScreen() {
                 </View>
               ) : (
                 <View style={styles.previewWrap}>
-                  {current.mediaKind === 'video' && currentSource ? (
+                  {current.mediaKind === 'video' && currentVideoSource ? (
                     <VideoReviewPreview
                       key={current.id}
                       label={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
-                      source={currentSource}
+                      source={currentVideoSource}
                       aspectRatio={reviewAspectRatio(current.targetType)}
                     />
                   ) : (
@@ -557,7 +565,11 @@ function VideoReviewPreview({
   controls = true,
   muted = false,
 }: {
-  source: { uri: string; headers: Record<string, string> };
+  source: {
+    uri: string;
+    headers: Record<string, string>;
+    contentType?: 'progressive';
+  };
   aspectRatio: number;
   label: string;
   compact?: boolean;
@@ -567,6 +579,7 @@ function VideoReviewPreview({
   const player = useVideoPlayer({
     uri: source.uri,
     headers: source.headers,
+    contentType: source.contentType,
     useCaching: true,
   }, (instance) => {
     instance.loop = false;
