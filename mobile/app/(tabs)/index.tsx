@@ -325,19 +325,30 @@ export default function AgentHomeScreen() {
               <Kicker>
                 {project ? `正在写 · ${hero?.contextBadge ?? project.step}` : '还没有项目'}
               </Kicker>
-              <Pressable
-                accessibilityRole={status === 'error' ? 'button' : undefined}
-                accessibilityLabel={
-                  status === 'error' && error ? `${syncLabel}：${error}` : syncLabel
-                }
-                disabled={status !== 'error'}
-                hitSlop={10}
-                onPress={refresh}
-                style={styles.savedRow}
-              >
-                <StatusDot pulse={status === 'loading'} color={syncColor} />
-                <Text style={styles.savedText}>{syncLabel}</Text>
-              </Pressable>
+              <View style={styles.contextActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="查看 App 能做什么"
+                  onPress={() => router.push('/capabilities')}
+                  style={({ pressed }) => [styles.capabilityButton, pressed && styles.pressed]}
+                >
+                  <Feather name="compass" size={13} color={colors.textSecondary} />
+                  <Text style={styles.capabilityText}>能做什么</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole={status === 'error' ? 'button' : undefined}
+                  accessibilityLabel={
+                    status === 'error' && error ? `${syncLabel}：${error}` : syncLabel
+                  }
+                  disabled={status !== 'error'}
+                  hitSlop={10}
+                  onPress={refresh}
+                  style={styles.savedRow}
+                >
+                  <StatusDot pulse={status === 'loading'} color={syncColor} />
+                  <Text style={styles.savedText}>{syncLabel}</Text>
+                </Pressable>
+              </View>
             </View>
 
             <Text numberOfLines={2} style={styles.question}>
@@ -578,6 +589,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  contextActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  capabilityButton: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  capabilityText: {
+    color: colors.textSecondary,
+    fontSize: type.micro,
+    fontWeight: '500',
   },
   savedRow: {
     flexDirection: 'row',

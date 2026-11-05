@@ -27,6 +27,7 @@ import {
 } from '@/components/ui';
 import { colors, fonts, radii, spacing, type } from '@/constants/tokens';
 import { useAuth } from '@/lib/auth-store';
+import { resolveFrameAssetId, shotFrameTarget } from '@/lib/first-frame';
 import { recommendedGenerationTarget } from '@/lib/generation-recommendation';
 import { generateWorkspaceTarget } from '@/lib/generation-entry';
 import { useMediaAttachments } from '@/lib/media-attachment-store';
@@ -66,7 +67,7 @@ interface GenerationOption extends WorkspaceGenerationTarget {
 
 export default function GenerateScreen() {
   const params = useLocalSearchParams<{ mode?: string }>();
-  const { data } = useWorkspace();
+  const { data, refresh } = useWorkspace();
   const { authorizedFetch } = useAuth();
   const { attachments, clearAttachments } = useMediaAttachments();
   const [mode, setMode] = useState<GenerateMode>(params.mode === 'video' ? 'video' : 'image');
@@ -74,6 +75,8 @@ export default function GenerateScreen() {
   const [selectedId, setSelectedId] = useState('');
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingFrame, setGeneratingFrame] = useState(false);
+  const [generatedFrames, setGeneratedFrames] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const videoModel = videoModelCapability(
     data.videoCapabilities,
@@ -113,6 +116,17 @@ export default function GenerateScreen() {
   const selected = targets.find((target) => target.key === selectedId)
     ?? recommended
     ?? targets[0]!;
+  const frameTarget = selected?.kind === 'video'
+    ? shotFrameTarget(data.generationTargets, selected)
+    : null;
+  const effectiveFrameAssetId = selected?.kind === 'video'
+    ? resolveFrameAssetId(
+        selected.selectedFrameAssetId,
+        generatedFrames[selected.targetId],
+      )
+    : null;
+  const missingFrame = selected?.kind === 'video' && !effectiveFrameAssetId;
+  const busy = generating || generatingFrame;
   const selectedVideoCost = selected?.kind === 'video'
     && selected.duration
     && videoEnabled
@@ -126,27 +140,90 @@ export default function GenerateScreen() {
   const videoBlockedReason = selected?.kind === 'video'
     ? !videoEnabled
       ? '平台视频服务尚未开启'
-      : selected.blockedReason
-        ?? (selected.latestTaskStatus === 'queued' || selected.latestTaskStatus === 'running'
+      : selected.blockedReason && selected.blockedReason !== '先采用一张首帧'
+        ? selected.blockedReason
+        : (selected.latestTaskStatus === 'queued' || selected.latestTaskStatus === 'running'
           ? '这个镜头已有视频任务'
           : null)
     : null;
   const projectId = data.activeProject?.id ?? '';
 
+  async function generateFirstFrame() {
+    if (!selected || selected.kind !== 'video' || !frameTarget || !projectId || busy) return;
+    setGeneratingFrame(true);
+    setError('');
+    try {
+      const result = await generateWorkspaceTarget(
+        workspaceApiBaseUrl,
+        {
+          projectId,
+          ...frameTarget,
+          referenceImages: await Promise.all(
+            attachments.map(attachmentToGenerationReference),
+          ),
+        },
+        authorizedFetch,
+      );
+      setGeneratedFrames((current) => ({
+        ...current,
+        [selected.targetId]: result.asset.id,
+      }));
+      clearAttachments();
+      refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '首帧生成失败');
+    } finally {
+      setGeneratingFrame(false);
+    }
+  }
+
+  async function generateTextVideo() {
+    if (!selected || selected.kind !== 'video' || !projectId || busy) return;
+    setGenerating(true);
+    setError('');
+    try {
+      if (!videoEnabled || !selected.duration) throw new Error('视频服务或时长配置不可用');
+      const result = await generateWorkspaceVideo(
+        workspaceApiBaseUrl,
+        {
+          projectId,
+          targetId: selected.targetId,
+          mode: 'text-to-video',
+          prompt: selected.prompt,
+          model: data.videoCapabilities.defaultModel,
+          resolution: videoResolution,
+          duration: selected.duration,
+          ratio: selected.ratio ?? '9:16',
+          maxBudgetMicros: selectedVideoCost,
+          idempotencyKey: newVideoIdempotencyKey(),
+        },
+        authorizedFetch,
+      );
+      router.replace({
+        pathname: '/tasks',
+        params: { projectId, taskId: result.task.id },
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '视频任务提交失败');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function generate() {
-    if (!selected || !projectId || generating) return;
+    if (!selected || !projectId || busy) return;
     setGenerating(true);
     setError('');
     try {
       if (selected.kind === 'video') {
-        if (!selected.selectedFrameAssetId) throw new Error('请先生成并采用一张首帧');
+        if (!effectiveFrameAssetId) throw new Error('请先生成一张首帧');
         if (!videoEnabled || !selected.duration) throw new Error('视频服务或时长配置不可用');
         const result = await generateWorkspaceVideo(
           workspaceApiBaseUrl,
           {
             projectId,
             targetId: selected.targetId,
-            sourceAssetId: selected.selectedFrameAssetId,
+            sourceAssetId: effectiveFrameAssetId,
             prompt: selected.prompt,
             model: data.videoCapabilities.defaultModel,
             resolution: videoResolution,
@@ -256,14 +333,20 @@ export default function GenerateScreen() {
           ))}
         </View>
         <ScrollView contentContainerStyle={styles.content}>
-          {generating ? (
+          {busy ? (
             <Panel style={styles.loadingCard}>
               <ActivityIndicator color={colors.info} />
               <Text style={styles.loadingTitle}>
-                {mode === 'video' ? '正在提交镜头视频' : `正在生成${targetLabel(selected, mode)}`}
+                {generatingFrame
+                  ? '正在为当前镜头生成首帧'
+                  : mode === 'video'
+                    ? '正在提交镜头视频'
+                    : `正在生成${targetLabel(selected, mode)}`}
               </Text>
               <BodyText dim style={styles.center}>
-                图像生成通常需要几十秒，可以离开页面，任务会在任务页继续。
+                {generatingFrame
+                  ? '首帧生成后会立即成为当前镜头的视频输入，无需回到 Web。'
+                  : '图像生成通常需要几十秒，可以离开页面，任务会在任务页继续。'}
               </BodyText>
             </Panel>
           ) : targets.length === 0 ? (
@@ -272,8 +355,8 @@ export default function GenerateScreen() {
               <Text style={styles.loadingTitle}>这个筛选下没有可生成目标</Text>
               <BodyText dim style={styles.center}>
                 {mode === 'video'
-                  ? '先在 Web 工作台保存镜头，并为镜头采用一张首帧。'
-                  : '先在 Web 工作台保存人物定妆、地点或镜头，App 才能读取提示词。'}
+                  ? '先在项目里保存镜头；缺首帧时可以直接在 App 补一张。'
+                  : '先在项目里保存人物定妆、地点或镜头，App 才能读取提示词。'}
               </BodyText>
             </Panel>
           ) : (
@@ -322,10 +405,12 @@ export default function GenerateScreen() {
                   <Text numberOfLines={8} style={styles.prompt}>{selected.prompt}</Text>
                   {mode === 'video' ? (
                     <View style={styles.videoSummary}>
-                      <StatusBadge tone={videoBlockedReason ? 'warning' : 'info'}>
-                        {videoBlockedReason
-                          ? videoBlockedReason
-                          : `${data.videoCapabilities.defaultModel} · ${videoResolution}`}
+                      <StatusBadge tone={missingFrame || videoBlockedReason ? 'warning' : 'info'}>
+                        {missingFrame
+                          ? '缺首帧'
+                          : videoBlockedReason
+                            ? videoBlockedReason
+                            : `${data.videoCapabilities.defaultModel} · ${videoResolution}`}
                       </StatusBadge>
                       <Text style={styles.videoCost}>
                         {selected.duration ?? 5} 秒 · 约 {videoCostLabel(selectedVideoCost)}
@@ -350,24 +435,51 @@ export default function GenerateScreen() {
                   ) : null}
                 </Panel>
               ) : null}
+              {selected?.kind === 'video' && missingFrame ? (
+                <View style={styles.frameRepair}>
+                  <View style={styles.frameRepairHead}>
+                    <Feather name="image" size={16} color={colors.warningInk} />
+                    <Text style={styles.frameRepairTitle}>这个镜头还缺首帧</Text>
+                  </View>
+                  <Text style={styles.frameRepairText}>
+                    {frameTarget
+                      ? '用当前镜头提示词生成一张画面，成功后可直接继续生成视频；也可以跳过首帧，直接使用文生视频。'
+                      : '当前镜头没有可用于生成首帧的提示词，请先在 Web 补全分镜。'}
+                  </Text>
+                </View>
+              ) : null}
             </>
           )}
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          {!generating && selected ? (
+          {!busy && selected ? (
             <PrimaryButton
               label={
                 mode === 'video'
                   ? videoBlockedReason
                     ? '暂不能生成视频'
-                    : `生成视频 · ${videoCostLabel(selectedVideoCost)}`
+                    : missingFrame
+                      ? frameTarget
+                        ? '在 App 生成首帧'
+                        : '当前镜头缺首帧条件'
+                      : `生成视频 · ${videoCostLabel(selectedVideoCost)}`
                   : `生成${targetLabel(selected, mode)}`
               }
-              icon="zap"
-              disabled={mode === 'video' && Boolean(videoBlockedReason)}
-              onPress={() => void generate()}
+              icon={missingFrame ? 'image' : 'zap'}
+              disabled={mode === 'video' && (Boolean(videoBlockedReason) || (missingFrame && !frameTarget))}
+              onPress={() => {
+                if (mode === 'video' && missingFrame) void generateFirstFrame();
+                else void generate();
+              }}
             />
           ) : null}
-          {generating ? (
+          {!busy && selected?.kind === 'video' && missingFrame && !videoBlockedReason ? (
+            <SecondaryButton
+              label={`直接生成视频（文生视频）· ${videoCostLabel(selectedVideoCost)}`}
+              icon="video"
+              onPress={() => void generateTextVideo()}
+            />
+          ) : null}
+          {busy ? (
             <SecondaryButton label="生成中…" icon="loader" disabled />
           ) : null}
         </ScrollView>
@@ -647,6 +759,29 @@ const styles = StyleSheet.create({
   promptCard: { padding: spacing.md, gap: spacing.sm },
   promptHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   prompt: { color: colors.textSecondary, fontSize: type.caption, lineHeight: 20 },
+  frameRepair: {
+    gap: spacing.xs,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(184,101,79,0.24)',
+    borderRadius: radii.md,
+    backgroundColor: colors.accentSoft,
+  },
+  frameRepairHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  frameRepairTitle: {
+    color: colors.warningInk,
+    fontSize: type.body,
+    fontWeight: '600',
+  },
+  frameRepairText: {
+    color: colors.textSecondary,
+    fontSize: type.caption,
+    lineHeight: 19,
+  },
   references: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   referenceImage: { width: 38, height: 38, borderRadius: 5, backgroundColor: colors.elevated },
   referenceText: { flex: 1, color: colors.textMuted, fontSize: type.micro },

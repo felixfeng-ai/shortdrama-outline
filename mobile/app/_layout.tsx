@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NotificationBridge } from '@/components/notification-bridge';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { AnalyticsBridge } from '@/components/analytics-bridge';
+import { OnboardingBootstrap, OnboardingProvider } from '@/components/onboarding-provider';
 import { TaskRecoveryBridge } from '@/components/task-recovery-bridge';
 import { colors } from '@/constants/tokens';
 import { AuthProvider } from '@/lib/auth-store';
@@ -31,12 +32,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) throw error;
   }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [loaded]);
 
   if (!loaded) {
     return null;
@@ -61,19 +56,23 @@ export default function RootLayout() {
                 notification: colors.warning,
               },
             }}>
-            <NotificationBridge />
-            <AnalyticsBridge />
-            <TaskRecoveryBridge />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.canvas },
-                animation: 'fade',
-              }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="review/[id]" />
-              <Stack.Screen name="login" />
-            </Stack>
+            <OnboardingProvider>
+              <NotificationBridge />
+              <AnalyticsBridge />
+              <TaskRecoveryBridge />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.canvas },
+                  animation: 'fade',
+                }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
+                <Stack.Screen name="review/[id]" />
+                <Stack.Screen name="login" />
+              </Stack>
+              <OnboardingBootstrap appReady={loaded} />
+            </OnboardingProvider>
           </ThemeProvider>
           </WorkspaceProvider>
         </MediaAttachmentProvider>

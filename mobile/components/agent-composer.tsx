@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, radii, spacing, type } from '@/constants/tokens';
 import type { AgentMode, AgentPhase } from '@/lib/agent-session';
@@ -13,6 +13,7 @@ import {
   readPickedImage,
 } from '@/lib/media-input';
 import { useMediaAttachments } from '@/lib/media-attachment-store';
+import { voiceErrorMessage } from '@/lib/voice-errors';
 
 export function AgentComposer({
   mode,
@@ -42,28 +43,45 @@ export function AgentComposer({
   const { attachments, addAttachment, removeAttachment } = useMediaAttachments();
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
+  const [voicePreparing, setVoicePreparing] = useState(false);
   const [mediaError, setMediaError] = useState('');
   const voiceBaseRef = useRef('');
+  const onChangeTextRef = useRef(onChangeText);
+
+  useEffect(() => {
+    onChangeTextRef.current = onChangeText;
+  }, [onChangeText]);
 
   useEffect(() => {
     const result = ExpoSpeechRecognitionModule.addListener('result', (event) => {
       const transcript = event.results[0]?.transcript ?? '';
-      onChangeText(appendVoiceTranscript(voiceBaseRef.current, transcript));
+      onChangeTextRef.current(appendVoiceTranscript(voiceBaseRef.current, transcript));
     });
-    const end = ExpoSpeechRecognitionModule.addListener('end', () => setRecognizing(false));
-    const error = ExpoSpeechRecognitionModule.addListener('error', (event) => {
+    const start = ExpoSpeechRecognitionModule.addListener('start', () => {
+      setVoicePreparing(false);
+      setRecognizing(true);
+      setMediaError('');
+    });
+    const end = ExpoSpeechRecognitionModule.addListener('end', () => {
+      setVoicePreparing(false);
       setRecognizing(false);
-      setMediaError(event.message || '语音识别失败，请重试');
+    });
+    const error = ExpoSpeechRecognitionModule.addListener('error', (event) => {
+      setVoicePreparing(false);
+      setRecognizing(false);
+      const message = voiceErrorMessage(event.error, event.message);
+      setMediaError(message ?? '');
     });
     return () => {
       result.remove();
+      start.remove();
       end.remove();
       error.remove();
       try {
         ExpoSpeechRecognitionModule.abort();
       } catch {}
     };
-  }, [onChangeText]);
+  }, []);
 
   function pressHaptic() {
     void Haptics.selectionAsync().catch(() => {});
@@ -103,12 +121,16 @@ export function AgentComposer({
     setMediaError('');
     if (recognizing) {
       ExpoSpeechRecognitionModule.stop();
+      setRecognizing(false);
       return;
     }
+    if (voicePreparing) return;
+    setVoicePreparing(true);
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
       if (!permission.granted) throw new Error('麦克风或语音识别权限未开启');
       voiceBaseRef.current = value;
+      setVoicePreparing(false);
       setRecognizing(true);
       ExpoSpeechRecognitionModule.start({
         lang: 'zh-CN',
@@ -117,6 +139,7 @@ export function AgentComposer({
         maxAlternatives: 1,
       });
     } catch (reason) {
+      setVoicePreparing(false);
       setRecognizing(false);
       setMediaError(reason instanceof Error ? reason.message : '语音识别不可用');
     }
@@ -196,7 +219,11 @@ export function AgentComposer({
         ) : null}
 
         {mediaError ? <Text style={styles.mediaError}>{mediaError}</Text> : null}
-        {recognizing ? <Text style={styles.voiceState}>正在听写 · 再次点麦克风停止</Text> : null}
+        {voicePreparing ? (
+          <Text style={styles.voiceState}>正在准备麦克风…</Text>
+        ) : recognizing ? (
+          <Text style={styles.voiceState}>正在听写 · 再次点麦克风停止</Text>
+        ) : null}
 
         <View style={styles.bottomRow}>
           <Pressable
@@ -232,8 +259,10 @@ export function AgentComposer({
           <View style={styles.spacer} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={recognizing ? '停止语音输入' : '语音输入'}
-            disabled={locked}
+            accessibilityLabel={
+              voicePreparing ? '正在准备语音输入' : recognizing ? '停止语音输入' : '语音输入'
+            }
+            disabled={locked || voicePreparing}
             onPress={() => {
               pressHaptic();
               void toggleVoice();
@@ -244,11 +273,15 @@ export function AgentComposer({
               pressed && styles.pressed,
             ]}
           >
-            <Feather
-              name={recognizing ? 'square' : 'mic'}
-              size={recognizing ? 15 : 19}
-              color={recognizing ? colors.accent : colors.textSecondary}
-            />
+            {voicePreparing ? (
+              <ActivityIndicator size="small" color={colors.textSecondary} />
+            ) : (
+              <Feather
+                name={recognizing ? 'square' : 'mic'}
+                size={recognizing ? 15 : 19}
+                color={recognizing ? colors.accent : colors.textSecondary}
+              />
+            )}
           </Pressable>
           <Pressable
             accessibilityRole="button"

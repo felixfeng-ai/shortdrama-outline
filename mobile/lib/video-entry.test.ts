@@ -70,3 +70,33 @@ test('App 视频生成提交幂等键和预算，并返回真实任务', async (
   assert.equal(body?.idempotencyKey, 'video-key')
   assert.equal(result.task.id, 'video-task-1')
 })
+
+test('没有首帧时可以提交文生视频兜底', async () => {
+  let body: Record<string, unknown> | undefined
+  const fakeFetch = async (_input: string | URL | Request, options?: RequestInit) => {
+    body = JSON.parse(String(options?.body)) as Record<string, unknown>
+    return Response.json({
+      success: true,
+      error: null,
+      data: {
+        task: { id: 'video-task-2', status: 'queued', mediaKind: 'video' },
+        asset: null,
+      },
+    })
+  }
+  await generateWorkspaceVideo('http://127.0.0.1:3200', {
+    projectId: 'p1',
+    targetId: 'shot-1',
+    prompt: '雨夜门外',
+    mode: 'text-to-video',
+    model: 'MiniMax-H3-Lite',
+    resolution: '480P',
+    duration: 4,
+    ratio: '9:16',
+    maxBudgetMicros: 640_000,
+    idempotencyKey: 'video-key-2',
+  }, fakeFetch as typeof fetch)
+
+  assert.equal(body?.mode, 'text-to-video')
+  assert.equal(body?.sourceAssetId, undefined)
+})

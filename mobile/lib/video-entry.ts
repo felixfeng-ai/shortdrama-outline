@@ -22,6 +22,8 @@ export interface VideoGenerationResult {
   reused?: boolean;
 }
 
+export type VideoGenerationMode = 'image-to-video' | 'text-to-video';
+
 export function videoModelCapability(
   capabilities: WorkspaceVideoCapabilities,
   modelId: string,
@@ -55,7 +57,8 @@ export async function generateWorkspaceVideo(
   input: {
     projectId: string;
     targetId: string;
-    sourceAssetId: string;
+    sourceAssetId?: string;
+    mode?: VideoGenerationMode;
     prompt: string;
     model: string;
     resolution: string;
@@ -69,6 +72,10 @@ export async function generateWorkspaceVideo(
 ): Promise<VideoGenerationResult> {
   const root = resolveApiBaseUrl(baseUrl);
   if (!root) throw new Error('尚未配置视频生成服务地址');
+  const mode = input.mode ?? 'image-to-video';
+  if (mode === 'image-to-video' && !input.sourceAssetId) {
+    throw new Error('图生视频需要先采用一张首帧');
+  }
   let response: Response;
   try {
     response = await fetchImpl(`${root}/api/video/generations`, {
@@ -77,7 +84,7 @@ export async function generateWorkspaceVideo(
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...input,
-        mode: 'image-to-video',
+        mode,
         autoSelect: false,
       }),
       signal,
