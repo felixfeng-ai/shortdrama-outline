@@ -96,6 +96,13 @@ const TOOL_LABEL: Record<string, string> = {
   propose_localization_edit: '提议本地化修改',
   propose_regenerate: '提议重跑某步',
   propose_decision: '提议创作决策',
+  propose_video_plan: '计算视频预算',
+  audit_video_quality: '查视频质检',
+  propose_video_rework: '生成视频返修卡',
+  propose_timeline_update: '生成时间线提案',
+  propose_voice_bindings: '生成音色建议',
+  propose_tts_batch: '计算 TTS 批量预算',
+  propose_episode_render: '生成成片提案',
 }
 
 function inspectCardTarget(card: AgentCard, state: AgentState): EditTargetStatus {
@@ -112,6 +119,50 @@ function inspectCardTarget(card: AgentCard, state: AgentState): EditTargetStatus
     return inspectEditTarget(entity.fields?.[card.field], card.expectedText)
   }
   return 'current'
+}
+
+function cardHeading(card: AgentCard): string {
+  if (card.kind === 'shot-edit') return `待确认：${card.targetLabel} · ${card.summary}`
+  if (card.kind === 'entity-edit') return `待确认：${card.targetName} · ${card.summary}`
+  if (card.kind === 'localization-edit') return `待确认本地化：${card.targetName} · ${card.summary}`
+  if (card.kind === 'decision') return `待确认决策：${card.stepLabel} · ${card.question}`
+  if (card.kind === 'video-plan') return `视频预算：${card.shotCount} 镜 · ${card.model}`
+  if (card.kind === 'video-rework') return `视频返修：${card.items.length} 镜`
+  if (card.kind === 'timeline-plan') return `时间线提案：第 ${card.episode} 集 · ${card.operations.length} 项`
+  if (card.kind === 'voice-plan') return `音色建议：${card.bindings.length} 个角色`
+  if (card.kind === 'tts-plan') return `TTS 批量：${card.lineCount} 句`
+  if (card.kind === 'render-plan') return `成片提案：第 ${card.episode} 集`
+  return `待确认：重新生成「${card.stepLabel}」`
+}
+
+function cardBody(card: AgentCard): string {
+  if (card.kind === 'shot-edit' || card.kind === 'entity-edit' || card.kind === 'localization-edit') {
+    return card.text
+  }
+  if (card.kind === 'decision') return `推荐「${card.recommended}」：${card.reason}`
+  if (card.kind === 'video-plan') {
+    return `${card.durationSeconds} 秒/镜 · ${card.resolution} · 预计 ¥${(card.estimatedCostMicros / 1_000_000).toFixed(2)} · 上限 ¥${(card.budgetLimitMicros / 1_000_000).toFixed(2)}`
+  }
+  if (card.kind === 'video-rework') return card.summary
+  if (card.kind === 'timeline-plan') return card.summary
+  if (card.kind === 'voice-plan') return card.summary
+  if (card.kind === 'tts-plan') {
+    return `${card.summary} · 预计 ¥${(card.estimatedCostMicros / 1_000_000).toFixed(2)} · 上限 ¥${(card.maxBudgetMicros / 1_000_000).toFixed(2)}`
+  }
+  if (card.kind === 'render-plan') return card.summary
+  return card.reason
+}
+
+function cardPrimaryLabel(card: AgentCard): string {
+  if (card.kind === 'video-plan') return '知道了'
+  if (
+    card.kind === 'video-rework'
+    || card.kind === 'timeline-plan'
+    || card.kind === 'voice-plan'
+    || card.kind === 'tts-plan'
+    || card.kind === 'render-plan'
+  ) return '去处理'
+  return '确认'
 }
 
 /**
@@ -562,30 +613,10 @@ export default function AgentDock({
               return (
                 <div key={i} className="prop agent-line-in">
                   <p className="prop-h">
-                    {line.card.kind === 'shot-edit'
-                      ? `待确认：${line.card.targetLabel} · ${line.card.summary}`
-                      : line.card.kind === 'entity-edit'
-                        ? `待确认：${line.card.targetName} · ${line.card.summary}`
-                        : line.card.kind === 'localization-edit'
-                          ? `待确认本地化：${line.card.targetName} · ${line.card.summary}`
-                      : line.card.kind === 'decision'
-                        ? `待确认决策：${line.card.stepLabel} · ${line.card.question}`
-                        : line.card.kind === 'video-plan'
-                          ? `视频预算：${line.card.shotCount} 镜 · ${line.card.model}`
-                          : `待确认：重新生成「${line.card.stepLabel}」`}
+                    {cardHeading(line.card)}
                   </p>
                   <p className="prop-b">
-                    {line.card.kind === 'shot-edit'
-                      ? line.card.text
-                      : line.card.kind === 'entity-edit'
-                        ? line.card.text
-                        : line.card.kind === 'localization-edit'
-                          ? line.card.text
-                      : line.card.kind === 'decision'
-                        ? `推荐「${line.card.recommended}」：${line.card.reason}`
-                        : line.card.kind === 'video-plan'
-                          ? `${line.card.durationSeconds} 秒/镜 · ${line.card.resolution} · 预计 ¥${(line.card.estimatedCostMicros / 1_000_000).toFixed(2)} · 上限 ¥${(line.card.budgetLimitMicros / 1_000_000).toFixed(2)}`
-                          : line.card.reason}
+                    {cardBody(line.card)}
                   </p>
                   {line.card.kind === 'decision' && (
                     <p className="prop-b">
@@ -629,6 +660,15 @@ export default function AgentDock({
                             push({ role: 'note', text: '已提交这条创作决策。' })
                           } else if (line.card.kind === 'video-plan') {
                             push({ role: 'note', text: '视频预算已记录，尚未创建付费任务。' })
+                          } else if (
+                            line.card.kind === 'video-rework'
+                            || line.card.kind === 'timeline-plan'
+                            || line.card.kind === 'voice-plan'
+                            || line.card.kind === 'tts-plan'
+                            || line.card.kind === 'render-plan'
+                          ) {
+                            onOpenStep?.('shots')
+                            push({ role: 'note', text: '提案已记录，尚未自动执行。' })
                           } else {
                             onRegenerate(line.card.step)
                             push({ role: 'note', text: '已按你的确认重跑该步骤。' })
@@ -637,9 +677,7 @@ export default function AgentDock({
                       }}
                       className="ok disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      {line.card.kind === 'video-plan'
-                        ? '知道了'
-                        : editBlocked ? '需重新读取' : '确认'}
+                      {editBlocked ? '需重新读取' : cardPrimaryLabel(line.card)}
                     </button>
                     <button
                       type="button"

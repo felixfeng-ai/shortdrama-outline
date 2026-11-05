@@ -5,6 +5,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { InputError } from "../api.ts"
 import { latestSnapshot } from "../assets/repo.ts"
 import { getBgmTrack } from "../audio/bgm-repo.ts"
+import { notifyRenderFinished } from "../push/service.ts"
 import {
   readGeneratedAsset,
   resolveGeneratedStoragePath,
@@ -495,14 +496,18 @@ export async function renderClaimedVideo(
       5 * 1024 * 1024,
     )
     updateVideoRenderProgress(db, render.id, 96)
-    return completeVideoRender(db, render.id, {
+    const completed = completeVideoRender(db, render.id, {
       durationMs: outputProbe.durationMs,
       videoStorageKey: outputStorageKey,
       srtStorageKey: srtFile.storageKey,
       manifestStorageKey: manifestFile.storageKey,
     })
+    void notifyRenderFinished(db, completed, "succeeded").catch(() => undefined)
+    return completed
   } catch (error) {
-    return failVideoRender(db, render.id, publicRenderError(error))
+    const failed = failVideoRender(db, render.id, publicRenderError(error))
+    void notifyRenderFinished(db, failed, "failed").catch(() => undefined)
+    return failed
   }
 }
 

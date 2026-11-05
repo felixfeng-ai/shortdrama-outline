@@ -6,6 +6,16 @@ export interface TimelineState {
   versions: TimelineVersion[]
 }
 
+export interface TimelineVersionSummary {
+  episode: number
+  versionId: string
+  revision: number
+  readyCount: number
+  blockedCount: number
+  issueCount: number
+  totalDurationMs: number
+}
+
 function endpoint(projectId: string, episode: number): string {
   const params = new URLSearchParams({ projectId })
   return `/api/timelines/${episode}?${params.toString()}`
@@ -52,4 +62,18 @@ export function freezeTimelineVersion(input: {
     projectId: input.projectId,
     expectedRevision: input.expectedRevision,
   })
+}
+
+export async function fetchLatestTimelineVersions(
+  projectId: string,
+): Promise<TimelineVersionSummary[]> {
+  const params = new URLSearchParams({ projectId })
+  const response = await fetch(`/api/timelines?${params.toString()}`, {
+    cache: "no-store",
+  })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "时间线版本读取失败")
+  }
+  return payload.data.versions as TimelineVersionSummary[]
 }

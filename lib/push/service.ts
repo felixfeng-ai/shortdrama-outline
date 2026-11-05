@@ -3,6 +3,7 @@ import webpush from "web-push"
 
 import type { GenerationNotificationPayload } from "./notification.ts"
 import {
+  buildRenderNotification,
   buildGenerationNotification,
 } from "./notification.ts"
 import {
@@ -11,6 +12,8 @@ import {
   type StoredPushSubscription,
 } from "./repo.ts"
 import { sendNativePushToOwner, type NativePushData } from "./native.ts"
+import { getProject } from "../assets/repo.ts"
+import type { VideoRender } from "../video/render-types.ts"
 
 export interface PushSendResult {
   sent: number
@@ -108,4 +111,23 @@ export async function notifyGenerationFinished(
     failed: web.failed + native.failed,
     removed: web.removed + native.removed,
   }
+}
+
+export async function notifyRenderFinished(
+  db: DatabaseSync,
+  render: VideoRender,
+  status: "succeeded" | "failed",
+  options: PushSendOptions = {},
+): Promise<PushSendResult> {
+  const project = getProject(db, render.projectId)
+  if (!project?.ownerId) return { sent: 0, failed: 0, removed: 0 }
+  const payload = buildRenderNotification({
+    renderId: render.id,
+    projectId: render.projectId,
+    episode: render.episode,
+    status,
+    durationMs: render.durationMs,
+    error: render.error,
+  })
+  return sendPushToOwner(db, project.ownerId, payload, options)
 }

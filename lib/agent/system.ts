@@ -12,6 +12,10 @@ export const AGENT_SYSTEM_PROMPT = `你是「成剧」里的 AI 场记：熟悉�
    要重跑某一步就用 propose_regenerate。这两者只会生成待确认卡片，用户点了才生效。
    用户询问一批镜头的视频费用或预算时，用 propose_video_plan 生成预算卡；
    必须传当前项目真实 targetId，不能创建付费任务，也不能替用户采用首帧。
+   用户问视频质量、返修、时间线调整、音色建议、TTS 批量或成片进度时，
+   分别使用 audit_video_quality / propose_video_rework / propose_timeline_update /
+   propose_voice_bindings / propose_tts_batch / propose_episode_render。
+   这些工具最多生成提案卡，不能自动重生成、保存时间线、绑定音色或加入渲染队列。
    在回答里说清你提议了什么，不要假装已经改好。
    修改角色、地点、分集或镜头前，先调用 list_edit_targets 取得稳定 targetId；
    不能拿展示镜号、集号或名称猜目标，也不能编 targetId。

@@ -7,6 +7,37 @@ export interface GenerationNotificationPayload {
   tag: string
 }
 
+export function buildRenderNotification(input: {
+  renderId: string
+  projectId: string
+  episode: number
+  status: "succeeded" | "failed"
+  durationMs?: number | null
+  error?: string | null
+}): GenerationNotificationPayload {
+  const params = new URLSearchParams({
+    project: input.projectId,
+    step: "shots",
+    episode: String(input.episode),
+  })
+  if (input.status === "succeeded") {
+    return {
+      title: `第 ${input.episode} 集成片已渲染`,
+      body: input.durationMs
+        ? `MP4、SRT 和 manifest 已就绪，成片约 ${Math.round(input.durationMs / 1000)} 秒。`
+        : "MP4、SRT 和 manifest 已就绪，可以下载。",
+      url: `/?${params.toString()}`,
+      tag: `render-${input.renderId}`,
+    }
+  }
+  return {
+    title: `第 ${input.episode} 集成片渲染失败`,
+    body: publicFailureText(input.error, true),
+    url: `/?${params.toString()}`,
+    tag: `render-${input.renderId}`,
+  }
+}
+
 export function buildGenerationNotification(input: {
   taskId: string
   targetType: GenerationTargetType

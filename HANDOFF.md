@@ -10,14 +10,16 @@ App 产品方向、Web/App 分工、四入口信息架构和 PWA 优先策略见
 
 ## 当前状态（2026-11-05）
 
-**P0 视频闭环与 P1 最小成片已完成本地实现与真实 FFmpeg 集成验证，待用户确认后提交。**
+**P0 视频闭环、P1 最小成片与 P2 Skill / Agent 闭环已完成。本次 P2 改动待提交。**
 
 - P1 六项已收口：TTS 试听/从头重放、按时间线片段检查对白溢出、SRT、单集 FFmpeg 成片、MP4/SRT/manifest 下载、逐集持久化串行渲染队列。
 - 时间线固化会同时冻结台词快照、视频 SHA-256、TTS 资产和 BGM 指纹；旧版本重渲不会读取后来改过的台词或音频。
 - 渲染产物先经过项目 owner 校验再下载；同一版本 queued/running 时重复提交会复用现有任务，服务重启留下的 running 转为可重试失败。
 - 单集可单独排队，也可将当前项目所有已固化集一次排队；单实例只跑一集，失败不阻塞后续集。
 - FFmpeg/FFprobe 默认使用 npm 跨平台静态二进制，可用 `FFMPEG_PATH`、`FFPROBE_PATH` 覆盖；真实两镜头 + 两段 TTS + BGM 集成测试已生成可读 MP4、SRT 与 manifest。
-- 真实 MiniMax 视频付费 smoke test仍需在线上 Key 环境执行；本地 TTS 付费 smoke test已通过。
+- 真实 MiniMax 视频付费 smoke test已在生产环境通过：`MiniMax-H3-Lite · 480P · 4 秒 · 9:16` 单镜头任务成功落盘 MP4，供应商状态与平台资产均为 succeeded；本地 TTS 付费 smoke test也已通过。
+- P2 三项剩余能力已收口：视频候选质检与返修卡、时间线修改/音色建议/TTS 批量提案、成片预检提案；成片成功或失败后复用 Web Push 通知。
+- Agent 的生产提案卡只做预检与待确认，不自动保存时间线、不绑定音色、不创建付费任务、不加入渲染队列。
 
 - 生产调用风控已覆盖文本生成、场记、图像、导出与导入：SQLite 持久化 IP/账号/全站窗口，429 带 `Retry-After`，超限写不含原始身份的结构化安全日志。
 - 平台交付支持通用、即梦、可灵与结构化 JSON；交付包写入逐镜执行单、`preflight.json` 和稳定 platform manifest，不接平台私有 API。

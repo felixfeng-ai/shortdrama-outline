@@ -10,6 +10,10 @@ import {
   fetchQuota,
   listSnapshots,
 } from '@/lib/assets/api'
+import { fetchProjectGenerationAssets } from '@/lib/generation/client'
+import { fetchVoiceProfiles } from '@/lib/audio/client'
+import { fetchLatestTimelineVersions } from '@/lib/timeline/client'
+import { buildMobileVideoView } from '@/lib/mobile-video'
 import { countShotsMissingAnchors } from '@/lib/assets/anchors'
 import type { Scene, Shot, VisualCharacter, VisualPlace } from '@/lib/assets/types'
 import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
@@ -90,6 +94,34 @@ function blankState(projectTitle: string): AgentState {
   }
 }
 
+function productionCardHeading(card: AgentCard): string {
+  if (card.kind === 'shot-edit') return `待确认 · ${card.targetLabel}`
+  if (card.kind === 'entity-edit') return `待确认 · ${card.targetName}`
+  if (card.kind === 'localization-edit') return `待确认 · ${card.targetName}`
+  if (card.kind === 'video-plan') return `视频预算 · ${card.shotCount} 镜`
+  if (card.kind === 'video-rework') return `视频返修 · ${card.items.length} 镜`
+  if (card.kind === 'timeline-plan') return `时间线提案 · 第 ${card.episode} 集`
+  if (card.kind === 'voice-plan') return `音色建议 · ${card.bindings.length} 个角色`
+  if (card.kind === 'tts-plan') return `TTS 批量 · ${card.lineCount} 句`
+  if (card.kind === 'render-plan') return `成片提案 · 第 ${card.episode} 集`
+  return card.stepLabel
+}
+
+function productionCardBody(card: AgentCard): string {
+  if (card.kind === 'shot-edit' || card.kind === 'entity-edit' || card.kind === 'localization-edit') {
+    return card.summary
+  }
+  if (card.kind === 'regenerate') return card.reason
+  if (card.kind === 'decision') return card.question
+  if (card.kind === 'video-plan') {
+    return `${card.model} / ${card.resolution} / ${card.durationSeconds} 秒 / 预计 ¥${(card.estimatedCostMicros / 1_000_000).toFixed(2)} / 上限 ¥${(card.budgetLimitMicros / 1_000_000).toFixed(2)}`
+  }
+  if (card.kind === 'tts-plan') {
+    return `${card.summary} / 预计 ¥${(card.estimatedCostMicros / 1_000_000).toFixed(2)} / 上限 ¥${(card.maxBudgetMicros / 1_000_000).toFixed(2)}`
+  }
+  return card.summary
+}
+
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
@@ -137,7 +169,10 @@ export default function SkillAgentDrawer({
       fetchProjectContext(projectId).catch(() => null),
       fetchProjectDecisions(projectId).catch(() => ({ decisions: [], judgments: [] })),
       fetchProjectCanon(projectId).catch(() => ({ entities: [], facts: [], issues: [] })),
-    ]).then(([snapshots, quota, context, decisionData, canon]) => {
+      fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] })),
+      fetchVoiceProfiles(projectId).catch(() => null),
+      fetchLatestTimelineVersions(projectId).catch(() => []),
+    ]).then(([snapshots, quota, context, decisionData, canon, generationData, voiceData, timelineVersions]) => {
       if (!active) return
       const latest = snapshots.map((list) => list[0]?.payload)
       const idea = latest[0] as { idea?: string } | undefined
@@ -148,6 +183,11 @@ export default function SkillAgentDrawer({
       const scenes = (Array.isArray(latest[5]) ? latest[5] : []) as Scene[]
       const places = (Array.isArray(latest[6]) ? latest[6] : []) as VisualPlace[]
       const shots = (Array.isArray(latest[7]) ? latest[7] : []) as Shot[]
+      const videoView = buildMobileVideoView({
+        shots,
+        assets: generationData.assets,
+        tasks: generationData.tasks,
+      })
       setState({
         projectTitle,
         hasIdea: Boolean(idea?.idea?.trim()),
@@ -237,6 +277,22 @@ export default function SkillAgentDrawer({
           dialogue: shot.dialogue,
         })),
         expiredShots: countShotsMissingAnchors(shots, visuals),
+        videoReadiness: videoView.readiness,
+        videoAssets: generationData.assets.filter((asset) => asset.mediaKind === 'video'),
+        videoTargets: videoView.targets,
+        voiceProfiles: (voiceData?.profiles ?? []).flatMap((profile) => {
+          const character = characters.find((item) => item.id === profile.characterEntityId)
+          return character
+            ? [{
+                characterName: character.name,
+                characterEntityId: profile.characterEntityId,
+                voiceId: profile.voiceId,
+                label: profile.label,
+              }]
+            : []
+        }),
+        ttsPricePer1kCharsMicros: voiceData?.tts.pricePer1kCharsMicros ?? null,
+        timelineVersions,
         sourceMaterials: sourceMaterials.map((material) => ({
           id: material.id,
           name: material.name,
@@ -567,30 +623,8 @@ export default function SkillAgentDrawer({
             }
             return (
               <div key={line.id} className="plan-card">
-                <h3>
-                  待确认 · {line.card.kind === 'shot-edit'
-                    ? line.card.targetLabel
-                    : line.card.kind === 'entity-edit'
-                      ? line.card.targetName
-                      : line.card.kind === 'localization-edit'
-                        ? line.card.targetName
-                      : line.card.kind === 'video-plan'
-                        ? `视频预算 · ${line.card.shotCount} 镜`
-                      : line.card.stepLabel}
-                </h3>
-                <p>
-                  {line.card.kind === 'shot-edit'
-                    ? line.card.summary
-                    : line.card.kind === 'entity-edit'
-                      ? line.card.summary
-                    : line.card.kind === 'localization-edit'
-                      ? line.card.summary
-                    : line.card.kind === 'regenerate'
-                      ? line.card.reason
-                    : line.card.kind === 'video-plan'
-                      ? `${line.card.model} / ${line.card.resolution} / ${line.card.durationSeconds} 秒 / 预计 ¥${(line.card.estimatedCostMicros / 1_000_000).toFixed(2)} / 上限 ¥${(line.card.budgetLimitMicros / 1_000_000).toFixed(2)}`
-                      : line.card.question}
-                </p>
+                <h3>{productionCardHeading(line.card)}</h3>
+                <p>{productionCardBody(line.card)}</p>
                 <div className="plan-actions">
                   {line.card.kind === 'video-plan' ? (
                     <button className="confirm" type="button" onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))}>知道了</button>

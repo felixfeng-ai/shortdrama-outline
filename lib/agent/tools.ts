@@ -11,6 +11,11 @@ import { isFlatPacing, pacingHint, pacingSeries } from '../pacing'
 import { reviewEpisodes, reviewShots } from '../project-status'
 import { auditCreativeQuality } from '../creative-audit'
 import { buildTodoList } from '../todo'
+import { countSpeechCharacters } from '../audio/text.ts'
+import { SYSTEM_VOICES } from '../audio/voices.ts'
+import type { GeneratedAsset } from '../generation/types.ts'
+import type { MobileVideoTarget } from '../mobile-video.ts'
+import { auditVideoCandidates, type VideoQualityIssue } from '../video/quality.ts'
 import {
   listSourceMaterials,
   readSourceChunk,
@@ -145,6 +150,27 @@ export interface AgentState {
     activeTasks: number
     failedTasks: number
   }
+  /** 当前项目视频候选与任务快照；只读，不包含 storageKey。 */
+  videoAssets?: GeneratedAsset[]
+  videoTargets?: MobileVideoTarget[]
+  /** 当前项目已绑定音色；只用于建议和 TTS 预算，不含声音样本。 */
+  voiceProfiles?: Array<{
+    characterName: string
+    characterEntityId: string
+    voiceId: string
+    label: string
+  }>
+  ttsPricePer1kCharsMicros?: number | null
+  /** 每个集的最新固化时间线摘要。 */
+  timelineVersions?: Array<{
+    episode: number
+    versionId: string
+    revision: number
+    readyCount: number
+    blockedCount: number
+    issueCount?: number
+    totalDurationMs: number
+  }>
   quota: { remaining: number; limit: number; projectsLeft: number } | null
   sourceMaterials?: SourceMaterialInput[]
 }
@@ -199,6 +225,48 @@ export type AgentCard =
     resolution: string
     estimatedCostMicros: number
     budgetLimitMicros: number
+  }
+  | {
+    kind: 'video-rework'
+    episode: number
+    shotIds: string[]
+    items: Array<{ shotId: string; targetLabel: string; reasons: string[] }>
+    reason: string
+    summary: string
+  }
+  | {
+    kind: 'timeline-plan'
+    episode: number
+    operations: Array<Record<string, string | number>>
+    summary: string
+  }
+  | {
+    kind: 'voice-plan'
+    bindings: Array<{ characterName: string; voiceId: string; label: string }>
+    summary: string
+  }
+  | {
+    kind: 'tts-plan'
+    episode: number
+    shotIds: string[]
+    lineCount: number
+    characters: number
+    estimatedCostMicros: number
+    maxBudgetMicros: number
+    unboundLines: number
+    summary: string
+  }
+  | {
+    kind: 'render-plan'
+    episode: number
+    versionId: string | null
+    revision: number | null
+    readyCount: number
+    totalShots: number
+    blockedCount: number
+    issueCount: number
+    totalDurationMs: number
+    summary: string
   }
 
 export interface ToolResult {
@@ -442,6 +510,104 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
       required: ['shotIds', 'model', 'resolution', 'durationSeconds', 'budgetLimitMicros'],
     },
   },
+  {
+    name: 'audit_video_quality',
+    description: '只读检查镜头视频候选：缺视频、失败任务、时长、画幅和文件元数据。不重新生成、不采用素材。',
+    parameters: {
+      type: 'object',
+      properties: {
+        episode: { type: 'number', description: '要检查的集号；不传则检查全部集' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'propose_video_rework',
+    description: '根据真实视频质检结果生成返修提案卡。**不创建视频任务**，用户确认后仍需去分镜工作台手动重生成。',
+    parameters: {
+      type: 'object',
+      properties: {
+        episode: { type: 'number', description: '返修所属集号' },
+        shotIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '可选：只返修这些真实镜头 targetId；不传则使用该集全部有问题的镜头',
+        },
+        reason: { type: 'string', description: '为什么需要返修' },
+      },
+      required: ['episode', 'reason'],
+    },
+  },
+  {
+    name: 'propose_timeline_update',
+    description: '提出时间线重排、裁剪或静音操作。只生成待确认卡，不保存草稿、不固化版本、不渲染。',
+    parameters: {
+      type: 'object',
+      properties: {
+        episode: { type: 'number', description: '时间线集号' },
+        operations: {
+          type: 'array',
+          description: '1-12 个操作：move 需要 position；trim 需要 inMs/outMs；mute/unmute 不需要额外参数',
+          items: {
+            type: 'object',
+            properties: {
+              shotId: { type: 'string', description: '真实镜头 targetId' },
+              type: { type: 'string', enum: ['move', 'trim', 'mute', 'unmute'] },
+              position: { type: 'number' },
+              inMs: { type: 'number' },
+              outMs: { type: 'number' },
+            },
+            required: ['shotId', 'type'],
+          },
+        },
+      },
+      required: ['episode', 'operations'],
+    },
+  },
+  {
+    name: 'propose_voice_bindings',
+    description: '为真实角色建议系统音色。只生成待确认卡，不保存绑定、不接受声音样本或声音克隆。',
+    parameters: {
+      type: 'object',
+      properties: {
+        bindings: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              characterName: { type: 'string' },
+              voiceId: { type: 'string' },
+            },
+            required: ['characterName', 'voiceId'],
+          },
+        },
+      },
+      required: ['bindings'],
+    },
+  },
+  {
+    name: 'propose_tts_batch',
+    description: '按真实台词和系统音色生成 TTS 批量预算卡。只估算字符和费用，不创建付费任务。',
+    parameters: {
+      type: 'object',
+      properties: {
+        episode: { type: 'number' },
+        maxBudgetMicros: { type: 'number', description: '本次允许的最大预算，单位微元' },
+      },
+      required: ['episode', 'maxBudgetMicros'],
+    },
+  },
+  {
+    name: 'propose_episode_render',
+    description: '检查当前集最新固化时间线和视频就绪度，生成成片预检卡。只出提案，不加入渲染队列。',
+    parameters: {
+      type: 'object',
+      properties: {
+        episode: { type: 'number' },
+      },
+      required: ['episode'],
+    },
+  },
 ]
 
 // ── 文档片段（search_docs 的语料）──
@@ -498,6 +664,21 @@ export function searchDocs(question: string): { source: string; title: string; t
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
     .map((x) => ({ source: x.d.source, title: x.d.title, text: x.d.text }))
+}
+
+function qualityReportFor(state: AgentState, episode?: number) {
+  return auditVideoCandidates({
+    targets: state.videoTargets ?? [],
+    assets: state.videoAssets ?? [],
+    episode,
+  })
+}
+
+function videoIssueSummary(issues: VideoQualityIssue[]): string {
+  return issues
+    .slice(0, 8)
+    .map((issue) => `${issue.targetLabel}：${issue.message}`)
+    .join('；')
 }
 
 /** 把状态快照变成一组执行器。快照是只读入参——执行器改不到真东西 */
@@ -978,6 +1159,248 @@ export function createToolExecutors(
           resolution,
           estimatedCostMicros,
           budgetLimitMicros,
+        },
+      }
+    },
+    audit_video_quality: (args) => {
+      const rawEpisode = Number(args?.episode)
+      const episode = Number.isSafeInteger(rawEpisode) && rawEpisode >= 0
+        ? rawEpisode
+        : undefined
+      if ((state.videoTargets ?? []).length === 0) {
+        return { ok: false, content: '当前项目还没有可分镜视频候选，无法质检。' }
+      }
+      const report = qualityReportFor(state, episode)
+      const scope = episode === undefined ? '全部集' : `第 ${episode} 集`
+      if (report.issues.length === 0) {
+        return {
+          ok: true,
+          content: `${scope}共 ${report.totalShots} 镜，${report.checkedVideos} 条已采用视频的时长、画幅和文件元数据未发现异常。`,
+        }
+      }
+      return {
+        ok: true,
+        content: `${scope}共 ${report.totalShots} 镜：${report.blockedShots} 镜阻断、${report.warningShots} 镜提醒。${videoIssueSummary(report.issues)}`,
+      }
+    },
+    propose_video_rework: (args) => {
+      const episode = Math.floor(Number(args?.episode))
+      const reason = String(args?.reason ?? '').trim()
+      if (!Number.isSafeInteger(episode) || episode < 0) {
+        return { ok: false, content: '集号不正确。' }
+      }
+      if (!reason) return { ok: false, content: '返修原因不能为空。' }
+      const requested = Array.isArray(args?.shotIds)
+        ? new Set(args.shotIds.map((item) => String(item).trim()).filter(Boolean))
+        : null
+      const report = qualityReportFor(state, episode)
+      const issues = report.issues.filter((issue) =>
+        requested === null || requested.has(issue.shotId)
+      )
+      if (issues.length === 0) {
+        return { ok: false, content: `第 ${episode} 集没有需要返修的视频候选。` }
+      }
+      const grouped = new Map<string, { shotId: string; targetLabel: string; reasons: string[] }>()
+      for (const issue of issues.slice(0, 30)) {
+        const current = grouped.get(issue.shotId) ?? {
+          shotId: issue.shotId,
+          targetLabel: issue.targetLabel,
+          reasons: [],
+        }
+        if (!current.reasons.includes(issue.message)) current.reasons.push(issue.message)
+        grouped.set(issue.shotId, current)
+      }
+      const items = [...grouped.values()]
+      return {
+        ok: true,
+        content: `已生成视频返修卡：第 ${episode} 集 ${items.length} 镜。尚未创建付费任务，也未自动采用新视频。`,
+        card: {
+          kind: 'video-rework',
+          episode,
+          shotIds: items.map((item) => item.shotId),
+          items,
+          reason,
+          summary: `${items.length} 镜需要返修：${reason}`,
+        },
+      }
+    },
+    propose_timeline_update: (args) => {
+      const episode = Math.floor(Number(args?.episode))
+      if (!Number.isSafeInteger(episode) || episode < 0) {
+        return { ok: false, content: '集号不正确。' }
+      }
+      const rawOperations = Array.isArray(args?.operations) ? args.operations : []
+      if (rawOperations.length === 0 || rawOperations.length > 12) {
+        return { ok: false, content: '时间线提案需要 1-12 个操作。' }
+      }
+      const episodeShots = new Map(
+        state.shots
+          .filter((shot) => shot.episode === episode)
+          .map((shot) => [shot.targetId, shot]),
+      )
+      const operations: Array<Record<string, string | number>> = []
+      for (const raw of rawOperations) {
+        const record = raw && typeof raw === 'object'
+          ? raw as Record<string, unknown>
+          : {}
+        const shotId = String(record.shotId ?? '').trim()
+        const type = String(record.type ?? '')
+        if (!episodeShots.has(shotId)) {
+          return { ok: false, content: `第 ${episode} 集没有镜头 ${shotId || '（空）'}。` }
+        }
+        if (!['move', 'trim', 'mute', 'unmute'].includes(type)) {
+          return { ok: false, content: '时间线操作只能是 move / trim / mute / unmute。' }
+        }
+        const operation: Record<string, string | number> = { shotId, type }
+        if (type === 'move') {
+          const position = Math.floor(Number(record.position))
+          if (!Number.isSafeInteger(position) || position < 1 || position > episodeShots.size) {
+            return { ok: false, content: 'move 操作必须提供合法位置。' }
+          }
+          operation.position = position
+        }
+        if (type === 'trim') {
+          const inMs = Math.floor(Number(record.inMs))
+          const outMs = Math.floor(Number(record.outMs))
+          if (
+            !Number.isSafeInteger(inMs)
+            || !Number.isSafeInteger(outMs)
+            || inMs < 0
+            || outMs - inMs < 500
+          ) {
+            return { ok: false, content: 'trim 操作必须提供合法入点和出点，且至少保留 0.5 秒。' }
+          }
+          operation.inMs = inMs
+          operation.outMs = outMs
+        }
+        operations.push(operation)
+      }
+      return {
+        ok: true,
+        content: `已生成第 ${episode} 集时间线提案：${operations.length} 项操作。尚未保存草稿。`,
+        card: {
+          kind: 'timeline-plan',
+          episode,
+          operations,
+          summary: `${operations.length} 项时间线调整，等待用户确认`,
+        },
+      }
+    },
+    propose_voice_bindings: (args) => {
+      const rawBindings = Array.isArray(args?.bindings) ? args.bindings : []
+      if (rawBindings.length === 0 || rawBindings.length > 30) {
+        return { ok: false, content: '音色建议需要 1-30 个角色。' }
+      }
+      const names = new Set((state.characters ?? []).map((character) => character.name))
+      const voices = new Map(SYSTEM_VOICES.map((voice) => [voice.id, voice]))
+      const bindings: Array<{ characterName: string; voiceId: string; label: string }> = []
+      const seen = new Set<string>()
+      for (const raw of rawBindings) {
+        const record = raw && typeof raw === 'object'
+          ? raw as Record<string, unknown>
+          : {}
+        const characterName = String(record.characterName ?? '').trim()
+        const voiceId = String(record.voiceId ?? '').trim()
+        if (!names.has(characterName)) {
+          return { ok: false, content: `当前项目没有角色「${characterName}」。` }
+        }
+        const voice = voices.get(voiceId)
+        if (!voice) return { ok: false, content: `系统音色 ${voiceId} 不存在。` }
+        if (seen.has(characterName)) continue
+        seen.add(characterName)
+        bindings.push({ characterName, voiceId, label: voice.label })
+      }
+      return {
+        ok: true,
+        content: `已生成音色建议卡：${bindings.length} 个角色。尚未保存绑定。`,
+        card: {
+          kind: 'voice-plan',
+          bindings,
+          summary: bindings.map((binding) => `${binding.characterName} → ${binding.label}`).join(' / '),
+        },
+      }
+    },
+    propose_tts_batch: (args) => {
+      const episode = Math.floor(Number(args?.episode))
+      const maxBudgetMicros = Math.floor(Number(args?.maxBudgetMicros))
+      if (!Number.isSafeInteger(episode) || episode < 0) {
+        return { ok: false, content: '集号不正确。' }
+      }
+      if (!Number.isSafeInteger(maxBudgetMicros) || maxBudgetMicros <= 0) {
+        return { ok: false, content: 'TTS 批量预算必须是正整数微元。' }
+      }
+      const price = Math.floor(Number(state.ttsPricePer1kCharsMicros))
+      if (!Number.isSafeInteger(price) || price <= 0) {
+        return { ok: false, content: '平台尚未配置 TTS 价格，不能估算批量费用。' }
+      }
+      const lines = state.shots.filter((shot) =>
+        shot.episode === episode
+        && shot.dialogue.trim()
+        && shot.speaker.trim()
+      )
+      if (lines.length === 0) {
+        return { ok: false, content: `第 ${episode} 集没有可生成的对白。` }
+      }
+      const characters = lines.reduce((sum, line) => sum + countSpeechCharacters(line.dialogue), 0)
+      const estimatedCostMicros = Math.ceil(characters / 1000 * price)
+      if (estimatedCostMicros > maxBudgetMicros) {
+        return {
+          ok: false,
+          content: `预计 ${(estimatedCostMicros / 1_000_000).toFixed(2)} 元，超过预算 ${(maxBudgetMicros / 1_000_000).toFixed(2)} 元。`,
+        }
+      }
+      const boundNames = new Set((state.voiceProfiles ?? []).map((profile) => profile.characterName))
+      const unboundLines = lines.filter((line) => !boundNames.has(line.speaker)).length
+      return {
+        ok: true,
+        content: `已生成 TTS 批量卡：第 ${episode} 集 ${lines.length} 句、${characters} 字符，预计 ${(estimatedCostMicros / 1_000_000).toFixed(2)} 元。尚未创建付费任务。`,
+        card: {
+          kind: 'tts-plan',
+          episode,
+          shotIds: lines.map((line) => line.targetId),
+          lineCount: lines.length,
+          characters,
+          estimatedCostMicros,
+          maxBudgetMicros,
+          unboundLines,
+          summary: `${lines.length} 句 / ${characters} 字符${unboundLines > 0 ? ` / ${unboundLines} 句音色未确认` : ''}`,
+        },
+      }
+    },
+    propose_episode_render: (args) => {
+      const episode = Math.floor(Number(args?.episode))
+      if (!Number.isSafeInteger(episode) || episode < 0) {
+        return { ok: false, content: '集号不正确。' }
+      }
+      const version = (state.timelineVersions ?? []).find((item) => item.episode === episode)
+      const targets = (state.videoTargets ?? []).filter((target) => target.episode === episode)
+      const videoReady = targets.filter((target) => target.selectedVideoAssetId).length
+      const totalShots = version
+        ? version.readyCount + version.blockedCount
+        : targets.length
+      const readyCount = version?.readyCount ?? videoReady
+      const blockedCount = version?.blockedCount ?? Math.max(0, totalShots - readyCount)
+      const issueCount = version?.issueCount ?? blockedCount
+      const totalDurationMs = version?.totalDurationMs
+        ?? targets.reduce((sum, target) => sum + target.duration * 1000, 0)
+      if (totalShots === 0) {
+        return { ok: false, content: `第 ${episode} 集还没有镜头，不能生成成片提案。` }
+      }
+      const versionText = version ? `v${version.revision}` : '尚未固化版本'
+      return {
+        ok: true,
+        content: `已生成第 ${episode} 集成片提案：${readyCount}/${totalShots} 镜可渲染，${versionText}。${issueCount > 0 ? `${issueCount} 项预检问题，` : ''}尚未加入渲染队列。`,
+        card: {
+          kind: 'render-plan',
+          episode,
+          versionId: version?.versionId ?? null,
+          revision: version?.revision ?? null,
+          readyCount,
+          totalShots,
+          blockedCount,
+          issueCount,
+          totalDurationMs,
+          summary: `${readyCount}/${totalShots} 镜 · ${versionText} · ${issueCount} 项问题`,
         },
       }
     },

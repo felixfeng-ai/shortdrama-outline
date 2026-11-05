@@ -171,6 +171,12 @@ import {
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
+import { fetchVoiceProfiles } from '@/lib/audio/client'
+import { buildMobileVideoView } from '@/lib/mobile-video'
+import {
+  fetchLatestTimelineVersions,
+  type TimelineVersionSummary,
+} from '@/lib/timeline/client'
 import { fetchLocalizationBackup } from '@/lib/localization/client'
 import { keyframeManifestEntry } from '@/lib/generation/export'
 import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
@@ -533,6 +539,8 @@ export default function Home() {
   const [projectMaterials, setProjectMaterials] = useState<ProjectMaterial[]>([])
   const [productionTasks, setProductionTasks] = useState<GenerationTask[]>([])
   const [productionAssets, setProductionAssets] = useState<GeneratedAsset[]>([])
+  const [voiceConfig, setVoiceConfig] = useState<Awaited<ReturnType<typeof fetchVoiceProfiles>> | null>(null)
+  const [timelineVersions, setTimelineVersions] = useState<TimelineVersionSummary[]>([])
   const [look, setLook] = useState<LookBook>(EMPTY_LOOK)
   const [contextVersion, setContextVersion] = useState<number | null>(null)
   const [metaPanel, setMetaPanel] = useState<MetaPanel | null>(null)
@@ -555,6 +563,8 @@ export default function Home() {
       setProjectMaterials([])
       setProductionTasks([])
       setProductionAssets([])
+      setVoiceConfig(null)
+      setTimelineVersions([])
       setJudgments([])
       return
     }
@@ -591,7 +601,17 @@ export default function Home() {
 
     void (async () => {
       try {
-        const [server, decisionData, canonData, skillBinding, commentData, materialData, generationData] = await Promise.all([
+        const [
+          server,
+          decisionData,
+          canonData,
+          skillBinding,
+          commentData,
+          materialData,
+          generationData,
+          voiceData,
+          timelineData,
+        ] = await Promise.all([
           fetchProjectContext(projectId),
           fetchProjectDecisions(projectId),
           fetchProjectCanon(projectId),
@@ -599,6 +619,8 @@ export default function Home() {
           fetchProjectComments(projectId).catch(() => []),
           fetchProjectMaterials(projectId, false).catch(() => []),
           fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] })),
+          fetchVoiceProfiles(projectId).catch(() => null),
+          fetchLatestTimelineVersions(projectId).catch(() => []),
         ])
         if (cancelled) return
         setProjectSkill(skillBinding)
@@ -606,6 +628,8 @@ export default function Home() {
         setProjectMaterials(materialData)
         setProductionTasks(generationData.tasks)
         setProductionAssets(generationData.assets)
+        setVoiceConfig(voiceData)
+        setTimelineVersions(timelineData)
         setCanon(canonData)
         setDecisions(decisionData.decisions)
         if (decisionData.judgments.length > 0) {
@@ -2799,6 +2823,14 @@ export default function Home() {
     }),
     [entityComments, idea, projectId, productionAssets, productionQc, productionTasks, projects, shots],
   )
+  const agentVideoView = useMemo(
+    () => buildMobileVideoView({
+      shots,
+      assets: productionAssets,
+      tasks: productionTasks,
+    }),
+    [productionAssets, productionTasks, shots],
+  )
 
   const agentState: AgentState = {
     projectTitle: projects.find((p) => p.id === projectId)?.title ?? idea.trim().slice(0, 20),
@@ -2894,6 +2926,22 @@ export default function Home() {
       dialogue: s.dialogue ?? '',
     })),
     expiredShots: impact?.expired ?? 0,
+    videoReadiness: agentVideoView.readiness,
+    videoAssets: productionAssets.filter((asset) => asset.mediaKind === 'video'),
+    videoTargets: agentVideoView.targets,
+    voiceProfiles: (voiceConfig?.profiles ?? []).flatMap((profile) => {
+      const character = characters.find((item) => item.id === profile.characterEntityId)
+      return character
+        ? [{
+            characterName: character.name,
+            characterEntityId: profile.characterEntityId,
+            voiceId: profile.voiceId,
+            label: profile.label,
+          }]
+        : []
+    }),
+    ttsPricePer1kCharsMicros: voiceConfig?.tts.pricePer1kCharsMicros ?? null,
+    timelineVersions,
     quota: agentQuota,
   }
 

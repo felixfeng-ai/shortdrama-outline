@@ -4,6 +4,7 @@ import assert from "node:assert/strict"
 import { GET as getTimeline, POST as initializeTimeline } from "../app/api/timelines/[episode]/route.ts"
 import { PUT as putTimelineDraft } from "../app/api/timelines/[episode]/draft/route.ts"
 import { POST as postTimelineVersion } from "../app/api/timelines/[episode]/versions/route.ts"
+import { GET as getLatestTimelines } from "../app/api/timelines/route.ts"
 import { createSnapshot, createProject } from "../lib/assets/repo.ts"
 import { __resetDbForTests, getDbForRequest } from "../lib/assets/store.ts"
 
@@ -118,6 +119,17 @@ test("P1-V5 时间线接口完成初始化、读取、编辑和固化版本", as
     },
   ), context())
   assert.equal(stale.status, 409)
+
+  const summaries = await getLatestTimelines(new Request(
+    `http://localhost/api/timelines?projectId=${project.id}`,
+    { headers: headers() },
+  ))
+  const summariesBody = await summaries.json()
+  assert.equal(summaries.status, 200)
+  assert.equal(summariesBody.data.versions.length, 1)
+  assert.equal(summariesBody.data.versions[0].episode, 1)
+  assert.equal(summariesBody.data.versions[0].revision, 2)
+  assert.equal(summariesBody.data.versions[0].blockedCount, 2)
 })
 
 test("P1-V5 初始化没有分镜的集返回明确 400", async () => {
