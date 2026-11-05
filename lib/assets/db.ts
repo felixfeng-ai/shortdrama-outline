@@ -788,6 +788,59 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON generated_assets(task_id);
     `,
   },
+  {
+    version: 17,
+    name: "project-bgm-tracks",
+    sql: `
+      -- BGM 是用户上传的项目素材，必须记录授权声明和内容指纹。
+      CREATE TABLE IF NOT EXISTS project_bgm_tracks (
+        id                TEXT PRIMARY KEY,
+        project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        name              TEXT NOT NULL,
+        storage_key       TEXT NOT NULL,
+        mime              TEXT NOT NULL,
+        bytes             INTEGER NOT NULL,
+        duration_ms       INTEGER,
+        sha256            TEXT NOT NULL,
+        license_confirmed INTEGER NOT NULL,
+        license_note      TEXT NOT NULL DEFAULT '',
+        created_at        INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_bgm_tracks_project
+        ON project_bgm_tracks(project_id, created_at);
+    `,
+  },
+  {
+    version: 18,
+    name: "video-renders",
+    sql: `
+      -- 成片任务必须持久化，切换页面或进程重启后仍能查询；单实例按 created_at 串行领取。
+      CREATE TABLE IF NOT EXISTS video_renders (
+        id                   TEXT PRIMARY KEY,
+        project_id           TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        episode              INTEGER NOT NULL,
+        timeline_version_id  TEXT NOT NULL,
+        timeline_revision    INTEGER NOT NULL,
+        status               TEXT NOT NULL DEFAULT 'queued',
+        progress             INTEGER NOT NULL DEFAULT 0,
+        error                TEXT,
+        duration_ms          INTEGER,
+        video_storage_key    TEXT,
+        srt_storage_key      TEXT,
+        manifest_storage_key TEXT,
+        created_at           INTEGER NOT NULL,
+        started_at           INTEGER,
+        finished_at          INTEGER,
+        updated_at           INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_video_renders_project
+        ON video_renders(project_id, episode, created_at);
+      CREATE INDEX IF NOT EXISTS idx_video_renders_queue
+        ON video_renders(status, created_at);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

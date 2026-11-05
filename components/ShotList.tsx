@@ -507,6 +507,7 @@ export default function ShotList({
           episodes={tree.map((group) => group.episode)}
           preferredEpisode={episodeFilter}
           videos={videoAssets}
+          shots={visibleShots}
         />
 
         <VoiceProfilePanel

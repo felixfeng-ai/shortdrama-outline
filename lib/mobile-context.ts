@@ -29,6 +29,10 @@ import {
   EMPTY_MOBILE_AGENT_MEMORY,
   type MobileAgentMemory,
 } from './mobile-memory.ts'
+import {
+  analyzeEpisodePacing,
+  type MobilePacingReport,
+} from './mobile-pacing.ts'
 
 export interface MobileContextQuota {
   remaining: number
@@ -103,6 +107,7 @@ export interface MobileContextData {
   videoReadiness: MobileVideoReadiness
   batches: GenerationBatch[]
   agentMemory: MobileAgentMemory
+  pacing: MobilePacingReport
 }
 
 type SnapshotPayloads = Partial<Record<ArtifactKind, unknown>>
@@ -240,6 +245,20 @@ export function buildMobileContext(input: {
     judgments: input.judgments,
     comments: input.comments,
   })
+  const pacing = analyzeEpisodePacing({
+    episodes: readArray(snapshots.episodes).map((episode) => ({
+      number: readNumber(episode.number),
+      title: readText(episode.title),
+      hook: readText(episode.hook),
+    })),
+    shots: readArray(snapshots.shots).map((shot) => ({
+      episode: readNumber(shot.episode),
+      dialogue: readText(shot.dialogue),
+      params: {
+        duration: readNumber((shot.params as Record<string, unknown> | undefined)?.duration),
+      },
+    })),
+  })
   if (projects.length === 0) {
     return {
       activeProject: null,
@@ -254,6 +273,7 @@ export function buildMobileContext(input: {
       videoReadiness: videoView.readiness,
       batches: [],
       agentMemory,
+      pacing,
     }
   }
 
@@ -346,5 +366,6 @@ export function buildMobileContext(input: {
     videoReadiness: videoView.readiness,
     batches: (input.batches ?? []).filter((batch) => batch.projectId === active.id),
     agentMemory,
+    pacing,
   }
 }

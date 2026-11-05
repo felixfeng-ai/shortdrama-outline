@@ -3,10 +3,13 @@ import { randomUUID } from "node:crypto"
 
 import { InputError } from "../api.ts"
 import { latestSnapshot } from "../assets/repo.ts"
+import { getBgmTrack } from "../audio/bgm-repo.ts"
 import {
   getGeneratedAsset,
   listGeneratedAssets,
+  listGenerationTasks,
 } from "../generation/repo.ts"
+import { inspectTimelineDialogue } from "../video/render-plan.ts"
 import {
   TIMELINE_DURATION_TOLERANCE_MS,
   buildInitialTimeline,
@@ -176,6 +179,8 @@ function validatePayload(
       shotId,
       shotNumber: stable.shotNumber,
       scene: stable.scene,
+      speaker: stable.speaker,
+      dialogue: stable.dialogue,
       sourceAssetId,
       sourceDurationMs,
       durationMs,
@@ -189,6 +194,12 @@ function validatePayload(
     }
   })
   const readyCount = clips.filter((clip) => clip.status === "ready").length
+  const audio = object(payload.audio)
+  const bgmAssetId = text(audio.bgmAssetId) || null
+  // BGM 必须来自当前项目曲库，时间线不能引用其他项目或任意路径。
+  if (bgmAssetId && !getBgmTrack(db, projectId, bgmAssetId)) {
+    throw new InputError("时间线引用了无效的 BGM")
+  }
   return {
     schemaVersion: 1,
     projectId,
@@ -201,8 +212,8 @@ function validatePayload(
     subtitle: { enabled: true },
     audio: {
       dialogueVolume: 1,
-      bgmAssetId: null,
-      bgmVolume: 0.2,
+      bgmAssetId,
+      bgmVolume: Math.max(0, Math.min(1, Number(audio.bgmVolume) || 0.2)),
     },
   }
 }
@@ -298,6 +309,33 @@ export function freezeTimelineVersion(
     if (!asset.sha256) throw new InputError("视频缺少文件指纹，不能固化为可渲染版本")
     inputHashes[asset.id] = asset.sha256
   }
+  // 对白绑定也属于版本输入：没有 TTS 的镜头写入 missing 标记，
+  // 之后补生成音频不会悄悄改变旧版本，必须重新固化一版。
+  const shotSnapshot = latestSnapshot(db, projectId, "shots")
+  const shots = shotSnapshot && Array.isArray(shotSnapshot.payload)
+    ? shotSnapshot.payload
+    : []
+  const audioInspection = inspectTimelineDialogue({
+    timeline: draft.payload,
+    shots,
+    tasks: listGenerationTasks(db, projectId, undefined, undefined, "audio"),
+    assets: listGeneratedAssets(db, projectId, undefined, undefined, "audio"),
+  })
+  for (const line of audioInspection.lines) {
+    if (line.muted) continue
+    if (!line.assetId) {
+      inputHashes[`tts:${line.shotId}:missing`] = "missing"
+      continue
+    }
+    const audio = getGeneratedAsset(db, line.assetId, projectId)
+    if (audio?.sha256) {
+      inputHashes[`tts:${line.shotId}:${audio.id}`] = audio.sha256
+    }
+  }
+  if (draft.payload.audio.bgmAssetId) {
+    const bgm = getBgmTrack(db, projectId, draft.payload.audio.bgmAssetId)
+    if (bgm) inputHashes[`bgm:${bgm.id}`] = bgm.sha256
+  }
   const id = randomUUID()
   db.prepare(
     `INSERT INTO timeline_versions
@@ -338,4 +376,37 @@ export function listTimelineVersions(
     "SELECT * FROM timeline_versions WHERE project_id = ? AND episode = ? ORDER BY revision DESC",
   ).all(projectId, episode) as VersionRow[]
   return rows.map(toVersion)
+}
+
+export function listLatestTimelineVersions(
+  db: DatabaseSync,
+  projectId: string,
+): TimelineVersion[] {
+  // 每个集只取最新固化版本；批量排队不会因为历史版本重复入队。
+  const rows = db.prepare(
+    `SELECT versions.*
+     FROM timeline_versions versions
+     JOIN (
+       SELECT episode, MAX(revision) AS revision
+       FROM timeline_versions
+       WHERE project_id = ?
+       GROUP BY episode
+     ) latest
+       ON latest.episode = versions.episode
+      AND latest.revision = versions.revision
+     WHERE versions.project_id = ?
+     ORDER BY versions.episode ASC`,
+  ).all(projectId, projectId) as VersionRow[]
+  return rows.map(toVersion)
+}
+
+export function getTimelineVersion(
+  db: DatabaseSync,
+  projectId: string,
+  id: string,
+): TimelineVersion | null {
+  const row = db.prepare(
+    "SELECT * FROM timeline_versions WHERE id = ? AND project_id = ?",
+  ).get(id, projectId) as VersionRow | undefined
+  return row ? toVersion(row) : null
 }

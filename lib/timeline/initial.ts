@@ -16,6 +16,8 @@ function normalizedShot(input: unknown): {
   shotId: string
   shotNumber: number
   scene: string
+  speaker: string
+  dialogue: string
   expectedDurationMs: number
 } | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null
@@ -30,6 +32,8 @@ function normalizedShot(input: unknown): {
     shotId,
     shotNumber: Math.max(0, integer(shot.shot)),
     scene: text(shot.scene) || "场景未标注",
+    speaker: text(shot.speaker),
+    dialogue: text(shot.dialogue),
     expectedDurationMs: Number.isFinite(durationSeconds) && durationSeconds > 0
       ? Math.round(durationSeconds * 1000)
       : 0,

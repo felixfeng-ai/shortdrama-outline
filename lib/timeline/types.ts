@@ -9,6 +9,9 @@ export interface TimelineClip {
   shotId: string
   shotNumber: number
   scene: string
+  // 固化版本保留台词快照；旧版本重渲时不能读取后来改过的分镜文本。
+  speaker?: string
+  dialogue?: string
   sourceAssetId: string | null
   sourceDurationMs: number | null
   durationMs: number
@@ -35,8 +38,8 @@ export interface TimelinePayload {
   }
   audio: {
     dialogueVolume: 1
-    bgmAssetId: null
-    bgmVolume: 0.2
+    bgmAssetId: string | null
+    bgmVolume: number
   }
 }
 

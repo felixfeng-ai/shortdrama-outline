@@ -1,9 +1,22 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { GeneratedAsset } from '@/lib/generation/types'
 import type { TimelineClip, TimelineDraft, TimelinePayload, TimelineVersion } from '@/lib/timeline/types'
+import { fetchBgmTracks, uploadBgmTrack } from '@/lib/audio/bgm-client'
+import type { BgmTrack } from '@/lib/audio/bgm-types'
+import { fetchAudioState } from '@/lib/audio/client'
+import type { TimelineDialogueLine, VideoRenderDto } from '@/lib/video/render-types'
+import {
+  enqueueFrozenEpisodeQueue,
+  enqueueVideoRender,
+  fetchVideoRenders,
+} from '@/lib/video/render-client'
+import {
+  inspectTimelineDialogue,
+  type TimelineShotInput,
+} from '@/lib/video/render-plan'
 import {
   fetchTimeline,
   freezeTimelineVersion,
@@ -17,6 +30,7 @@ interface Props {
   episodes: number[]
   preferredEpisode: number | null
   videos: GeneratedAsset[]
+  shots: TimelineShotInput[]
 }
 
 function episodeLabel(episode: number): string {
@@ -84,15 +98,56 @@ function AdjustIcon() {
   )
 }
 
+function DialoguePreview({ line }: { line: TimelineDialogueLine }) {
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  async function replay() {
+    const audio = audioRef.current
+    if (!audio) return
+    audio.currentTime = 0
+    try {
+      await audio.play()
+    } catch {
+      // 浏览器拒绝自动播放时保留原生 controls，让用户自己点播放即可。
+    }
+  }
+
+  if (line.muted) {
+    return <span className="episode-timeline-dialogue-state">这一镜已静音，不播放对白</span>
+  }
+  if (!line.previewUrl) {
+    return <span className="episode-timeline-dialogue-state is-blocked">缺当前台词的对白音频</span>
+  }
+  return (
+    <div className="episode-timeline-dialogue-preview">
+      <span>
+        对白 · {line.speaker || '未标注说话人'} · {secondsText(line.durationMs ?? 0)}s
+      </span>
+      <audio
+        ref={audioRef}
+        controls
+        preload="none"
+        src={line.previewUrl}
+        aria-label={`第 ${line.shotNumber} 镜对白试听`}
+      />
+      <button type="button" onClick={() => void replay()}>
+        从头重放
+      </button>
+    </div>
+  )
+}
+
 function TimelineClipEditor({
   clip,
   candidates,
+  dialogue,
   working,
   onTrim,
   onReplace,
 }: {
   clip: TimelineClip
   candidates: GeneratedAsset[]
+  dialogue: TimelineDialogueLine | undefined
   working: boolean
   onTrim: (inMs: number, outMs: number) => void
   onReplace: (asset: GeneratedAsset) => void
@@ -172,6 +227,13 @@ function TimelineClipEditor({
           ))}
         </select>
       </label>
+      {dialogue && (
+        <div className={`episode-timeline-dialogue ${dialogue.overflow ? 'is-overflow' : ''}`}>
+          <b>{dialogue.overflow ? '对白超出镜头时长' : '本镜对白'}</b>
+          <p>{dialogue.speaker ? `${dialogue.speaker}：` : ''}{dialogue.dialogue}</p>
+          <DialoguePreview line={dialogue} />
+        </div>
+      )}
     </div>
   )
 }
@@ -182,6 +244,7 @@ export default function EpisodeTimelinePanel({
   episodes,
   preferredEpisode,
   videos,
+  shots,
 }: Props) {
   const options = useMemo(
     () => [...new Set(episodes)].sort((left, right) => left - right),
@@ -191,6 +254,18 @@ export default function EpisodeTimelinePanel({
   const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(projectId)
   const [draft, setDraft] = useState<TimelineDraft | null>(null)
   const [versions, setVersions] = useState<TimelineVersion[]>([])
+  const [bgmTracks, setBgmTracks] = useState<BgmTrack[]>([])
+  const [bgmAssetId, setBgmAssetId] = useState('')
+  const [bgmVolume, setBgmVolume] = useState(0.2)
+  const [bgmFile, setBgmFile] = useState<File | null>(null)
+  const [bgmLicensed, setBgmLicensed] = useState(false)
+  const [uploadingBgm, setUploadingBgm] = useState(false)
+  const [audioTasks, setAudioTasks] = useState<Awaited<ReturnType<typeof fetchAudioState>>['tasks']>([])
+  const [audioAssets, setAudioAssets] = useState<Awaited<ReturnType<typeof fetchAudioState>>['assets']>([])
+  const [renders, setRenders] = useState<VideoRenderDto[]>([])
+  const [selectedVersionId, setSelectedVersionId] = useState('')
+  const [enqueueingRender, setEnqueueingRender] = useState(false)
+  const [queueingAllEpisodes, setQueueingAllEpisodes] = useState(false)
   const [loading, setLoading] = useState(false)
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -224,9 +299,29 @@ export default function EpisodeTimelinePanel({
     setLoading(true)
     setError(null)
     try {
-      const state = await fetchTimeline(targetProjectId, targetEpisode)
+      const [state, tracks, audioState, renderState] = await Promise.all([
+        fetchTimeline(targetProjectId, targetEpisode),
+        fetchBgmTracks(targetProjectId).catch(() => []),
+        fetchAudioState(targetProjectId).catch(() => ({
+          tasks: [],
+          assets: [],
+          batches: [],
+        })),
+        fetchVideoRenders(targetProjectId, targetEpisode).catch(() => []),
+      ])
       setDraft(state.draft)
       setVersions(state.versions)
+      setBgmTracks(tracks)
+      setAudioTasks(audioState.tasks)
+      setAudioAssets(audioState.assets)
+      setRenders(renderState)
+      setSelectedVersionId((current) =>
+        state.versions.some((version) => version.id === current)
+          ? current
+          : state.versions[0]?.id ?? ''
+      )
+      setBgmAssetId(state.draft?.payload.audio.bgmAssetId ?? '')
+      setBgmVolume(state.draft?.payload.audio.bgmVolume ?? 0.2)
     } catch (cause) {
       setDraft(null)
       setVersions([])
@@ -240,6 +335,20 @@ export default function EpisodeTimelinePanel({
     setNotice(null)
     void load(episode)
   }, [episode, load])
+
+  useEffect(() => {
+    if (
+      !currentProjectId
+      || !renders.some((render) => render.status === 'queued' || render.status === 'running')
+    ) return
+    // 队列状态由服务端持久化；这里只轮询当前集，切换菜单后回来仍能恢复。
+    const timer = window.setTimeout(() => {
+      void fetchVideoRenders(currentProjectId, episode)
+        .then(setRenders)
+        .catch(() => {})
+    }, 2_500)
+    return () => window.clearTimeout(timer)
+  }, [currentProjectId, episode, renders])
 
   async function initialize() {
     if (working) return
@@ -277,6 +386,7 @@ export default function EpisodeTimelinePanel({
         result.version,
         ...current.filter((version) => version.id !== result.version.id),
       ])
+      setSelectedVersionId(result.version.id)
       setNotice(`已固化 v${result.version.revision}，后续草稿修改不会改写此版本。`)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '时间线版本固化失败')
@@ -327,6 +437,55 @@ export default function EpisodeTimelinePanel({
     void saveClips(clips, `已更新镜头静音状态，草稿 v${draft.revision + 1}。`)
   }
 
+  async function saveBgm() {
+    if (!currentProjectId || !draft || working) return
+    setWorking(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await saveTimelineDraft({
+        projectId: currentProjectId,
+        episode,
+        expectedRevision: draft.revision,
+        payload: {
+          ...draft.payload,
+          audio: {
+            ...draft.payload.audio,
+            bgmAssetId: bgmAssetId || null,
+            bgmVolume,
+          },
+        },
+      })
+      setDraft(result.draft)
+      setNotice('已更新本集配乐和音量。')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '配乐保存失败')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  async function uploadBgm() {
+    if (!currentProjectId || !bgmFile || !bgmLicensed || uploadingBgm) return
+    setUploadingBgm(true)
+    setError(null)
+    try {
+      const track = await uploadBgmTrack({
+        projectId: currentProjectId,
+        file: bgmFile,
+        licenseConfirmed: true,
+      })
+      setBgmTracks((current) => [track, ...current])
+      setBgmAssetId(track.id)
+      setBgmFile(null)
+      setNotice('BGM 已上传，点击“应用配乐”保存到本集。')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'BGM 上传失败')
+    } finally {
+      setUploadingBgm(false)
+    }
+  }
+
   function trimClip(index: number, inMs: number, outMs: number) {
     if (!draft) return
     const clips = draft.payload.clips.map((clip, clipIndex) =>
@@ -353,6 +512,81 @@ export default function EpisodeTimelinePanel({
         : clip
     )
     void saveClips(clips, `已替换第 ${draft.payload.clips[index].shotNumber} 镜素材，草稿 v${draft.revision + 1}。`)
+  }
+
+  const selectedVersion = useMemo(
+    () => versions.find((version) => version.id === selectedVersionId) ?? versions[0] ?? null,
+    [selectedVersionId, versions],
+  )
+  const timelineForInspection = selectedVersion?.payload ?? draft?.payload ?? null
+  const dialogueInspection = useMemo(
+    () => timelineForInspection
+      ? inspectTimelineDialogue({
+          timeline: timelineForInspection,
+          shots,
+          tasks: audioTasks,
+          assets: audioAssets,
+        })
+      : { lines: [], issues: [] },
+    [audioAssets, audioTasks, shots, timelineForInspection],
+  )
+  const dialogueByClip = useMemo(
+    () => new Map(dialogueInspection.lines.map((line) => [line.clipId, line])),
+    [dialogueInspection.lines],
+  )
+  const overflowCount = dialogueInspection.issues
+    .filter((issue) => issue.code === 'dialogue-overflow').length
+
+  async function enqueueRender() {
+    if (!currentProjectId || !selectedVersion || enqueueingRender) return
+    setEnqueueingRender(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await enqueueVideoRender({
+        projectId: currentProjectId,
+        episode,
+        timelineVersionId: selectedVersion.id,
+      })
+      setRenders((current) => [
+        result.render,
+        ...current.filter((render) => render.id !== result.render.id),
+      ])
+      setNotice(`${episodeLabel(episode)}已加入渲染队列，单实例会按创建顺序逐集执行。`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '加入渲染队列失败')
+    } finally {
+      setEnqueueingRender(false)
+    }
+  }
+
+  async function enqueueAllFrozenEpisodes() {
+    if (!currentProjectId || queueingAllEpisodes) return
+    setQueueingAllEpisodes(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await enqueueFrozenEpisodeQueue({
+        projectId: currentProjectId,
+        episodes: options,
+      })
+      setRenders((current) => {
+        const merged = new Map(current.map((render) => [render.id, render]))
+        for (const render of result.renders) merged.set(render.id, render)
+        return [...merged.values()]
+      })
+      setNotice(
+        `已排队 ${result.renders.length} 集${
+          result.blocked.length > 0
+            ? `，${result.blocked.length} 集因未固化或预检未通过被跳过`
+            : ''
+        }。`,
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '批量排队失败')
+    } finally {
+      setQueueingAllEpisodes(false)
+    }
   }
 
   if (options.length === 0) return null
@@ -478,6 +712,7 @@ export default function EpisodeTimelinePanel({
                   <TimelineClipEditor
                     clip={clip}
                     candidates={videoCandidatesFor(clip, videos)}
+                    dialogue={dialogueByClip.get(clip.id)}
                     working={working}
                     onTrim={(inMs, outMs) => trimClip(index, inMs, outMs)}
                     onReplace={(asset) => replaceClip(index, asset)}
@@ -486,6 +721,160 @@ export default function EpisodeTimelinePanel({
               </article>
             ))}
           </div>
+          <div className="episode-timeline-audio">
+            <div className="episode-timeline-audio-controls">
+              <b>本集配乐</b>
+              <label>
+                <span>曲目</span>
+                <select
+                  aria-label="配乐曲目"
+                  value={bgmAssetId}
+                  onChange={(event) => setBgmAssetId(event.target.value)}
+                >
+                  <option value="">无配乐</option>
+                  {bgmTracks.map((track) => (
+                    <option key={track.id} value={track.id}>{track.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>音量</span>
+                <input
+                  type="range"
+                  aria-label="配乐音量"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={bgmVolume}
+                  onChange={(event) => setBgmVolume(Number(event.target.value))}
+                />
+                <em>{Math.round(bgmVolume * 100)}%</em>
+              </label>
+              <button type="button" disabled={working} onClick={() => void saveBgm()}>
+                应用配乐
+              </button>
+            </div>
+            <details className="episode-timeline-bgm-upload">
+              <summary>上传授权 BGM</summary>
+              <div>
+                <input
+                  type="file"
+                  accept="audio/mpeg,audio/wav"
+                  onChange={(event) => setBgmFile(event.target.files?.[0] ?? null)}
+                />
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={bgmLicensed}
+                    onChange={(event) => setBgmLicensed(event.target.checked)}
+                  />
+                  我确认拥有该配乐的使用授权
+                </label>
+                <button
+                  type="button"
+                  disabled={!bgmFile || !bgmLicensed || uploadingBgm}
+                  onClick={() => void uploadBgm()}
+                >
+                  {uploadingBgm ? '上传中…' : '上传 BGM'}
+                </button>
+              </div>
+            </details>
+          </div>
+          <section className="episode-render-workbench" aria-label="成片渲染">
+            <header>
+              <div>
+                <b>成片渲染</b>
+                <span>使用固化版本，不改写后续草稿</span>
+              </div>
+              <span className={renders.some((render) => render.status === 'running') ? 'is-running' : ''}>
+                {renders.some((render) => render.status === 'running')
+                  ? '正在渲染一集'
+                  : renders.some((render) => render.status === 'queued')
+                    ? '有任务排队中'
+                    : '队列空闲'}
+              </span>
+            </header>
+            <div className="episode-render-controls">
+              <label>
+                <span>时间线版本</span>
+                <select
+                  value={selectedVersion?.id ?? ''}
+                  disabled={working || versions.length === 0}
+                  onChange={(event) => setSelectedVersionId(event.target.value)}
+                >
+                  {versions.length === 0 && <option value="">先固化当前草稿</option>}
+                  {versions.map((version) => (
+                    <option key={version.id} value={version.id}>
+                      v{version.revision} · {version.payload.readyCount}/{version.payload.clips.length} 镜
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={
+                  !selectedVersion
+                  || enqueueingRender
+                  || dialogueInspection.issues.length > 0
+                }
+                title={dialogueInspection.issues[0]?.message}
+                onClick={() => void enqueueRender()}
+              >
+                {enqueueingRender ? '提交中…' : '加入渲染队列'}
+              </button>
+              <button
+                type="button"
+                className="is-secondary"
+                disabled={queueingAllEpisodes || options.length === 0}
+                onClick={() => void enqueueAllFrozenEpisodes()}
+              >
+                {queueingAllEpisodes ? '批量排队中…' : '全部已固化集排队'}
+              </button>
+            </div>
+            {dialogueInspection.issues.length > 0 && (
+              <div className="episode-render-blockers" role="status">
+                <b>渲染前还有 {dialogueInspection.issues.length} 项需要处理</b>
+                {overflowCount > 0 && (
+                  <p>对白超出镜头时长：请调整台词、裁剪或重新生成更短音频。</p>
+                )}
+                <ul>
+                  {dialogueInspection.issues.slice(0, 5).map((issue, index) => (
+                    <li key={`${issue.code}-${issue.clipId ?? 'project'}-${index}`}>
+                      {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {renders.length > 0 && (
+              <div className="episode-render-list">
+                {renders.map((render) => (
+                  <article key={render.id} className={`is-${render.status}`}>
+                    <div>
+                      <b>v{render.timelineRevision}</b>
+                      <span>
+                        {render.status === 'queued'
+                          ? '排队中'
+                          : render.status === 'running'
+                            ? `渲染中 ${render.progress}%`
+                            : render.status === 'succeeded'
+                              ? `已完成${render.durationMs ? ` · ${durationLabel(render.durationMs)}` : ''}`
+                              : '渲染失败'}
+                      </span>
+                      {render.error && <p>{render.error}</p>}
+                    </div>
+                    {render.status === 'succeeded' && (
+                      <div className="episode-render-downloads">
+                        <a href={render.videoUrl ?? '#'}>下载 MP4</a>
+                        <a href={render.subtitleUrl ?? '#'}>下载 SRT</a>
+                        <a href={render.manifestUrl ?? '#'}>下载 manifest</a>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
           <footer className="episode-timeline-footer">
             <p>时间线基于创建时采用的视频，不在每次打开时静默换源。</p>
             <div>

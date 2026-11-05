@@ -1,0 +1,220 @@
+import { spawn } from "node:child_process"
+import { createRequire } from "node:module"
+
+interface BinaryInstaller {
+  path: string
+}
+
+export interface RenderCommandInput {
+  ffmpegPath: string
+  outputPath: string
+  width: number
+  height: number
+  fps: number
+  totalDurationMs: number
+  clips: Array<{
+    inputIndex: number
+    inMs: number
+    outMs: number
+  }>
+  dialogue: Array<{
+    inputIndex: number
+    startMs: number
+    volume: number
+  }>
+  bgm: {
+    inputIndex: number
+    volume: number
+  } | null
+}
+
+const require = createRequire(import.meta.url)
+
+function bundledBinary(packageName: string): string | null {
+  try {
+    const installer = require(packageName) as BinaryInstaller
+    return installer.path || null
+  } catch {
+    return null
+  }
+}
+
+function seconds(value: number): string {
+  return (Math.max(0, value) / 1000).toFixed(3).replace(/\.?0+$/, "")
+}
+
+export function resolveFfmpegPath(): string {
+  return process.env.FFMPEG_PATH?.trim()
+    || bundledBinary("@ffmpeg-installer/ffmpeg")
+    || "ffmpeg"
+}
+
+export function resolveFfprobePath(): string {
+  return process.env.FFPROBE_PATH?.trim()
+    || bundledBinary("@ffprobe-installer/ffprobe")
+    || "ffprobe"
+}
+
+export function buildFfmpegRenderArgs(input: RenderCommandInput): string[] {
+  const width = Math.max(2, Math.floor(input.width / 2) * 2)
+  const height = Math.max(2, Math.floor(input.height / 2) * 2)
+  const fps = Math.max(1, Math.floor(input.fps))
+  const total = seconds(input.totalDurationMs)
+  const filters: string[] = []
+  const videoLabels: string[] = []
+
+  input.clips.forEach((clip, index) => {
+    const label = `v${index}`
+    // 每镜先按时间线入出点裁剪，再统一画幅、帧率和像素格式，避免拼接时参数不一致。
+    filters.push(
+      `[${clip.inputIndex}:v]trim=start=${seconds(clip.inMs)}:end=${seconds(clip.outMs)},`
+      + `setpts=PTS-STARTPTS,fps=${fps},`
+      + `scale=${width}:${height}:force_original_aspect_ratio=decrease,`
+      + `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=yuv420p[${label}]`,
+    )
+    videoLabels.push(`[${label}]`)
+  })
+  filters.push(
+    `${videoLabels.join("")}concat=n=${videoLabels.length}:v=1:a=0[vout]`,
+  )
+
+  const audioLabels: string[] = []
+  // 始终铺一条等长静音底轨，保证无对白、无 BGM 的集也能输出合法 AAC 音轨。
+  filters.push(
+    `anullsrc=r=48000:cl=stereo,atrim=0:${total},asetpts=PTS-STARTPTS[abed]`,
+  )
+  audioLabels.push("[abed]")
+
+  input.dialogue.forEach((line, index) => {
+    const label = `d${index}`
+    filters.push(
+      `[${line.inputIndex}:a]aresample=48000,asetpts=PTS-STARTPTS,`
+      + `volume=${Math.max(0, line.volume).toFixed(3)},`
+      + `adelay=${Math.max(0, Math.round(line.startMs))}|${Math.max(0, Math.round(line.startMs))}[${label}]`,
+    )
+    audioLabels.push(`[${label}]`)
+  })
+
+  if (input.bgm) {
+    filters.push(
+      `[${input.bgm.inputIndex}:a]aresample=48000,asetpts=PTS-STARTPTS,`
+      + `volume=${Math.max(0, input.bgm.volume).toFixed(3)},`
+      + `apad,atrim=0:${total}[bgm]`,
+    )
+    audioLabels.push("[bgm]")
+  }
+
+  filters.push(
+    `${audioLabels.join("")}amix=inputs=${audioLabels.length}:duration=longest:dropout_transition=0,`
+    + `alimiter=limit=0.95[aout]`,
+  )
+
+  return [
+    "-hide_banner",
+    "-y",
+    "-filter_complex",
+    filters.join(";"),
+    "-map",
+    "[vout]",
+    "-map",
+    "[aout]",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-ar",
+    "48000",
+    "-r",
+    String(fps),
+    "-t",
+    total,
+    "-movflags",
+    "+faststart",
+    input.outputPath,
+  ]
+}
+
+export async function runMediaCommand(
+  executable: string,
+  args: string[],
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(/* turbopackIgnore: true */ executable, args, {
+      windowsHide: true,
+      stdio: ["ignore", "ignore", "pipe"],
+    })
+    let stderr = ""
+    child.stderr.on("data", (chunk) => {
+      // 只保留最后一段，既有助于诊断，也避免长转码把整段日志堆进内存。
+      stderr = `${stderr}${String(chunk)}`.slice(-4_000)
+    })
+    child.on("error", (error) => {
+      reject(new Error(`无法启动媒体工具：${error.message}`))
+    })
+    child.on("close", (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`媒体处理失败（退出码 ${code}）：${stderr.trim().slice(-2_500)}`))
+    })
+  })
+}
+
+export interface MediaProbe {
+  durationMs: number | null
+  width: number | null
+  height: number | null
+}
+
+export async function probeMedia(path: string): Promise<MediaProbe> {
+  return new Promise<MediaProbe>((resolve, reject) => {
+    const child = spawn(/* turbopackIgnore: true */ resolveFfprobePath(), [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration:stream=width,height",
+      "-of",
+      "json",
+      path,
+    ], {
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+    let stdout = ""
+    let stderr = ""
+    child.stdout.on("data", (chunk) => { stdout += String(chunk) })
+    child.stderr.on("data", (chunk) => { stderr = `${stderr}${String(chunk)}`.slice(-2_000) })
+    child.on("error", (error) => {
+      reject(new Error(`无法启动 ffprobe：${error.message}`))
+    })
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`媒体文件无法读取：${stderr.trim().slice(-500)}`))
+        return
+      }
+      try {
+        const parsed = JSON.parse(stdout) as {
+          format?: { duration?: string }
+          streams?: Array<{ width?: number; height?: number }>
+        }
+        const durationSeconds = Number(parsed.format?.duration)
+        const stream = parsed.streams?.find((item) => item.width && item.height)
+        resolve({
+          durationMs: Number.isFinite(durationSeconds) && durationSeconds > 0
+            ? Math.round(durationSeconds * 1000)
+            : null,
+          width: stream?.width ? Math.floor(stream.width) : null,
+          height: stream?.height ? Math.floor(stream.height) : null,
+        })
+      } catch {
+        reject(new Error("ffprobe 返回了无法识别的媒体信息"))
+      }
+    })
+  })
+}

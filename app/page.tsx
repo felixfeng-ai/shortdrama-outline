@@ -24,9 +24,8 @@ import BriefCard from '@/components/BriefCard'
 import JudgmentLogPanel from '@/components/JudgmentLogPanel'
 import DecisionPanel from '@/components/DecisionPanel'
 import CanonPanel from '@/components/CanonPanel'
-import EntityCommentsPanel from '@/components/EntityCommentsPanel'
-import AssetLibraryPanel, { type AssetLibrarySource } from '@/components/AssetLibraryPanel'
-import ProjectBranchPanel from '@/components/ProjectBranchPanel'
+import type { AssetLibrarySource } from '@/components/AssetLibraryPanel'
+import ProjectToolsPanel from '@/components/ProjectToolsPanel'
 import LookBookCard from '@/components/LookBookCard'
 import VariantPicker from '@/components/VariantPicker'
 import PacingCurve from '@/components/PacingCurve'
@@ -445,6 +444,8 @@ export default function Home() {
   const [agentUnread, setAgentUnread] = useState(0)
   /** 项目画布：全局节点视图，关键字段可直接修改 */
   const [canvasOpen, setCanvasOpen] = useState(false)
+  /** 低频项目工具：默认不挂载内容，按需打开 */
+  const [projectToolsOpen, setProjectToolsOpen] = useState(false)
   const [canvasFocus, setCanvasFocus] = useState<{
     node: CanvasNodeId
     itemId: string
@@ -452,6 +453,9 @@ export default function Home() {
   } | null>(null)
   /** 从画布带入场记的问题：只预填，用户确认后才发送 */
   const [agentSeed, setAgentSeed] = useState<{ id: number; text: string } | null>(null)
+  useEffect(() => {
+    setProjectToolsOpen(false)
+  }, [projectId])
   /** 用户手动点过 tab 之后，不再自动切换 */
   const tabTouched = useRef(false)
   useEffect(() => {
@@ -3275,6 +3279,20 @@ export default function Home() {
         />
       )}
 
+      <ProjectToolsPanel
+        open={projectToolsOpen}
+        onClose={() => setProjectToolsOpen(false)}
+        projectId={projectId}
+        entities={agentState.entities ?? []}
+        comments={entityComments}
+        onCommentCreated={(comment) => setEntityComments((prev) => [comment, ...prev])}
+        onCommentUpdated={(comment) => setEntityComments((prev) =>
+          prev.map((item) => item.id === comment.id ? comment : item)
+        )}
+        assetSources={librarySources}
+        onReuseAsset={reuseLibraryAsset}
+      />
+
       <div className="h-main">
         <aside className="signal-rail" aria-label="创作步骤">
           <span className="signal-rail-logo" aria-hidden="true">V</span>
@@ -3377,6 +3395,8 @@ export default function Home() {
                   onCopyAll={() => { void handleCopyAll() }}
                   onCopyLink={() => { void handleCopyProjectLink() }}
                   onCopyReviewLink={() => { void handleCopyReviewLink() }}
+                  onOpenTools={() => setProjectToolsOpen(true)}
+                  toolsAvailable={Boolean(projectId) && !firstRun}
                   exportTarget={exportTarget}
                   onExportTargetChange={setExportTarget}
                   exportPreflight={shots.length > 0 ? exportPreflight : null}
@@ -3455,25 +3475,6 @@ export default function Home() {
               open={metaPanel === 'ledger'}
               ledger={productionLedger}
             />
-            {projectId && !firstRun && (
-              <EntityCommentsPanel
-                projectId={projectId}
-                entities={agentState.entities ?? []}
-                comments={entityComments}
-                onCreated={(comment) => setEntityComments((prev) => [comment, ...prev])}
-                onUpdated={(comment) => setEntityComments((prev) =>
-                  prev.map((item) => item.id === comment.id ? comment : item)
-                )}
-              />
-            )}
-            {projectId && !firstRun && (
-              <AssetLibraryPanel
-                projectId={projectId}
-                sources={librarySources}
-                onReuse={reuseLibraryAsset}
-              />
-            )}
-            {projectId && !firstRun && <ProjectBranchPanel projectId={projectId} />}
             <BriefCard
               headless
               open={metaPanel === 'brief'}

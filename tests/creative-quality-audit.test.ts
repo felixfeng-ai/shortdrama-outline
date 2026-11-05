@@ -138,13 +138,16 @@ test("CQ6 红线命中和平线节奏会提示，但不输出伪评分", () => {
 test("CQ7 工作台提供创作体检入口，并与 Agent 使用同一审计结果", () => {
   const workMeta = fs.readFileSync("components/WorkMeta.tsx", "utf8")
   const page = fs.readFileSync("app/page.tsx", "utf8")
+  const projectTools = fs.readFileSync("components/ProjectToolsPanel.tsx", "utf8")
   const panel = fs.readFileSync("components/CreativeAuditPanel.tsx", "utf8")
   const agent = fs.readFileSync("lib/agent/tools.ts", "utf8")
 
   assert.match(workMeta, /创作体检/)
   assert.match(page, /auditCreativeQuality/)
   assert.match(page, /CreativeAuditPanel/)
-  assert.ok(page.indexOf("<CreativeAuditPanel") < page.indexOf("<EntityCommentsPanel"))
+  assert.match(page, /ProjectToolsPanel/)
+  // 实体批注已收进低频项目工具弹层，创作体检仍留在工作台主流程。
+  assert.match(projectTools, /EntityCommentsPanel/)
   assert.match(panel, /没有发现确定性问题/)
   assert.match(agent, /auditCreativeQuality/)
 })

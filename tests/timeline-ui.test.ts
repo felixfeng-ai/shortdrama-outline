@@ -23,6 +23,8 @@ test("P1-V5 时间线明确缺视频阻断、幂等初始化和不可变版本",
   assert.match(panel, /裁剪/)
   assert.match(panel, /替换素材/)
   assert.match(panel, /videoCandidatesFor/)
+  assert.match(panel, /本集配乐/)
+  assert.match(panel, /使用授权/)
 })
 
 test("P1-V5 时间线客户端只通过服务端项目接口读写", () => {

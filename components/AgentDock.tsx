@@ -556,7 +556,9 @@ export default function AgentDock({
               }
               // 待确认卡片：用户点了才真正改
               const editStatus = inspectCardTarget(line.card, state)
-              const editBlocked = editStatus !== 'current'
+              const editBlocked = line.card.kind === 'video-plan'
+                ? false
+                : editStatus !== 'current'
               return (
                 <div key={i} className="prop agent-line-in">
                   <p className="prop-h">
@@ -568,7 +570,9 @@ export default function AgentDock({
                           ? `待确认本地化：${line.card.targetName} · ${line.card.summary}`
                       : line.card.kind === 'decision'
                         ? `待确认决策：${line.card.stepLabel} · ${line.card.question}`
-                        : `待确认：重新生成「${line.card.stepLabel}」`}
+                        : line.card.kind === 'video-plan'
+                          ? `视频预算：${line.card.shotCount} 镜 · ${line.card.model}`
+                          : `待确认：重新生成「${line.card.stepLabel}」`}
                   </p>
                   <p className="prop-b">
                     {line.card.kind === 'shot-edit'
@@ -579,7 +583,9 @@ export default function AgentDock({
                           ? line.card.text
                       : line.card.kind === 'decision'
                         ? `推荐「${line.card.recommended}」：${line.card.reason}`
-                        : line.card.reason}
+                        : line.card.kind === 'video-plan'
+                          ? `${line.card.durationSeconds} 秒/镜 · ${line.card.resolution} · 预计 ¥${(line.card.estimatedCostMicros / 1_000_000).toFixed(2)} · 上限 ¥${(line.card.budgetLimitMicros / 1_000_000).toFixed(2)}`
+                          : line.card.reason}
                   </p>
                   {line.card.kind === 'decision' && (
                     <p className="prop-b">
@@ -621,6 +627,8 @@ export default function AgentDock({
                           } else if (line.card.kind === 'decision') {
                             onApplyDecision(line.card)
                             push({ role: 'note', text: '已提交这条创作决策。' })
+                          } else if (line.card.kind === 'video-plan') {
+                            push({ role: 'note', text: '视频预算已记录，尚未创建付费任务。' })
                           } else {
                             onRegenerate(line.card.step)
                             push({ role: 'note', text: '已按你的确认重跑该步骤。' })
@@ -629,7 +637,9 @@ export default function AgentDock({
                       }}
                       className="ok disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      {editBlocked ? '需重新读取' : '确认'}
+                      {line.card.kind === 'video-plan'
+                        ? '知道了'
+                        : editBlocked ? '需重新读取' : '确认'}
                     </button>
                     <button
                       type="button"

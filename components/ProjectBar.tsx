@@ -34,6 +34,8 @@ interface Props {
   onCopyAll: () => void
   onCopyLink: () => void
   onCopyReviewLink: () => void
+  onOpenTools: () => void
+  toolsAvailable: boolean
   exportTarget: PlatformExportTarget
   onExportTargetChange: (target: PlatformExportTarget) => void
   exportPreflight?: PlatformPreflight | null
@@ -65,6 +67,8 @@ export default function ProjectBar({
   onCopyAll,
   onCopyLink,
   onCopyReviewLink,
+  onOpenTools,
+  toolsAvailable,
   exportTarget,
   onExportTargetChange,
   exportPreflight = null,
@@ -149,10 +153,27 @@ export default function ProjectBar({
         )}
         <button
           type="button"
+          onClick={onOpenTools}
+          disabled={!toolsAvailable}
+          aria-label="打开项目工具"
+          title="实体批注、跨项目资产与版本分支"
+          className="project-tools-trigger shrink-0 inline-flex min-h-9 items-center gap-1.5 rounded-pill border border-surface-line px-2.5 py-1.5 text-xs text-ink-600
+            transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true" className="h-3.5 w-3.5 fill-none stroke-current [stroke-width:1.45]">
+            <path d="M3.5 5h13M3.5 10h13M3.5 15h13" />
+            <circle cx="7" cy="5" r="1.4" />
+            <circle cx="13" cy="10" r="1.4" />
+            <circle cx="9" cy="15" r="1.4" />
+          </svg>
+          项目工具
+        </button>
+        <button
+          type="button"
           disabled={!hasContent}
           onClick={() => setExportOpen((value) => !value)}
           aria-expanded={exportOpen}
-          className="project-backup rounded-chip border border-surface-line px-2.5 py-1.5 text-xs text-ink-600 sm:ml-auto
+          className="project-backup rounded-chip border border-surface-line px-2.5 py-1.5 text-xs text-ink-600
             transition-colors hover:border-accent-300 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           导出

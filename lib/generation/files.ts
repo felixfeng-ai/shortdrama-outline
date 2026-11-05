@@ -9,6 +9,8 @@ const MIME_EXT: Record<string, string> = {
   "image/webp": "webp",
   "video/mp4": "mp4",
   "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
 }
 
 function generatedRoot(): string {
@@ -93,12 +95,17 @@ export function writeGeneratedAudio(
   bytes: Uint8Array,
   mime: string,
 ): { storageKey: string; bytes: number } {
-  if (mime !== "audio/mpeg") throw new Error("不支持的音频格式")
+  const ext = mime === "audio/mpeg"
+    ? "mp3"
+    : mime === "audio/wav" || mime === "audio/x-wav"
+      ? "wav"
+      : ""
+  if (!ext) throw new Error("不支持的音频格式")
   if (bytes.length === 0) throw new Error("音频内容为空")
   if (bytes.length > 20 * 1024 * 1024) throw new Error("音频不能超过 20MB")
   const project = safeProjectId(projectId)
   const asset = safeAssetId(assetId)
-  const relative = path.posix.join("generated", project, `${asset}.mp3`)
+  const relative = path.posix.join("generated", project, `${asset}.${ext}`)
   const full = resolveGeneratedStoragePath(relative)
   fs.mkdirSync(path.dirname(full), { recursive: true })
   fs.writeFileSync(full, bytes)
@@ -109,6 +116,36 @@ export function readGeneratedAsset(storageKey: string): Uint8Array {
   const full = resolveGeneratedStoragePath(storageKey)
   if (!fs.existsSync(full)) throw new Error("关键帧文件不存在或生成资产缺失")
   return new Uint8Array(fs.readFileSync(full))
+}
+
+export function writeGeneratedArtifact(
+  projectId: string,
+  relativePath: string,
+  bytes: Uint8Array,
+  maxBytes = 500 * 1024 * 1024,
+  allowEmpty = false,
+): { storageKey: string; bytes: number } {
+  // 渲染产物复用 generated 根目录，但只接受相对路径和普通路径段，禁止借输出目录穿越。
+  if (bytes.length === 0 && !allowEmpty) throw new Error("渲染产物内容为空")
+  if (bytes.length > maxBytes) throw new Error("渲染产物超过允许大小")
+  const project = safeProjectId(projectId)
+  const parts = relativePath.replaceAll("\\", "/").split("/")
+  if (
+    parts.length === 0
+    || parts.some((part) => !part || part === "." || part === "..")
+  ) {
+    throw new Error("渲染产物路径非法")
+  }
+  const relative = path.posix.join("generated", project, ...parts)
+  const full = resolveGeneratedStoragePath(relative)
+  fs.mkdirSync(path.dirname(full), { recursive: true })
+  fs.writeFileSync(full, bytes)
+  return { storageKey: relative, bytes: bytes.length }
+}
+
+export function removeGeneratedAsset(storageKey: string): void {
+  const full = resolveGeneratedStoragePath(storageKey)
+  fs.rmSync(full, { force: true })
 }
 
 export function removeGeneratedProjectFiles(projectId: string): void {

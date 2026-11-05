@@ -574,6 +574,8 @@ export default function SkillAgentDrawer({
                       ? line.card.targetName
                       : line.card.kind === 'localization-edit'
                         ? line.card.targetName
+                      : line.card.kind === 'video-plan'
+                        ? `视频预算 · ${line.card.shotCount} 镜`
                       : line.card.stepLabel}
                 </h3>
                 <p>
@@ -585,10 +587,16 @@ export default function SkillAgentDrawer({
                       ? line.card.summary
                     : line.card.kind === 'regenerate'
                       ? line.card.reason
+                    : line.card.kind === 'video-plan'
+                      ? `${line.card.model} / ${line.card.resolution} / ${line.card.durationSeconds} 秒 / 预计 ¥${(line.card.estimatedCostMicros / 1_000_000).toFixed(2)} / 上限 ¥${(line.card.budgetLimitMicros / 1_000_000).toFixed(2)}`
                       : line.card.question}
                 </p>
                 <div className="plan-actions">
-                  <button className="confirm" type="button" onClick={() => openWorkspace(line.card)}>去工作台处理</button>
+                  {line.card.kind === 'video-plan' ? (
+                    <button className="confirm" type="button" onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))}>知道了</button>
+                  ) : (
+                    <button className="confirm" type="button" onClick={() => openWorkspace(line.card)}>去工作台处理</button>
+                  )}
                   <button type="button" onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))}>忽略</button>
                 </div>
               </div>

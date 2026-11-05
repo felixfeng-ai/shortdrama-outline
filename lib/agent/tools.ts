@@ -16,6 +16,7 @@ import {
   readSourceChunk,
   type SourceMaterialInput,
 } from '../skills/source-index'
+import { estimateVideoCostMicros } from '../video/model.ts'
 
 export interface AgentShot {
   /** 跨版本稳定目标；修改镜头必须用它，不能依赖可变的展示镜号。 */
@@ -188,6 +189,16 @@ export type AgentCard =
     options: string[]
     recommended: string
     reason: string
+  }
+  | {
+    kind: 'video-plan'
+    shotIds: string[]
+    shotCount: number
+    durationSeconds: number
+    model: string
+    resolution: string
+    estimatedCostMicros: number
+    budgetLimitMicros: number
   }
 
 export interface ToolResult {
@@ -398,6 +409,37 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
         reason: { type: 'string', description: '推荐理由，不能为空' },
       },
       required: ['step', 'question', 'options', 'recommended', 'reason'],
+    },
+  },
+  {
+    name: 'propose_video_plan',
+    description: '为已存在的镜头生成待确认的视频预算卡。只计算镜头数、时长、模型、预计费用和预算上限，不创建付费任务，也不自动采用首帧。',
+    parameters: {
+      type: 'object',
+      properties: {
+        shotIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '当前项目中的稳定镜头 targetId，最多 12 个',
+        },
+        model: {
+          type: 'string',
+          enum: ['MiniMax-H3', 'MiniMax-H3-Highspeed', 'MiniMax-H3-Lite', 'MiniMax-H3-Max'],
+        },
+        resolution: {
+          type: 'string',
+          enum: ['480P', '768P', '2K'],
+        },
+        durationSeconds: {
+          type: 'number',
+          description: '每个镜头的视频时长，单位秒',
+        },
+        budgetLimitMicros: {
+          type: 'number',
+          description: '用户愿意为本次计划支付的预算上限，单位微元',
+        },
+      },
+      required: ['shotIds', 'model', 'resolution', 'durationSeconds', 'budgetLimitMicros'],
     },
   },
 ]
@@ -882,6 +924,60 @@ export function createToolExecutors(
           options,
           recommended,
           reason,
+        },
+      }
+    },
+    propose_video_plan: (args) => {
+      const shotIds = Array.isArray(args?.shotIds)
+        ? [...new Set(args.shotIds.map((item) => String(item).trim()).filter(Boolean))]
+        : []
+      if (shotIds.length === 0) return { ok: false, content: '至少选择一个镜头。' }
+      if (shotIds.length > 12) return { ok: false, content: '一次视频计划最多包含 12 个镜头。' }
+      const existing = new Set(state.shots.map((shot) => shot.targetId))
+      const missing = shotIds.find((id) => !existing.has(id))
+      if (missing) return { ok: false, content: `当前项目没有镜头 ${missing}，不要编 targetId。` }
+
+      const model = String(args?.model ?? '').trim()
+      const resolution = String(args?.resolution ?? '').trim()
+      const durationSeconds = Math.floor(Number(args?.durationSeconds))
+      const budgetLimitMicros = Math.floor(Number(args?.budgetLimitMicros))
+      if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+        return { ok: false, content: '视频时长必须是正整数秒。' }
+      }
+      if (!Number.isFinite(budgetLimitMicros) || budgetLimitMicros <= 0) {
+        return { ok: false, content: '预算上限必须是正整数微元。' }
+      }
+      let estimatedCostMicros: number
+      try {
+        estimatedCostMicros = estimateVideoCostMicros({
+          model,
+          resolution,
+          duration: durationSeconds,
+        }) * shotIds.length
+      } catch (error) {
+        return {
+          ok: false,
+          content: error instanceof Error ? error.message : '视频模型或分辨率不支持。',
+        }
+      }
+      if (estimatedCostMicros > budgetLimitMicros) {
+        return {
+          ok: false,
+          content: `预计 ${(estimatedCostMicros / 1_000_000).toFixed(2)} 元，超过预算 ${(budgetLimitMicros / 1_000_000).toFixed(2)} 元。`,
+        }
+      }
+      return {
+        ok: true,
+        content: `已生成视频预算卡：${shotIds.length} 镜，每镜 ${durationSeconds} 秒，预计 ${(estimatedCostMicros / 1_000_000).toFixed(2)} 元。尚未创建任务。`,
+        card: {
+          kind: 'video-plan',
+          shotIds,
+          shotCount: shotIds.length,
+          durationSeconds,
+          model,
+          resolution,
+          estimatedCostMicros,
+          budgetLimitMicros,
         },
       }
     },
