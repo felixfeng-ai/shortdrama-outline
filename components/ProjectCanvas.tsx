@@ -20,7 +20,8 @@ import {
 } from '@/lib/canvas-view'
 import type { SnapshotDto } from '@/lib/assets/api'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
-import type { GenerationTask } from '@/lib/generation/types'
+import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
+import ProductionMap from './ProductionMap'
 
 export type CanvasNodeId = StepKey | 'places'
 
@@ -41,6 +42,9 @@ export interface CanvasPreviewItem {
   missing?: boolean
   episode?: number
   scene?: string
+  shotNumber?: number
+  status?: string
+  duration?: number
   edit?: CanvasEditOption
 }
 
@@ -190,6 +194,8 @@ export default function ProjectCanvas({
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [restoreNotice, setRestoreNotice] = useState<string | null>(null)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([])
+  const [generationAssets, setGenerationAssets] = useState<GeneratedAsset[]>([])
+  const [mapMode, setMapMode] = useState<'production' | 'flow'>('production')
   const [priorityExpanded, setPriorityExpanded] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -265,6 +271,12 @@ export default function ProjectCanvas({
 
   function requestOpenStep(step: StepKey) {
     requestClose(() => openRef.current(step))
+  }
+
+  function switchMapMode(next: 'production' | 'flow') {
+    if (next === mapMode) return
+    if (selected) clearSelection()
+    setMapMode(next)
   }
 
   function openCanvasAction(action: CanvasAction) {
@@ -458,16 +470,23 @@ export default function ProjectCanvas({
   useEffect(() => {
     if (!projectId) {
       setGenerationTasks([])
+      setGenerationAssets([])
       return
     }
     let active = true
     const load = () => {
       fetchProjectGenerationAssets(projectId)
         .then((state) => {
-          if (active) setGenerationTasks(state.tasks)
+          if (active) {
+            setGenerationTasks(state.tasks)
+            setGenerationAssets(state.assets)
+          }
         })
         .catch(() => {
-          if (active) setGenerationTasks([])
+          if (active) {
+            setGenerationTasks([])
+            setGenerationAssets([])
+          }
         })
     }
     load()
@@ -679,6 +698,29 @@ export default function ProjectCanvas({
         </button>
       </div>
 
+      <div className="map-view-tabs" role="tablist" aria-label="画布视图">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mapMode === 'production'}
+          className={mapMode === 'production' ? 'active' : ''}
+          onClick={() => switchMapMode('production')}
+        >
+          制作地图
+          <span>{counts.shots} 镜</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mapMode === 'flow'}
+          className={mapMode === 'flow' ? 'active' : ''}
+          onClick={() => switchMapMode('flow')}
+        >
+          六步流程
+          <span>{Object.values(completed).filter(Boolean).length} / 6</span>
+        </button>
+      </div>
+
       <section className={`map-priority ${canvasActions.length ? 'has-issues' : 'is-clear'}`} aria-label="优先处理">
         <div className="map-priority-head">
           <span>
@@ -732,6 +774,8 @@ export default function ProjectCanvas({
 
       <div className="map-workspace">
         <div className="map-map-pane">
+          {mapMode === 'flow' ? (
+            <>
           <div
             className={`map-stage-wrap canvas-viewport ${dragging ? 'dragging' : ''}`}
             ref={stage}
@@ -847,6 +891,17 @@ export default function ProjectCanvas({
               )
             })}
           </ul>
+            </>
+          ) : (
+            <ProductionMap
+              episodes={previews.episodes?.items ?? []}
+              scenes={previews.scenes?.items ?? []}
+              shots={previews.shots?.items ?? []}
+              assets={generationAssets}
+              onOpenShot={(shotId) => requestClose(() => onOpenItem('shots', shotId))}
+              onShowFlow={() => switchMapMode('flow')}
+            />
+          )}
         </div>
 
         {selectedNode && (

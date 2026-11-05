@@ -1059,6 +1059,7 @@ export default function Home() {
       summary: '每集结尾钩子决定追看，短于 20 字时节点会提示继续补强。',
       items: episodes.map((e) => ({
         id: e.id,
+        episode: e.number,
         title: `第 ${e.number} 集 · ${e.title || '未命名'}`,
         meta: e.hook ? `钩子 ${e.hook.trim().length} 字` : '还没有钩子',
         note: e.hook || e.synopsis || '这一集的内容待补',
@@ -1100,6 +1101,9 @@ export default function Home() {
         targetId: s.entityId,
         episode: s.episode > 0 ? s.episode : undefined,
         scene: s.scene,
+        shotNumber: s.shot,
+        status: s.status,
+        duration: s.params.duration,
         title: `第 ${s.shot} 镜 · ${s.scene || '场景待补'}`,
         meta: `第 ${s.episode || '?'} 集 · ${s.shotSize} · ${s.camera}`,
         note: s.missingRefFor.length
