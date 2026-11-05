@@ -48,6 +48,7 @@ import type {
   WorkspaceTask,
   WorkspaceTaskStatus,
 } from '@/lib/workspace-api';
+import { groupWorkspaceTasks, type TaskGroup } from '@/lib/task-groups';
 import { useAuth } from '@/lib/auth-store';
 import { cancelWorkspaceTask, retryWorkspaceTask } from '@/lib/task-actions';
 import { workspaceApiBaseUrl } from '@/lib/workspace-api';
@@ -116,6 +117,7 @@ export default function TasksScreen() {
   const { authorizedFetch } = useAuth();
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [mediaFilter, setMediaFilter] = useState<TaskMediaFilter>('all');
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
   const [actionId, setActionId] = useState('');
   const [actionError, setActionError] = useState('');
   const tasks = data.tasks;
@@ -125,6 +127,10 @@ export default function TasksScreen() {
     () => filterTasksByMedia(filterWorkspaceTasks(tasks, filter), mediaFilter),
     [filter, mediaFilter, tasks],
   );
+  const visibleGroups = useMemo(() => groupWorkspaceTasks(visibleTasks), [visibleTasks]);
+  const reviewableCount = tasks.filter((task) =>
+    task.status === 'succeeded' && Boolean(task.assetId)
+  ).length;
   const active = hasActiveTasks(tasks);
   const projectLabel =
     status === 'synced' || tasks.length > 0
@@ -311,6 +317,7 @@ export default function TasksScreen() {
                 已采用视频 {data.videoReadiness.videoReady}/{data.videoReadiness.totalShots} 镜
                 {' · '}缺首帧 {data.videoReadiness.missingFrame}
                 {' · '}视频异常 {data.videoReadiness.failedTasks}
+                {' · '}可审片 {reviewableCount}
               </Text>
             ) : null}
           </Panel>
@@ -375,15 +382,26 @@ export default function TasksScreen() {
             </Panel>
           ) : (
             <Panel style={styles.taskList}>
-              {visibleTasks.map((task, index) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  batch={data.batches.find((batch) => batch.id === task.batchId) ?? null}
+              {visibleGroups.map((group, index) => (
+                <TaskGroupView
+                  key={group.id}
+                  group={group}
+                  batch={group.kind === 'batch'
+                    ? data.batches.find((batch) => `batch:${batch.id}` === group.id) ?? null
+                    : null}
+                  expanded={expandedBatches.has(group.id)}
+                  onToggle={() => {
+                    setExpandedBatches((current) => {
+                      const next = new Set(current);
+                      if (next.has(group.id)) next.delete(group.id);
+                      else next.add(group.id);
+                      return next;
+                    });
+                  }}
                   projectId={data.activeProject?.id ?? ''}
                   actionId={actionId}
-                  onAction={(action) => void handleTaskAction(task, action)}
-                  divider={index < visibleTasks.length - 1}
+                  onAction={(task, action) => void handleTaskAction(task, action)}
+                  divider={index < visibleGroups.length - 1}
                 />
               ))}
             </Panel>
@@ -411,6 +429,101 @@ function Metric({
   );
 }
 
+function TaskGroupView({
+  group,
+  batch,
+  expanded,
+  onToggle,
+  projectId,
+  actionId,
+  onAction,
+  divider,
+}: {
+  group: TaskGroup;
+  batch: WorkspaceBatch | null;
+  expanded: boolean;
+  onToggle: () => void;
+  projectId: string;
+  actionId: string;
+  onAction: (task: WorkspaceTask, action: 'cancel' | 'retry') => void;
+  divider: boolean;
+}) {
+  if (group.kind === 'single') {
+    const task = group.tasks[0];
+    return (
+      <TaskRow
+        task={task}
+        batch={batch}
+        projectId={projectId}
+        actionId={actionId}
+        onAction={(action) => onAction(task, action)}
+        divider={divider}
+      />
+    );
+  }
+  const batchTone = group.active > 0
+    ? 'info'
+    : group.failed > 0
+      ? 'warning'
+      : group.reviewable > 0
+        ? 'success'
+        : 'neutral';
+  return (
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${group.tasks.length} 个镜头的批次`}
+        onPress={onToggle}
+        style={({ pressed }) => [styles.batchRow, pressed && styles.pressed]}
+      >
+        <View style={styles.batchIcon}>
+          <Feather name="layers" size={17} color={colors.info} />
+        </View>
+        <View style={styles.batchCopy}>
+          <Text style={styles.batchTitle}>批次 · {group.tasks.length} 个镜头</Text>
+          <Text style={styles.batchMeta}>
+            {group.active > 0 ? `${group.active} 进行中` : `${group.completed} 已完成`}
+            {group.failed > 0 ? ` · ${group.failed} 异常` : ''}
+            {batch ? ` · 预留 ${yuan(batch.reservedCostMicros)}` : ''}
+          </Text>
+          {batch ? (
+            <Text style={styles.batchBudget}>
+              实付 {yuan(batch.actualCostMicros)} · 可审 {group.reviewable}
+            </Text>
+          ) : null}
+        </View>
+        <View style={styles.batchRight}>
+          <StatusBadge tone={batchTone}>
+            {batch ? BATCH_STATUS_LABELS[batch.status] : '批次'}
+          </StatusBadge>
+          <Feather
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.textMuted}
+          />
+        </View>
+      </Pressable>
+      {expanded ? (
+        <View style={styles.batchChildren}>
+          {group.tasks.map((task, index) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              batch={null}
+              projectId={projectId}
+              actionId={actionId}
+              onAction={(action) => onAction(task, action)}
+              divider={index < group.tasks.length - 1}
+            />
+          ))}
+        </View>
+      ) : null}
+      {divider ? <Divider /> : null}
+    </View>
+  );
+}
+
 function TaskRow({
   task,
   batch,
@@ -420,7 +533,7 @@ function TaskRow({
   divider,
 }: {
   task: WorkspaceTask;
-  batch: WorkspaceBatch | null;
+  batch?: WorkspaceBatch | null;
   projectId: string;
   actionId: string;
   onAction: (action: 'cancel' | 'retry') => void;
@@ -485,7 +598,7 @@ function TaskRow({
             </Text>
           ) : null}
           {batch ? (
-            <Text style={styles.batchMeta} numberOfLines={1}>
+            <Text style={styles.taskBatchMeta} numberOfLines={1}>
               批次 · {BATCH_STATUS_LABELS[batch.status]} · 预留 {yuan(batch.reservedCostMicros)}
               {' · '}实付 {yuan(batch.actualCostMicros)}
             </Text>
@@ -761,6 +874,53 @@ const styles = StyleSheet.create({
   taskList: {
     overflow: 'hidden',
   },
+  batchRow: {
+    minHeight: 86,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: 'rgba(92,117,111,0.035)',
+  },
+  batchIcon: {
+    width: 36,
+    height: 36,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(92,117,111,0.12)',
+  },
+  batchCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  batchTitle: {
+    color: colors.text,
+    fontSize: type.label,
+    fontWeight: '600',
+    lineHeight: 19,
+  },
+  batchMeta: {
+    color: colors.textMuted,
+    fontSize: type.micro,
+    lineHeight: 16,
+  },
+  batchBudget: {
+    color: colors.info,
+    fontFamily: fonts.mono,
+    fontSize: 9,
+  },
+  batchRight: {
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  batchChildren: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    paddingLeft: spacing.sm,
+  },
   taskRow: {
     minHeight: 76,
     flexDirection: 'row',
@@ -819,7 +979,7 @@ const styles = StyleSheet.create({
     fontSize: type.micro,
     lineHeight: 16,
   },
-  batchMeta: {
+  taskBatchMeta: {
     marginTop: 4,
     color: colors.info,
     fontFamily: fonts.mono,

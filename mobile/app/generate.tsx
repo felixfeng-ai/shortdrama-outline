@@ -1,8 +1,16 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -19,6 +27,7 @@ import {
 } from '@/components/ui';
 import { colors, fonts, radii, spacing, type } from '@/constants/tokens';
 import { useAuth } from '@/lib/auth-store';
+import { recommendedGenerationTarget } from '@/lib/generation-recommendation';
 import { generateWorkspaceTarget } from '@/lib/generation-entry';
 import { useMediaAttachments } from '@/lib/media-attachment-store';
 import { attachmentToGenerationReference } from '@/lib/media-encoding';
@@ -56,12 +65,14 @@ interface GenerationOption extends WorkspaceGenerationTarget {
 }
 
 export default function GenerateScreen() {
+  const params = useLocalSearchParams<{ mode?: string }>();
   const { data } = useWorkspace();
   const { authorizedFetch } = useAuth();
   const { attachments, clearAttachments } = useMediaAttachments();
-  const [mode, setMode] = useState<GenerateMode>('image');
+  const [mode, setMode] = useState<GenerateMode>(params.mode === 'video' ? 'video' : 'image');
   const [filter, setFilter] = useState<(typeof TYPES)[number]['key']>('all');
   const [selectedId, setSelectedId] = useState('');
+  const [targetPickerOpen, setTargetPickerOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const videoModel = videoModelCapability(
@@ -98,7 +109,10 @@ export default function GenerateScreen() {
       blockedReason: null,
     }));
   }, [data.generationTargets, data.videoTargets, filter, mode]);
-  const selected = targets.find((target) => target.key === selectedId) ?? targets[0] ?? null;
+  const recommended = recommendedGenerationTarget(targets);
+  const selected = targets.find((target) => target.key === selectedId)
+    ?? recommended
+    ?? targets[0]!;
   const selectedVideoCost = selected?.kind === 'video'
     && selected.duration
     && videoEnabled
@@ -264,60 +278,40 @@ export default function GenerateScreen() {
             </Panel>
           ) : (
             <>
-              <View style={styles.list}>
-                {targets.slice(0, 60).map((target, index) => {
-                  const active = selected === target
-                    || (selected?.targetType === target.targetType && selected?.targetId === target.targetId);
-                  const blocked = target.kind === 'video' && Boolean(target.blockedReason || !videoEnabled);
-                  return (
-                    <Pressable
-                      key={target.key}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: active }}
-                      onPress={() => setSelectedId(target.key)}
-                      style={({ pressed }) => [
-                        styles.targetRow,
-                        index > 0 && styles.targetBorder,
-                        active && styles.targetActive,
-                        blocked && styles.targetBlocked,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <View style={styles.targetIcon}>
-                        <Feather
-                          name={target.kind === 'video'
-                            ? 'video'
-                            : target.targetType === 'shot'
-                              ? 'film'
-                              : target.targetType === 'place'
-                                ? 'map-pin'
-                                : 'user'}
-                          size={17}
-                          color={active ? colors.action : colors.textSecondary}
-                        />
-                      </View>
-                      <View style={styles.targetCopy}>
-                        <Text style={styles.targetTitle}>{target.targetLabel}</Text>
-                        <Text numberOfLines={1} style={styles.targetPrompt}>
-                          {blocked && target.blockedReason ? target.blockedReason : target.prompt}
-                        </Text>
-                      </View>
-                      {videoEnabled && target.kind === 'video' && target.duration ? (
-                        <MonoText style={styles.targetDuration}>
-                          {videoCostLabel(
-                            estimatePublicVideoCostMicros(
-                              data.videoCapabilities,
-                              data.videoCapabilities.defaultModel,
-                              videoResolution,
-                              target.duration,
-                            ),
-                          )}
-                        </MonoText>
-                      ) : null}
-                      {active ? <Feather name="check" size={16} color={colors.success} /> : null}
-                    </Pressable>
-                  );
-                })}
+              <View style={styles.recommendationCard}>
+                <View style={styles.recommendationHead}>
+                  <View>
+                    <Kicker>推荐目标</Kicker>
+                    <Text style={styles.recommendationHint}>
+                      {mode === 'video' ? '下一步最值得生成的一段镜头' : '下一步最值得补充的一张画面'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setTargetPickerOpen(true)}
+                    style={({ pressed }) => [styles.changeTarget, pressed && styles.pressed]}
+                  >
+                    <Feather name="shuffle" size={14} color={colors.textSecondary} />
+                    <Text style={styles.changeTargetText}>更换目标</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.recommendationIdentity}>
+                  <View style={styles.targetIcon}>
+                    <Feather
+                      name={mode === 'video' ? 'video' : selected.targetType === 'shot' ? 'film' : selected.targetType === 'place' ? 'map-pin' : 'user'}
+                      size={17}
+                      color={colors.action}
+                    />
+                  </View>
+                  <View style={styles.targetCopy}>
+                    <Text style={styles.recommendationTitle}>{selected.targetLabel}</Text>
+                    <Text numberOfLines={3} style={styles.recommendationPrompt}>
+                      {mode === 'video' && videoBlockedReason
+                        ? videoBlockedReason
+                        : selected.prompt}
+                    </Text>
+                  </View>
+                </View>
               </View>
               {selected ? (
                 <Panel style={styles.promptCard}>
@@ -377,6 +371,81 @@ export default function GenerateScreen() {
             <SecondaryButton label="生成中…" icon="loader" disabled />
           ) : null}
         </ScrollView>
+        <Modal
+          animationType="slide"
+          onRequestClose={() => setTargetPickerOpen(false)}
+          transparent
+          visible={targetPickerOpen}
+        >
+          <View style={styles.sheetScrim}>
+            <Pressable
+              accessibilityLabel="关闭目标选择"
+              onPress={() => setTargetPickerOpen(false)}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.sheet}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.sheetHead}>
+                <View>
+                  <Kicker>选择目标</Kicker>
+                  <Text style={styles.sheetTitle}>
+                    {mode === 'video' ? '要生成哪一段镜头' : '要补充哪一张画面'}
+                  </Text>
+                </View>
+                <IconButton
+                  icon="x"
+                  label="关闭目标选择"
+                  onPress={() => setTargetPickerOpen(false)}
+                />
+              </View>
+              <ScrollView contentContainerStyle={styles.sheetList}>
+                {targets.slice(0, 60).map((target) => {
+                  const active = selected?.key === target.key;
+                  const blocked = target.kind === 'video'
+                    && Boolean(target.blockedReason || !videoEnabled);
+                  return (
+                    <Pressable
+                      key={target.key}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: active }}
+                      onPress={() => {
+                        setSelectedId(target.key);
+                        setTargetPickerOpen(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.targetRow,
+                        active && styles.targetActive,
+                        blocked && styles.targetBlocked,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.targetIcon}>
+                        <Feather
+                          name={target.kind === 'video'
+                            ? 'video'
+                            : target.targetType === 'shot'
+                              ? 'film'
+                              : target.targetType === 'place'
+                                ? 'map-pin'
+                                : 'user'}
+                          size={17}
+                          color={active ? colors.action : colors.textSecondary}
+                        />
+                      </View>
+                      <View style={styles.targetCopy}>
+                        <Text style={styles.targetTitle}>{target.targetLabel}</Text>
+                        <Text numberOfLines={1} style={styles.targetPrompt}>
+                          {blocked && target.blockedReason ? target.blockedReason : target.prompt}
+                        </Text>
+                      </View>
+                      {active ? <Feather name="check" size={16} color={colors.success} /> : null}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </ScreenFade>
     </SafeAreaView>
   );
@@ -454,6 +523,97 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
     gap: spacing.md,
+  },
+  recommendationCard: {
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  recommendationHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  recommendationHint: {
+    marginTop: 2,
+    color: colors.textMuted,
+    fontSize: type.micro,
+  },
+  changeTarget: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.sm,
+  },
+  changeTargetText: {
+    color: colors.textSecondary,
+    fontSize: type.micro,
+    fontWeight: '500',
+  },
+  recommendationIdentity: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  recommendationTitle: {
+    color: colors.text,
+    fontSize: type.body,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  recommendationPrompt: {
+    marginTop: 4,
+    color: colors.textSecondary,
+    fontSize: type.caption,
+    lineHeight: 19,
+  },
+  sheetScrim: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(25,26,24,0.42)',
+  },
+  sheet: {
+    maxHeight: '76%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    backgroundColor: colors.canvas,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xl,
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    alignSelf: 'center',
+    borderRadius: 2,
+    backgroundColor: colors.lineStrong,
+  },
+  sheetHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  sheetTitle: {
+    color: colors.text,
+    fontSize: type.bodyLarge,
+    fontWeight: '600',
+  },
+  sheetList: {
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
   },
   list: {
     overflow: 'hidden',

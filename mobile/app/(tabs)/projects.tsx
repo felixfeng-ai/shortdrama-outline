@@ -211,16 +211,23 @@ export default function ProjectsScreen() {
           title="项目"
           left={<IconButton icon="arrow-left" label="返回 Agent" onPress={() => router.back()} />}
           right={
-            <IconButton
-              icon="plus"
-              label="新建项目"
-              active
-              onPress={() => {
-                setProjectTitle('');
-                setActionError('');
-                setCreateOpen(true);
-              }}
-            />
+            <View style={styles.headerActions}>
+              <IconButton
+                icon="play-circle"
+                label="五分钟演示"
+                onPress={() => router.push('/demo')}
+              />
+              <IconButton
+                icon="plus"
+                label="新建项目"
+                active
+                onPress={() => {
+                  setProjectTitle('');
+                  setActionError('');
+                  setCreateOpen(true);
+                }}
+              />
+            </View>
           }
         />
 
@@ -529,6 +536,10 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.canvas,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.xxs,
   },
   content: {
     width: '100%',

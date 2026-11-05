@@ -62,6 +62,7 @@ export interface WorkspaceData {
   videoTargets: WorkspaceVideoTarget[];
   videoReadiness: WorkspaceVideoReadiness;
   batches: WorkspaceBatch[];
+  agentMemory: WorkspaceAgentMemory;
 }
 
 export interface WorkspaceGenerationTarget {
@@ -123,6 +124,15 @@ export interface WorkspaceBatch {
   createdAt: number;
   confirmedAt: number | null;
   finishedAt: number | null;
+}
+
+export interface WorkspaceAgentMemory {
+  lockedCharacters: string[];
+  lockedPlaces: string[];
+  acceptedDecisions: string[];
+  lockedDecisions: string[];
+  rejectedDirections: string[];
+  openComments: string[];
 }
 
 export interface AgentProjectContext {
@@ -193,6 +203,14 @@ export const demoWorkspace: WorkspaceData = {
     failedTasks: 0,
   },
   batches: [],
+  agentMemory: {
+    lockedCharacters: [],
+    lockedPlaces: [],
+    acceptedDecisions: [],
+    lockedDecisions: [],
+    rejectedDirections: [],
+    openComments: [],
+  },
 };
 
 export function resolveApiBaseUrl(value: string | undefined): string {
@@ -236,6 +254,9 @@ function readWorkspace(value: unknown): WorkspaceData {
       ? data.videoReadiness as WorkspaceVideoReadiness
       : demoWorkspace.videoReadiness,
     batches: Array.isArray(data.batches) ? data.batches as WorkspaceBatch[] : [],
+    agentMemory: data.agentMemory && typeof data.agentMemory === 'object'
+      ? data.agentMemory as WorkspaceAgentMemory
+      : demoWorkspace.agentMemory,
   };
 }
 

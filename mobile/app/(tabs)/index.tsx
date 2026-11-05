@@ -301,6 +301,14 @@ export default function AgentHomeScreen() {
                   onPress={() => router.push('/projects')}
                   style={styles.emptyAction}
                 />
+                {!hasProject ? (
+                  <SecondaryButton
+                    label="五分钟演示"
+                    icon="play-circle"
+                    onPress={() => router.push('/demo')}
+                    style={styles.emptyAction}
+                  />
+                ) : null}
               </Panel>
             )}
 
@@ -361,6 +369,7 @@ export default function AgentHomeScreen() {
                 <AgentTurn
                   session={session}
                   projectContext={projectContext}
+                  memory={data.agentMemory}
                   onAccept={acceptProposal}
                   onDismiss={() => dispatch({ type: 'dismiss' })}
                   onReview={() => router.push('/tasks')}

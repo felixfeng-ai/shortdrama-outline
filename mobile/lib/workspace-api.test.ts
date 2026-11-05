@@ -117,6 +117,14 @@ const payload: WorkspaceData = {
     confirmedAt: 1,
     finishedAt: null,
   }],
+  agentMemory: {
+    lockedCharacters: ['林昭 · 深蓝快递服'],
+    lockedPlaces: ['码头 · 冷蓝夜雨'],
+    acceptedDecisions: ['第 3 集钩子 → 车票留在门缝'],
+    lockedDecisions: [],
+    rejectedDirections: ['否决反转：缺少铺垫'],
+    openComments: ['第 17 镜：门口太亮'],
+  },
 };
 
 test('API base URL is normalized and empty values fall back to local mode', () => {
@@ -150,6 +158,7 @@ test('workspace fetch uses the mobile context endpoint with credentials', async 
   assert.equal(data.videoCapabilities.defaultModel, 'MiniMax-H3-Lite')
   assert.equal(data.videoTargets[0].selectedFrameAssetId, 'frame-1')
   assert.equal(data.videoReadiness.missingVideo, 21)
+  assert.equal(data.agentMemory.lockedCharacters[0], '林昭 · 深蓝快递服')
 });
 
 test('workspace fetch can request a selected project', async () => {

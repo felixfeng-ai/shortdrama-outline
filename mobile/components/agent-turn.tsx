@@ -10,14 +10,19 @@ import {
   StatusBadge,
   StatusDot,
 } from '@/components/ui';
+import { AgentMemory } from '@/components/agent-memory';
 import { colors, spacing, type } from '@/constants/tokens';
 import { agentIntro, type AgentSessionState } from '@/lib/agent-session';
 import { toolLabel } from '@/lib/agent-api';
-import type { AgentProjectContext } from '@/lib/workspace-api';
+import type {
+  AgentProjectContext,
+  WorkspaceAgentMemory,
+} from '@/lib/workspace-api';
 
 export function AgentTurn({
   session,
   projectContext,
+  memory,
   onAccept,
   onDismiss,
   onReview,
@@ -25,6 +30,7 @@ export function AgentTurn({
 }: {
   session: AgentSessionState;
   projectContext: AgentProjectContext;
+  memory: WorkspaceAgentMemory;
   onAccept: () => void;
   onDismiss: () => void;
   onReview: () => void;
@@ -66,6 +72,8 @@ export function AgentTurn({
           <StatusBadge tone="danger">执行失败</StatusBadge>
         ) : null}
       </View>
+
+      <AgentMemory memory={memory} />
 
       {session.phase === 'idle' ? (
         <BodyText style={styles.intro}>

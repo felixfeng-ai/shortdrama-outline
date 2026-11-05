@@ -25,6 +25,7 @@ import {
   SecondaryButton,
   StatusBadge,
 } from '@/components/ui';
+import { ReviewComments } from '@/components/review-comments';
 import { colors, fonts, radii, spacing, type } from '@/constants/tokens';
 import { downloadAuthenticatedFile } from '@/lib/asset-download';
 import { useAuth } from '@/lib/auth-store';
@@ -98,6 +99,7 @@ export default function ReviewScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selecting, setSelecting] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [imageHeaders, setImageHeaders] = useState<Record<string, string>>({});
   const controllerRef = useRef<AbortController | null>(null);
@@ -111,6 +113,9 @@ export default function ReviewScreen() {
   const currentSource = current
     ? buildReviewMediaSource(workspaceApiBaseUrl, current, imageHeaders)
     : null;
+  const comparePair = current
+    ? [current, ...versions.filter((asset) => asset.id !== current.id)].slice(0, 2)
+    : [];
 
   const load = useCallback(() => {
     if (workspaceStatus === 'loading') {
@@ -182,18 +187,18 @@ export default function ReviewScreen() {
     };
   }, [getAccessHeaders]);
 
-  async function adoptCurrent() {
-    if (!current || !projectId || current.selectedAt || selecting) return;
+  async function adoptAsset(asset: ReviewAsset) {
+    if (!projectId || asset.selectedAt || selecting) return;
     setSelecting(true);
     setError('');
     try {
       const selected = await selectReviewAsset(
         workspaceApiBaseUrl,
         projectId,
-        current.id,
+        asset.id,
         {
           fetchImpl: authorizedFetch,
-          mediaKind: current.mediaKind,
+          mediaKind: asset.mediaKind,
         },
       );
       setState((previous) => ({
@@ -204,6 +209,7 @@ export default function ReviewScreen() {
         })),
       }));
       setCurrentId(selected.id);
+      setCompareMode(false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '采用失败');
     } finally {
@@ -280,34 +286,90 @@ export default function ReviewScreen() {
         ) : (
           <>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-              <View style={styles.previewWrap}>
-                {current.mediaKind === 'video' && currentSource ? (
-                  <VideoReviewPreview
-                    key={current.id}
-                    label={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
-                    source={currentSource}
-                    aspectRatio={reviewAspectRatio(current.targetType)}
-                  />
-                ) : (
-                  <Image
-                    accessible
-                    accessibilityLabel={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
-                    contentFit="contain"
-                    source={currentSource ?? undefined}
-                    style={[
-                      styles.preview,
-                      { aspectRatio: reviewAspectRatio(current.targetType) },
-                    ]}
-                    transition={160}
-                  />
-                )}
-                <View style={styles.aiBadge}>
-                  <Feather name="cpu" size={12} color={colors.actionInk} />
-                  <Text style={styles.aiBadgeText}>
-                    {current.mediaKind === 'video' ? 'AI 视频' : 'AI 生成'}
-                  </Text>
+              {compareMode && comparePair.length === 2 ? (
+                <View style={styles.compareGrid}>
+                  {comparePair.map((asset, index) => {
+                    const source = buildReviewMediaSource(
+                      workspaceApiBaseUrl,
+                      asset,
+                      imageHeaders,
+                    );
+                    return (
+                      <View key={asset.id} style={styles.compareItem}>
+                        <View style={styles.compareLabelRow}>
+                          <Text style={styles.compareLabel}>{index === 0 ? 'A' : 'B'}</Text>
+                          <Text style={styles.compareVersion}>
+                            {reviewVersionLabel(versions, versions.indexOf(asset))}
+                          </Text>
+                        </View>
+                        {asset.mediaKind === 'video' ? (
+                          <VideoReviewPreview
+                            compact
+                            controls={false}
+                            key={asset.id}
+                            label={`${targetLabel}，对比 ${index === 0 ? 'A' : 'B'}`}
+                            muted
+                            source={source}
+                            aspectRatio={reviewAspectRatio(asset.targetType)}
+                          />
+                        ) : (
+                          <Image
+                            contentFit="contain"
+                            source={source}
+                            style={[
+                              styles.compareImage,
+                              { aspectRatio: reviewAspectRatio(asset.targetType) },
+                            ]}
+                          />
+                        )}
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={Boolean(asset.selectedAt) || selecting}
+                          onPress={() => void adoptAsset(asset)}
+                          style={({ pressed }) => [
+                            styles.compareAdopt,
+                            Boolean(asset.selectedAt) && styles.compareAdoptSelected,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text style={styles.compareAdoptText}>
+                            {asset.selectedAt ? '已采用' : selecting ? '采用中…' : `采用 ${index === 0 ? 'A' : 'B'}`}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
                 </View>
-              </View>
+              ) : (
+                <View style={styles.previewWrap}>
+                  {current.mediaKind === 'video' && currentSource ? (
+                    <VideoReviewPreview
+                      key={current.id}
+                      label={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
+                      source={currentSource}
+                      aspectRatio={reviewAspectRatio(current.targetType)}
+                    />
+                  ) : (
+                    <Image
+                      accessible
+                      accessibilityLabel={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
+                      contentFit="contain"
+                      source={currentSource ?? undefined}
+                      style={[
+                        styles.preview,
+                        { aspectRatio: reviewAspectRatio(current.targetType) },
+                      ]}
+                      transition={160}
+                    />
+                  )}
+                  <View style={styles.aiBadge}>
+                    <Feather name="cpu" size={12} color={colors.actionInk} />
+                    <Text style={styles.aiBadgeText}>
+                      {current.mediaKind === 'video' ? 'AI 视频' : 'AI 生成'}
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               {mediaKinds.length > 1 ? (
                 <View style={styles.mediaTabs} accessibilityRole="tablist">
@@ -345,9 +407,23 @@ export default function ReviewScreen() {
                     <Text style={styles.versionCount}> · 共 {versions.length} 版</Text>
                   </Text>
                 </View>
-                <StatusBadge tone={current.selectedAt ? 'success' : 'warning'}>
-                  {current.selectedAt ? '当前采用' : '候选版本'}
-                </StatusBadge>
+                <View style={styles.versionActions}>
+                  {versions.length > 1 ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setCompareMode((value) => !value)}
+                      style={({ pressed }) => [styles.compareToggle, pressed && styles.pressed]}
+                    >
+                      <Feather name="columns" size={14} color={colors.textSecondary} />
+                      <Text style={styles.compareToggleText}>
+                        {compareMode ? '退出对比' : 'A/B 对比'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  <StatusBadge tone={current.selectedAt ? 'success' : 'warning'}>
+                    {current.selectedAt ? '当前采用' : '待我确认'}
+                  </StatusBadge>
+                </View>
               </View>
 
               <ScrollView
@@ -425,6 +501,17 @@ export default function ReviewScreen() {
                 ) : null}
               </Panel>
 
+              {targetType === 'shot' ? (
+                <Panel style={styles.commentsPanel}>
+                  <ReviewComments
+                    apiBaseUrl={workspaceApiBaseUrl}
+                    fetchImpl={authorizedFetch}
+                    projectId={projectId}
+                    targetId={targetId}
+                  />
+                </Panel>
+              ) : null}
+
               {error ? (
                 <Panel style={styles.inlineError}>
                   <Feather name="alert-circle" size={16} color={colors.danger} />
@@ -451,7 +538,7 @@ export default function ReviewScreen() {
                 }
                 icon={current.selectedAt ? 'check-circle' : selecting ? 'loader' : 'check'}
                 disabled={Boolean(current.selectedAt) || selecting || downloading}
-                onPress={() => void adoptCurrent()}
+                onPress={() => void adoptAsset(current)}
                 style={styles.footerButton}
               />
             </View>
@@ -466,10 +553,16 @@ function VideoReviewPreview({
   source,
   aspectRatio,
   label,
+  compact = false,
+  controls = true,
+  muted = false,
 }: {
   source: { uri: string; headers: Record<string, string> };
   aspectRatio: number;
   label: string;
+  compact?: boolean;
+  controls?: boolean;
+  muted?: boolean;
 }) {
   const player = useVideoPlayer({
     uri: source.uri,
@@ -477,6 +570,7 @@ function VideoReviewPreview({
     useCaching: true,
   }, (instance) => {
     instance.loop = false;
+    instance.muted = muted;
     instance.staysActiveInBackground = false;
   });
   return (
@@ -485,10 +579,10 @@ function VideoReviewPreview({
       accessibilityLabel={label}
       contentFit="contain"
       fullscreenOptions={{ enable: true }}
-      nativeControls
+      nativeControls={controls}
       player={player}
       playsInline
-      style={[styles.preview, { aspectRatio }]}
+      style={compact ? [styles.comparePreview, { aspectRatio }] : [styles.preview, { aspectRatio }]}
     />
   );
 }
@@ -574,6 +668,60 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     backgroundColor: colors.elevated,
   },
+  compareGrid: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+  },
+  compareItem: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.xs,
+  },
+  compareLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  compareLabel: {
+    color: colors.text,
+    fontFamily: fonts.mono,
+    fontSize: type.body,
+    fontWeight: '600',
+  },
+  compareVersion: {
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: type.micro,
+  },
+  comparePreview: {
+    width: '100%',
+    borderRadius: radii.md,
+    backgroundColor: colors.elevated,
+  },
+  compareImage: {
+    width: '100%',
+    borderRadius: radii.md,
+    backgroundColor: colors.elevated,
+  },
+  compareAdopt: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+  },
+  compareAdoptSelected: {
+    borderColor: 'rgba(112,128,107,0.4)',
+    backgroundColor: 'rgba(112,128,107,0.08)',
+  },
+  compareAdoptText: {
+    color: colors.textSecondary,
+    fontSize: type.micro,
+    fontWeight: '600',
+  },
   aiBadge: {
     position: 'absolute',
     top: spacing.xs,
@@ -624,6 +772,25 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: spacing.md,
+  },
+  versionActions: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
+  compareToggle: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.sm,
+  },
+  compareToggleText: {
+    color: colors.textSecondary,
+    fontSize: type.micro,
+    fontWeight: '600',
   },
   sectionTitle: {
     color: colors.text,
@@ -689,6 +856,9 @@ const styles = StyleSheet.create({
   detailCard: {
     padding: spacing.md,
     gap: spacing.xs,
+  },
+  commentsPanel: {
+    padding: spacing.md,
   },
   detailHead: {
     flexDirection: 'row',
