@@ -15,6 +15,16 @@ export type MobileAgentCard =
       step: string;
       stepLabel: string;
       reason: string;
+    }
+  | {
+      kind: 'video-plan';
+      shotIds: string[];
+      shotCount: number;
+      durationSeconds: number;
+      model: string;
+      resolution: string;
+      estimatedCostMicros: number;
+      budgetLimitMicros: number;
     };
 
 export interface MobileAgentResponse {
@@ -58,6 +68,7 @@ const TOOL_LABELS: Record<string, string> = {
   search_docs: '文档',
   propose_shot_edit: '镜头建议',
   propose_regenerate: '重跑建议',
+  propose_video_plan: '视频预算',
 };
 
 export function toolLabel(name: string): string {
@@ -65,9 +76,9 @@ export function toolLabel(name: string): string {
 }
 
 function readResponse(value: unknown): MobileAgentResponse {
-  if (!value || typeof value !== 'object') throw new Error('Agent 返回了无法识别的内容');
+  if (!value || typeof value !== 'object') throw new Error('Veya Agent 返回了无法识别的内容');
   const data = value as Partial<MobileAgentResponse>;
-  if (typeof data.reply !== 'string') throw new Error('Agent 没有返回回答');
+  if (typeof data.reply !== 'string') throw new Error('Veya Agent 没有返回回答');
   return {
     reply: data.reply,
     toolNames: Array.isArray(data.toolNames)
@@ -89,7 +100,7 @@ export async function runAgentTurn(
   signal?: AbortSignal,
 ): Promise<MobileAgentResponse> {
   const root = resolveApiBaseUrl(baseUrl);
-  if (!root) throw new Error('尚未配置 Agent 服务地址');
+  if (!root) throw new Error('尚未配置 Veya Agent 服务地址');
 
   let response: Response;
   try {
@@ -105,17 +116,17 @@ export async function runAgentTurn(
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw error;
-    throw new Error('无法连接 AI 场记，请检查网络后重试');
+    throw new Error('无法连接 Veya Agent，请检查网络后重试');
   }
 
   let payload: ApiEnvelope<MobileAgentResponse>;
   try {
     payload = (await response.json()) as ApiEnvelope<MobileAgentResponse>;
   } catch {
-    throw new Error('Agent 返回了无法识别的内容');
+    throw new Error('Veya Agent 返回了无法识别的内容');
   }
   if (!response.ok || !payload.success || !payload.data) {
-    throw new Error(payload.error || 'AI 场记暂时没有回应');
+    throw new Error(payload.error || 'Veya Agent 暂时没有回应');
   }
   return readResponse(payload.data);
 }
@@ -144,6 +155,16 @@ export function mapAgentResponse(
       evidence: context.evidence,
       impact: `${card.reason}；尚未触发重跑`,
       cost: `${response.modelCalls} 单位`,
+    };
+  } else if (card?.kind === 'video-plan') {
+    proposal = {
+      title: `视频预算 · ${card.shotCount} 个镜头`,
+      summary: response.reply,
+      target: context.contextLabel,
+      evidence: `${card.shotCount} 个镜头，每镜 ${card.durationSeconds} 秒`,
+      impact: '只生成本次预算计划，尚未创建视频任务',
+      cost: `¥${(card.estimatedCostMicros / 1_000_000).toFixed(2)}`,
+      videoPlan: card,
     };
   }
 
@@ -183,7 +204,7 @@ export async function applyAgentSuggestion(
   signal?: AbortSignal,
 ): Promise<AgentApplyResult> {
   const root = resolveApiBaseUrl(baseUrl);
-  if (!root) throw new Error('尚未配置 Agent 服务地址');
+  if (!root) throw new Error('尚未配置 Veya Agent 服务地址');
 
   let response: Response;
   try {

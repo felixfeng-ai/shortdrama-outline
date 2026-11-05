@@ -125,6 +125,30 @@ const payload: WorkspaceData = {
     rejectedDirections: ['否决反转：缺少铺垫'],
     openComments: ['第 17 镜：门口太亮'],
   },
+  pacing: {
+    benchmark: {
+      label: '成剧竖屏短剧基准',
+      hookMinChars: 20,
+      hookMaxChars: 80,
+      dialogueCharsPerShotMax: 35,
+      averageShotSecondsMax: 12,
+      minimumShotsPerEpisode: 3,
+    },
+    summary: '已检查 1 集，发现 0 个节奏提醒。',
+    rows: [{
+      episode: 3,
+      title: '潮汐之后',
+      hookChars: 28,
+      hookStatus: 'good',
+      endingSuspense: 'open',
+      shotCount: 24,
+      dialogueChars: 120,
+      dialogueCharsPerShot: 5,
+      averageShotSeconds: 8,
+      observations: [],
+    }],
+    warnings: [],
+  },
 };
 
 test('API base URL is normalized and empty values fall back to local mode', () => {
@@ -159,6 +183,7 @@ test('workspace fetch uses the mobile context endpoint with credentials', async 
   assert.equal(data.videoTargets[0].selectedFrameAssetId, 'frame-1')
   assert.equal(data.videoReadiness.missingVideo, 21)
   assert.equal(data.agentMemory.lockedCharacters[0], '林昭 · 深蓝快递服')
+  assert.equal(data.pacing.rows[0].averageShotSeconds, 8)
 });
 
 test('workspace fetch can request a selected project', async () => {

@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-import type { WorkspaceData } from './workspace-api.ts';
+import { normalizeWorkspaceData, type WorkspaceData } from './workspace-api.ts';
 
 const KEY = 'chengju.workspace.cache.v1';
 
@@ -36,9 +36,12 @@ export function parseWorkspaceCache(value: string | null): WorkspaceCache | null
     const entries = 'entries' in parsed && Array.isArray(parsed.entries)
       ? parsed.entries
       : [parsed as WorkspaceCache];
-    return entries
+    const latest = entries
       .filter((entry) => entry && typeof entry === 'object' && entry.data && Array.isArray(entry.data.projects))
-      .sort((a, b) => b.savedAt - a.savedAt)[0] ?? null;
+      .sort((a, b) => b.savedAt - a.savedAt)[0];
+    return latest
+      ? { ...latest, data: normalizeWorkspaceData(latest.data) }
+      : null;
   } catch {
     return null;
   }

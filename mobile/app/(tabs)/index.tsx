@@ -25,7 +25,7 @@ import {
   SecondaryButton,
   StatusDot,
 } from '@/components/ui';
-import { colors, spacing, type } from '@/constants/tokens';
+import { colors, radii, spacing, type } from '@/constants/tokens';
 import {
   AGENT_PROMPTS,
   agentSessionReducer,
@@ -35,6 +35,10 @@ import {
   loadAgentSession,
   saveAgentSession,
 } from '@/lib/agent-session-storage';
+import {
+  appendAgentThreadTurn,
+  loadRemoteAgentSession,
+} from '@/lib/agent-threads-api';
 import { applyAgentSuggestion, mapAgentResponse, runAgentTurn } from '@/lib/agent-api';
 import { useAuth } from '@/lib/auth-store';
 import { useWorkspace } from '@/lib/workspace-store';
@@ -48,6 +52,10 @@ export default function AgentHomeScreen() {
   const requestRef = useRef<AbortController | null>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionScopeRef = useRef('');
+  const remoteHydratedScopeRef = useRef('');
+  const remoteThreadRef = useRef<string | null>(null);
+  const remoteWriteRef = useRef<Promise<unknown>>(Promise.resolve());
+  const sessionPhaseRef = useRef(initialAgentSessionState.phase);
   const project = data.activeProject;
   const hero = data.hero;
   const hasProject = !!project;
@@ -84,11 +92,31 @@ export default function AgentHomeScreen() {
     dispatch({ type: 'stop' });
   }, []);
 
+  const queueRemoteMessages = useCallback((
+    projectId: string,
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  ) => {
+    if (!workspaceApiBaseUrl || status !== 'synced') return;
+    remoteWriteRef.current = remoteWriteRef.current
+      .then(async () => {
+        const threadId = await appendAgentThreadTurn(
+          workspaceApiBaseUrl,
+          projectId,
+          remoteThreadRef.current,
+          messages,
+          authorizedFetch,
+        );
+        remoteThreadRef.current = threadId;
+      })
+      .catch(() => undefined);
+  }, [authorizedFetch, status]);
+
   const sendPrompt = useCallback(() => {
     const prompt = session.draft.trim();
     if (!project || !prompt || session.phase === 'working' || session.phase === 'proposed') return;
 
     dispatch({ type: 'submit', context: projectContext });
+    queueRemoteMessages(project.id, [{ role: 'user', content: prompt }]);
     requestRef.current?.abort();
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
 
@@ -114,13 +142,14 @@ export default function AgentHomeScreen() {
           type: 'complete',
           result: mapAgentResponse(response, projectContext),
         });
+        queueRemoteMessages(project.id, [{ role: 'assistant', content: response.reply }]);
         refresh();
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
         dispatch({
           type: 'fail',
-          message: reason instanceof Error ? reason.message : 'AI 场记暂时没有回应',
+          message: reason instanceof Error ? reason.message : 'Veya Agent 暂时没有回应',
         });
       })
       .finally(() => {
@@ -134,6 +163,7 @@ export default function AgentHomeScreen() {
     session.draft,
     session.phase,
     status,
+    queueRemoteMessages,
   ]);
 
   const acceptProposal = useCallback(() => {
@@ -191,19 +221,57 @@ export default function AgentHomeScreen() {
     if (!sessionScope) {
       dispatch({ type: 'restore', state: initialAgentSessionState });
       sessionScopeRef.current = '';
+      remoteHydratedScopeRef.current = '';
+      remoteThreadRef.current = null;
+      remoteWriteRef.current = Promise.resolve();
       return;
     }
     let active = true;
+    remoteThreadRef.current = null;
+    remoteWriteRef.current = Promise.resolve();
     dispatch({ type: 'restore', state: initialAgentSessionState });
     void loadAgentSession(sessionScope).then((stored) => {
       if (!active) return;
       dispatch({ type: 'restore', state: stored ?? initialAgentSessionState });
+      remoteThreadRef.current = stored?.remoteThreadId ?? null;
       sessionScopeRef.current = sessionScope;
     });
     return () => {
       active = false;
     };
   }, [sessionScope]);
+
+  useEffect(() => {
+    if (
+      !project
+      || !workspaceApiBaseUrl
+      || status !== 'synced'
+      || !sessionScope
+      || remoteHydratedScopeRef.current === sessionScope
+    ) return;
+    remoteHydratedScopeRef.current = sessionScope;
+    let active = true;
+    void loadRemoteAgentSession(
+      workspaceApiBaseUrl,
+      project.id,
+      authorizedFetch,
+    )
+      .then((remote) => {
+        if (!active || !remote || sessionPhaseRef.current !== 'idle') return;
+        remoteThreadRef.current = remote.remoteThreadId ?? null;
+        dispatch({ type: 'restore', state: remote });
+      })
+      .catch(() => {
+        // 服务端会话不可用时继续使用本地恢复，不阻断 Agent。
+      });
+    return () => {
+      active = false;
+    };
+  }, [authorizedFetch, project, sessionScope, status]);
+
+  useEffect(() => {
+    sessionPhaseRef.current = session.phase;
+  }, [session.phase]);
 
   useEffect(() => {
     if (!sessionScope || sessionScopeRef.current !== sessionScope) return;
@@ -280,7 +348,7 @@ export default function AgentHomeScreen() {
                 ? [hero.sceneLocation, hero.timeOfDay, hero.sceneSummary].filter(Boolean).join(' · ')
                 : project
                   ? `${project.title} · 还没有场次`
-                  : '新建或导入项目后，AI 场记会读取当前进度。'}
+                  : '新建或导入项目后，Veya Agent 会读取当前进度。'}
             </Text>
 
             {hasProject && hero ? (
@@ -292,7 +360,7 @@ export default function AgentHomeScreen() {
                 </Text>
                 <BodyText dim>
                   {hasProject
-                    ? '先在项目里完成分集与场景，Agent 才能读到可继续的当前场次。'
+                    ? '先在项目里完成分集与场景，Veya Agent 才能读到可继续的当前场次。'
                     : '创建项目或导入项目包后，这里会出现当前场次与可执行下一步。'}
                 </BodyText>
                 <SecondaryButton
@@ -376,6 +444,24 @@ export default function AgentHomeScreen() {
                   onRetry={sendPrompt}
                 />
 
+                <View style={styles.toolRail}>
+                  <StudioTool
+                    icon="camera"
+                    label="现场检查"
+                    onPress={() => router.push('/continuity')}
+                  />
+                  <StudioTool
+                    icon="activity"
+                    label="节奏分析"
+                    onPress={() => router.push('/pacing')}
+                  />
+                  <StudioTool
+                    icon="globe"
+                    label="海外审片"
+                    onPress={() => router.push('/overseas')}
+                  />
+                </View>
+
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="查看生成与审片任务"
@@ -406,6 +492,28 @@ export default function AgentHomeScreen() {
         </KeyboardAvoidingView>
       </ScreenFade>
     </SafeAreaView>
+  );
+}
+
+function StudioTool({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: 'camera' | 'activity' | 'globe';
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.tool, pressed && styles.pressed]}
+    >
+      <Feather name={icon} size={15} color={colors.textSecondary} />
+      <Text style={styles.toolText}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -577,6 +685,28 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 8,
     backgroundColor: colors.surface,
+  },
+  toolRail: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+  },
+  tool: {
+    minHeight: 44,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+  },
+  toolText: {
+    color: colors.textSecondary,
+    fontSize: type.micro,
+    fontWeight: '500',
   },
   runningText: {
     color: colors.textSecondary,

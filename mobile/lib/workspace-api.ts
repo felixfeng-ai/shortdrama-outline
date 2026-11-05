@@ -63,6 +63,7 @@ export interface WorkspaceData {
   videoReadiness: WorkspaceVideoReadiness;
   batches: WorkspaceBatch[];
   agentMemory: WorkspaceAgentMemory;
+  pacing: WorkspacePacingReport;
 }
 
 export interface WorkspaceGenerationTarget {
@@ -133,6 +134,35 @@ export interface WorkspaceAgentMemory {
   lockedDecisions: string[];
   rejectedDirections: string[];
   openComments: string[];
+}
+
+export interface WorkspacePacingBenchmark {
+  label: string;
+  hookMinChars: number;
+  hookMaxChars: number;
+  dialogueCharsPerShotMax: number;
+  averageShotSecondsMax: number;
+  minimumShotsPerEpisode: number;
+}
+
+export interface WorkspacePacingRow {
+  episode: number;
+  title: string;
+  hookChars: number;
+  hookStatus: 'good' | 'short' | 'long' | 'missing';
+  endingSuspense: 'open' | 'resolved' | 'short' | 'missing';
+  shotCount: number;
+  dialogueChars: number;
+  dialogueCharsPerShot: number;
+  averageShotSeconds: number;
+  observations: string[];
+}
+
+export interface WorkspacePacingReport {
+  benchmark: WorkspacePacingBenchmark;
+  summary: string;
+  rows: WorkspacePacingRow[];
+  warnings: string[];
 }
 
 export interface AgentProjectContext {
@@ -211,13 +241,26 @@ export const demoWorkspace: WorkspaceData = {
     rejectedDirections: [],
     openComments: [],
   },
+  pacing: {
+    benchmark: {
+      label: '成剧竖屏短剧基准',
+      hookMinChars: 20,
+      hookMaxChars: 80,
+      dialogueCharsPerShotMax: 35,
+      averageShotSecondsMax: 12,
+      minimumShotsPerEpisode: 3,
+    },
+    summary: '还没有分集，暂时没有节奏可分析。',
+    rows: [],
+    warnings: [],
+  },
 };
 
 export function resolveApiBaseUrl(value: string | undefined): string {
   return (value ?? '').trim().replace(/\/+$/, '');
 }
 
-function readWorkspace(value: unknown): WorkspaceData {
+export function normalizeWorkspaceData(value: unknown): WorkspaceData {
   if (!value || typeof value !== 'object') {
     throw new Error('工作区返回了无法识别的内容');
   }
@@ -257,6 +300,9 @@ function readWorkspace(value: unknown): WorkspaceData {
     agentMemory: data.agentMemory && typeof data.agentMemory === 'object'
       ? data.agentMemory as WorkspaceAgentMemory
       : demoWorkspace.agentMemory,
+    pacing: data.pacing && typeof data.pacing === 'object'
+      ? data.pacing as WorkspacePacingReport
+      : demoWorkspace.pacing,
   };
 }
 
@@ -291,7 +337,7 @@ export async function fetchWorkspace(
   if (!response.ok || !payload.success || !payload.data) {
     throw new Error(payload.error || '工作区同步失败');
   }
-  return readWorkspace(payload.data);
+  return normalizeWorkspaceData(payload.data);
 }
 
 export function workspaceToAgentContext(

@@ -43,7 +43,7 @@ export function AgentTurn({
           <Text style={styles.agentMarkText}>V</Text>
         </View>
         <View style={styles.identityCopy}>
-          <Text style={styles.agentName}>AI 场记</Text>
+          <Text style={styles.agentName}>Veya Agent</Text>
           <Text numberOfLines={1} style={styles.agentContext}>
             {session.projectContext?.contextLabel ?? projectContext.contextLabel}
           </Text>
@@ -158,16 +158,39 @@ export function AgentTurn({
               <Text style={styles.detailLabel}>依据</Text>
               <Text style={styles.detailValue}>{session.proposal.evidence}</Text>
             </View>
-            <View style={styles.factRow}>
-              <View style={styles.fact}>
-                <Text style={styles.detailLabel}>影响</Text>
-                <Text style={styles.factValue}>{session.proposal.impact}</Text>
+            {session.proposal.videoPlan ? (
+              <View style={styles.videoPlan}>
+                <View style={styles.videoPlanGrid}>
+                  <PlanFact label="镜头数" value={`${session.proposal.videoPlan.shotCount} 镜`} />
+                  <PlanFact label="单镜时长" value={`${session.proposal.videoPlan.durationSeconds} 秒`} />
+                  <PlanFact label="模型" value={session.proposal.videoPlan.model} />
+                  <PlanFact
+                    label="分辨率"
+                    value={session.proposal.videoPlan.resolution}
+                  />
+                  <PlanFact
+                    label="预计费用"
+                    value={`¥${(session.proposal.videoPlan.estimatedCostMicros / 1_000_000).toFixed(2)}`}
+                  />
+                  <PlanFact
+                    label="预算上限"
+                    value={`¥${(session.proposal.videoPlan.budgetLimitMicros / 1_000_000).toFixed(2)}`}
+                  />
+                </View>
+                <Text style={styles.detailValue}>{session.proposal.impact}</Text>
               </View>
-              <View style={styles.fact}>
-                <Text style={styles.detailLabel}>成本</Text>
-                <Text style={styles.factValue}>{session.proposal.cost}</Text>
+            ) : (
+              <View style={styles.factRow}>
+                <View style={styles.fact}>
+                  <Text style={styles.detailLabel}>影响</Text>
+                  <Text style={styles.factValue}>{session.proposal.impact}</Text>
+                </View>
+                <View style={styles.fact}>
+                  <Text style={styles.detailLabel}>成本</Text>
+                  <Text style={styles.factValue}>{session.proposal.cost}</Text>
+                </View>
               </View>
-            </View>
+            )}
 
             <View style={styles.actions}>
               <SecondaryButton
@@ -231,6 +254,15 @@ export function AgentTurn({
           </View>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+function PlanFact({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.planFact}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text numberOfLines={1} style={styles.planFactValue}>{value}</Text>
     </View>
   );
 }
@@ -414,6 +446,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: type.caption,
     lineHeight: 18,
+  },
+  videoPlan: {
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  videoPlanGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
+  },
+  planFact: {
+    width: '50%',
+    minWidth: 0,
+    gap: 3,
+    paddingRight: spacing.xs,
+  },
+  planFactValue: {
+    color: colors.text,
+    fontSize: type.caption,
+    fontWeight: '600',
   },
   actions: {
     flexDirection: 'row',

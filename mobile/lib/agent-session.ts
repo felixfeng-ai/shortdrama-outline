@@ -20,6 +20,15 @@ export interface AgentProposal {
   evidence: string;
   impact: string;
   cost: string;
+  videoPlan?: {
+    shotIds: string[];
+    shotCount: number;
+    durationSeconds: number;
+    model: string;
+    resolution: string;
+    estimatedCostMicros: number;
+    budgetLimitMicros: number;
+  };
 }
 
 export interface AgentSessionState {
@@ -41,6 +50,8 @@ export interface AgentSessionState {
   reviewShotNumber?: number;
   reviewRoute?: '/review/shot-17';
   toolSteps: readonly string[];
+  /** 服务端项目会话 id；为空时仍可使用本机 SecureStore 恢复。 */
+  remoteThreadId?: string;
 }
 
 export type AgentSessionAction =
@@ -55,10 +66,11 @@ export type AgentSessionAction =
   | { type: 'stop' }
   | { type: 'accept' }
   | { type: 'dismiss' }
-  | { type: 'restore'; state: AgentSessionState };
+  | { type: 'restore'; state: AgentSessionState }
+  | { type: 'remote-thread'; threadId: string };
 
 export const AGENT_PROMPTS: Record<AgentMode, readonly string[]> = {
-  chat: ['收紧第 3 集钩子', '看看今天还差什么', '这句台词是不是太重'],
+  chat: ['收紧第 3 集钩子', '看看今天还差什么', '这句台词是不是太重', '算两镜视频预算'],
   create: ['补一场雨夜冲突', '换一个更冷的开场', '写第 18 镜的动作'],
 };
 
@@ -271,5 +283,8 @@ export function agentSessionReducer(
 
     case 'restore':
       return action.state;
+
+    case 'remote-thread':
+      return { ...state, remoteThreadId: action.threadId };
   }
 }
