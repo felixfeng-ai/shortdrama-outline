@@ -3,10 +3,11 @@ name: Deploy Production
 # 与 interview-coach 的 .github/workflows/deploy.yml 同一套模式：
 # push 到 main → SSH 到香港服务器 → 执行服务器上的 cicd-deploy.sh
 #
-# 首次使用需要在 GitHub 仓库里配两个 Secret：
+# 首次使用需要在 GitHub 仓库里配置：
 #   Settings → Secrets and variables → Actions → New repository secret
 #   CHENGJU_HOST     = 服务器公网 IP
 #   CHENGJU_SSH_KEY  = 部署用私钥全文
+#   MINIMAX_API_KEY  = MiniMax 视频服务密钥
 
 on:
   push:
@@ -43,12 +44,16 @@ jobs:
           WEB_PUSH_PUBLIC_KEY: ${{ secrets.WEB_PUSH_PUBLIC_KEY }}
           WEB_PUSH_PRIVATE_KEY: ${{ secrets.WEB_PUSH_PRIVATE_KEY }}
           WEB_PUSH_SUBJECT: ${{ secrets.WEB_PUSH_SUBJECT }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          VIDEO_GENERATION_ENABLED: "1"
+          MINIMAX_VIDEO_MODEL: "MiniMax-H3-Lite"
+          MINIMAX_VIDEO_RESOLUTION: "768P"
           AUTH_ALLOW_DEV_CODE: "0"
         with:
           host: ${{ secrets.CHENGJU_HOST }}
           username: ubuntu
           key: ${{ secrets.CHENGJU_SSH_KEY }}
-          envs: RESEND_API_KEY,AUTH_EMAIL_FROM,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,AUTH_ALLOW_DEV_CODE
+          envs: RESEND_API_KEY,AUTH_EMAIL_FROM,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,MINIMAX_API_KEY,VIDEO_GENERATION_ENABLED,MINIMAX_VIDEO_MODEL,MINIMAX_VIDEO_RESOLUTION,AUTH_ALLOW_DEV_CODE
           script: |
             set -e
             bash /opt/chengju/deploy/cicd-deploy.sh
