@@ -55,6 +55,10 @@ const payload: WorkspaceData = {
       createdAt: Date.UTC(2026, 10, 4, 7, 59, 0),
       startedAt: Date.UTC(2026, 10, 4, 7, 59, 10),
       finishedAt: null,
+      mediaKind: 'video',
+      batchId: 'batch-1',
+      estimatedCostMicros: 1_300_000,
+      actualCostMicros: 0,
     },
   ],
   generationTargets: [
@@ -66,6 +70,53 @@ const payload: WorkspaceData = {
       aspect: 'vertical',
     },
   ],
+  videoCapabilities: {
+    enabled: true,
+    defaultModel: 'MiniMax-H3-Lite',
+    defaultResolution: '768P',
+    models: [{
+      id: 'MiniMax-H3-Lite',
+      minDuration: 4,
+      maxDuration: 15,
+      resolutions: ['768P'],
+      pricesPerSecond: { '768P': 0.26 },
+    }],
+  },
+  videoTargets: [{
+    targetType: 'shot',
+    targetId: 'shot-entity-17',
+    targetLabel: '第 3 集 · 第 17 镜 · 码头夜谈',
+    prompt: 'rainy dock',
+    duration: 5,
+    ratio: '9:16',
+    selectedFrameAssetId: 'frame-1',
+    selectedVideoAssetId: null,
+    latestTaskStatus: 'running',
+    blockedReason: null,
+  }],
+  videoReadiness: {
+    totalShots: 24,
+    frameReady: 20,
+    videoReady: 3,
+    missingFrame: 4,
+    missingVideo: 21,
+    activeTasks: 1,
+    failedTasks: 0,
+  },
+  batches: [{
+    id: 'batch-1',
+    projectId: 'p1',
+    episode: 3,
+    scope: { shotIds: ['shot-entity-17'] },
+    status: 'running',
+    budgetLimitMicros: 1_300_000,
+    reservedCostMicros: 1_300_000,
+    actualCostMicros: 0,
+    idempotencyKey: 'batch-key',
+    createdAt: 1,
+    confirmedAt: 1,
+    finishedAt: null,
+  }],
 };
 
 test('API base URL is normalized and empty values fall back to local mode', () => {
@@ -93,7 +144,12 @@ test('workspace fetch uses the mobile context endpoint with credentials', async 
   assert.equal(data.activeProject?.title, '夜港来信');
   assert.equal(data.tasks[0].targetLabel, '第 3 集 · 第 17 镜 · 码头夜谈');
   assert.equal(data.tasks[0].status, 'running');
+  assert.equal(data.tasks[0].mediaKind, 'video');
+  assert.equal(data.tasks[0].batchId, 'batch-1');
   assert.equal(data.generationTargets[0].targetId, 'shot-entity-17');
+  assert.equal(data.videoCapabilities.defaultModel, 'MiniMax-H3-Lite')
+  assert.equal(data.videoTargets[0].selectedFrameAssetId, 'frame-1')
+  assert.equal(data.videoReadiness.missingVideo, 21)
 });
 
 test('workspace fetch can request a selected project', async () => {

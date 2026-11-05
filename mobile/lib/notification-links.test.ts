@@ -10,6 +10,7 @@ test('成功通知优先进入真实审片页', () => {
     targetType: 'shot',
     targetId: 'shot-1',
     targetLabel: '第 1 集 · 第 1 镜',
+    mediaKind: 'video',
   }), {
     pathname: '/review/[id]',
     params: {
@@ -18,6 +19,7 @@ test('成功通知优先进入真实审片页', () => {
       targetType: 'shot',
       targetId: 'shot-1',
       targetLabel: '第 1 集 · 第 1 镜',
+      mediaKind: 'video',
     },
   });
 });

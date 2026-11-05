@@ -61,7 +61,8 @@
           "microphonePermission": "成剧需要使用麦克风，以便把语音转成创作指令。",
           "speechRecognitionPermission": "成剧需要使用语音识别，以便转写你的创作指令。"
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

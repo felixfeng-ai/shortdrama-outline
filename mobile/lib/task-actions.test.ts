@@ -19,3 +19,35 @@ test('取消与重试任务调用统一生成接口', async () => {
   assert.deepEqual(calls[1].body, { action: 'retry', projectId: 'p1', taskId: 'task-old' });
   assert.equal(calls[0].init?.method, 'PATCH');
 });
+
+test('视频任务取消与重试走视频任务接口', async () => {
+  const urls: string[] = []
+  const fakeFetch = async (input: string | URL | Request) => {
+    urls.push(String(input))
+    return Response.json({
+      success: true,
+      error: null,
+      data: { task: { id: 'task-video', status: 'canceled' } },
+    })
+  }
+
+  await cancelWorkspaceTask(
+    'http://127.0.0.1:3200',
+    'p1',
+    'task-video',
+    fakeFetch as typeof fetch,
+    'video',
+  )
+  await retryWorkspaceTask(
+    'http://127.0.0.1:3200',
+    'p1',
+    'task-video',
+    fakeFetch as typeof fetch,
+    'video',
+  )
+
+  assert.deepEqual(urls, [
+    'http://127.0.0.1:3200/api/video/generations',
+    'http://127.0.0.1:3200/api/video/generations',
+  ])
+})

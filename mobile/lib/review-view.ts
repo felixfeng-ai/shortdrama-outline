@@ -1,8 +1,21 @@
 import { resolveApiBaseUrl, type WorkspaceTaskTargetType } from './workspace-api.ts';
 import type { ReviewAsset } from './review-api.ts';
 
-export function reviewVersions(assets: readonly ReviewAsset[]): ReviewAsset[] {
-  return [...assets].sort((a, b) => b.createdAt - a.createdAt);
+export type ReviewMediaKind = 'image' | 'video' | 'audio';
+
+export function reviewMediaKinds(assets: readonly ReviewAsset[]): ReviewMediaKind[] {
+  const order: ReviewMediaKind[] = ['image', 'video', 'audio'];
+  const present = new Set(assets.map((asset) => asset.mediaKind ?? 'image'));
+  return order.filter((kind) => present.has(kind));
+}
+
+export function reviewVersions(
+  assets: readonly ReviewAsset[],
+  mediaKind?: ReviewMediaKind,
+): ReviewAsset[] {
+  return [...assets]
+    .filter((asset) => !mediaKind || (asset.mediaKind ?? 'image') === mediaKind)
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function initialReviewAsset(
@@ -27,7 +40,7 @@ export function reviewAspectRatio(targetType: WorkspaceTaskTargetType): number {
   return 9 / 16;
 }
 
-export function buildReviewImageSource(
+export function buildReviewMediaSource(
   baseUrl: string,
   asset: ReviewAsset,
   headers: Record<string, string>,
@@ -38,6 +51,9 @@ export function buildReviewImageSource(
     : `${root}${asset.downloadUrl.startsWith('/') ? '' : '/'}${asset.downloadUrl}`;
   return { uri, headers };
 }
+
+/** 保留旧调用名，图片和视频共用同一套鉴权 URL 拼装。 */
+export const buildReviewImageSource = buildReviewMediaSource;
 
 export function reviewBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '大小未知';
@@ -51,6 +67,12 @@ export function reviewCreatedAt(value: number): string {
 }
 
 export function reviewFileName(asset: ReviewAsset): string {
-  const ext = asset.mime === 'image/jpeg' ? 'jpg' : asset.mime === 'image/webp' ? 'webp' : 'png';
+  const ext = (asset.mediaKind ?? 'image') === 'video'
+    ? 'mp4'
+    : asset.mime === 'image/jpeg'
+      ? 'jpg'
+      : asset.mime === 'image/webp'
+        ? 'webp'
+        : 'png';
   return `${asset.targetType}-${asset.targetId}-${asset.id}.${ext}`;
 }

@@ -31,6 +31,7 @@ export interface WorkspaceQuota {
 
 export type WorkspaceTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
 export type WorkspaceTaskTargetType = 'character' | 'place' | 'shot';
+export type WorkspaceTaskMediaKind = 'image' | 'video' | 'audio';
 
 export interface WorkspaceTask {
   id: string;
@@ -43,6 +44,10 @@ export interface WorkspaceTask {
   createdAt: number;
   startedAt: number | null;
   finishedAt: number | null;
+  mediaKind: WorkspaceTaskMediaKind;
+  batchId: string | null;
+  estimatedCostMicros: number;
+  actualCostMicros: number;
 }
 
 export interface WorkspaceData {
@@ -53,6 +58,10 @@ export interface WorkspaceData {
   quota: WorkspaceQuota;
   tasks: WorkspaceTask[];
   generationTargets: WorkspaceGenerationTarget[];
+  videoCapabilities: WorkspaceVideoCapabilities;
+  videoTargets: WorkspaceVideoTarget[];
+  videoReadiness: WorkspaceVideoReadiness;
+  batches: WorkspaceBatch[];
 }
 
 export interface WorkspaceGenerationTarget {
@@ -61,6 +70,59 @@ export interface WorkspaceGenerationTarget {
   targetLabel: string;
   prompt: string;
   aspect: 'portrait' | 'landscape' | 'vertical';
+}
+
+export interface WorkspaceVideoModelCapability {
+  id: string;
+  minDuration: number;
+  maxDuration: number;
+  resolutions: string[];
+  pricesPerSecond: Record<string, number>;
+}
+
+export interface WorkspaceVideoCapabilities {
+  enabled: boolean;
+  defaultModel: string;
+  defaultResolution: string;
+  models: WorkspaceVideoModelCapability[];
+}
+
+export interface WorkspaceVideoTarget {
+  targetType: 'shot';
+  targetId: string;
+  targetLabel: string;
+  prompt: string;
+  duration: number;
+  ratio: '9:16' | '16:9';
+  selectedFrameAssetId: string | null;
+  selectedVideoAssetId: string | null;
+  latestTaskStatus: WorkspaceTaskStatus | null;
+  blockedReason: string | null;
+}
+
+export interface WorkspaceVideoReadiness {
+  totalShots: number;
+  frameReady: number;
+  videoReady: number;
+  missingFrame: number;
+  missingVideo: number;
+  activeTasks: number;
+  failedTasks: number;
+}
+
+export interface WorkspaceBatch {
+  id: string;
+  projectId: string;
+  episode: number;
+  scope: Record<string, unknown>;
+  status: 'draft' | 'confirmed' | 'running' | 'completed' | 'stopped' | 'failed';
+  budgetLimitMicros: number;
+  reservedCostMicros: number;
+  actualCostMicros: number;
+  idempotencyKey: string | null;
+  createdAt: number;
+  confirmedAt: number | null;
+  finishedAt: number | null;
 }
 
 export interface AgentProjectContext {
@@ -114,6 +176,23 @@ export const demoWorkspace: WorkspaceData = {
   },
   tasks: [],
   generationTargets: [],
+  videoCapabilities: {
+    enabled: false,
+    defaultModel: 'MiniMax-H3-Lite',
+    defaultResolution: '768P',
+    models: [],
+  },
+  videoTargets: [],
+  videoReadiness: {
+    totalShots: 0,
+    frameReady: 0,
+    videoReady: 0,
+    missingFrame: 0,
+    missingVideo: 0,
+    activeTasks: 0,
+    failedTasks: 0,
+  },
+  batches: [],
 };
 
 export function resolveApiBaseUrl(value: string | undefined): string {
@@ -128,16 +207,35 @@ function readWorkspace(value: unknown): WorkspaceData {
   if (!data.quota || typeof data.quota !== 'object') {
     throw new Error('工作区缺少额度信息');
   }
+  const tasks = Array.isArray(data.tasks)
+    ? data.tasks.map((task) => ({
+        ...task,
+        mediaKind: task.mediaKind ?? 'image',
+        batchId: task.batchId ?? null,
+        estimatedCostMicros: Number(task.estimatedCostMicros) || 0,
+        actualCostMicros: Number(task.actualCostMicros) || 0,
+      }))
+    : [];
   return {
     activeProject: (data.activeProject as WorkspaceProject | null | undefined) ?? null,
     projects: Array.isArray(data.projects) ? (data.projects as WorkspaceProject[]) : [],
     totalProjects: Number.isFinite(data.totalProjects) ? Number(data.totalProjects) : 0,
     hero: (data.hero as WorkspaceHero | null | undefined) ?? null,
     quota: data.quota as WorkspaceQuota,
-    tasks: Array.isArray(data.tasks) ? (data.tasks as WorkspaceTask[]) : [],
+    tasks,
     generationTargets: Array.isArray(data.generationTargets)
       ? (data.generationTargets as WorkspaceGenerationTarget[])
       : [],
+    videoCapabilities: data.videoCapabilities && typeof data.videoCapabilities === 'object'
+      ? data.videoCapabilities as WorkspaceVideoCapabilities
+      : demoWorkspace.videoCapabilities,
+    videoTargets: Array.isArray(data.videoTargets)
+      ? data.videoTargets as WorkspaceVideoTarget[]
+      : [],
+    videoReadiness: data.videoReadiness && typeof data.videoReadiness === 'object'
+      ? data.videoReadiness as WorkspaceVideoReadiness
+      : demoWorkspace.videoReadiness,
+    batches: Array.isArray(data.batches) ? data.batches as WorkspaceBatch[] : [],
   };
 }
 

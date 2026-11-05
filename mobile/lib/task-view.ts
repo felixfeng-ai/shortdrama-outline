@@ -1,12 +1,24 @@
-import type { WorkspaceTask, WorkspaceTaskStatus } from './workspace-api.ts';
+import type {
+  WorkspaceTask,
+  WorkspaceTaskMediaKind,
+  WorkspaceTaskStatus,
+} from './workspace-api.ts';
 
 export type TaskFilter = 'all' | 'active' | 'done' | 'failed';
+export type TaskMediaFilter = 'all' | WorkspaceTaskMediaKind;
 
 export interface TaskCounts {
   total: number;
   active: number;
   done: number;
   failed: number;
+}
+
+export interface TaskMediaCounts {
+  total: number;
+  image: number;
+  video: number;
+  audio: number;
 }
 
 const STATUS_LABELS: Record<WorkspaceTaskStatus, string> = {
@@ -46,6 +58,29 @@ export function filterWorkspaceTasks(
     return tasks.filter((task) => task.status === 'failed' || task.status === 'canceled');
   }
   return [...tasks];
+}
+
+export function filterTasksByMedia(
+  tasks: readonly WorkspaceTask[],
+  filter: TaskMediaFilter,
+): WorkspaceTask[] {
+  if (filter === 'all') return [...tasks];
+  return tasks.filter((task) => (task.mediaKind ?? 'image') === filter);
+}
+
+export function taskMediaCounts(tasks: readonly WorkspaceTask[]): TaskMediaCounts {
+  return {
+    total: tasks.length,
+    image: tasks.filter((task) => (task.mediaKind ?? 'image') === 'image').length,
+    video: tasks.filter((task) => (task.mediaKind ?? 'image') === 'video').length,
+    audio: tasks.filter((task) => (task.mediaKind ?? 'image') === 'audio').length,
+  };
+}
+
+export function taskMediaLabel(mediaKind: WorkspaceTaskMediaKind): string {
+  if (mediaKind === 'video') return '视频';
+  if (mediaKind === 'audio') return '音频';
+  return '图片';
 }
 
 export function taskCreatedLabel(createdAt: number, now = Date.now()): string {

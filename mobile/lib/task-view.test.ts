@@ -3,9 +3,12 @@ import test from 'node:test';
 
 import type { WorkspaceTask } from './workspace-api.ts';
 import {
+  filterTasksByMedia,
   filterWorkspaceTasks,
   hasActiveTasks,
   safeTaskError,
+  taskMediaCounts,
+  taskMediaLabel,
   taskCounts,
   taskCreatedLabel,
   taskDurationLabel,
@@ -26,6 +29,10 @@ function task(patch: Partial<WorkspaceTask>): WorkspaceTask {
     createdAt: now - 65_000,
     startedAt: null,
     finishedAt: null,
+    mediaKind: 'image',
+    batchId: null,
+    estimatedCostMicros: 0,
+    actualCostMicros: 0,
     ...patch,
   };
 }
@@ -84,3 +91,28 @@ test('失败原因脱敏后才显示', () => {
   assert.equal(safeTaskError('Provider 超时'), 'Provider 超时');
   assert.equal(safeTaskError(null), '');
 });
+
+test('任务可以按图片、视频媒体类型筛选并显示中文标签', () => {
+  const tasks = [
+    task({ id: 'image', mediaKind: 'image' }),
+    task({ id: 'video', mediaKind: 'video', batchId: 'batch-1' }),
+    task({ id: 'audio', mediaKind: 'audio' }),
+  ]
+
+  assert.deepEqual(filterTasksByMedia(tasks, 'image').map((item) => item.id), ['image'])
+  assert.deepEqual(filterTasksByMedia(tasks, 'video').map((item) => item.id), ['video'])
+  assert.deepEqual(filterTasksByMedia(tasks, 'all').map((item) => item.id), [
+    'image',
+    'video',
+    'audio',
+  ])
+  assert.deepEqual(taskMediaCounts(tasks), {
+    total: 3,
+    image: 1,
+    video: 1,
+    audio: 1,
+  })
+  assert.equal(taskMediaLabel('image'), '图片')
+  assert.equal(taskMediaLabel('video'), '视频')
+  assert.equal(taskMediaLabel('audio'), '音频')
+})

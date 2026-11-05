@@ -28,18 +28,26 @@ import {
 } from '@/components/ui';
 import { colors, fonts, radii, spacing, type } from '@/constants/tokens';
 import {
+  filterTasksByMedia,
   filterWorkspaceTasks,
   hasActiveTasks,
   safeTaskError,
+  taskMediaCounts,
+  taskMediaLabel,
   taskCounts,
   taskCreatedLabel,
   taskDurationLabel,
   taskStatusLabel,
   type TaskCounts,
   type TaskFilter,
+  type TaskMediaFilter,
 } from '@/lib/task-view';
 import { useWorkspace, type WorkspaceSyncStatus } from '@/lib/workspace-store';
-import type { WorkspaceTask, WorkspaceTaskStatus } from '@/lib/workspace-api';
+import type {
+  WorkspaceBatch,
+  WorkspaceTask,
+  WorkspaceTaskStatus,
+} from '@/lib/workspace-api';
 import { useAuth } from '@/lib/auth-store';
 import { cancelWorkspaceTask, retryWorkspaceTask } from '@/lib/task-actions';
 import { workspaceApiBaseUrl } from '@/lib/workspace-api';
@@ -53,6 +61,12 @@ const FILTERS: ReadonlyArray<{
   { key: 'active', label: '进行中', countKey: 'active' },
   { key: 'done', label: '已完成', countKey: 'done' },
   { key: 'failed', label: '异常', countKey: 'failed' },
+];
+
+const MEDIA_FILTERS: ReadonlyArray<{ key: TaskMediaFilter; label: string }> = [
+  { key: 'all', label: '全部媒体' },
+  { key: 'image', label: '图片' },
+  { key: 'video', label: '视频' },
 ];
 
 const TARGET_LABELS = {
@@ -76,6 +90,15 @@ const STATUS_META: Record<
   canceled: { tone: 'neutral', color: colors.textMuted, icon: 'slash' },
 };
 
+const BATCH_STATUS_LABELS: Record<WorkspaceBatch['status'], string> = {
+  draft: '草稿',
+  confirmed: '已确认',
+  running: '进行中',
+  completed: '已完成',
+  stopped: '已停止',
+  failed: '失败',
+};
+
 function syncCopy(status: WorkspaceSyncStatus): string {
   if (status === 'loading') return '同步中';
   if (status === 'synced') return '已同步';
@@ -84,15 +107,24 @@ function syncCopy(status: WorkspaceSyncStatus): string {
   return '本地预览';
 }
 
+function yuan(micros: number): string {
+  return `¥${(Math.max(0, micros) / 1_000_000).toFixed(2)}`;
+}
+
 export default function TasksScreen() {
   const { data, status, error, refresh } = useWorkspace();
   const { authorizedFetch } = useAuth();
   const [filter, setFilter] = useState<TaskFilter>('all');
+  const [mediaFilter, setMediaFilter] = useState<TaskMediaFilter>('all');
   const [actionId, setActionId] = useState('');
   const [actionError, setActionError] = useState('');
   const tasks = data.tasks;
   const counts = useMemo(() => taskCounts(tasks), [tasks]);
-  const visibleTasks = useMemo(() => filterWorkspaceTasks(tasks, filter), [filter, tasks]);
+  const mediaCounts = useMemo(() => taskMediaCounts(tasks), [tasks]);
+  const visibleTasks = useMemo(
+    () => filterTasksByMedia(filterWorkspaceTasks(tasks, filter), mediaFilter),
+    [filter, mediaFilter, tasks],
+  );
   const active = hasActiveTasks(tasks);
   const projectLabel =
     status === 'synced' || tasks.length > 0
@@ -106,9 +138,21 @@ export default function TasksScreen() {
     setActionError('');
     try {
       if (action === 'cancel') {
-        await cancelWorkspaceTask(workspaceApiBaseUrl, projectId, task.id, authorizedFetch);
+        await cancelWorkspaceTask(
+          workspaceApiBaseUrl,
+          projectId,
+          task.id,
+          authorizedFetch,
+          task.mediaKind,
+        );
       } else {
-        await retryWorkspaceTask(workspaceApiBaseUrl, projectId, task.id, authorizedFetch);
+        await retryWorkspaceTask(
+          workspaceApiBaseUrl,
+          projectId,
+          task.id,
+          authorizedFetch,
+          task.mediaKind,
+        );
       }
       refresh();
     } catch (reason) {
@@ -196,6 +240,34 @@ export default function TasksScreen() {
           })}
         </View>
 
+        <View style={styles.mediaFilterBar} accessibilityRole="tablist">
+          {MEDIA_FILTERS.map((item) => {
+            const selected = mediaFilter === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => setMediaFilter(item.key)}
+                style={({ pressed }) => [
+                  styles.mediaFilter,
+                  selected && styles.mediaFilterActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={[styles.mediaFilterText, selected && styles.mediaFilterTextActive]}>
+                  {item.label}
+                </Text>
+                {item.key !== 'all' && mediaCounts[item.key] > 0 ? (
+                  <Text style={[styles.mediaCount, selected && styles.mediaCountActive]}>
+                    {mediaCounts[item.key]}
+                  </Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -234,6 +306,13 @@ export default function TasksScreen() {
               <View style={styles.metricLine} />
               <Metric label="异常" value={counts.failed} color={colors.warning} />
             </View>
+            {data.videoReadiness.totalShots > 0 ? (
+              <Text style={styles.videoReadiness}>
+                已采用视频 {data.videoReadiness.videoReady}/{data.videoReadiness.totalShots} 镜
+                {' · '}缺首帧 {data.videoReadiness.missingFrame}
+                {' · '}视频异常 {data.videoReadiness.failedTasks}
+              </Text>
+            ) : null}
           </Panel>
 
           {error ? (
@@ -300,6 +379,7 @@ export default function TasksScreen() {
                 <TaskRow
                   key={task.id}
                   task={task}
+                  batch={data.batches.find((batch) => batch.id === task.batchId) ?? null}
                   projectId={data.activeProject?.id ?? ''}
                   actionId={actionId}
                   onAction={(action) => void handleTaskAction(task, action)}
@@ -333,18 +413,26 @@ function Metric({
 
 function TaskRow({
   task,
+  batch,
   projectId,
   actionId,
   onAction,
   divider,
 }: {
   task: WorkspaceTask;
+  batch: WorkspaceBatch | null;
   projectId: string;
   actionId: string;
   onAction: (action: 'cancel' | 'retry') => void;
   divider: boolean;
 }) {
   const meta = STATUS_META[task.status];
+  const mediaKind = task.mediaKind ?? 'image';
+  const leadingIcon = mediaKind === 'video'
+    ? 'film'
+    : mediaKind === 'audio'
+      ? 'volume-2'
+      : 'image';
   const taskError = safeTaskError(task.error);
   const action =
     task.status === 'queued' || task.status === 'running'
@@ -371,26 +459,35 @@ function TaskRow({
               targetType: task.targetType,
               targetId: task.targetId,
               targetLabel: task.targetLabel,
+              mediaKind,
             },
           });
         }}
         style={({ pressed }) => [styles.taskRow, pressed && styles.pressed]}
       >
         <View style={[styles.taskIcon, { backgroundColor: `${meta.color}12` }]}>
-          <Feather name={meta.icon} size={17} color={meta.color} />
+          <Feather name={leadingIcon} size={17} color={meta.color} />
         </View>
         <View style={styles.taskCopy}>
           <Text style={styles.taskTitle} numberOfLines={2}>
             {task.targetLabel}
           </Text>
           <View style={styles.taskMeta}>
-            <Text style={styles.targetType}>{TARGET_LABELS[task.targetType]}</Text>
+            <Text style={styles.targetType}>
+              {TARGET_LABELS[task.targetType]} · {taskMediaLabel(mediaKind)}
+            </Text>
             <Text style={styles.metaDot}>·</Text>
             <Text style={styles.taskTime}>{taskCreatedLabel(task.createdAt)}</Text>
           </View>
           {taskError ? (
             <Text style={styles.taskError} numberOfLines={2}>
               {taskError}
+            </Text>
+          ) : null}
+          {batch ? (
+            <Text style={styles.batchMeta} numberOfLines={1}>
+              批次 · {BATCH_STATUS_LABELS[batch.status]} · 预留 {yuan(batch.reservedCostMicros)}
+              {' · '}实付 {yuan(batch.actualCostMicros)}
             </Text>
           ) : null}
         </View>
@@ -434,6 +531,45 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
     padding: 3,
+  },
+  mediaFilterBar: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  mediaFilter: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+  },
+  mediaFilterActive: {
+    borderColor: 'rgba(92,117,111,0.35)',
+    backgroundColor: 'rgba(92,117,111,0.08)',
+  },
+  mediaFilterText: {
+    color: colors.textMuted,
+    fontSize: type.micro,
+    fontWeight: '500',
+  },
+  mediaFilterTextActive: {
+    color: colors.info,
+    fontWeight: '600',
+  },
+  mediaCount: {
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: 9,
+  },
+  mediaCountActive: {
+    color: colors.info,
   },
   headerActions: {
     flexDirection: 'row',
@@ -547,6 +683,11 @@ const styles = StyleSheet.create({
     width: StyleSheet.hairlineWidth,
     height: 26,
     backgroundColor: colors.lineStrong,
+  },
+  videoReadiness: {
+    color: colors.textMuted,
+    fontSize: type.micro,
+    lineHeight: 17,
   },
   errorCard: {
     padding: spacing.sm,
@@ -677,6 +818,12 @@ const styles = StyleSheet.create({
     color: colors.warningInk,
     fontSize: type.micro,
     lineHeight: 16,
+  },
+  batchMeta: {
+    marginTop: 4,
+    color: colors.info,
+    fontFamily: fonts.mono,
+    fontSize: 9,
   },
   taskRight: {
     flexShrink: 0,

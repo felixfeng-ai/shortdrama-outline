@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -34,14 +35,16 @@ import {
   type ReviewState,
 } from '@/lib/review-api';
 import {
-  buildReviewImageSource,
+  buildReviewMediaSource,
   initialReviewAsset,
+  reviewMediaKinds,
   reviewAspectRatio,
   reviewBytes,
   reviewCreatedAt,
   reviewFileName,
   reviewVersionLabel,
   reviewVersions,
+  type ReviewMediaKind,
 } from '@/lib/review-view';
 import { workspaceApiBaseUrl, type WorkspaceTaskTargetType } from '@/lib/workspace-api';
 import { useWorkspace } from '@/lib/workspace-store';
@@ -59,6 +62,13 @@ function readParam(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? '';
 }
 
+function readMediaKind(value: string | string[] | undefined): ReviewMediaKind | null {
+  const candidate = readParam(value);
+  return candidate === 'image' || candidate === 'video' || candidate === 'audio'
+    ? candidate
+    : null;
+}
+
 export default function ReviewScreen() {
   const params = useLocalSearchParams<{
     id?: string | string[];
@@ -66,12 +76,14 @@ export default function ReviewScreen() {
     targetType?: string | string[];
     targetId?: string | string[];
     targetLabel?: string | string[];
+    mediaKind?: string | string[];
   }>();
   const preferredId = readParam(params.id);
   const linkedProjectId = readParam(params.projectId);
   const targetId = readParam(params.targetId);
   const targetType = readTargetType(params.targetType);
   const targetLabel = readParam(params.targetLabel) || '生成资产';
+  const requestedMediaKind = readMediaKind(params.mediaKind);
   const { selectedProjectId, data, status: workspaceStatus } = useWorkspace();
   const projectId =
     linkedProjectId ||
@@ -81,6 +93,7 @@ export default function ReviewScreen() {
         : ''));
   const { authorizedFetch, getAccessHeaders } = useAuth();
   const [state, setState] = useState<ReviewState>({ tasks: [], assets: [] });
+  const [mediaKind, setMediaKind] = useState<ReviewMediaKind>(requestedMediaKind ?? 'image');
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -89,8 +102,15 @@ export default function ReviewScreen() {
   const [imageHeaders, setImageHeaders] = useState<Record<string, string>>({});
   const controllerRef = useRef<AbortController | null>(null);
 
-  const versions = useMemo(() => reviewVersions(state.assets), [state.assets]);
+  const mediaKinds = useMemo(() => reviewMediaKinds(state.assets), [state.assets]);
+  const versions = useMemo(
+    () => reviewVersions(state.assets, mediaKind),
+    [mediaKind, state.assets],
+  );
   const current = versions.find((asset) => asset.id === currentId) ?? null;
+  const currentSource = current
+    ? buildReviewMediaSource(workspaceApiBaseUrl, current, imageHeaders)
+    : null;
 
   const load = useCallback(() => {
     if (workspaceStatus === 'loading') {
@@ -117,9 +137,17 @@ export default function ReviewScreen() {
     )
       .then((next) => {
         if (controller.signal.aborted) return;
-        const ordered = reviewVersions(next.assets);
+        const availableKinds = reviewMediaKinds(next.assets);
+        const preferredAsset = preferredId
+          ? next.assets.find((asset) => asset.id === preferredId)
+          : null;
+        const nextKind = requestedMediaKind && availableKinds.includes(requestedMediaKind)
+          ? requestedMediaKind
+          : preferredAsset?.mediaKind ?? availableKinds[0] ?? 'image';
+        const ordered = reviewVersions(next.assets, nextKind);
         const nextAsset = initialReviewAsset(ordered, preferredId);
         setState(next);
+        setMediaKind(nextKind);
         setCurrentId(nextAsset?.id ?? null);
       })
       .catch((reason: unknown) => {
@@ -129,7 +157,15 @@ export default function ReviewScreen() {
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
-  }, [authorizedFetch, preferredId, projectId, targetId, targetType, workspaceStatus]);
+  }, [
+    authorizedFetch,
+    preferredId,
+    projectId,
+    requestedMediaKind,
+    targetId,
+    targetType,
+    workspaceStatus,
+  ]);
 
   useEffect(() => {
     load();
@@ -155,7 +191,10 @@ export default function ReviewScreen() {
         workspaceApiBaseUrl,
         projectId,
         current.id,
-        authorizedFetch,
+        {
+          fetchImpl: authorizedFetch,
+          mediaKind: current.mediaKind,
+        },
       );
       setState((previous) => ({
         ...previous,
@@ -178,7 +217,7 @@ export default function ReviewScreen() {
     setError('');
     try {
       const headers = await getAccessHeaders();
-      const source = buildReviewImageSource(workspaceApiBaseUrl, current, headers);
+      const source = buildReviewMediaSource(workspaceApiBaseUrl, current, headers);
       await downloadAuthenticatedFile({
         url: source.uri,
         fileName: reviewFileName(current),
@@ -242,26 +281,61 @@ export default function ReviewScreen() {
           <>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
               <View style={styles.previewWrap}>
-                <Image
-                  accessible
-                  accessibilityLabel={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
-                  contentFit="contain"
-                  source={buildReviewImageSource(
-                    workspaceApiBaseUrl,
-                    current,
-                    imageHeaders,
-                  )}
-                  style={[
-                    styles.preview,
-                    { aspectRatio: reviewAspectRatio(current.targetType) },
-                  ]}
-                  transition={160}
-                />
+                {current.mediaKind === 'video' && currentSource ? (
+                  <VideoReviewPreview
+                    key={current.id}
+                    label={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
+                    source={currentSource}
+                    aspectRatio={reviewAspectRatio(current.targetType)}
+                  />
+                ) : (
+                  <Image
+                    accessible
+                    accessibilityLabel={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
+                    contentFit="contain"
+                    source={currentSource ?? undefined}
+                    style={[
+                      styles.preview,
+                      { aspectRatio: reviewAspectRatio(current.targetType) },
+                    ]}
+                    transition={160}
+                  />
+                )}
                 <View style={styles.aiBadge}>
                   <Feather name="cpu" size={12} color={colors.actionInk} />
-                  <Text style={styles.aiBadgeText}>AI 生成</Text>
+                  <Text style={styles.aiBadgeText}>
+                    {current.mediaKind === 'video' ? 'AI 视频' : 'AI 生成'}
+                  </Text>
                 </View>
               </View>
+
+              {mediaKinds.length > 1 ? (
+                <View style={styles.mediaTabs} accessibilityRole="tablist">
+                  {mediaKinds.map((kind) => {
+                    const selected = mediaKind === kind;
+                    return (
+                      <Pressable
+                        key={kind}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected }}
+                        onPress={() => {
+                          setMediaKind(kind);
+                          setCurrentId(reviewVersions(state.assets, kind)[0]?.id ?? null);
+                        }}
+                        style={({ pressed }) => [
+                          styles.mediaTab,
+                          selected && styles.mediaTabActive,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <Text style={[styles.mediaTabText, selected && styles.mediaTabTextActive]}>
+                          {kind === 'video' ? '视频' : kind === 'audio' ? '音频' : '关键帧'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
 
               <View style={styles.versionHead}>
                 <View>
@@ -296,16 +370,25 @@ export default function ReviewScreen() {
                         pressed && styles.pressed,
                       ]}
                     >
-                      <Image
-                        accessible={false}
-                        contentFit="cover"
-                        source={buildReviewImageSource(
-                          workspaceApiBaseUrl,
-                          asset,
-                          imageHeaders,
-                        )}
-                        style={styles.versionImage}
-                      />
+                      {asset.mediaKind === 'video' ? (
+                        <View style={styles.versionVideo}>
+                          <Feather name="play" size={18} color={colors.actionInk} />
+                          <Text style={styles.versionVideoTime}>
+                            {asset.durationMs ? `${(asset.durationMs / 1000).toFixed(1)}s` : '视频'}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Image
+                          accessible={false}
+                          contentFit="cover"
+                          source={buildReviewMediaSource(
+                            workspaceApiBaseUrl,
+                            asset,
+                            imageHeaders,
+                          )}
+                          style={styles.versionImage}
+                        />
+                      )}
                       <View style={styles.versionLabelRow}>
                         <Text style={[styles.versionLabel, selected && styles.versionLabelSelected]}>
                           {reviewVersionLabel(versions, index)}
@@ -322,7 +405,11 @@ export default function ReviewScreen() {
               <Panel style={styles.detailCard}>
                 <View style={styles.detailHead}>
                   <Kicker>资产信息</Kicker>
-                  <MonoText>{current.mime.replace('image/', '').toUpperCase()}</MonoText>
+                  <MonoText>
+                    {current.mime === 'video/mp4'
+                      ? 'VIDEO · MP4'
+                      : current.mime.replace('image/', '').toUpperCase()}
+                  </MonoText>
                 </View>
                 <Divider />
                 <DetailRow label="生成时间" value={reviewCreatedAt(current.createdAt)} />
@@ -330,6 +417,12 @@ export default function ReviewScreen() {
                 <DetailRow label="模型" value={current.model || '未记录'} />
                 <DetailRow label="来源" value={current.providerId || '未记录'} />
                 <DetailRow label="任务" value={current.taskId.slice(0, 12)} />
+                {current.mediaKind === 'video' && current.durationMs ? (
+                  <DetailRow
+                    label="视频时长"
+                    value={`${(current.durationMs / 1000).toFixed(1)} 秒`}
+                  />
+                ) : null}
               </Panel>
 
               {error ? (
@@ -366,6 +459,37 @@ export default function ReviewScreen() {
         )}
       </ScreenFade>
     </SafeAreaView>
+  );
+}
+
+function VideoReviewPreview({
+  source,
+  aspectRatio,
+  label,
+}: {
+  source: { uri: string; headers: Record<string, string> };
+  aspectRatio: number;
+  label: string;
+}) {
+  const player = useVideoPlayer({
+    uri: source.uri,
+    headers: source.headers,
+    useCaching: true,
+  }, (instance) => {
+    instance.loop = false;
+    instance.staysActiveInBackground = false;
+  });
+  return (
+    <VideoView
+      accessible
+      accessibilityLabel={label}
+      contentFit="contain"
+      fullscreenOptions={{ enable: true }}
+      nativeControls
+      player={player}
+      playsInline
+      style={[styles.preview, { aspectRatio }]}
+    />
   );
 }
 
@@ -467,6 +591,34 @@ const styles = StyleSheet.create({
     fontSize: type.micro,
     fontWeight: '600',
   },
+  mediaTabs: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+  },
+  mediaTab: {
+    minHeight: 40,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+  },
+  mediaTabActive: {
+    backgroundColor: colors.elevated,
+  },
+  mediaTabText: {
+    color: colors.textMuted,
+    fontSize: type.caption,
+    fontWeight: '500',
+  },
+  mediaTabTextActive: {
+    color: colors.text,
+    fontWeight: '600',
+  },
   versionHead: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -504,6 +656,19 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 58,
     backgroundColor: colors.elevated,
+  },
+  versionVideo: {
+    width: '100%',
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    backgroundColor: colors.text,
+  },
+  versionVideoTime: {
+    color: colors.actionInk,
+    fontFamily: fonts.mono,
+    fontSize: 9,
   },
   versionLabelRow: {
     minHeight: 28,

@@ -6,6 +6,7 @@ export interface NotificationData {
   targetType?: string;
   targetId?: string;
   targetLabel?: string;
+  mediaKind?: 'image' | 'video' | 'audio';
 }
 
 export function notificationRoute(data: NotificationData): Href {
@@ -25,6 +26,7 @@ export function notificationRoute(data: NotificationData): Href {
         targetType: data.targetType,
         targetId: data.targetId,
         targetLabel: data.targetLabel ?? '',
+        ...(data.mediaKind ? { mediaKind: data.mediaKind } : {}),
       },
     };
   }

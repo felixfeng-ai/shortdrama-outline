@@ -23,6 +23,7 @@ const payload = {
     createdAt: 100,
     startedAt: 110,
     finishedAt: 120,
+    mediaKind: 'image',
   }],
   assets: [{
     id: 'asset-1',
@@ -39,16 +40,23 @@ const payload = {
     selectedAt: 130,
     createdAt: 120,
     downloadUrl: '/api/generated-assets/asset-1',
+    mediaKind: 'image',
+    durationMs: null,
   }],
 };
 
-test('审片读取复用项目生成状态接口和凭据', async () => {
-  let url = '';
+test('审片同时读取图片与视频状态并保留媒体类型', async () => {
+  const urls: string[] = [];
   let init: RequestInit | undefined;
   const fakeFetch = async (input: string | URL | Request, options?: RequestInit) => {
-    url = String(input);
+    urls.push(String(input));
     init = options;
-    return Response.json({ success: true, error: null, data: payload });
+    const video = String(input).includes('/api/video/');
+    return Response.json({
+      success: true,
+      error: null,
+      data: video ? { tasks: [], assets: [] } : payload,
+    });
   };
 
   const state = await fetchReviewState(
@@ -59,15 +67,18 @@ test('审片读取复用项目生成状态接口和凭据', async () => {
     fakeFetch as typeof fetch,
   );
 
-  assert.match(url, /\/api\/generations\?/);
-  assert.match(url, /projectId=p1/);
-  assert.match(url, /targetType=shot/);
-  assert.match(url, /targetId=shot-1/);
+  assert.equal(urls.length, 2)
+  assert.match(urls[0], /\/api\/generations\?/);
+  assert.match(urls[1], /\/api\/video\/generations\?/);
+  assert.match(urls[0], /projectId=p1/);
+  assert.match(urls[0], /targetType=shot/);
+  assert.match(urls[0], /targetId=shot-1/);
   assert.equal(init?.credentials, 'include');
   assert.equal(state.assets[0].id, 'asset-1');
+  assert.equal(state.assets[0].mediaKind, 'image');
 });
 
-test('审片采用调用既有 PATCH 接口', async () => {
+test('图片审片采用调用图片接口，视频审片采用调用视频接口', async () => {
   let url = '';
   let init: RequestInit | undefined;
   const fakeFetch = async (input: string | URL | Request, options?: RequestInit) => {
@@ -84,7 +95,7 @@ test('审片采用调用既有 PATCH 接口', async () => {
     'http://127.0.0.1:3200',
     'p1',
     'asset-1',
-    fakeFetch as typeof fetch,
+    { fetchImpl: fakeFetch as typeof fetch },
   );
 
   assert.equal(url, 'http://127.0.0.1:3200/api/generations');
@@ -94,6 +105,14 @@ test('审片采用调用既有 PATCH 接口', async () => {
     assetId: 'asset-1',
   });
   assert.equal(asset.selectedAt, 130);
+
+  await selectReviewAsset(
+    'http://127.0.0.1:3200',
+    'p1',
+    'asset-video',
+    { fetchImpl: fakeFetch as typeof fetch, mediaKind: 'video' },
+  );
+  assert.equal(url, 'http://127.0.0.1:3200/api/video/generations');
 });
 
 test('审片读取拒绝不完整响应', () => {

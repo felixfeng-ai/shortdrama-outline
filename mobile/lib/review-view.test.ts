@@ -3,8 +3,10 @@ import test from 'node:test';
 
 import type { ReviewAsset } from './review-api.ts';
 import {
-  buildReviewImageSource,
+  buildReviewMediaSource,
   initialReviewAsset,
+  reviewFileName,
+  reviewMediaKinds,
   reviewAspectRatio,
   reviewVersionLabel,
   reviewVersions,
@@ -23,6 +25,8 @@ function asset(id: string, createdAt: number, selectedAt: number | null = null):
     providerId: 'aliyun',
     model: 'wanx',
     prompt: 'rain',
+    mediaKind: 'image',
+    durationMs: null,
     selectedAt,
     createdAt,
     downloadUrl: `/api/generated-assets/${id}`,
@@ -44,7 +48,7 @@ test('版本按时间倒序并优先当前采用版本', () => {
 });
 
 test('图片源使用鉴权头，比例跟随资产类型', () => {
-  const state = buildReviewImageSource(
+  const state = buildReviewMediaSource(
     'http://127.0.0.1:3200/',
     asset('a', 100),
     { Authorization: 'Bearer token' },
@@ -54,4 +58,17 @@ test('图片源使用鉴权头，比例跟随资产类型', () => {
   assert.equal(reviewAspectRatio('shot'), 9 / 16);
   assert.equal(reviewAspectRatio('character'), 3 / 4);
   assert.equal(reviewAspectRatio('place'), 16 / 9);
+});
+
+test('视频版本使用 MP4 文件名，并能与图片分开审片', () => {
+  const video: ReviewAsset = {
+    ...asset('video-1', 200),
+    mime: 'video/mp4',
+    mediaKind: 'video',
+    durationMs: 5_000,
+  };
+  const assets = [asset('image-1', 100), video]
+  assert.deepEqual(reviewMediaKinds(assets), ['image', 'video'])
+  assert.deepEqual(reviewVersions(assets, 'video').map((item) => item.id), ['video-1'])
+  assert.equal(reviewFileName(video), 'shot-shot-1-video-1.mp4')
 });

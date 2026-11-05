@@ -1,4 +1,8 @@
-import { resolveApiBaseUrl, type WorkspaceTask } from './workspace-api.ts';
+import {
+  resolveApiBaseUrl,
+  type WorkspaceTask,
+  type WorkspaceTaskMediaKind,
+} from './workspace-api.ts';
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -10,12 +14,16 @@ async function sendTaskAction(
   baseUrl: string,
   input: { action: 'cancel' | 'retry'; projectId: string; taskId: string },
   fetchImpl: typeof fetch,
+  mediaKind: WorkspaceTaskMediaKind,
 ): Promise<{ task: WorkspaceTask }> {
   const root = resolveApiBaseUrl(baseUrl);
   if (!root) throw new Error('尚未配置生成服务地址');
   let response: Response;
   try {
-    response = await fetchImpl(`${root}/api/generations`, {
+    const path = (mediaKind ?? 'image') === 'video'
+      ? '/api/video/generations'
+      : '/api/generations';
+    response = await fetchImpl(`${root}${path}`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -36,8 +44,9 @@ export function cancelWorkspaceTask(
   projectId: string,
   taskId: string,
   fetchImpl: typeof fetch = fetch,
+  mediaKind: WorkspaceTaskMediaKind = 'image',
 ): Promise<{ task: WorkspaceTask }> {
-  return sendTaskAction(baseUrl, { action: 'cancel', projectId, taskId }, fetchImpl);
+  return sendTaskAction(baseUrl, { action: 'cancel', projectId, taskId }, fetchImpl, mediaKind);
 }
 
 export function retryWorkspaceTask(
@@ -45,6 +54,7 @@ export function retryWorkspaceTask(
   projectId: string,
   taskId: string,
   fetchImpl: typeof fetch = fetch,
+  mediaKind: WorkspaceTaskMediaKind = 'image',
 ): Promise<{ task: WorkspaceTask }> {
-  return sendTaskAction(baseUrl, { action: 'retry', projectId, taskId }, fetchImpl);
+  return sendTaskAction(baseUrl, { action: 'retry', projectId, taskId }, fetchImpl, mediaKind);
 }

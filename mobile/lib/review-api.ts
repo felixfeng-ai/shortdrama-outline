@@ -1,5 +1,8 @@
 import { resolveApiBaseUrl } from './workspace-api.ts';
-import type { WorkspaceTaskTargetType } from './workspace-api.ts';
+import type {
+  WorkspaceTaskMediaKind,
+  WorkspaceTaskTargetType,
+} from './workspace-api.ts';
 import { fetchWithRetry } from './network.ts';
 
 export interface ReviewTask {
@@ -8,6 +11,7 @@ export interface ReviewTask {
   assetId: string | null;
   createdAt: number;
   finishedAt: number | null;
+  mediaKind: WorkspaceTaskMediaKind;
 }
 
 export interface ReviewAsset {
@@ -22,6 +26,8 @@ export interface ReviewAsset {
   providerId: string;
   model: string;
   prompt: string;
+  mediaKind: WorkspaceTaskMediaKind;
+  durationMs: number | null;
   selectedAt: number | null;
   createdAt: number;
   downloadUrl: string;
@@ -71,6 +77,10 @@ function readAsset(value: unknown): ReviewAsset {
     providerId: typeof item.providerId === 'string' ? item.providerId : '',
     model: typeof item.model === 'string' ? item.model : '',
     prompt: typeof item.prompt === 'string' ? item.prompt : '',
+    mediaKind: item.mediaKind === 'video' || item.mediaKind === 'audio'
+      ? item.mediaKind
+      : 'image',
+    durationMs: Number.isFinite(Number(item.durationMs)) ? Number(item.durationMs) : null,
     selectedAt: Number.isFinite(Number(item.selectedAt)) ? Number(item.selectedAt) : null,
     createdAt: Number(item.createdAt),
     downloadUrl: item.downloadUrl,
@@ -93,6 +103,9 @@ function readTask(value: unknown): ReviewTask {
     assetId: typeof item.assetId === 'string' ? item.assetId : null,
     createdAt: Number(item.createdAt),
     finishedAt: Number.isFinite(Number(item.finishedAt)) ? Number(item.finishedAt) : null,
+    mediaKind: item.mediaKind === 'video' || item.mediaKind === 'audio'
+      ? item.mediaKind
+      : 'image',
   };
 }
 
@@ -131,32 +144,62 @@ export async function fetchReviewState(
   const root = resolveApiBaseUrl(baseUrl);
   if (!root) throw new Error('尚未配置工作区地址');
   const params = new URLSearchParams({ projectId, targetType, targetId });
-  let response: Response;
-  try {
-    response = await fetchWithRetry(`${root}/api/generations?${params.toString()}`, {
+  const load = (path: string) => {
+    const video = path.includes('/api/video/')
+    const query = video
+      ? new URLSearchParams({ projectId, targetId })
+      : params
+    return fetchWithRetry(`${root}${path}?${query.toString()}`, {
       credentials: 'include',
       headers: { Accept: 'application/json' },
       signal,
-    }, { fetchImpl });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') throw error;
-    throw new Error('无法连接审片服务，请检查网络后重试');
+    }, { fetchImpl }).then(readEnvelope<unknown>).then(readReviewState)
   }
-  return readReviewState(await readEnvelope<unknown>(response));
+
+  const [images, videos] = await Promise.allSettled([
+    load('/api/generations'),
+    load('/api/video/generations'),
+  ])
+  if (images.status === 'rejected') {
+    const reason = images.reason
+    if (reason instanceof Error && reason.name === 'AbortError') throw reason
+    throw reason instanceof Error
+      ? reason
+      : new Error('无法连接审片服务，请检查网络后重试')
+  }
+  if (videos.status === 'rejected') {
+    const reason = videos.reason
+    if (reason instanceof Error && reason.name === 'AbortError') throw reason
+    // 老服务端没有视频路由时，图片审片仍然可用；视频选择会在提交时明确失败。
+  }
+  const videoState = videos.status === 'fulfilled'
+    ? videos.value
+    : { tasks: [], assets: [] }
+  return {
+    tasks: uniqueById([...images.value.tasks, ...videoState.tasks]),
+    assets: uniqueById([...images.value.assets, ...videoState.assets]),
+  }
 }
 
 export async function selectReviewAsset(
   baseUrl: string,
   projectId: string,
   assetId: string,
-  fetchImpl: typeof fetch = fetch,
-  signal?: AbortSignal,
+  options: {
+    fetchImpl?: typeof fetch;
+    signal?: AbortSignal;
+    mediaKind?: WorkspaceTaskMediaKind;
+  } = {},
 ): Promise<ReviewAsset> {
   const root = resolveApiBaseUrl(baseUrl);
   if (!root) throw new Error('尚未配置工作区地址');
+  const fetchImpl = options.fetchImpl ?? fetch;
   let response: Response;
   try {
-    response = await fetchImpl(`${root}/api/generations`, {
+    const path = options.mediaKind === 'video'
+      ? '/api/video/generations'
+      : '/api/generations';
+    response = await fetchImpl(`${root}${path}`, {
       method: 'PATCH',
       credentials: 'include',
       headers: {
@@ -164,7 +207,7 @@ export async function selectReviewAsset(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ projectId, assetId }),
-      signal,
+      signal: options.signal,
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw error;
@@ -172,4 +215,13 @@ export async function selectReviewAsset(
   }
   const data = await readEnvelope<{ asset: unknown }>(response);
   return readAsset(data.asset);
+}
+
+function uniqueById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false
+    seen.add(item.id)
+    return true
+  })
 }

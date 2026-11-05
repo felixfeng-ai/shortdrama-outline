@@ -8,6 +8,8 @@ test('任务页只渲染工作区真实任务，不退回静态演示队列', ()
   assert.ok(source.includes('data.tasks'), '任务页没有读取移动上下文的真实任务');
   assert.ok(source.includes('taskStatusLabel'), '任务页没有使用统一状态文案');
   assert.ok(source.includes('safeTaskError'), '任务页没有脱敏失败原因');
+  assert.ok(source.includes('filterTasksByMedia'), '任务页没有按媒体类型筛选');
+  assert.ok(source.includes('taskMediaLabel'), '任务页没有展示图片/视频类型');
   assert.ok(!source.includes('GENERATION_TASKS'), '任务页仍在读取静态演示任务');
   assert.ok(!source.includes('REVIEW_VERSIONS'), '任务页仍混入静态审片版本');
 });

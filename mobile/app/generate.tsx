@@ -9,6 +9,7 @@ import {
   BodyText,
   IconButton,
   Kicker,
+  MonoText,
   Panel,
   PrimaryButton,
   ScreenFade,
@@ -16,12 +17,23 @@ import {
   SecondaryButton,
   StatusBadge,
 } from '@/components/ui';
-import { colors, radii, spacing, type } from '@/constants/tokens';
+import { colors, fonts, radii, spacing, type } from '@/constants/tokens';
 import { useAuth } from '@/lib/auth-store';
 import { generateWorkspaceTarget } from '@/lib/generation-entry';
 import { useMediaAttachments } from '@/lib/media-attachment-store';
 import { attachmentToGenerationReference } from '@/lib/media-encoding';
-import { workspaceApiBaseUrl, type WorkspaceGenerationTarget } from '@/lib/workspace-api';
+import {
+  estimatePublicVideoCostMicros,
+  generateWorkspaceVideo,
+  newVideoIdempotencyKey,
+  videoCostLabel,
+  videoModelCapability,
+} from '@/lib/video-entry';
+import {
+  workspaceApiBaseUrl,
+  type WorkspaceGenerationTarget,
+  type WorkspaceVideoTarget,
+} from '@/lib/workspace-api';
 import { useWorkspace } from '@/lib/workspace-store';
 
 const TYPES = [
@@ -31,24 +43,80 @@ const TYPES = [
   { key: 'place', label: '地点' },
 ] as const;
 
+type GenerateMode = 'image' | 'video';
+
+interface GenerationOption extends WorkspaceGenerationTarget {
+  key: string;
+  kind: GenerateMode;
+  duration: number | null;
+  ratio: '9:16' | '16:9' | null;
+  selectedFrameAssetId: string | null;
+  latestTaskStatus: WorkspaceVideoTarget['latestTaskStatus'];
+  blockedReason: string | null;
+}
+
 export default function GenerateScreen() {
   const { data } = useWorkspace();
   const { authorizedFetch } = useAuth();
   const { attachments, clearAttachments } = useMediaAttachments();
+  const [mode, setMode] = useState<GenerateMode>('image');
   const [filter, setFilter] = useState<(typeof TYPES)[number]['key']>('all');
   const [selectedId, setSelectedId] = useState('');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
-  const targets = useMemo(
-    () => filter === 'all'
-      ? data.generationTargets
-      : data.generationTargets.filter((target) => target.targetType === filter),
-    [data.generationTargets, filter],
+  const videoModel = videoModelCapability(
+    data.videoCapabilities,
+    data.videoCapabilities.defaultModel,
   );
-  const selected =
-    targets.find((target) => `${target.targetType}:${target.targetId}` === selectedId)
-    ?? targets[0]
-    ?? null;
+  const videoResolution = data.videoCapabilities.defaultResolution;
+  const videoEnabled = data.videoCapabilities.enabled
+    && Boolean(videoModel)
+    && Number.isFinite(videoModel?.pricesPerSecond[videoResolution]);
+  const targets = useMemo<GenerationOption[]>(() => {
+    if (mode === 'video') {
+      const videoTargets = filter === 'all' || filter === 'shot'
+        ? data.videoTargets
+        : [];
+      return videoTargets.map((target) => ({
+        ...target,
+        key: `video:${target.targetType}:${target.targetId}`,
+        kind: 'video',
+        aspect: target.ratio === '16:9' ? 'landscape' : 'vertical',
+      }));
+    }
+    const imageTargets = filter === 'all'
+      ? data.generationTargets
+      : data.generationTargets.filter((target) => target.targetType === filter);
+    return imageTargets.map((target) => ({
+      ...target,
+      key: `image:${target.targetType}:${target.targetId}`,
+      kind: 'image',
+      duration: null,
+      ratio: null,
+      selectedFrameAssetId: null,
+      latestTaskStatus: null,
+      blockedReason: null,
+    }));
+  }, [data.generationTargets, data.videoTargets, filter, mode]);
+  const selected = targets.find((target) => target.key === selectedId) ?? targets[0] ?? null;
+  const selectedVideoCost = selected?.kind === 'video'
+    && selected.duration
+    && videoEnabled
+    ? estimatePublicVideoCostMicros(
+        data.videoCapabilities,
+        data.videoCapabilities.defaultModel,
+        videoResolution,
+        selected.duration,
+      )
+    : 0;
+  const videoBlockedReason = selected?.kind === 'video'
+    ? !videoEnabled
+      ? '平台视频服务尚未开启'
+      : selected.blockedReason
+        ?? (selected.latestTaskStatus === 'queued' || selected.latestTaskStatus === 'running'
+          ? '这个镜头已有视频任务'
+          : null)
+    : null;
   const projectId = data.activeProject?.id ?? '';
 
   async function generate() {
@@ -56,6 +124,31 @@ export default function GenerateScreen() {
     setGenerating(true);
     setError('');
     try {
+      if (selected.kind === 'video') {
+        if (!selected.selectedFrameAssetId) throw new Error('请先生成并采用一张首帧');
+        if (!videoEnabled || !selected.duration) throw new Error('视频服务或时长配置不可用');
+        const result = await generateWorkspaceVideo(
+          workspaceApiBaseUrl,
+          {
+            projectId,
+            targetId: selected.targetId,
+            sourceAssetId: selected.selectedFrameAssetId,
+            prompt: selected.prompt,
+            model: data.videoCapabilities.defaultModel,
+            resolution: videoResolution,
+            duration: selected.duration,
+            ratio: selected.ratio ?? '9:16',
+            maxBudgetMicros: selectedVideoCost,
+            idempotencyKey: newVideoIdempotencyKey(),
+          },
+          authorizedFetch,
+        );
+        router.replace({
+          pathname: '/tasks',
+          params: { projectId, taskId: result.task.id },
+        });
+        return;
+      }
       const result = await generateWorkspaceTarget(
         workspaceApiBaseUrl,
         {
@@ -93,8 +186,41 @@ export default function GenerateScreen() {
           title="生成画面"
           left={<IconButton icon="arrow-left" label="返回任务" onPress={() => router.back()} />}
         />
+        <View style={styles.modeBar} accessibilityRole="tablist">
+          {(['image', 'video'] as const).map((item) => {
+            const active = mode === item;
+            return (
+              <Pressable
+                key={item}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                onPress={() => {
+                  setMode(item);
+                  setFilter('all');
+                  setSelectedId('');
+                  setError('');
+                }}
+                style={({ pressed }) => [
+                  styles.modeTab,
+                  active && styles.modeTabActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Feather
+                  name={item === 'video' ? 'film' : 'image'}
+                  size={15}
+                  color={active ? colors.actionInk : colors.textSecondary}
+                />
+                <Text style={[styles.modeText, active && styles.modeTextActive]}>
+                  {item === 'video' ? '镜头视频' : '关键帧'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <View style={styles.tabs} accessibilityRole="tablist">
-          {TYPES.map((item) => (
+          {(mode === 'video' ? TYPES.filter((item) => item.key === 'all' || item.key === 'shot') : TYPES)
+            .map((item) => (
             <Pressable
               key={item.key}
               accessibilityRole="tab"
@@ -119,7 +245,9 @@ export default function GenerateScreen() {
           {generating ? (
             <Panel style={styles.loadingCard}>
               <ActivityIndicator color={colors.info} />
-              <Text style={styles.loadingTitle}>正在生成{targetLabel(selected)}</Text>
+              <Text style={styles.loadingTitle}>
+                {mode === 'video' ? '正在提交镜头视频' : `正在生成${targetLabel(selected, mode)}`}
+              </Text>
               <BodyText dim style={styles.center}>
                 图像生成通常需要几十秒，可以离开页面，任务会在任务页继续。
               </BodyText>
@@ -129,7 +257,9 @@ export default function GenerateScreen() {
               <Feather name="image" size={22} color={colors.textSecondary} />
               <Text style={styles.loadingTitle}>这个筛选下没有可生成目标</Text>
               <BodyText dim style={styles.center}>
-                先在 Web 工作台保存人物定妆、地点或镜头，App 才能读取提示词。
+                {mode === 'video'
+                  ? '先在 Web 工作台保存镜头，并为镜头采用一张首帧。'
+                  : '先在 Web 工作台保存人物定妆、地点或镜头，App 才能读取提示词。'}
               </BodyText>
             </Panel>
           ) : (
@@ -138,30 +268,52 @@ export default function GenerateScreen() {
                 {targets.slice(0, 60).map((target, index) => {
                   const active = selected === target
                     || (selected?.targetType === target.targetType && selected?.targetId === target.targetId);
+                  const blocked = target.kind === 'video' && Boolean(target.blockedReason || !videoEnabled);
                   return (
                     <Pressable
-                      key={`${target.targetType}:${target.targetId}`}
+                      key={target.key}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: active }}
-                      onPress={() => setSelectedId(`${target.targetType}:${target.targetId}`)}
+                      onPress={() => setSelectedId(target.key)}
                       style={({ pressed }) => [
                         styles.targetRow,
                         index > 0 && styles.targetBorder,
                         active && styles.targetActive,
+                        blocked && styles.targetBlocked,
                         pressed && styles.pressed,
                       ]}
                     >
                       <View style={styles.targetIcon}>
                         <Feather
-                          name={target.targetType === 'shot' ? 'film' : target.targetType === 'place' ? 'map-pin' : 'user'}
+                          name={target.kind === 'video'
+                            ? 'video'
+                            : target.targetType === 'shot'
+                              ? 'film'
+                              : target.targetType === 'place'
+                                ? 'map-pin'
+                                : 'user'}
                           size={17}
                           color={active ? colors.action : colors.textSecondary}
                         />
                       </View>
                       <View style={styles.targetCopy}>
                         <Text style={styles.targetTitle}>{target.targetLabel}</Text>
-                        <Text numberOfLines={1} style={styles.targetPrompt}>{target.prompt}</Text>
+                        <Text numberOfLines={1} style={styles.targetPrompt}>
+                          {blocked && target.blockedReason ? target.blockedReason : target.prompt}
+                        </Text>
                       </View>
+                      {videoEnabled && target.kind === 'video' && target.duration ? (
+                        <MonoText style={styles.targetDuration}>
+                          {videoCostLabel(
+                            estimatePublicVideoCostMicros(
+                              data.videoCapabilities,
+                              data.videoCapabilities.defaultModel,
+                              videoResolution,
+                              target.duration,
+                            ),
+                          )}
+                        </MonoText>
+                      ) : null}
                       {active ? <Feather name="check" size={16} color={colors.success} /> : null}
                     </Pressable>
                   );
@@ -171,10 +323,21 @@ export default function GenerateScreen() {
                 <Panel style={styles.promptCard}>
                   <View style={styles.promptHead}>
                     <Kicker>生成提示词</Kicker>
-                    <StatusBadge tone="info">{targetLabel(selected)}</StatusBadge>
+                    <StatusBadge tone="info">{targetLabel(selected, mode)}</StatusBadge>
                   </View>
                   <Text numberOfLines={8} style={styles.prompt}>{selected.prompt}</Text>
-                  {attachments.length > 0 ? (
+                  {mode === 'video' ? (
+                    <View style={styles.videoSummary}>
+                      <StatusBadge tone={videoBlockedReason ? 'warning' : 'info'}>
+                        {videoBlockedReason
+                          ? videoBlockedReason
+                          : `${data.videoCapabilities.defaultModel} · ${videoResolution}`}
+                      </StatusBadge>
+                      <Text style={styles.videoCost}>
+                        {selected.duration ?? 5} 秒 · 约 {videoCostLabel(selectedVideoCost)}
+                      </Text>
+                    </View>
+                  ) : attachments.length > 0 ? (
                     <View style={styles.references}>
                       {attachments.map((attachment) => (
                         <Image
@@ -198,8 +361,15 @@ export default function GenerateScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {!generating && selected ? (
             <PrimaryButton
-              label={`生成${targetLabel(selected)}`}
+              label={
+                mode === 'video'
+                  ? videoBlockedReason
+                    ? '暂不能生成视频'
+                    : `生成视频 · ${videoCostLabel(selectedVideoCost)}`
+                  : `生成${targetLabel(selected, mode)}`
+              }
               icon="zap"
+              disabled={mode === 'video' && Boolean(videoBlockedReason)}
               onPress={() => void generate()}
             />
           ) : null}
@@ -212,8 +382,9 @@ export default function GenerateScreen() {
   );
 }
 
-function targetLabel(target: WorkspaceGenerationTarget | null): string {
+function targetLabel(target: WorkspaceGenerationTarget | null, mode: GenerateMode = 'image'): string {
   if (!target) return '画面';
+  if (mode === 'video') return '镜头视频';
   if (target.targetType === 'character') return '定妆图';
   if (target.targetType === 'place') return '场景图';
   return '关键帧';
@@ -221,6 +392,40 @@ function targetLabel(target: WorkspaceGenerationTarget | null): string {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
+  modeBar: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    minHeight: 48,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  modeTab: {
+    minHeight: 44,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+  },
+  modeTabActive: {
+    borderColor: colors.action,
+    backgroundColor: colors.action,
+  },
+  modeText: {
+    color: colors.textSecondary,
+    fontSize: type.caption,
+    fontWeight: '600',
+  },
+  modeTextActive: {
+    color: colors.actionInk,
+  },
   tabs: {
     width: '100%',
     maxWidth: 760,
@@ -266,6 +471,7 @@ const styles = StyleSheet.create({
   },
   targetBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   targetActive: { backgroundColor: colors.accentSoft },
+  targetBlocked: { opacity: 0.68 },
   targetIcon: {
     width: 34,
     height: 34,
@@ -277,12 +483,24 @@ const styles = StyleSheet.create({
   targetCopy: { flex: 1, minWidth: 0, gap: 2 },
   targetTitle: { color: colors.text, fontSize: type.label, fontWeight: '600' },
   targetPrompt: { color: colors.textMuted, fontSize: type.micro },
+  targetDuration: { color: colors.textMuted, fontSize: type.micro },
   promptCard: { padding: spacing.md, gap: spacing.sm },
   promptHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   prompt: { color: colors.textSecondary, fontSize: type.caption, lineHeight: 20 },
   references: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   referenceImage: { width: 38, height: 38, borderRadius: 5, backgroundColor: colors.elevated },
   referenceText: { flex: 1, color: colors.textMuted, fontSize: type.micro },
+  videoSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  videoCost: {
+    color: colors.textSecondary,
+    fontFamily: fonts.mono,
+    fontSize: type.micro,
+  },
   loadingCard: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   loadingTitle: { color: colors.text, fontSize: type.body, fontWeight: '600' },
   emptyCard: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
