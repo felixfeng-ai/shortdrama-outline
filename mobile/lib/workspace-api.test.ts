@@ -86,6 +86,9 @@ const payload: WorkspaceData = {
     targetType: 'shot',
     targetId: 'shot-entity-17',
     targetLabel: '第 3 集 · 第 17 镜 · 码头夜谈',
+    episode: 3,
+    shotNumber: 17,
+    scene: '码头夜谈',
     prompt: 'rainy dock',
     duration: 5,
     ratio: '9:16',
@@ -181,6 +184,9 @@ test('workspace fetch uses the mobile context endpoint with credentials', async 
   assert.equal(data.generationTargets[0].targetId, 'shot-entity-17');
   assert.equal(data.videoCapabilities.defaultModel, 'MiniMax-H3-Lite')
   assert.equal(data.videoTargets[0].selectedFrameAssetId, 'frame-1')
+  assert.equal(data.videoTargets[0].episode, 3)
+  assert.equal(data.videoTargets[0].shotNumber, 17)
+  assert.equal(data.videoTargets[0].scene, '码头夜谈')
   assert.equal(data.videoReadiness.missingVideo, 21)
   assert.equal(data.agentMemory.lockedCharacters[0], '林昭 · 深蓝快递服')
   assert.equal(data.pacing.rows[0].averageShotSeconds, 8)

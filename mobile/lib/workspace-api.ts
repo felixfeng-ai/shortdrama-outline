@@ -93,6 +93,9 @@ export interface WorkspaceVideoTarget {
   targetType: 'shot';
   targetId: string;
   targetLabel: string;
+  episode: number;
+  shotNumber: number;
+  scene: string;
   prompt: string;
   duration: number;
   ratio: '9:16' | '16:9';

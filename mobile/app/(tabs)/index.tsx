@@ -446,6 +446,11 @@ export default function AgentHomeScreen() {
 
                 <View style={styles.toolRail}>
                   <StudioTool
+                    icon="film"
+                    label="整集草片"
+                    onPress={() => router.push('/draft')}
+                  />
+                  <StudioTool
                     icon="camera"
                     label="现场检查"
                     onPress={() => router.push('/continuity')}
@@ -500,7 +505,7 @@ function StudioTool({
   label,
   onPress,
 }: {
-  icon: 'camera' | 'activity' | 'globe';
+  icon: 'film' | 'camera' | 'activity' | 'globe';
   label: string;
   onPress: () => void;
 }) {
