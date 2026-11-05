@@ -4,10 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import BatchGenerationPanel from './BatchGenerationPanel'
 import BatchVideoPanel from './BatchVideoPanel'
+import EpisodeTimelinePanel from './EpisodeTimelinePanel'
 import ShotBoardCard from './ShotBoardCard'
+import VoiceProfilePanel from './VoiceProfilePanel'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import type { GeneratedAsset, GenerationStatus, GenerationTask } from '@/lib/generation/types'
 import type { Shot, VisualCharacter, VisualPlace } from '@/lib/assets/types'
+import type { Character } from '@/lib/types'
+import { fetchProjectVideoState } from '@/lib/video/client'
 import {
   auditShotProduction,
   repairShotAnchors,
@@ -30,6 +34,7 @@ interface Props {
   onEnsureProject: () => Promise<string | null>
   look: LookBook
   episodeCount: number
+  characters: Character[]
   visuals: VisualCharacter[]
   places: VisualPlace[]
   onActiveQcChange?: (qc: ShotQcResult | null) => void
@@ -61,6 +66,7 @@ export default function ShotList({
   onEnsureProject,
   look,
   episodeCount,
+  characters,
   visuals,
   places,
   onActiveQcChange,
@@ -71,6 +77,7 @@ export default function ShotList({
   const [qcNotice, setQcNotice] = useState<string | null>(null)
   const [treeOpen, setTreeOpen] = useState(true)
   const [generationAssets, setGenerationAssets] = useState<GeneratedAsset[]>([])
+  const [videoAssets, setVideoAssets] = useState<GeneratedAsset[]>([])
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([])
   const onSelectRef = useRef(onSelect)
 
@@ -144,7 +151,6 @@ export default function ShotList({
     }
     return map
   }, [generationTasks])
-
   useEffect(() => {
     onSelectRef.current = onSelect
   }, [onSelect])
@@ -181,20 +187,26 @@ export default function ShotList({
   useEffect(() => {
     if (!projectId) {
       setGenerationAssets([])
+      setVideoAssets([])
       setGenerationTasks([])
       return
     }
     let active = true
     const load = () => {
-      fetchProjectGenerationAssets(projectId)
-        .then((state) => {
+      Promise.all([
+        fetchProjectGenerationAssets(projectId),
+        fetchProjectVideoState(projectId),
+      ])
+        .then(([imageState, videoState]) => {
           if (!active) return
-          setGenerationAssets(state.assets)
-          setGenerationTasks(state.tasks)
+          setGenerationAssets(imageState.assets)
+          setVideoAssets(videoState.assets)
+          setGenerationTasks([...imageState.tasks, ...videoState.tasks])
         })
         .catch(() => {
           if (active) {
             setGenerationAssets([])
+            setVideoAssets([])
             setGenerationTasks([])
           }
         })
@@ -487,6 +499,29 @@ export default function ShotList({
               ? '批量生成全剧镜头视频'
               : `批量生成${selectedEpisodeLabel}镜头视频`
           }
+        />
+
+        <EpisodeTimelinePanel
+          projectId={projectId}
+          onEnsureProject={onEnsureProject}
+          episodes={tree.map((group) => group.episode)}
+          preferredEpisode={episodeFilter}
+          videos={videoAssets}
+        />
+
+        <VoiceProfilePanel
+          projectId={projectId}
+          onEnsureProject={onEnsureProject}
+          characters={characters}
+          speakerNames={visibleShots
+            .map((shot) => shot.speaker.trim())
+            .filter(Boolean)}
+          dialogueShots={visibleShots.map((shot) => ({
+            shotId: shot.entityId,
+            speaker: shot.speaker.trim(),
+            dialogue: shot.dialogue,
+          }))}
+          episode={episodeFilter}
         />
 
         <div className="shot-board-flow">

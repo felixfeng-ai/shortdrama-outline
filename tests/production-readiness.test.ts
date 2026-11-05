@@ -63,3 +63,34 @@ test("READY4 部署链可注入 Web Push VAPID 配置", () => {
     assert.ok(apply.includes(key), `部署环境注入缺少 ${key}`)
   }
 })
+
+test("READY5 开启 TTS 时必须同时配置供应商 Key 与计价", () => {
+  const base = {
+    NODE_ENV: "production",
+    DEEPSEEK_API_KEY: "deepseek",
+    ALIYUN_DASHSCOPE_API_KEY: "dashscope",
+    AUTH_SECRET: "a".repeat(32),
+    AUTH_ALLOW_DEV_CODE: "0",
+    RESEND_API_KEY: "re_live",
+    AUTH_EMAIL_FROM: "成剧 <login@chenju.work>",
+  }
+  const disabled = checkProductionReadiness(base)
+  assert.ok(disabled.warnings.some((item) => item.includes("TTS")))
+
+  const invalid = checkProductionReadiness({
+    ...base,
+    TTS_ENABLED: "1",
+    MINIMAX_TTS_API_KEY: "",
+    MINIMAX_TTS_PRICE_MICROS_PER_1K_CHARS: "0",
+  })
+  assert.ok(invalid.errors.some((item) => item.includes("MINIMAX_TTS_API_KEY")))
+  assert.ok(invalid.errors.some((item) => item.includes("MINIMAX_TTS_PRICE")))
+
+  const valid = checkProductionReadiness({
+    ...base,
+    TTS_ENABLED: "1",
+    MINIMAX_TTS_API_KEY: "speech-key",
+    MINIMAX_TTS_PRICE_MICROS_PER_1K_CHARS: "600000",
+  })
+  assert.deepEqual(valid.errors, [])
+})

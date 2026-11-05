@@ -700,6 +700,60 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
     `,
   },
   {
+    version: 14,
+    name: "episode-timelines",
+    sql: `
+      -- 草稿可变，版本不可变；两者按项目和集号隔离，避免跨集串稿。
+      CREATE TABLE IF NOT EXISTS timeline_drafts (
+        id            TEXT PRIMARY KEY,
+        project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        episode       INTEGER NOT NULL,
+        revision      INTEGER NOT NULL DEFAULT 1,
+        payload_json  TEXT NOT NULL,
+        created_at    INTEGER NOT NULL,
+        updated_at    INTEGER NOT NULL,
+        UNIQUE(project_id, episode)
+      );
+
+      CREATE TABLE IF NOT EXISTS timeline_versions (
+        id                 TEXT PRIMARY KEY,
+        project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        episode            INTEGER NOT NULL,
+        revision           INTEGER NOT NULL,
+        payload_json       TEXT NOT NULL,
+        input_hashes_json  TEXT NOT NULL DEFAULT '{}',
+        created_at         INTEGER NOT NULL,
+        UNIQUE(project_id, episode, revision)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_timeline_versions_project
+        ON timeline_versions(project_id, episode, created_at);
+    `,
+  },
+  {
+    version: 15,
+    name: "voice-profiles",
+    sql: `
+      -- 只保存系统预置音色绑定；一个项目内每个角色只有一条当前绑定。
+      CREATE TABLE IF NOT EXISTS voice_profiles (
+        id                  TEXT PRIMARY KEY,
+        project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        character_entity_id TEXT NOT NULL,
+        provider_id         TEXT NOT NULL,
+        voice_id            TEXT NOT NULL,
+        label               TEXT NOT NULL,
+        speed               REAL NOT NULL DEFAULT 1,
+        volume              REAL NOT NULL DEFAULT 1,
+        created_at          INTEGER NOT NULL,
+        updated_at          INTEGER NOT NULL,
+        UNIQUE(project_id, character_entity_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_voice_profiles_project
+        ON voice_profiles(project_id, updated_at);
+    `,
+  },
+  {
     version: 16,
     name: "generated-assets-one-per-task",
     sql: `

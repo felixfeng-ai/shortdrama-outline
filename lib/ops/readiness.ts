@@ -39,6 +39,18 @@ export function checkProductionReadiness(
     warnings.push("视频生成未启用，App 只能生成关键帧")
   }
 
+  const ttsEnabled = /^(1|true|yes|on)$/i.test(value(env, "TTS_ENABLED"))
+  if (ttsEnabled) {
+    const speechKey = value(env, "MINIMAX_TTS_API_KEY") || value(env, "MINIMAX_API_KEY")
+    if (!speechKey) errors.push("缺少 MINIMAX_TTS_API_KEY，TTS 不可用")
+    const price = Number(value(env, "MINIMAX_TTS_PRICE_MICROS_PER_1K_CHARS"))
+    if (!Number.isSafeInteger(price) || price <= 0) {
+      errors.push("缺少有效的 MINIMAX_TTS_PRICE_MICROS_PER_1K_CHARS")
+    }
+  } else {
+    warnings.push("TTS 未启用，角色音色只能配置，不能生成对白")
+  }
+
   const pushPublic = value(env, "WEB_PUSH_PUBLIC_KEY")
   const pushPrivate = value(env, "WEB_PUSH_PRIVATE_KEY")
   if (Boolean(pushPublic) !== Boolean(pushPrivate)) {

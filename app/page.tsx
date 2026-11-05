@@ -3806,6 +3806,7 @@ export default function Home() {
                 onEnsureProject={() => ensureProject(idea.trim().slice(0, 20))}
                 look={look}
                 episodeCount={episodeCount}
+                characters={characters}
                 visuals={visuals}
                 places={places}
                 onActiveQcChange={setActiveShotQc}

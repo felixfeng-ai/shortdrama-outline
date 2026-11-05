@@ -8,6 +8,7 @@ const MIME_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/webp": "webp",
   "video/mp4": "mp4",
+  "audio/mpeg": "mp3",
 }
 
 function generatedRoot(): string {
@@ -80,6 +81,24 @@ export function writeGeneratedVideo(
   const project = safeProjectId(projectId)
   const asset = safeAssetId(assetId)
   const relative = path.posix.join("generated", project, `${asset}.mp4`)
+  const full = resolveGeneratedStoragePath(relative)
+  fs.mkdirSync(path.dirname(full), { recursive: true })
+  fs.writeFileSync(full, bytes)
+  return { storageKey: relative, bytes: bytes.length }
+}
+
+export function writeGeneratedAudio(
+  projectId: string,
+  assetId: string,
+  bytes: Uint8Array,
+  mime: string,
+): { storageKey: string; bytes: number } {
+  if (mime !== "audio/mpeg") throw new Error("不支持的音频格式")
+  if (bytes.length === 0) throw new Error("音频内容为空")
+  if (bytes.length > 20 * 1024 * 1024) throw new Error("音频不能超过 20MB")
+  const project = safeProjectId(projectId)
+  const asset = safeAssetId(assetId)
+  const relative = path.posix.join("generated", project, `${asset}.mp3`)
   const full = resolveGeneratedStoragePath(relative)
   fs.mkdirSync(path.dirname(full), { recursive: true })
   fs.writeFileSync(full, bytes)
