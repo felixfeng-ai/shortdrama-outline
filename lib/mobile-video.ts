@@ -29,6 +29,9 @@ export interface MobileVideoTarget {
   targetType: "shot"
   targetId: string
   targetLabel: string
+  episode: number
+  shotNumber: number
+  scene: string
   prompt: string
   duration: number
   ratio: "9:16" | "16:9"
@@ -100,6 +103,9 @@ export function buildMobileVideoView(input: {
         targetType: "shot",
         targetId,
         targetLabel: `${episode > 0 ? `第 ${episode} 集 · ` : ""}第 ${shotNumber} 镜 · ${scene}`,
+        episode,
+        shotNumber,
+        scene,
         prompt,
         duration,
         ratio,
