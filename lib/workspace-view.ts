@@ -6,12 +6,12 @@ import type { StepKey } from "./types.ts"
  * 其余步骤仍按短剧生产顺序排列。
  */
 export const WORKSPACE_STEP_ORDER: readonly StepKey[] = [
-  "shots",
   "characters",
   "acts",
   "episodes",
   "visuals",
   "scenes",
+  "shots",
 ]
 
 export const WORKSPACE_STEP_LABELS: Record<StepKey, string> = {

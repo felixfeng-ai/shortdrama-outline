@@ -1,5 +1,6 @@
 export type SkillCategory =
   | "小说改编"
+  | "小说创作"
   | "短剧开发"
   | "视觉一致性"
   | "分镜制作"
@@ -121,6 +122,38 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     produces: ["成本估算", "批次顺序"],
     writePolicy: "纯计算",
   },
+  {
+    id: "novelize",
+    title: "小说化",
+    category: "小说创作",
+    type: "长篇扩写",
+    image: "/skills/manor.png",
+    count: "复用分集",
+    summary: "复用短剧项目的人物、三观、分集、场次与 Canon，按卷章规划扩写长篇连载初稿。",
+    meta: "低优先级 · 按章排队",
+    favorite: true,
+    visual: "visual-code",
+    prompt: "把当前短剧项目扩写为 90 章长篇小说初稿，先规划目录和预算。",
+    requires: ["分集或场次剧本"],
+    produces: ["卷章目录", "小说正文", "章节摘要"],
+    writePolicy: "确认后写入独立小说稿",
+  },
+  {
+    id: "novel-deslop",
+    title: "小说去 AI 味",
+    category: "小说创作",
+    type: "改稿",
+    image: "/skills/story.png",
+    count: "候选修订",
+    summary: "先做确定性检查，再只针对命中问题生成候选修订；不新增事实，不自动覆盖正文。",
+    meta: "只读检查 · 确认后写入",
+    favorite: true,
+    visual: "visual-code",
+    prompt: "检查当前小说章节的机械句式、重复和工程词，生成候选修订。",
+    requires: ["小说章节"],
+    produces: ["质检报告", "候选修订"],
+    writePolicy: "用户确认后写入新版本",
+  },
 ]
 
 export function filterSkillCatalog(input: {
@@ -139,6 +172,12 @@ export function filterSkillCatalog(input: {
 }
 
 export function matchSkillForPrompt(prompt: string): SkillDefinition {
+  if (/去\s*AI\s*味|AI\s*味|润色|改稿/i.test(prompt)) {
+    return SKILL_CATALOG.find((skill) => skill.id === "novel-deslop") ?? SKILL_CATALOG[0]
+  }
+  if (/小说化|长篇小说|扩写|连载初稿/.test(prompt)) {
+    return SKILL_CATALOG.find((skill) => skill.id === "novelize") ?? SKILL_CATALOG[0]
+  }
   if (/小说|剧本|章节|原著/.test(prompt)) return SKILL_CATALOG[0]
   if (/钩子|节奏|故事|结构/.test(prompt)) return SKILL_CATALOG[1]
   if (/人物|关系|道具|时间线/.test(prompt)) return SKILL_CATALOG[2]

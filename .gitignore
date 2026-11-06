@@ -43,5 +43,5 @@ tsconfig.tsbuildinfo
 *.tmp.cjs
 *.tmp.mjs
 .verify/
-
-sk-api-BdxWhbINa3cuM6YLmHxRijgoWmUV3t3bkLUbZmvIPhlUk00GdupV02HFbCGT2ujgyP8tC9hbEOaXoDrogtyMIzIWlGn5nvIND7WhJbJfejz9jBmLQMhEjkg
+.artifacts/
+novel-*.log

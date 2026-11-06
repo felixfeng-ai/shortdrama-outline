@@ -27,6 +27,7 @@ const CHAPTERS = [
       ['shot-video', '镜头视频'],
       ['timeline-final', '声音与时间线成片'],
       ['export-delivery', '导出与外部交付'],
+      ['novel-companion', '项目附赠小说稿'],
     ],
   },
   {
@@ -376,8 +377,33 @@ export default function DocsGuide() {
             </div>
           </section>
 
+          <section id="novel-companion" className="docs-section">
+            <p className="docs-section-kicker">08 / NOVEL COMPANION</p>
+            <h2>项目附赠小说稿</h2>
+            <p>
+              小说稿从项目条导出菜单进入，不增加第七步。它复用已有人物、三观、分集、场次、
+              分镜动作与对白、Canon 和项目原文，用户可以先生成一份可编辑的长篇连载初稿。
+            </p>
+            <TutorialFigure
+              src="/docs/tutorial/09-novel-workspace.png"
+              alt="VeyaFrame 小说工作台，左侧卷章目录、中间正文编辑和右侧质量检查"
+              label="小说稿 · 卷章与正文编辑"
+              points={[
+                '先选篇幅并确认预算，再按章节低优先级生成；媒体任务运行时自动等待。',
+                '正文旁边持续显示当前章节来源集、Canon 项目和确定性质检结果。',
+                '每一章可以手改、重写、生成去 AI 味候选，并保留 append-only 版本。',
+              ]}
+            />
+            <ul className="docs-checklist">
+              <li>默认不生成、不导出；先选篇幅，再确认章节、字数、Token、额度和预计耗时。</li>
+              <li>小说任务低于图片、视频、音频和成片渲染；媒体任务运行时会自动等待，并按章节游标恢复。</li>
+              <li>章节版本 append-only；上游改动只标记过期，不静默覆盖已编辑正文。</li>
+              <li>去 AI 味先生成候选修订，用户确认后才写入；支持 Markdown、TXT、DOCX、EPUB 和 ZIP。</li>
+            </ul>
+          </section>
+
           <section id="workspace-modes" className="docs-section">
-            <p className="docs-section-kicker">08 / WORKSPACE MODES</p>
+            <p className="docs-section-kicker">09 / WORKSPACE MODES</p>
             <h2>总览 / 创作 / 画布</h2>
             <p>
               三个工作面属于同一个项目，不会丢失当前项目和步骤。总览负责当前阻断与下一步，
@@ -396,7 +422,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="canvas-window" className="docs-section">
-            <p className="docs-section-kicker">09 / FULLSCREEN CANVAS</p>
+            <p className="docs-section-kicker">10 / FULLSCREEN CANVAS</p>
             <h2>全屏画布</h2>
             <p>
               工作区里的“画布”主入口仍在当前页面打开。需要并排审阅或更大的拖拽空间时，
@@ -415,7 +441,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="mobile-app" className="docs-section">
-            <p className="docs-section-kicker">10 / MOBILE & CONTINUITY</p>
+            <p className="docs-section-kicker">11 / MOBILE & CONTINUITY</p>
             <h2>手机 App 与跨端</h2>
             <p>
               桌面顶栏“下载手机 App”会展示二维码。手机扫码安装后登录同一账号，
@@ -435,7 +461,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="skills-agent" className="docs-section">
-            <p className="docs-section-kicker">11 / SKILLS & AGENT</p>
+            <p className="docs-section-kicker">12 / SKILLS & AGENT</p>
             <h2>创作技能与 Agent</h2>
             <p>
               桌面端 Agent 默认收起在工作区右下角，不占用主工作面宽度；点击 Veya 图标后展开侧舱，
@@ -453,7 +479,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="cost-recovery" className="docs-section">
-            <p className="docs-section-kicker">12 / COST & RECOVERY</p>
+            <p className="docs-section-kicker">13 / COST & RECOVERY</p>
             <h2>费用、恢复与版本</h2>
             <ul className="docs-checklist">
               <li>可计费动作会先显示预估费用；批量操作还会显示预算上限。</li>

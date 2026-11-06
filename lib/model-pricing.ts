@@ -13,12 +13,13 @@ export const STEP_COST: Record<string, number> = {
   visual: 2,
   scenes: 2,
   shots: 4,
+  novel: 3,
 }
 
 export type PricedStep =
   | "ideas" | "assetMatch" | "assistant" | "agent"
   | "characters" | "acts" | "episodes"
-  | "visual" | "scenes" | "shots"
+  | "visual" | "scenes" | "shots" | "novel"
 
 /** 一个完整项目的基础口径：分集只按第一批 10 集计算。 */
 export const FULL_PROJECT_COST = [

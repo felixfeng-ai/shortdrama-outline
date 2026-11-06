@@ -17,12 +17,16 @@ test("VP1 顶栏头像使用独立 30px 容器，内部层填满且无横向偏�
   assert.match(shellCss, /\.wfx-topbar \.h-install \.wfx-user-initial\s*\{[^}]*place-items:\s*center;/s)
 })
 
-test("VP2 登录页切换冷蓝/反相白主题并更新核心优势文案", () => {
-  assert.match(login, /把判断留在创作里/)
-  assert.match(login, /跨镜一致性/)
-  assert.match(login, /Canon/)
-  assert.match(login, /确认后写入新版本/)
-  assert.match(loginPage, /人的判断/)
+test("VP2 登录页切换冷蓝/反相白主题并明确短剧生产链", () => {
+  assert.match(login, /短剧创作工作台/)
+  assert.match(login, /回来接着写/)
+  assert.match(login, /把下一场做成/)
+  assert.match(login, /人物、分集、场次、分镜和首帧/)
+  assert.match(login, /角色像不像、镜头对不对/)
+  assert.match(login, /人物跨镜不走样/)
+  assert.match(login, /场次直接接分镜/)
+  assert.match(login, /每次修改可回看/)
+  assert.match(loginPage, /短剧创作工作台/)
   assert.match(shellCss, /\.auth-page\s*\{[^}]*--signal-acid:\s*#8dc8dc/s)
   assert.doesNotMatch(login, /把故事<span className="auth-title-accent">做对/)
 })

@@ -133,7 +133,6 @@ export default function PersonalSkillPanel({ projectId }: Props) {
     <section className="personal-skills" aria-labelledby="personalSkillsTitle">
       <div className="personal-skills-head">
         <div>
-          <p>我的方法</p>
           <h2 id="personalSkillsTitle">我的 Skill</h2>
           <span>把一次做对的方法留下来，新项目继续沿用同一套判断。</span>
         </div>

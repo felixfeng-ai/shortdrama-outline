@@ -192,15 +192,38 @@
 .wfx-project-menu {
   display: grid;
   gap: 2px;
+  max-height: min(52vh, 440px);
   margin: -10px 0 12px;
   padding: 5px;
   border: 1px solid var(--wfx-line);
   border-radius: var(--wfx-radius-sm);
   background: var(--wfx-surface);
+  overflow-y: auto;
 }
 
-.wfx-project-menu button {
-  min-height: 32px;
+.wfx-project-menu-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.wfx-project-menu-row:hover,
+.wfx-project-menu-row.is-active {
+  background: var(--wfx-surface-3);
+}
+
+.wfx-project-menu-row.is-confirming {
+  background: var(--wfx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--wfx-line);
+}
+
+.wfx-project-select,
+.wfx-project-new {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
   overflow: hidden;
   padding: 0 8px;
   border: 0;
@@ -209,15 +232,117 @@
   color: var(--wfx-muted);
   font-size: 12px;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: pointer;
 }
 
-.wfx-project-menu button:hover,
-.wfx-project-menu button.is-active {
-  background: var(--wfx-surface-3);
+.wfx-project-select span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wfx-project-select small {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--wfx-accent);
+  font-size: 10px;
+}
+
+.wfx-project-menu-row:hover .wfx-project-select,
+.wfx-project-menu-row.is-active .wfx-project-select,
+.wfx-project-select:hover,
+.wfx-project-select:focus-visible,
+.wfx-project-new:hover,
+.wfx-project-new:focus-visible {
   color: var(--wfx-ink);
+}
+
+.wfx-project-delete {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wfx-faint);
+  cursor: pointer;
+  opacity: .68;
+}
+
+.wfx-project-delete svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wfx-project-delete:hover,
+.wfx-project-delete:focus-visible {
+  background: color-mix(in srgb, var(--wfx-danger) 12%, transparent);
+  color: var(--wfx-danger);
+  opacity: 1;
+}
+
+.wfx-project-delete-confirm {
+  display: flex;
+  grid-column: 1 / -1;
+  min-height: 42px;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 5px 5px;
+  border-top: 1px solid var(--wfx-line);
+}
+
+.wfx-project-delete-confirm span {
+  min-width: 0;
+  flex: 1;
+  color: var(--wfx-faint);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.wfx-project-delete-confirm button {
+  min-height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--wfx-line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wfx-muted);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.wfx-project-delete-confirm button.is-confirm {
+  border-color: color-mix(in srgb, var(--wfx-danger) 36%, var(--wfx-line));
+  background: color-mix(in srgb, var(--wfx-danger) 13%, transparent);
+  color: var(--wfx-danger);
+}
+
+.wfx-project-empty {
+  margin: 0;
+  padding: 8px;
+  color: var(--wfx-faint);
+  font-size: 11px;
+}
+
+.wfx-project-new {
+  width: 100%;
+  margin-top: 1px;
+}
+
+.wfx-project-select:focus-visible,
+.wfx-project-delete:focus-visible,
+.wfx-project-new:focus-visible,
+.wfx-project-delete-confirm button:focus-visible {
+  outline: 1px solid var(--wfx-accent);
+  outline-offset: 1px;
 }
 
 .wfx-side-scroll {
@@ -977,10 +1102,6 @@
 .inline-release-action svg {
   width: 13px;
   height: 13px;
-}
-
-.inline-release-action-label-mobile {
-  display: none;
 }
 
 .wfx-content .inline-release-close {
@@ -2147,7 +2268,7 @@
     height: 24px;
     flex-basis: 24px;
   }
-  .inline-release-status-copy small,
+  .inline-release-status-copy,
   .inline-release-copy > span {
     display: none;
   }
@@ -2159,10 +2280,7 @@
     padding: 0 9px;
   }
   .inline-release-action-label {
-    display: none;
-  }
-  .inline-release-action-label-mobile {
-    display: inline;
+    font-size: 10.5px;
   }
   .wfx-content .inline-release-close {
     width: 30px;

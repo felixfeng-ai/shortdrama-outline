@@ -24,6 +24,13 @@ import {
   restoreLocalizationBackup,
   type LocalizationBackupData,
 } from "@/lib/localization/backup"
+import {
+  createNovelEdition,
+  saveNovelChapter,
+  saveNovelPlan,
+} from "@/lib/novels/repo"
+import { buildNovelSourcePack } from "@/lib/novels/source-pack"
+import type { NovelPlan, NovelPresetId } from "@/lib/novels/types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -68,6 +75,28 @@ interface ExportedMaterial {
   mime?: string
   bytes?: number
   content?: string
+}
+
+interface ExportedNovel {
+  title?: string
+  preset?: NovelPresetId
+  volumes?: Array<{
+    title?: string
+    summary?: string
+    startChapter?: number
+    endChapter?: number
+  }>
+  chapters?: Array<{
+    number?: number
+    title?: string
+    outline?: string
+    hook?: string
+    targetWords?: number
+    sourceEpisode?: number
+    sourceSceneIds?: string[]
+    content?: string
+    summary?: string
+  }>
 }
 
 const KIND_ORDER: ArtifactKind[] = [
@@ -264,6 +293,80 @@ function restoreMaterials(
   return { restored, warnings }
 }
 
+/**
+ * 完整备份中的小说稿按独立产物恢复。
+ * 正文作为新项目里的已生成章节落库，不尝试伪造原始生成任务或供应商调用记录。
+ */
+function restoreNovels(
+  db: ReturnType<typeof getDbForRequest>,
+  projectId: string,
+  ownerId: string,
+  manifest: ProjectPackageManifest,
+): { restored: number; warnings: string[] } {
+  if (manifest.mode !== "backup" || !Array.isArray(manifest.novels)) {
+    return { restored: 0, warnings: [] }
+  }
+  const warnings: string[] = []
+  let restored = 0
+  const sourcePack = buildNovelSourcePack(db, projectId)
+  for (const raw of manifest.novels as ExportedNovel[]) {
+    try {
+      const sourceChapters = Array.isArray(raw?.chapters) ? raw.chapters : []
+      if (sourceChapters.length === 0) continue
+      const edition = createNovelEdition(db, {
+        projectId,
+        ownerId,
+        title: raw.title?.trim() || "导入小说稿",
+        preset: raw.preset || "standard",
+        sourceSnapshotIds: sourcePack.sourceSnapshotIds,
+        sourceSignature: sourcePack.signature,
+      })
+      const normalizedChapters = sourceChapters
+        .map((chapter, index) => ({
+          number: Math.max(1, Math.round(Number(chapter.number) || index + 1)),
+          title: chapter.title?.trim() || `第 ${index + 1} 章`,
+          outline: chapter.outline?.trim() || "",
+          hook: chapter.hook?.trim() || "",
+          targetWords: Math.max(500, Math.round(Number(chapter.targetWords) || 2_200)),
+          sourceEpisode: Math.max(0, Math.round(Number(chapter.sourceEpisode) || 0)),
+          sourceSceneIds: Array.isArray(chapter.sourceSceneIds)
+            ? chapter.sourceSceneIds.filter((id): id is string => typeof id === "string")
+            : [],
+          content: chapter.content?.trim() || "",
+          summary: chapter.summary?.trim() || "",
+        }))
+        .sort((left, right) => left.number - right.number)
+      const backupVolumes = Array.isArray(raw.volumes) ? raw.volumes : []
+      const volumes = backupVolumes.length > 0
+        ? backupVolumes.map((volume, index) => ({
+          title: volume.title?.trim() || `第 ${index + 1} 卷`,
+          summary: volume.summary?.trim() || "",
+          startChapter: Math.max(1, Math.round(Number(volume.startChapter) || 1)),
+          endChapter: Math.max(1, Math.round(Number(volume.endChapter) || normalizedChapters.length)),
+        }))
+        : [{ title: "第一卷", summary: "导入备份", startChapter: 1, endChapter: normalizedChapters.length }]
+      const plan: NovelPlan = {
+        volumes,
+        chapters: normalizedChapters,
+      }
+      saveNovelPlan(db, edition.id, plan)
+      for (const chapter of normalizedChapters) {
+        if (!chapter.content) continue
+        saveNovelChapter(db, edition.id, {
+          number: chapter.number,
+          content: chapter.content,
+          summary: chapter.summary || chapter.outline,
+          sourceSignature: sourcePack.signature,
+        })
+      }
+      restored += 1
+    } catch (error) {
+      warnings.push(`小说稿恢复失败：${error instanceof Error ? error.message : "格式不正确"}`)
+    }
+  }
+  return { restored, warnings }
+}
+
 export async function POST(req: Request) {
   const db = getDbForRequest()
   const ownerId = resolveProjectOwner(db, req)
@@ -316,6 +419,7 @@ export async function POST(req: Request) {
     const taskMap = restoreTasks(db, project.id, manifest)
     const keyframes = await restoreKeyframes(db, project.id, form, manifest, taskMap)
     const materials = restoreMaterials(db, project.id, ownerId, manifest)
+    const novels = restoreNovels(db, project.id, ownerId, manifest)
 
     return NextResponse.json(ok({
       project,
@@ -326,9 +430,10 @@ export async function POST(req: Request) {
         refs: 0,
         sources: materials.restored,
         localizationBranches: localization.branches,
+        novels: novels.restored,
       },
       packageMigration,
-      warnings: [...manifest.warnings, ...keyframes.warnings, ...materials.warnings],
+      warnings: [...manifest.warnings, ...keyframes.warnings, ...materials.warnings, ...novels.warnings],
     }))
   } catch (error) {
     if (projectId) {

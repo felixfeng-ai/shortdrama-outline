@@ -59,6 +59,7 @@ interface SkillCatalogProps {
 const CATEGORIES: Array<SkillCategory | '全部'> = [
   '全部',
   '小说改编',
+  '小说创作',
   '短剧开发',
   '视觉一致性',
   '分镜制作',
@@ -769,17 +770,25 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
               </aside>
             )}
           </div>
-          <footer className="library-footer">
-            <span>
-              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 3.5 6v4c0 4 2.7 6.2 6.5 7 3.8-.8 6.5-3 6.5-7V6L10 3Z" /><path d="m7.5 10 1.7 1.7 3.5-3.7" /></svg>
-              官方创作技能经过版本与权限审核，正文只在场记运行时按需加载
-            </span>
-            <span>创作技能入口 · 写入前需要确认</span>
+          <footer className={`library-footer${embedded ? ' is-embedded' : ''}`}>
+            <div className="library-trust">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M10 3 3.5 6v4c0 4 2.7 6.2 6.5 7 3.8-.8 6.5-3 6.5-7V6L10 3Z" />
+                <path d="m7.5 10 1.7 1.7 3.5-3.7" />
+              </svg>
+              <span className="library-trust-copy">
+                <b>官方技能只提供方法与规则</b>
+                <small>项目原文按目录与片段读取，写入项目前需要确认</small>
+              </span>
+            </div>
+            {!embedded && (
+              <nav className="library-legal-links" aria-label="内测合规说明">
+                <a href="/legal">隐私、条款与内容规则</a>
+                <i aria-hidden="true">·</i>
+                <a href="/report">举报内容</a>
+              </nav>
+            )}
           </footer>
-          <nav className="legal-links" aria-label="内测合规说明">
-            <a href="/legal">隐私、条款与内容规则</a>
-            <a href="/report">举报内容</a>
-          </nav>
         </section>
         <PersonalSkillPanel projectId={project?.id ?? null} />
       </main>

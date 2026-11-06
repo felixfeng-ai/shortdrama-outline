@@ -914,6 +914,133 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON mobile_feedback(owner_id, created_at DESC);
     `,
   },
+  {
+    version: 22,
+    name: "novel-companion",
+    sql: `
+      -- 小说独立于六步快照：上游变化只标记章节过期，不静默改写用户已看的正文。
+      CREATE TABLE IF NOT EXISTS novel_editions (
+        id                       TEXT PRIMARY KEY,
+        project_id               TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        owner_id                 TEXT NOT NULL,
+        title                    TEXT NOT NULL,
+        preset                   TEXT NOT NULL,
+        status                   TEXT NOT NULL DEFAULT 'draft',
+        target_words_min         INTEGER NOT NULL,
+        target_words_max         INTEGER NOT NULL,
+        planned_chapters         INTEGER NOT NULL DEFAULT 0,
+        completed_chapters       INTEGER NOT NULL DEFAULT 0,
+        source_snapshot_ids_json TEXT NOT NULL DEFAULT '[]',
+        source_signature         TEXT NOT NULL,
+        current_run_id           TEXT,
+        created_at               INTEGER NOT NULL,
+        updated_at               INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS novel_volumes (
+        id            TEXT PRIMARY KEY,
+        novel_id      TEXT NOT NULL REFERENCES novel_editions(id) ON DELETE CASCADE,
+        title         TEXT NOT NULL,
+        summary       TEXT NOT NULL DEFAULT '',
+        start_chapter INTEGER NOT NULL,
+        end_chapter   INTEGER NOT NULL,
+        order_index   INTEGER NOT NULL,
+        UNIQUE(novel_id, order_index)
+      );
+
+      CREATE TABLE IF NOT EXISTS novel_arcs (
+        id            TEXT PRIMARY KEY,
+        novel_id      TEXT NOT NULL REFERENCES novel_editions(id) ON DELETE CASCADE,
+        volume_id     TEXT NOT NULL REFERENCES novel_volumes(id) ON DELETE CASCADE,
+        title         TEXT NOT NULL,
+        summary       TEXT NOT NULL DEFAULT '',
+        start_chapter INTEGER NOT NULL,
+        end_chapter   INTEGER NOT NULL,
+        order_index   INTEGER NOT NULL,
+        UNIQUE(novel_id, order_index)
+      );
+
+      CREATE TABLE IF NOT EXISTS novel_chapters (
+        id                       TEXT PRIMARY KEY,
+        novel_id                 TEXT NOT NULL REFERENCES novel_editions(id) ON DELETE CASCADE,
+        volume_id                TEXT REFERENCES novel_volumes(id) ON DELETE SET NULL,
+        arc_id                   TEXT REFERENCES novel_arcs(id) ON DELETE SET NULL,
+        number                   INTEGER NOT NULL,
+        title                    TEXT NOT NULL,
+        outline                  TEXT NOT NULL DEFAULT '',
+        hook                     TEXT NOT NULL DEFAULT '',
+        content                  TEXT NOT NULL DEFAULT '',
+        summary                  TEXT NOT NULL DEFAULT '',
+        target_words             INTEGER NOT NULL DEFAULT 2200,
+        word_count               INTEGER NOT NULL DEFAULT 0,
+        source_episode           INTEGER NOT NULL DEFAULT 0,
+        source_scene_ids_json    TEXT NOT NULL DEFAULT '[]',
+        source_snapshot_ids_json TEXT NOT NULL DEFAULT '[]',
+        source_signature         TEXT NOT NULL DEFAULT '',
+        status                   TEXT NOT NULL DEFAULT 'planned',
+        revision                 INTEGER NOT NULL DEFAULT 0,
+        generated_at             INTEGER,
+        updated_at               INTEGER NOT NULL,
+        UNIQUE(novel_id, number)
+      );
+
+      -- 正文版本 append-only：每次生成、手改或去 AI 味都追加一版。
+      CREATE TABLE IF NOT EXISTS novel_chapter_versions (
+        id                 TEXT PRIMARY KEY,
+        chapter_id         TEXT NOT NULL REFERENCES novel_chapters(id) ON DELETE CASCADE,
+        novel_id           TEXT NOT NULL REFERENCES novel_editions(id) ON DELETE CASCADE,
+        revision           INTEGER NOT NULL,
+        content            TEXT NOT NULL,
+        summary            TEXT NOT NULL DEFAULT '',
+        word_count         INTEGER NOT NULL DEFAULT 0,
+        source_signature   TEXT NOT NULL DEFAULT '',
+        change_kind        TEXT NOT NULL,
+        model              TEXT NOT NULL DEFAULT '',
+        prompt_version     TEXT NOT NULL DEFAULT '',
+        created_at         INTEGER NOT NULL,
+        UNIQUE(chapter_id, revision)
+      );
+
+      CREATE TABLE IF NOT EXISTS novel_generation_runs (
+        id              TEXT PRIMARY KEY,
+        novel_id        TEXT NOT NULL REFERENCES novel_editions(id) ON DELETE CASCADE,
+        project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        owner_id        TEXT NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'queued',
+        cursor          INTEGER NOT NULL DEFAULT 0,
+        total           INTEGER NOT NULL,
+        completed       INTEGER NOT NULL DEFAULT 0,
+        budget_units    INTEGER NOT NULL DEFAULT 0,
+        used_units      INTEGER NOT NULL DEFAULT 0,
+        idempotency_key TEXT NOT NULL,
+        error           TEXT,
+        started_at      INTEGER,
+        finished_at     INTEGER,
+        updated_at      INTEGER NOT NULL,
+        UNIQUE(novel_id, idempotency_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS novel_source_links (
+        id          TEXT PRIMARY KEY,
+        novel_id    TEXT NOT NULL REFERENCES novel_editions(id) ON DELETE CASCADE,
+        source_kind TEXT NOT NULL,
+        snapshot_id TEXT REFERENCES snapshots(id) ON DELETE SET NULL,
+        version     INTEGER NOT NULL DEFAULT 0,
+        signature   TEXT NOT NULL DEFAULT '',
+        created_at  INTEGER NOT NULL,
+        UNIQUE(novel_id, source_kind)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_novel_editions_project
+        ON novel_editions(project_id, owner_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_novel_chapters_order
+        ON novel_chapters(novel_id, number);
+      CREATE INDEX IF NOT EXISTS idx_novel_runs_queue
+        ON novel_generation_runs(status, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_novel_versions_chapter
+        ON novel_chapter_versions(chapter_id, revision);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

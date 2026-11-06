@@ -25,6 +25,7 @@ interface Props {
   onCloseMobile: () => void
   onHome: () => void
   onSwitchProject: (id: string) => void
+  onDeleteProject: (id: string) => void
   onNewProject: () => void
   onOpenTodo: () => void
   onOpenCreate: () => void
@@ -66,6 +67,7 @@ export default function WorkspaceSidebar({
   onCloseMobile,
   onHome,
   onSwitchProject,
+  onDeleteProject,
   onNewProject,
   onOpenTodo,
   onOpenCreate,
@@ -76,6 +78,7 @@ export default function WorkspaceSidebar({
   onOpenLedger,
 }: Props) {
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
+  const [confirmingProjectId, setConfirmingProjectId] = useState<string | null>(null)
   const orderedSteps = orderWorkspaceSteps(
     ['characters', 'acts', 'episodes', 'visuals', 'scenes', 'shots'],
     currentStep,
@@ -112,28 +115,70 @@ export default function WorkspaceSidebar({
         </button>
 
         {projectMenuOpen && (
-          <div className="wfx-project-menu" role="menu" aria-label="切换项目">
-            {projects.map((project) => (
-              <button
-                key={project.id}
-                type="button"
-                role="menuitem"
-                className={project.id === projectId ? 'is-active' : ''}
-                onClick={() => {
-                  onSwitchProject(project.id)
-                  setProjectMenuOpen(false)
-                  onCloseMobile()
-                }}
-              >
-                {project.title}
-              </button>
-            ))}
+          <div className="wfx-project-menu" aria-label="项目列表">
+            {projects.length === 0 ? (
+              <p className="wfx-project-empty">还没有项目</p>
+            ) : projects.map((project) => {
+              const isActive = project.id === projectId
+              const isConfirming = project.id === confirmingProjectId
+              return (
+                <div
+                  key={project.id}
+                  className={`wfx-project-menu-row ${isActive ? 'is-active' : ''} ${isConfirming ? 'is-confirming' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="wfx-project-select"
+                    onClick={() => {
+                      onSwitchProject(project.id)
+                      setProjectMenuOpen(false)
+                      setConfirmingProjectId(null)
+                      onCloseMobile()
+                    }}
+                  >
+                    <span>{project.title}</span>
+                    {isActive && <small>当前</small>}
+                  </button>
+                  <button
+                    type="button"
+                    className="wfx-project-delete"
+                    aria-label={`删除项目 ${project.title}`}
+                    title="删除项目"
+                    onClick={() => setConfirmingProjectId(isConfirming ? null : project.id)}
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M4.5 6h11M8 3.8h4M6.5 6l.6 9.2h5.8l.6-9.2M8.5 9v3.5M11.5 9v3.5" />
+                    </svg>
+                  </button>
+                  {isConfirming && (
+                    <div className="wfx-project-delete-confirm" role="alert">
+                      <span>删除后无法恢复</span>
+                      <button
+                        type="button"
+                        className="is-confirm"
+                        onClick={() => {
+                          setConfirmingProjectId(null)
+                          onDeleteProject(project.id)
+                          if (project.id === projectId) setProjectMenuOpen(false)
+                        }}
+                      >
+                        确认删除
+                      </button>
+                      <button type="button" onClick={() => setConfirmingProjectId(null)}>
+                        取消
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             <button
               type="button"
-              role="menuitem"
+              className="wfx-project-new"
               onClick={() => {
                 onNewProject()
                 setProjectMenuOpen(false)
+                setConfirmingProjectId(null)
                 onCloseMobile()
               }}
             >

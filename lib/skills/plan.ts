@@ -57,6 +57,8 @@ const MODEL_CALL_LIMITS: Record<string, number> = {
   continuity: 0,
   delivery: 0,
   cost: 0,
+  novelize: 120,
+  "novel-deslop": 1,
 }
 
 const PLAN_STEPS: Record<string, SkillPlanStep[]> = {
@@ -216,6 +218,52 @@ const PLAN_STEPS: Record<string, SkillPlanStep[]> = {
       output: '只读成本规划报告',
     },
   ],
+  novelize: [
+    {
+      id: "read-source",
+      title: "复用短剧事实",
+      input: "人物、三观、分集、场次、Canon、项目原文",
+      output: "小说来源包与来源快照签名",
+    },
+    {
+      id: "plan-volumes",
+      title: "规划卷章目录",
+      input: "目标字数、章节数、分集结构",
+      output: "卷、章、章纲与结尾钩子",
+    },
+    {
+      id: "generate-chapters",
+      title: "按低优先级逐章生成",
+      input: "当前章纲、相关集数、前两章摘要",
+      output: "可编辑正文与章节摘要",
+    },
+    {
+      id: "audit",
+      title: "检查连续性、工程词与截断",
+      input: "已完成章节、Canon 与目标字数",
+      output: "可定位的质检报告",
+    },
+  ],
+  "novel-deslop": [
+    {
+      id: "deterministic-check",
+      title: "运行确定性检查",
+      input: "章节正文、目标字数和章节钩子",
+      output: "机械句式、重复、工程词与截断问题",
+    },
+    {
+      id: "targeted-rewrite",
+      title: "只改写命中段落",
+      input: "问题清单与当前正文",
+      output: "不新增事实的候选修订稿",
+    },
+    {
+      id: "confirm",
+      title: "用户确认后写入新版本",
+      input: "候选修订稿与改动说明",
+      output: "append-only 章节版本",
+    },
+  ],
 }
 
 const OUTPUT_PREVIEW: Record<string, (input: BuildPlanInput) => string[]> = {
@@ -249,6 +297,16 @@ const OUTPUT_PREVIEW: Record<string, (input: BuildPlanInput) => string[]> = {
     '高风险镜头与参考图超量费',
     '更省的批次顺序',
   ],
+  novelize: (input) => [
+    input.state.episodes > 0 ? `复用 ${input.state.episodes} 集剧情规划卷章` : '从场次与 Canon 开始规划卷章',
+    '按章生成并可随时暂停的小说正文',
+    '含来源快照和 AI 声明的导出文件',
+  ],
+  "novel-deslop": () => [
+    '可定位的机械句式、重复和工程词问题',
+    '只处理命中段落的候选修订',
+    '用户确认后才追加的新版本',
+  ],
 }
 
 function modelLimit(skillId: string): number {
@@ -260,6 +318,7 @@ export function maxModelCallsForSkill(skillId: string): number {
 }
 
 function timeLabel(maxCalls: number): string {
+  if (maxCalls > 10) return '按章节排队，媒体任务优先'
   if (maxCalls === 0) return '通常 < 1 秒（纯计算）'
   if (maxCalls <= 3) return '预计约 20-45 秒'
   if (maxCalls <= 4) return '预计约 30-60 秒'
@@ -285,6 +344,8 @@ export function buildSkillExecutionPlan(
 ): SkillExecutionPlan {
   const limits = modelLimit(skill.id)
   const writes = skill.id === 'adaptation'
+    || skill.id === 'novelize'
+    || skill.id === 'novel-deslop'
   const preview = OUTPUT_PREVIEW[skill.id]?.(input) ?? skill.produces
   return {
     skillId: skill.id,
@@ -368,6 +429,14 @@ function scoreSkill(
     if (state.shots > 0) score += 35
     if (state.episodes > 0) score += 25
     if (input.mode === 'project') score += 10
+  } else if (skill.id === 'novelize') {
+    if (state.episodes > 0) score += 35
+    if (state.scenes > 0) score += 20
+    if (state.characters > 0) score += 10
+    if (input.mode === 'project') score += 20
+  } else if (skill.id === 'novel-deslop') {
+    if (input.mode === 'project') score += 20
+    if (state.episodes > 0) score += 10
   }
   const query = input.query?.trim().toLowerCase()
   if (query && `${skill.title} ${skill.summary} ${skill.category}`.toLowerCase().includes(query)) {
@@ -401,6 +470,14 @@ function recommendationReason(skill: SkillDefinition, state: IntakeProjectState)
     return state.shots > 0
       ? `已有 ${state.shots} 镜，可按即梦/可灵规格检查阻断项`
       : '生成分镜后按目标平台规格检查交付缺口'
+  }
+  if (skill.id === 'novelize') {
+    return state.episodes > 0
+      ? `已有 ${state.episodes} 集剧情，可直接复用为卷章与小说正文`
+      : '先从场次和人物事实建立小说来源包'
+  }
+  if (skill.id === 'novel-deslop') {
+    return '检查机械句式和工程词，确认后再追加修订版本'
   }
   return state.shots > 0
     ? `按现有 ${state.shots} 镜估算成本与更省的批次顺序`

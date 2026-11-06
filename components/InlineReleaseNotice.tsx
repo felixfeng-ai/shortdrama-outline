@@ -71,7 +71,6 @@ export default function InlineReleaseNotice({ hidden = false }: Props) {
           onClick={() => setOpen((current) => !current)}
         >
           <span className="inline-release-action-label">{open ? '收起' : '了解内测'}</span>
-          <span className="inline-release-action-label-mobile">{open ? '收起' : '查看'}</span>
           <svg viewBox="0 0 20 20" aria-hidden="true">
             <path d={open ? 'm6 12 4-4 4 4' : 'm8 5 5 5-5 5'} />
           </svg>

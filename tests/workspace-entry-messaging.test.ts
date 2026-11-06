@@ -26,16 +26,16 @@ test("V1-V3 第 6 步提供分镜、镜头视频和时间线成片三个页签",
   assert.match(shots, /workspaceMode === 'timeline'/)
 })
 
-test("C1/C2 登录页突出人的判断、Canon、跨镜一致性与新版本确认", () => {
+test("C1/C2 登录页突出短剧生产链、跨镜一致性与版本连续性", () => {
   const layout = fs.readFileSync("app/layout.tsx", "utf8")
   const login = fs.readFileSync("components/LoginPanel.tsx", "utf8")
 
   assert.match(layout, /镜头视频/)
   assert.match(layout, /成片/)
-  assert.match(login, /把判断留在创作里/)
-  assert.match(login, /把故事做成/)
-  assert.match(login, /可拍的成片/)
-  assert.match(login, /Canon/)
-  assert.match(login, /跨镜一致性/)
-  assert.match(login, /确认后写入新版本/)
+  assert.match(login, /短剧创作工作台/)
+  assert.match(login, /回来接着写/)
+  assert.match(login, /把下一场做成/)
+  assert.match(login, /人物、分集、场次、分镜和首帧/)
+  assert.match(login, /人物跨镜不走样/)
+  assert.match(login, /每次修改可回看/)
 })

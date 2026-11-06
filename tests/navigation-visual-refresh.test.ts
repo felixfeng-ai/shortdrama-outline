@@ -47,3 +47,11 @@ test("N6-N8 中屏图标轨、手机抽屉和底部导航", () => {
   assert.match(css, /min-height: 44px/)
   assert.match(css, /prefers-reduced-motion/)
 })
+
+test("N9 我的项目支持逐条删除，并在原位置二次确认", () => {
+  assert.match(sidebar, /onDeleteProject/)
+  assert.match(sidebar, /确认删除/)
+  assert.match(sidebar, /取消/)
+  assert.match(sidebar, /aria-label=\{`删除项目/)
+  assert.match(page, /onDeleteProject=\{\(id\) => \{ void handleDeleteProject\(id\) \}\}/)
+})

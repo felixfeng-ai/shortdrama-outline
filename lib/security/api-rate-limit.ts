@@ -12,6 +12,7 @@ export type ApiRateLimitGroup =
   | "image"
   | "video"
   | "audio"
+  | "novel"
   | "export"
   | "import"
   | "material"
@@ -65,6 +66,14 @@ export const API_RATE_LIMIT_POLICIES: Record<ApiRateLimitGroup, ApiRateLimitPoli
     ipLimit: { env: "API_AUDIO_IP_10M_LIMIT", fallback: 30, windowMs: TEN_MINUTES },
     identityLimit: { env: "API_AUDIO_IDENTITY_10M_LIMIT", fallback: 15, windowMs: TEN_MINUTES },
     globalLimit: { env: "API_AUDIO_GLOBAL_DAILY_LIMIT", fallback: 800, windowMs: ONE_DAY },
+  },
+  novel: {
+    group: "novel",
+    label: "小说生成",
+    message: "小说生成请求过于频繁，请稍后再试",
+    ipLimit: { env: "API_NOVEL_IP_10M_LIMIT", fallback: 20, windowMs: TEN_MINUTES },
+    identityLimit: { env: "API_NOVEL_IDENTITY_10M_LIMIT", fallback: 10, windowMs: TEN_MINUTES },
+    globalLimit: { env: "API_NOVEL_GLOBAL_DAILY_LIMIT", fallback: 400, windowMs: ONE_DAY },
   },
   export: {
     group: "export",

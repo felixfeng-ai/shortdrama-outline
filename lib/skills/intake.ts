@@ -66,6 +66,8 @@ export function assessSkillReadiness(
     missing.push("分镜")
   } else if (skillId === "cost" && state.shots === 0 && state.episodes === 0) {
     missing.push("分集或分镜")
+  } else if (skillId === "novelize" && state.episodes === 0 && state.scenes === 0) {
+    missing.push("分集或场次剧本")
   }
   return { ready: missing.length === 0, missing }
 }

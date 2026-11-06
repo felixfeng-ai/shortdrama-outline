@@ -6,7 +6,7 @@ import '@/app/workspace-shell.css'
 export const metadata: Metadata = {
   title: '登录 · VeyaFrame 成剧',
   description:
-    'AI 负责拆解和执行，人的判断负责 Canon、情绪与审美。角色跨镜一致，确认后写入新版本，换设备也能继续同一个项目。',
+    '短剧创作工作台。人物、分集、场次、分镜和首帧都在同一个项目里，角色跨镜不走样，换设备也能继续。',
   robots: { index: false, follow: false },
 }
 

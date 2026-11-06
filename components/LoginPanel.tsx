@@ -183,32 +183,32 @@ export default function LoginPanel() {
 
       <section className="auth-story" aria-labelledby="auth-story-title">
         <div className="auth-story-copy">
-          <p className="auth-kicker">PROJECT CONTINUITY / ACCOUNT</p>
+          <p className="auth-kicker">短剧创作工作台</p>
           <h1 id="auth-story-title">
-            把判断留在创作里，<br />
-            把故事做成<span className="auth-title-accent">可拍的成片</span>。
+            回来接着写，<br />
+            把下一场做成<span className="auth-title-accent">镜头</span>。
           </h1>
           <p className="auth-lede">
-            AI 负责拆解、执行与补全，人的判断负责 Canon、情绪和审美。
-            角色跨镜一致性可检查，每次修改先看影响，确认后写入新版本。
+            人物、分集、场次、分镜和首帧都在同一个项目里。
+            AI 继续往前推，角色像不像、镜头对不对，仍由你确认。
           </p>
         </div>
 
         <div className="auth-proof-chain" aria-label="项目核心能力">
           <div className="auth-proof-node">
             <span className="auth-proof-index">01</span>
-            <strong>Canon 与人物</strong>
-            <small>跨镜一致性可检查</small>
+            <strong>人物跨镜不走样</strong>
+            <small>同一角色，每个镜头仍是同一张脸</small>
           </div>
           <div className="auth-proof-node">
             <span className="auth-proof-index">02</span>
-            <strong>镜头与首帧</strong>
-            <small>生成来源可追溯</small>
+            <strong>场次直接接分镜</strong>
+            <small>从这一场戏继续拆镜头，不用换工具</small>
           </div>
           <div className="auth-proof-node">
             <span className="auth-proof-index">03</span>
-            <strong>版本与交付</strong>
-            <small>确认后写入新版本</small>
+            <strong>每次修改可回看</strong>
+            <small>确认后生成新版本，改错也能回头</small>
           </div>
         </div>
       </section>
@@ -280,7 +280,7 @@ export default function LoginPanel() {
                 <h2>{step === 'email' ? '继续这个项目' : '输入验证码'}</h2>
                 <p className="auth-form-intro">
                   {step === 'email'
-                    ? '用邮箱验证码保存当前项目，之后可以在其他设备找回。'
+                    ? '用邮箱验证码登录。换设备后，人物、分镜和版本仍在原位。'
                     : `验证码已发送至 ${email.trim()}。`}
                 </p>
               </div>

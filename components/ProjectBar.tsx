@@ -28,7 +28,10 @@ interface Props {
   /** 载入示例项目：第一次来的人先看见"做出来是什么样" */
   onLoadSample: () => void
   /** 匿名会话项目只能靠导出带走，项目条常驻备份入口 */
-  onBackup: (mode: "delivery" | "backup") => void
+  onBackup: (
+    mode: "delivery" | "backup",
+    options?: { includeNovel?: boolean },
+  ) => void
   onImportPackage: (file: File) => void
   onExportMarkdown: () => void
   onCopyAll: () => void
@@ -85,6 +88,7 @@ export default function ProjectBar({
   const [draft, setDraft] = useState('')
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  const [includeNovel, setIncludeNovel] = useState(false)
   const nameInputRef = useRef<HTMLInputElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -237,11 +241,23 @@ export default function ProjectBar({
           <p className="mb-2 text-[10.5px] leading-relaxed text-ink-400">
             全部导出固定写入「AI 生成」标识与 AI 来源清单（ai-provenance.json），README、HTML、Markdown 和执行单中均可核对。
           </p>
+          <label className="mb-2 flex min-h-10 cursor-pointer items-center gap-2 rounded-chip border border-surface-line bg-surface-soft px-2.5 py-2">
+            <input
+              type="checkbox"
+              checked={includeNovel}
+              onChange={(event) => setIncludeNovel(event.target.checked)}
+              className="h-4 w-4 accent-current"
+            />
+            <span className="min-w-0 flex-1 text-[10.5px] leading-relaxed text-ink-500">
+              交付包包含小说稿
+              <small className="ml-1 text-ink-400">完整备份始终包含</small>
+            </span>
+          </label>
           <div className="project-export-actions flex flex-wrap gap-2">
           <button
             type="button"
             disabled={Boolean(exportProgress)}
-            onClick={() => onBackup("delivery")}
+            onClick={() => onBackup("delivery", { includeNovel })}
             className="min-h-11 flex-1 rounded-chip bg-accent-700 px-3 py-1.5 text-[11px] font-medium text-white
               transition-colors hover:bg-accent-800 disabled:cursor-wait disabled:opacity-60"
           >
@@ -250,7 +266,7 @@ export default function ProjectBar({
           <button
             type="button"
             disabled={Boolean(exportProgress)}
-            onClick={() => onBackup("backup")}
+            onClick={() => onBackup("backup", { includeNovel: true })}
             className="min-h-11 flex-1 rounded-chip border border-done-300 bg-done-50 px-3 py-1.5 text-[11px] font-medium text-done-900
               transition-colors hover:bg-done-100 disabled:cursor-wait disabled:opacity-60"
           >
@@ -272,6 +288,16 @@ export default function ProjectBar({
           >
             {copied ? '已复制大纲' : '复制全部大纲'}
           </button>
+          {current && hasContent && (
+            <a
+              href={`/novels/${encodeURIComponent(current.id)}`}
+              onClick={() => setExportOpen(false)}
+              className="novel-companion-entry flex min-h-11 items-center justify-center rounded-chip border border-surface-line px-3 py-1.5 text-[11px] font-medium text-ink-700
+                transition-colors hover:border-accent-300 hover:text-accent-700"
+            >
+              小说稿
+            </a>
+          )}
           <button
             type="button"
             disabled={!current}

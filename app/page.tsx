@@ -193,6 +193,9 @@ import {
   type TimelineVersionSummary,
 } from '@/lib/timeline/client'
 import { fetchLocalizationBackup } from '@/lib/localization/client'
+import { fetchNovelEditions, fetchNovelWorkspace } from '@/lib/novels/client'
+import { buildNovelExport } from '@/lib/novels/export'
+import { novelPresetLabel } from '@/lib/novels/presets'
 import { keyframeManifestEntry } from '@/lib/generation/export'
 import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
 import {
@@ -2336,7 +2339,10 @@ export default function Home() {
   }
 
   // ── 打包带走（P2）─────────────────────────────────────────────
-  const handleExportPackage = async (mode: "delivery" | "backup") => {
+  const handleExportPackage = async (
+    mode: "delivery" | "backup",
+    options: { includeNovel?: boolean } = {},
+  ) => {
     if (exportProgress) return
     const enc = new TextEncoder()
     const entries: { name: string; data: Uint8Array }[] = []
@@ -2373,6 +2379,77 @@ export default function Home() {
       const sourceMaterials = sourceMaterialsRaw as ProjectMaterial[]
       const metadataByKey = new Map(refMetadata.map((ref) => [ref.vaultKey, ref]))
       const refsToExport: Array<Record<string, unknown>> = []
+      const novelBackup: Array<Record<string, unknown>> = []
+
+      if (projectId && (mode === "backup" || options.includeNovel)) {
+        try {
+          const novelEditions = await fetchNovelEditions(projectId)
+          for (const edition of novelEditions) {
+            const workspace = await fetchNovelWorkspace(projectId, edition.id)
+            const completedChapters = workspace.chapters
+              .filter((chapter) => chapter.content.trim())
+              .map((chapter) => ({
+                number: chapter.number,
+                title: chapter.title,
+                outline: chapter.outline,
+                hook: chapter.hook,
+                targetWords: chapter.targetWords,
+                sourceEpisode: chapter.sourceEpisode,
+                sourceSceneIds: chapter.sourceSceneIds,
+                content: chapter.content,
+                summary: chapter.summary,
+                status: chapter.status,
+                revision: chapter.revision,
+                wordCount: chapter.wordCount,
+              }))
+            const exportInput = {
+              title: edition.title,
+              presetLabel: novelPresetLabel(edition.preset),
+              status: edition.status,
+              model: process.env.NEXT_PUBLIC_NOVEL_MODEL_LABEL || 'deepseek-chat',
+              promptVersion: 'novel-v1',
+              sourceSnapshotIds: edition.sourceSnapshotIds,
+              chapters: completedChapters.map((chapter) => ({
+                number: chapter.number,
+                title: chapter.title,
+                content: chapter.content,
+                wordCount: chapter.wordCount,
+              })),
+            }
+            if (completedChapters.length > 0) {
+              const folder = `novels/${safeProjectFileStem(edition.title)}`
+              for (const format of ['md', 'txt', 'docx', 'epub', 'zip'] as const) {
+                const artifact = buildNovelExport(exportInput, format)
+                addEntry(`${folder}/${artifact.filename}`, artifact.bytes, `novel-${format}`)
+              }
+            }
+            novelBackup.push({
+              title: edition.title,
+              preset: edition.preset,
+              status: edition.status,
+              sourceSnapshotIds: edition.sourceSnapshotIds,
+              sourceSignature: edition.sourceSignature,
+              model: exportInput.model,
+              promptVersion: exportInput.promptVersion,
+              volumes: workspace.volumes,
+              chapters: workspace.chapters.map((chapter) => ({
+                number: chapter.number,
+                title: chapter.title,
+                outline: chapter.outline,
+                hook: chapter.hook,
+                targetWords: chapter.targetWords,
+                sourceEpisode: chapter.sourceEpisode,
+                sourceSceneIds: chapter.sourceSceneIds,
+                content: chapter.content,
+                summary: chapter.summary,
+                status: chapter.status,
+              })),
+            })
+          }
+        } catch (error) {
+          warnings.push(`小说稿读取失败：${error instanceof Error ? error.message : '未知错误'}`)
+        }
+      }
 
       const exportLocalRefs = async (
         ownerType: "character" | "place",
@@ -2597,6 +2674,7 @@ export default function Home() {
         materials: sourceMaterials,
         ai: aiDisclosure,
         localization,
+        novels: novelBackup,
         files,
         warnings,
       }
@@ -2634,6 +2712,7 @@ export default function Home() {
         "references/：本地参考图（不上传）",
         "generated/selected/：当前采用生成图",
         "generated/history/：历史候选（仅完整备份）",
+        ...(novelBackup.length > 0 ? ["novels/：小说正文、DOCX、EPUB 与独立 ZIP"] : []),
         "",
         "## 说明",
         "本地参考图像素只随 ZIP 交给用户，不经过平台服务器。",
@@ -3502,6 +3581,7 @@ export default function Home() {
         onCloseMobile={() => setWorkspaceMobileOpen(false)}
         onHome={goWorkspaceHome}
         onSwitchProject={(id) => { void handleSwitchProject(id) }}
+        onDeleteProject={(id) => { void handleDeleteProject(id) }}
         onNewProject={handleNewProject}
         onOpenTodo={openWorkspaceTodo}
         onOpenCreate={() => openWorkspaceMode('create')}
@@ -3642,7 +3722,9 @@ export default function Home() {
                   onDelete={(id) => { void handleDeleteProject(id) }}
                   onNew={handleNewProject}
                   onLoadSample={() => { void handleLoadSample() }}
-                  onBackup={(mode) => { void handleExportPackage(mode) }}
+                  onBackup={(mode, backupOptions) => {
+                    void handleExportPackage(mode, backupOptions)
+                  }}
                   onImportPackage={(file) => { void handleImportPackage(file) }}
                   onExportMarkdown={handleExport}
                   onCopyAll={() => { void handleCopyAll() }}

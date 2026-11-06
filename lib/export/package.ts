@@ -70,6 +70,7 @@ export interface ProjectPackageManifest<
   materials: TMaterial[]
   ai: AiExportDisclosure
   localization?: unknown
+  novels?: unknown
   files: ProjectExportFile[]
   reportPath: "export-report.json"
   warnings: string[]
@@ -98,6 +99,7 @@ export function buildProjectPackageManifest<
   materials?: TMaterial[]
   ai?: AiExportDisclosure
   localization?: unknown
+  novels?: unknown
   files?: ProjectExportFile[]
   warnings?: string[]
 }): ProjectPackageManifest<TProject, TStory, TAssets, TRef, TKeyframe, TTask, TSnapshot, TMaterial> {
@@ -117,6 +119,7 @@ export function buildProjectPackageManifest<
     materials: input.materials ?? [],
     ai: input.ai ?? buildAiExportDisclosure(),
     ...(input.localization === undefined ? {} : { localization: input.localization }),
+    ...(input.novels === undefined ? {} : { novels: input.novels }),
     files: input.files ?? [],
     reportPath: "export-report.json",
     warnings: input.warnings ?? [],

@@ -22,7 +22,7 @@ test("WFS1 桌面侧栏包含确认稿的三组菜单和固定顺序", () => {
   }
   assert.match(sidebar, /orderWorkspaceSteps/)
   assert.match(sidebar, /workspaceStepLabel/)
-  assert.match(workspaceView, /"shots",\s*"characters",\s*"acts",\s*"episodes",\s*"visuals",\s*"scenes"/)
+  assert.match(workspaceView, /"characters",\s*"acts",\s*"episodes",\s*"visuals",\s*"scenes",\s*"shots"/)
   previous = -1
   for (const label of tools) {
     const current = sidebar.indexOf(label)
@@ -90,6 +90,10 @@ test("WFS7 当前步骤优先排序、项目脉搏和当前镜头选择使用真
   assert.deepEqual(
     helpers.orderWorkspaceSteps(["characters", "acts", "episodes", "visuals", "scenes", "shots"], "shots"),
     ["shots", "characters", "acts", "episodes", "visuals", "scenes"],
+  )
+  assert.deepEqual(
+    helpers.orderWorkspaceSteps(["characters", "acts", "episodes", "visuals", "scenes", "shots"], "characters"),
+    ["characters", "acts", "episodes", "visuals", "scenes", "shots"],
   )
   assert.equal(helpers.workspaceStepLabel("visuals"), "角色定妆")
   assert.equal(helpers.workspaceStepLabel("scenes"), "场次剧本")
