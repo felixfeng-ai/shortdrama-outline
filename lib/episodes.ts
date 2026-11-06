@@ -75,3 +75,39 @@ export const FIXED_STEPS_UNITS = STEP_COST.characters + STEP_COST.acts
 export function projectQuotaUnits(count: number): number {
   return FIXED_STEPS_UNITS + episodeQuotaUnits(count)
 }
+
+export interface ProjectQuotaEstimate {
+  episodeCount: number
+  units: number
+  projectsLeft: number
+}
+
+/** 用同一个剩余额度快照换算某个集数还能完成几部纯文本项目。 */
+export function projectQuotaEstimate(
+  remainingUnits: number,
+  episodeCount: number,
+): ProjectQuotaEstimate {
+  const episodes = clampEpisodeCount(episodeCount)
+  const units = projectQuotaUnits(episodes)
+  const remaining = Math.max(0, Math.floor(Number(remainingUnits) || 0))
+  return {
+    episodeCount: episodes,
+    units,
+    projectsLeft: Math.floor(remaining / Math.max(1, units)),
+  }
+}
+
+/** Web、PWA、App 共用的额度解释：当前集数 + 三档预设。 */
+export function projectQuotaEstimates(
+  remainingUnits: number,
+  selectedEpisodeCount = DEFAULT_EPISODE_COUNT,
+): {
+  selected: ProjectQuotaEstimate
+  presets: ProjectQuotaEstimate[]
+} {
+  const selected = projectQuotaEstimate(remainingUnits, selectedEpisodeCount)
+  return {
+    selected,
+    presets: EPISODE_PRESETS.map((count) => projectQuotaEstimate(remainingUnits, count)),
+  }
+}

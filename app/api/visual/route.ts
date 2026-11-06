@@ -9,7 +9,7 @@ import { normalizeVisualCharacters } from "@/lib/assets/normalize"
 import { buildImagePrompt, buildVisualPrompt } from "@/lib/assets/prompts"
 import { readCharacters, readIdea } from "@/lib/validate"
 import { persistIfProject } from "@/lib/assets/persist"
-import { chargeQuota } from "@/lib/quota"
+import { withQuotaReservation } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
@@ -33,24 +33,24 @@ export async function POST(req: Request) {
     const genre = readGenre(body?.genre)
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
-    chargeQuota(db, identity, "visual")
+    const { value } = await withQuotaReservation(db, identity, "visual", 2, async () => {
+      const { system, user } = buildVisualPrompt(idea, characters, genre)
+      const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
+      const visualCharacters = normalizeVisualCharacters(raw, characters.map((c) => c.name), characters)
 
-    const { system, user } = buildVisualPrompt(idea, characters, genre)
-    const raw = await chatJson<unknown>(system, user, { temperature: 1.0 })
-    const visualCharacters = normalizeVisualCharacters(raw, characters.map((c) => c.name), characters)
+      const img = buildImagePrompt(visualCharacters)
+      const imageRaw = await chatJson<unknown>(img.system, img.user, { temperature: 0.8 })
+      const imagePrompts = Array.isArray((imageRaw as Record<string, unknown>)?.imagePrompts)
+        ? ((imageRaw as Record<string, unknown>).imagePrompts as unknown[])
+        : []
 
-    // 出图提示词是纯文本产出，不调用任何图像 API（原则 P1）
-    const img = buildImagePrompt(visualCharacters)
-    const imageRaw = await chatJson<unknown>(img.system, img.user, { temperature: 0.8 })
-    const imagePrompts = Array.isArray((imageRaw as Record<string, unknown>)?.imagePrompts)
-      ? ((imageRaw as Record<string, unknown>).imagePrompts as unknown[])
-      : []
-
-    persistIfProject(db, projectId, "visualCharacters", visualCharacters, {
-      kinds: ["characters"],
+      persistIfProject(db, projectId, "visualCharacters", visualCharacters, {
+        kinds: ["characters"],
+      })
+      return { visualCharacters, imagePrompts }
     })
 
-    return NextResponse.json(ok({ visualCharacters, imagePrompts }))
+    return NextResponse.json(ok(value))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

@@ -528,8 +528,15 @@ export function claimAnonymousProjects(
   db: DatabaseSync,
   anonymousOwnerId: string,
   userId: string,
-): { projects: number; pushSubscriptions: number } {
-  if (!anonymousOwnerId.startsWith("anon_")) return { projects: 0, pushSubscriptions: 0 }
+): {
+  projects: number
+  pushSubscriptions: number
+  quotaEntries: number
+  quotaReservations: number
+} {
+  if (!anonymousOwnerId.startsWith("anon_")) {
+    return { projects: 0, pushSubscriptions: 0, quotaEntries: 0, quotaReservations: 0 }
+  }
   db.exec("BEGIN")
   try {
     const projects = db.prepare(
@@ -541,10 +548,18 @@ export function claimAnonymousProjects(
     db.prepare(
       "UPDATE mobile_push_tokens SET owner_id = ?, updated_at = ? WHERE owner_id = ?",
     ).run(userId, Date.now(), anonymousOwnerId)
+    const quotaEntries = db.prepare(
+      "UPDATE usage_log SET identity = ? WHERE identity = ?",
+    ).run(userId, anonymousOwnerId)
+    const quotaReservations = db.prepare(
+      "UPDATE usage_reservations SET identity = ? WHERE identity = ?",
+    ).run(userId, anonymousOwnerId)
     db.exec("COMMIT")
     return {
       projects: Number(projects.changes),
       pushSubscriptions: Number(pushSubscriptions.changes),
+      quotaEntries: Number(quotaEntries.changes),
+      quotaReservations: Number(quotaReservations.changes),
     }
   } catch (error) {
     db.exec("ROLLBACK")

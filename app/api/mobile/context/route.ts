@@ -6,7 +6,10 @@ import { getDbForRequest } from '@/lib/assets/store'
 import { latestSnapshot, listProjects } from '@/lib/assets/repo'
 import { resolveProjectOwner, resolveRequestIdentity } from '@/lib/auth/request'
 import { buildMobileContext } from '@/lib/mobile-context'
-import { FULL_PROJECT_COST, getQuota } from '@/lib/quota'
+import { getQuota } from '@/lib/quota'
+import { projectQuotaEstimates, readEpisodeCount } from '@/lib/episodes'
+import { QUOTA_PRICING_VERSION } from '@/lib/model-pricing'
+import { getProjectContext } from '@/lib/assets/project-context'
 import {
   listGeneratedAssets,
   listGenerationBatches,
@@ -51,6 +54,10 @@ export async function GET(req: Request) {
       ])
     }
     const quota = getQuota(db, resolveRequestIdentity(db, req))
+    const projectContext = active ? getProjectContext(db, active.id) : null
+    const episodeCount = readEpisodeCount(projectContext?.episodeCount)
+    const estimates = projectQuotaEstimates(quota.remaining, episodeCount)
+    const estimate = estimates.selected
 
     return NextResponse.json(
       ok(
@@ -61,7 +68,11 @@ export async function GET(req: Request) {
             remaining: quota.remaining,
             limit: quota.limit,
             used: quota.used,
-            projectsLeft: Math.floor(quota.remaining / FULL_PROJECT_COST),
+            projectsLeft: estimate.projectsLeft,
+            episodeCount: estimate.episodeCount,
+            projectCost: estimate.units,
+            pricingVersion: QUOTA_PRICING_VERSION,
+            estimates,
           },
           now: Date.now(),
           activeProjectId: active?.id,

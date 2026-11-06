@@ -10,6 +10,7 @@ import {
   generateShotVideoBatch,
   retryVideoTask,
 } from '@/lib/video/client'
+import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
 
 interface Props {
   projectId: string | null
@@ -333,6 +334,7 @@ export default function BatchVideoPanel({
             <div className="min-w-0">
               <p>
                 已选 <b>{selectedTargets.length}</b> 镜 · {totalSeconds} 秒 · 约 <b>¥{estimatedCost.toFixed(2)}</b>
+                {' '}· {quotaUnitsForCostMicros(estimatedCost * 1_000_000)} 创作额度
               </p>
               <p>MiniMax H3 Lite 768P，结果不会覆盖已采用视频。</p>
             </div>

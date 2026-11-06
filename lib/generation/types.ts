@@ -24,6 +24,8 @@ export interface GenerationTask {
   actualCostMicros?: number
   maxAttempts?: number
   attempt?: number
+  quotaReservationId?: string | null
+  quotaUnits?: number
   retryOfTaskId?: string | null
   idempotencyKey?: string | null
   nextPollAt?: number | null

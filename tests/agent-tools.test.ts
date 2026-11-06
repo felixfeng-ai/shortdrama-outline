@@ -21,7 +21,13 @@ function state(over: Partial<AgentState> = {}): AgentState {
     completed: { characters: true, acts: false, episodes: false, visuals: false, scenes: false, shots: false },
     shots: [],
     expiredShots: 0,
-    quota: { remaining: 38, limit: 65, projectsLeft: 2 },
+    quota: {
+      remaining: 38,
+      limit: 65,
+      projectsLeft: 2,
+      episodeCount: 30,
+      projectCost: 19,
+    },
     ...over,
   }
 }
@@ -137,6 +143,9 @@ test("AT3 分镜审计：镜数、缺图（带镜号与角色）、掉锚点、�
 test("AT4 额度：读不到时说实话，不崩也不编", () => {
   const withQuota = createToolExecutors(state()).get_quota({})
   assert.match(withQuota.content, /38\/65/)
+  assert.match(withQuota.content, /30 集/)
+  assert.match(withQuota.content, /2 部/)
+  assert.doesNotMatch(withQuota.content, /10 集\/部/)
   const without = createToolExecutors(state({ quota: null })).get_quota({})
   assert.equal(without.ok, false)
   assert.match(without.content, /读不到|暂时/)

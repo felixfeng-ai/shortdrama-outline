@@ -9,6 +9,8 @@ import { toVideoRenderDto } from "@/lib/video/render-dto"
 import { scheduleVideoRenderQueue } from "@/lib/video/render-queue"
 import { listVideoRenders } from "@/lib/video/render-repo"
 import { enqueueEpisodeRender } from "@/lib/video/render-service"
+import { releaseQuota, reserveQuota } from "@/lib/quota"
+import { RENDER_UNITS } from "@/lib/model-pricing"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -49,31 +51,48 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let quotaHoldId: string | null = null
   try {
     const db = getDbForRequest()
     const ownerId = resolveProjectOwner(db, req)
+    const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "export", {
-      identity: resolveRequestIdentity(db, req),
+      identity,
     })
     const body = await req.json().catch(() => null)
     const projectId = requiredString(body?.projectId, "缺少 projectId")
     const episode = requiredInteger(body?.episode, "缺少集号")
     const timelineVersionId = requiredString(body?.timelineVersionId, "缺少时间线版本")
     assertProjectAccess(db, projectId, ownerId)
+    const hold = reserveQuota(db, identity, "render", {
+      units: RENDER_UNITS,
+      ttlMs: 24 * 60 * 60_000,
+    })
+    quotaHoldId = hold.id
     const render = enqueueEpisodeRender(db, {
       projectId,
       episode,
       timelineVersionId,
+      quotaReservationId: hold.id,
+      quotaUnits: RENDER_UNITS,
     })
+    if (render.quotaReservationId !== hold.id) {
+      releaseQuota(db, hold.id, "render_reused")
+      quotaHoldId = null
+    }
     scheduleVideoRenderQueue(db)
     return NextResponse.json(ok({
       render: toVideoRenderDto(render),
       created: render.status === "queued",
+      quotaUnits: RENDER_UNITS,
     }), {
       status: 202,
       headers: { "cache-control": "no-store" },
     })
   } catch (error) {
+    if (quotaHoldId) {
+      releaseQuota(getDbForRequest(), quotaHoldId, error instanceof Error ? error.message : "render_enqueue_failed")
+    }
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })
   }

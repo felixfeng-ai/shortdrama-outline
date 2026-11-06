@@ -11,7 +11,7 @@ import { buildCharacterPrompt, buildSingleCharacterPrompt } from '@/lib/prompts'
 import { readBrief } from '@/lib/brief'
 import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
-import { chargeQuota } from "@/lib/quota"
+import { withQuotaReservation } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
@@ -47,44 +47,36 @@ export async function POST(req: Request) {
     const comparison = body?.comparison === true
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
-    chargeQuota(db, identity, "characters")
+    const { value } = await withQuotaReservation(db, identity, "characters", 1, async () => {
+      const { system, user } =
+        mode === 'single'
+          ? buildSingleCharacterPrompt(idea, existing, genre, brief)
+          : buildCharacterPrompt(idea, genre, brief)
+      const memory = projectId
+        ? buildVariantMemoryBlock(
+          'characters',
+          listProjectDecisions(db, projectId, 20),
+          listProjectJudgments(db, projectId, 20),
+        )
+        : ''
+      const systemWithMemory = system
+        + (comparison ? variantPromptBlock(variantStrategy) : '')
+        + memory
 
+      const raw = await chatJson<unknown>(systemWithMemory, user, {
+        temperature: variant === 'B' ? 0.7 : 1.0,
+      })
+      const characters = normalizeCharacters(raw)
 
-    const { system, user } =
-      mode === 'single'
-        ? buildSingleCharacterPrompt(idea, existing, genre, brief)
-        : buildCharacterPrompt(idea, genre, brief)
-    const memory = projectId
-      ? buildVariantMemoryBlock(
-        'characters',
-        listProjectDecisions(db, projectId, 20),
-        listProjectJudgments(db, projectId, 20),
-      )
-      : ''
-    const systemWithMemory = system
-      + (comparison ? variantPromptBlock(variantStrategy) : '')
-      + memory
+      if (!comparison) {
+        persistIfProject(db, projectId, 'idea', { idea, genre: genre.id }, { kinds: [] })
+        persistIfProject(db, projectId, 'characters', characters, { kinds: ['idea'] })
+      }
 
-    // 人物设定需要想象力，温度调高一些
-    const raw = await chatJson<unknown>(systemWithMemory, user, {
-      temperature: variant === 'B' ? 0.7 : 1.0,
+      return mode === 'single' ? { characters: [characters[0]] } : { characters }
     })
-    const characters = normalizeCharacters(raw)
 
-    /*
-      落快照：这一步以前不落库，于是「刷新页面 = 前六步全丢」。
-      现在把「想法」本身也存成一版（kind=idea，整条链路的根），
-      恢复项目时输入框里的那句话就能填回去，不用让用户重打。
-      落库失败不影响生成结果（persistIfProject 内部兜住）。
-    */
-    if (!comparison) {
-      persistIfProject(db, projectId, 'idea', { idea, genre: genre.id }, { kinds: [] })
-      persistIfProject(db, projectId, 'characters', characters, { kinds: ['idea'] })
-    }
-
-    return NextResponse.json(
-      ok(mode === 'single' ? { characters: [characters[0]] } : { characters }),
-    )
+    return NextResponse.json(ok(value))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

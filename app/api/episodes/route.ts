@@ -23,7 +23,7 @@ import {
 } from '@/lib/episodes'
 import { readGenre, type Act, type Character, type Episode } from '@/lib/types'
 import { readActs, readCharacters, readEpisodes, readIdea } from '@/lib/validate'
-import { chargeQuota } from "@/lib/quota"
+import { releaseQuota, reserveQuota, settleQuota } from "@/lib/quota"
 import { getDbForRequest } from "@/lib/assets/store"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
@@ -135,16 +135,15 @@ export async function POST(req: Request) {
     ? allBatches.filter((batch) => batch.start >= checkpoint.cursor)
     : allBatches
   const remainingCount = batches.reduce((sum, batch) => sum + batch.end - batch.start + 1, 0)
+  const reservedUnits = preview ? 1 : episodeQuotaUnits(Math.max(6, remainingCount))
 
   // 续跑只为本轮尚未完成的批次计费。
+  let quotaHold!: ReturnType<typeof reserveQuota>
   try {
-    chargeQuota(
-      db,
-      identity,
-      "episodes",
-      Date.now(),
-      preview ? 1 : episodeQuotaUnits(Math.max(6, remainingCount)),
-    )
+    quotaHold = reserveQuota(db, identity, "episodes", {
+      units: reservedUnits,
+      ttlMs: 60 * 60_000,
+    })
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })
@@ -237,9 +236,11 @@ export async function POST(req: Request) {
           persistIfProject(db, projectId, 'episodes', finalEpisodes, { kinds: ['acts'] })
         }
         if (projectId && !preview) clearTextGenerationCheckpoint(db, projectId, 'episodes')
+        settleQuota(db, quotaHold.id, reservedUnits)
         send('done', { episodes: finalEpisodes })
         finish()
       } catch (error) {
+        releaseQuota(db, quotaHold.id, error instanceof Error ? error.message : 'episodes_failed')
         const { body } = errorResponse(error)
         send('error', {
           error: body.error,
@@ -250,6 +251,9 @@ export async function POST(req: Request) {
         })
         finish()
       }
+    },
+    cancel() {
+      releaseQuota(db, quotaHold.id, 'client_cancelled_episodes')
     },
   })
 

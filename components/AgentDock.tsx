@@ -16,7 +16,13 @@ import {
   fetchProjectThread,
   listProjectThreads,
 } from '@/lib/assets/api'
-import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
+import {
+  AGENT_CHAT_MAX_CALLS,
+  runAgentLoop,
+  type AgentMessage,
+  type LoopEvent,
+  type ModelReply,
+} from '@/lib/agent/loop'
 import { createToolExecutors, type AgentCard, type AgentState } from '@/lib/agent/tools'
 import { inspectEditTarget, type EditTargetStatus } from '@/lib/agent/edits'
 import { buildAgentActionPlan } from '@/lib/agent/plan'
@@ -234,6 +240,7 @@ export default function AgentDock({
   const [threadBusy, setThreadBusy] = useState(false)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [lastTurnCost, setLastTurnCost] = useState<number | null>(null)
   const [degraded, setDegraded] = useState(false)
   const [runs, setRuns] = useState<AgentActionRunDto[]>([])
   const [runsLoading, setRunsLoading] = useState(false)
@@ -415,8 +422,12 @@ export default function AgentDock({
     if (!text || busyRef.current) return
     busyRef.current = true
     setBusy(true)
+    setLastTurnCost(null)
     setInput('')
     push({ role: 'user', text })
+    const turnId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `turn-${Date.now()}-${Math.random().toString(36).slice(2)}`
     let threadId = activeThreadId
     if (projectId) {
       try {
@@ -446,7 +457,12 @@ export default function AgentDock({
     const callModel = async (messages: AgentMessage[]): Promise<ModelReply> => {
       const data = await postJson<{ reply?: string; toolCalls?: ModelReply['toolCalls']; degraded?: boolean }>(
         '/api/agent',
-        { messages },
+        {
+          messages,
+          turnId,
+          mode: 'chat',
+          maxUnits: AGENT_CHAT_MAX_CALLS,
+        },
       )
       if (data.degraded) setDegraded(true)
       return { reply: data.reply, toolCalls: data.toolCalls }
@@ -462,6 +478,7 @@ export default function AgentDock({
           return callModel([...history, ...messages])
         },
         executors,
+        maxModelCalls: AGENT_CHAT_MAX_CALLS,
         onEvent: (event: LoopEvent) => {
           if (event.type === 'tool-call') {
             pushStep({ label: `已读 ${TOOL_LABEL[event.name] ?? event.name}`, detail: '' })
@@ -470,6 +487,7 @@ export default function AgentDock({
           }
         },
       })
+      setLastTurnCost(result.modelCalls)
       const answer = result.messages[result.messages.length - 1].content
       push({ role: 'assistant', text: answer })
       if (projectId && threadId) {
@@ -865,7 +883,9 @@ export default function AgentDock({
             </button>
           </form>
           <p className="px-4 pb-3 text-[11px] text-ink-400">
-            一次完整流程 13 单位；这里的每次提问按模型往返计费，单轮最多 6 次查询。
+            普通提问本轮最多消耗 {AGENT_CHAT_MAX_CALLS} 单位
+            {lastTurnCost !== null ? `，上次消耗 ${lastTurnCost} 单位` : ''}
+            。创作额度与图片、视频共用。
           </p>
         </section>
       )}

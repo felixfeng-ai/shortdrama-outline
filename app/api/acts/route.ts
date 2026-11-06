@@ -8,7 +8,7 @@ import { buildActPrompt } from '@/lib/prompts'
 import { readBrief } from '@/lib/brief'
 import { readCharacters, readIdea } from '@/lib/validate'
 import { getDbForRequest } from "@/lib/assets/store"
-import { chargeQuota } from "@/lib/quota"
+import { withQuotaReservation } from "@/lib/quota"
 import { persistIfProject } from "@/lib/assets/persist"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
@@ -40,30 +40,29 @@ export async function POST(req: Request) {
     const comparison = body?.comparison === true
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
-    chargeQuota(db, identity, "acts")
-
-
-    const { system, user } = buildActPrompt(idea, characters, genre, brief)
-    const memory = projectId
-      ? buildVariantMemoryBlock(
-        'acts',
-        listProjectDecisions(db, projectId, 20),
-        listProjectJudgments(db, projectId, 20),
+    const { value } = await withQuotaReservation(db, identity, "acts", 1, async () => {
+      const { system, user } = buildActPrompt(idea, characters, genre, brief)
+      const memory = projectId
+        ? buildVariantMemoryBlock(
+          'acts',
+          listProjectDecisions(db, projectId, 20),
+          listProjectJudgments(db, projectId, 20),
+        )
+        : ''
+      const raw = await chatJson<unknown>(
+        system + (comparison ? variantPromptBlock(variantStrategy) : '') + memory,
+        user,
+        { temperature: variant === 'B' ? 0.5 : 0.8 },
       )
-      : ''
-    const raw = await chatJson<unknown>(
-      system + (comparison ? variantPromptBlock(variantStrategy) : '') + memory,
-      user,
-      { temperature: variant === 'B' ? 0.5 : 0.8 },
-    )
-    const acts = normalizeActs(raw)
+      const acts = normalizeActs(raw)
 
-    // 落快照，血缘指向人物那一版；刷新后要靠它把大纲恢复出来
-    if (!comparison) {
-      persistIfProject(db, projectId, 'acts', acts, { kinds: ['characters'] })
-    }
+      if (!comparison) {
+        persistIfProject(db, projectId, 'acts', acts, { kinds: ['characters'] })
+      }
+      return { acts }
+    })
 
-    return NextResponse.json(ok({ acts }))
+    return NextResponse.json(ok(value))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

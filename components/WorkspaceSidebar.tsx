@@ -21,11 +21,12 @@ interface Props {
   todoCount: number
   savedLabel: string
   quotaRefreshKey: number
+  episodeCount: number
   mobileOpen: boolean
   onCloseMobile: () => void
   onHome: () => void
   onSwitchProject: (id: string) => void
-  onDeleteProject: (id: string) => void
+  onDeleteProject: (id: string) => Promise<boolean>
   onNewProject: () => void
   onOpenTodo: () => void
   onOpenCreate: () => void
@@ -63,6 +64,7 @@ export default function WorkspaceSidebar({
   todoCount,
   savedLabel,
   quotaRefreshKey,
+  episodeCount,
   mobileOpen,
   onCloseMobile,
   onHome,
@@ -79,6 +81,7 @@ export default function WorkspaceSidebar({
 }: Props) {
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [confirmingProjectId, setConfirmingProjectId] = useState<string | null>(null)
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
   const orderedSteps = orderWorkspaceSteps(
     ['characters', 'acts', 'episodes', 'visuals', 'scenes', 'shots'],
     currentStep,
@@ -126,48 +129,60 @@ export default function WorkspaceSidebar({
                   key={project.id}
                   className={`wfx-project-menu-row ${isActive ? 'is-active' : ''} ${isConfirming ? 'is-confirming' : ''}`}
                 >
-                  <button
-                    type="button"
-                    className="wfx-project-select"
-                    onClick={() => {
-                      onSwitchProject(project.id)
-                      setProjectMenuOpen(false)
-                      setConfirmingProjectId(null)
-                      onCloseMobile()
-                    }}
-                  >
-                    <span>{project.title}</span>
-                    {isActive && <small>当前</small>}
-                  </button>
-                  <button
-                    type="button"
-                    className="wfx-project-delete"
-                    aria-label={`删除项目 ${project.title}`}
-                    title="删除项目"
-                    onClick={() => setConfirmingProjectId(isConfirming ? null : project.id)}
-                  >
-                    <svg viewBox="0 0 20 20" aria-hidden="true">
-                      <path d="M4.5 6h11M8 3.8h4M6.5 6l.6 9.2h5.8l.6-9.2M8.5 9v3.5M11.5 9v3.5" />
-                    </svg>
-                  </button>
-                  {isConfirming && (
+                  {isConfirming ? (
                     <div className="wfx-project-delete-confirm" role="alert">
                       <span>删除后无法恢复</span>
                       <button
                         type="button"
                         className="is-confirm"
+                        disabled={deletingProjectId === project.id}
                         onClick={() => {
-                          setConfirmingProjectId(null)
-                          onDeleteProject(project.id)
-                          if (project.id === projectId) setProjectMenuOpen(false)
+                          setDeletingProjectId(project.id)
+                          void onDeleteProject(project.id).then((deleted) => {
+                            setDeletingProjectId(null)
+                            if (!deleted) return
+                            setConfirmingProjectId(null)
+                            if (project.id === projectId) setProjectMenuOpen(false)
+                          })
                         }}
                       >
-                        确认删除
+                        {deletingProjectId === project.id ? '删除中…' : '确认删除'}
                       </button>
-                      <button type="button" onClick={() => setConfirmingProjectId(null)}>
+                      <button
+                        type="button"
+                        disabled={deletingProjectId === project.id}
+                        onClick={() => setConfirmingProjectId(null)}
+                      >
                         取消
                       </button>
                     </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="wfx-project-select"
+                        onClick={() => {
+                          onSwitchProject(project.id)
+                          setProjectMenuOpen(false)
+                          setConfirmingProjectId(null)
+                          onCloseMobile()
+                        }}
+                      >
+                        <span>{project.title}</span>
+                        {isActive && <small>当前</small>}
+                      </button>
+                      <button
+                        type="button"
+                        className="wfx-project-delete"
+                        aria-label={`删除项目 ${project.title}`}
+                        title="删除项目"
+                        onClick={() => setConfirmingProjectId(project.id)}
+                      >
+                        <svg viewBox="0 0 20 20" aria-hidden="true">
+                          <path d="M4.5 6h11M8 3.8h4M6.5 6l.6 9.2h5.8l.6-9.2M8.5 9v3.5M11.5 9v3.5" />
+                        </svg>
+                      </button>
+                    </>
                   )}
                 </div>
               )
@@ -269,7 +284,7 @@ export default function WorkspaceSidebar({
         <div className="wfx-side-user">
           <AuthButton variant="workspace-user" />
           <span className="wfx-side-save">{savedLabel}</span>
-          <QuotaBar refreshKey={quotaRefreshKey} inline />
+          <QuotaBar refreshKey={quotaRefreshKey} episodeCount={episodeCount} inline />
         </div>
       </aside>
     </>

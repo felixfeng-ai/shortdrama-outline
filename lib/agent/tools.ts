@@ -22,6 +22,7 @@ import {
   type SourceMaterialInput,
 } from '../skills/source-index'
 import { estimateVideoCostMicros } from '../video/model.ts'
+import { DEFAULT_EPISODE_COUNT, projectQuotaUnits } from '../episodes.ts'
 
 export interface AgentShot {
   /** 跨版本稳定目标；修改镜头必须用它，不能依赖可变的展示镜号。 */
@@ -171,7 +172,13 @@ export interface AgentState {
     issueCount?: number
     totalDurationMs: number
   }>
-  quota: { remaining: number; limit: number; projectsLeft: number } | null
+  quota: {
+    remaining: number
+    limit: number
+    projectsLeft: number
+    episodeCount?: number
+    projectCost?: number
+  } | null
   sourceMaterials?: SourceMaterialInput[]
 }
 
@@ -959,9 +966,11 @@ export function createToolExecutors(
 
     get_quota: () => {
       if (!state.quota) return { ok: false, content: '创作额度信息暂时读不到（接口没返回）。' }
+      const episodeCount = state.quota.episodeCount ?? DEFAULT_EPISODE_COUNT
+      const projectCost = state.quota.projectCost ?? projectQuotaUnits(episodeCount)
       return {
         ok: true,
-        content: `今日剩余创作额度 ${state.quota.remaining}/${state.quota.limit} 单位，按 10 集/部估算还能跑 ${state.quota.projectsLeft} 部；集数越多，每部消耗的批次创作额度越高。`,
+        content: `今日剩余创作额度 ${state.quota.remaining}/${state.quota.limit} 单位；按 ${episodeCount} 集/部估算，每部约 ${projectCost} 单位，还能跑 ${state.quota.projectsLeft} 部。图片、视频和 Agent 重试共用这份额度。`,
       }
     },
 

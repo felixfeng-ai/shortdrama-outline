@@ -11,6 +11,7 @@ import {
   userFromSessionToken,
   verifyLoginCode,
 } from "../lib/auth/service.ts"
+import { chargeQuota, getQuota, reserveQuota } from "../lib/quota.ts"
 
 const owner = `anon_${"l".repeat(48)}`
 const secret = "test-auth-secret"
@@ -90,10 +91,18 @@ test("首次登录只认领当前匿名会话项目，不碰其他匿名项目",
     db.prepare(
       "INSERT INTO users (id, phone, display_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
     ).run(user.id, "+8613700137000", "用户3700", now, now)
+    chargeQuota(db, owner, "characters", now)
+    reserveQuota(db, owner, "visual", {
+      requestId: "claim-anon-quota",
+      units: 2,
+      now,
+    })
 
     assert.deepEqual(claimAnonymousProjects(db, owner, user.id), {
       projects: 1,
       pushSubscriptions: 1,
+      quotaEntries: 1,
+      quotaReservations: 2,
     })
     const claimed = db.prepare("SELECT owner_id FROM projects WHERE id = ?").get(own.id) as { owner_id: string }
     assert.equal(claimed.owner_id, user.id)
@@ -101,6 +110,8 @@ test("首次登录只认领当前匿名会话项目，不碰其他匿名项目",
       (db.prepare("SELECT COUNT(*) AS n FROM projects WHERE owner_id LIKE 'anon_%'").get() as { n: number }).n,
       1,
     )
+    assert.equal(getQuota(db, user.id, now).used, 3)
+    assert.equal(getQuota(db, owner, now).used, 0)
   } finally {
     db.close()
   }

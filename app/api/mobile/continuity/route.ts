@@ -8,7 +8,7 @@ import { getDbForRequest } from '@/lib/assets/store'
 import { resolveProjectOwner, resolveRequestIdentity } from '@/lib/auth/request'
 import { buildContinuityContext } from '@/lib/continuity/context'
 import { compareContinuityPhoto } from '@/lib/continuity/vision'
-import { chargeQuota } from '@/lib/quota'
+import { withQuotaReservation } from '@/lib/quota'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const runtime = 'nodejs'
@@ -52,21 +52,23 @@ export async function POST(req: Request) {
 
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, 'model', { identity })
-    chargeQuota(db, identity, 'visual')
-    const report = await compareContinuityPhoto({
-      imageBase64,
-      mime,
-      context,
+    const { value } = await withQuotaReservation(db, identity, 'visual', 2, async () => {
+      const report = await compareContinuityPhoto({
+        imageBase64,
+        mime,
+        context,
+      })
+      return {
+        report,
+        context: {
+          shotLabel: context.shotLabel,
+          characterCount: context.characters.length,
+          placeCount: context.places.length,
+          canonCount: context.canon.length,
+        },
+      }
     })
-    return NextResponse.json(ok({
-      report,
-      context: {
-        shotLabel: context.shotLabel,
-        characterCount: context.characters.length,
-        placeCount: context.places.length,
-        canonCount: context.canon.length,
-      },
-    }))
+    return NextResponse.json(ok(value))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

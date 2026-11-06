@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 
 import { InputError, errorResponse, ok } from '@/lib/api'
 import { AGENT_SYSTEM_PROMPT } from '@/lib/agent/system'
@@ -12,12 +13,20 @@ import { AiError, chatJson, chatWithTools } from '@/lib/deepseek'
 import { listEntityComments } from '@/lib/entity-comments'
 import {
   buildMobileAgentState,
+  MOBILE_AGENT_MAX_CALLS,
   readMobileAgentPrompt,
   runMobileAgentTurn,
 } from '@/lib/mobile-agent'
 import { buildMobileVideoView } from '@/lib/mobile-video'
 import { listGeneratedAssets, listGenerationTasks } from '@/lib/generation/repo'
-import { FULL_PROJECT_COST, chargeQuota, getQuota } from '@/lib/quota'
+import {
+  getQuota,
+  releaseQuota,
+  reserveQuota,
+  settleQuota,
+} from '@/lib/quota'
+import { projectQuotaEstimate, readEpisodeCount } from '@/lib/episodes'
+import { getProjectContext } from '@/lib/assets/project-context'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
 export const runtime = 'nodejs'
@@ -53,6 +62,11 @@ export async function POST(req: Request) {
       ]),
     )
     const quota = getQuota(db, identity)
+    const projectContext = getProjectContext(db, project.id)
+    const estimate = projectQuotaEstimate(
+      quota.remaining,
+      readEpisodeCount(projectContext?.episodeCount),
+    )
     const videoView = buildMobileVideoView({
       shots: snapshots.shots,
       assets: listGeneratedAssets(db, project.id),
@@ -68,21 +82,34 @@ export async function POST(req: Request) {
       quota: {
         remaining: quota.remaining,
         limit: quota.limit,
-        projectsLeft: Math.floor(quota.remaining / FULL_PROJECT_COST),
+        projectsLeft: estimate.projectsLeft,
+        episodeCount: estimate.episodeCount,
+        projectCost: estimate.units,
       },
     })
 
     let degraded = false
-    const result = await runMobileAgentTurn(
-      { prompt, state },
-      {
+    const turnId = randomUUID()
+    const holds: Array<{ id: string }> = []
+    let result
+    enforceApiRateLimit(db, req, 'assistant', { identity })
+    try {
+      result = await runMobileAgentTurn(
+        { prompt, state },
+        {
         charge: () => {
-          enforceApiRateLimit(db, req, 'assistant', { identity })
-          chargeQuota(db, identity, 'agent')
+          const hold = reserveQuota(db, identity, 'agent', {
+            requestId: `${turnId}:${holds.length + 1}`,
+            groupId: turnId,
+            groupLimit: MOBILE_AGENT_MAX_CALLS,
+            units: 1,
+          })
+          holds.push(hold)
         },
         callModel: async (messages) => {
+          const hold = holds[holds.length - 1]
           try {
-            return await chatWithTools(
+            const reply = await chatWithTools(
               [
                 { role: 'system', content: AGENT_SYSTEM_PROMPT },
                 ...toWireMessages(messages),
@@ -90,6 +117,8 @@ export async function POST(req: Request) {
               AGENT_TOOL_SCHEMAS,
               { temperature: 0.5 },
             )
+            if (hold) settleQuota(db, hold.id, 1)
+            return reply
           } catch (error) {
             if (!(error instanceof AiError)) throw error
             degraded = true
@@ -100,16 +129,22 @@ export async function POST(req: Request) {
               lastUser,
               { temperature: 0.5, maxTokens: 600 },
             )
+            if (hold) settleQuota(db, hold.id, 1)
             return { reply: raw.reply ?? raw.answer ?? '这次没能回答，换个说法再试一次。' }
           }
         },
-      },
-    )
+        },
+      )
+    } finally {
+      for (const hold of holds) releaseQuota(db, hold.id, 'mobile_agent_unfinished')
+    }
 
     return NextResponse.json(
       ok({
         ...result,
         degraded,
+        turnId,
+        turnLimit: MOBILE_AGENT_MAX_CALLS,
         projectId: project.id,
         baseShotsSnapshotId: shotsSnapshot?.id ?? null,
       }),

@@ -12,6 +12,7 @@ export function toVideoRenderDto(render: VideoRender): VideoRenderDto {
     timelineRevision: render.timelineRevision,
     status: render.status,
     progress: render.progress,
+    quotaUnits: render.quotaUnits,
     error: render.error,
     durationMs: render.durationMs,
     videoUrl: ready ? `${base}/file?${query.toString()}` : null,

@@ -11,7 +11,7 @@
 //   用尽（0）     红色 + 明确告知「明天恢复 / 可自建」
 import { useEffect, useState } from 'react'
 import { fetchQuota, type QuotaDto } from '@/lib/assets/api'
-import { DEFAULT_EPISODE_COUNT, projectQuotaUnits } from '@/lib/episodes'
+import { DEFAULT_EPISODE_COUNT } from '@/lib/episodes'
 
 interface Props {
   /** 生成成功后 +1，用来触发重新查询（额度已经变了） */
@@ -35,12 +35,24 @@ export default function QuotaBar({
 
   useEffect(() => {
     let cancelled = false
-    fetchQuota()
-      .then((q) => { if (!cancelled) { setQuota(q); setFailed(false) } })
-      // 额度是增强信息，查不到不该影响主流程（和台账读取同样的降级口径）
-      .catch(() => { if (!cancelled) setFailed(true) })
-    return () => { cancelled = true }
-  }, [refreshKey])
+    const load = () => {
+      fetchQuota(episodeCount)
+        .then((q) => { if (!cancelled) { setQuota(q); setFailed(false) } })
+        // 额度是增强信息，查不到不该影响主流程。
+        .catch(() => { if (!cancelled) setFailed(true) })
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") load()
+    }
+    load()
+    window.addEventListener('focus', load)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', load)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [refreshKey, episodeCount])
 
   if (failed) return null
   if (!quota) {
@@ -65,37 +77,32 @@ export default function QuotaBar({
       : { box: 'border-surface-line bg-surface-soft', text: 'text-ink-600', bar: 'bg-ink-300' }
 
   const label = exhausted ? '今日创作额度已用完' : '今日剩余创作额度'
-  /*
-    一行只留一个数字体系。
-    原文案是「可跑 1 个完整项目（13/26）」——括号里是额度单位、前面是项目数，
-    13 单位 = 1 个项目，两套数字并排用户算不清。单位明细收进 title，需要时悬浮可查。
-  */
-  /*
-    「可跑 0 个完整项目」字面没错，但它读起来像「一点额度都没有了」——
-    实际可能还剩几个单位，够做联想或几步生成。分开说，别把有余量说成没余量。
-  */
+  const estimate = quota.estimates.selected
+  const projectsText = estimate.projectsLeft >= 1
+    ? `约 ${estimate.projectsLeft} 部 ${estimate.episodeCount} 集短剧`
+    : '不够一部完整短剧'
   const value = exhausted
     ? '明天恢复'
-    : quota.projectsLeft >= 1
-      ? `可跑 ${quota.projectsLeft} 个完整项目`
-      : '还能跑几步（不够一个完整项目）'
-  const detail = `本日创作额度 ${quota.remaining}/${quota.limit} 单位（1 个完整项目 = 13 单位）`
+    : projectsText
+  const presetText = quota.projectEstimates
+    .map((item) => `${item.episodeCount} 集约 ${item.projectsLeft} 部`)
+    .join(' · ')
+  const detail = `本日创作额度 ${quota.remaining}/${quota.limit} 单位。当前 ${estimate.episodeCount} 集项目约 ${estimate.units} 单位；${presetText}。图片生成 ${quota.mediaCosts.imageGenerate} 单位、编辑 ${quota.mediaCosts.imageEdit} 单位、成片 ${quota.mediaCosts.render} 单位；视频、TTS 与 Agent 重试共用本额度。`
 
   // 顶栏内联版：只留数字，明细进 title
   if (inline) {
-    const perProject = projectQuotaUnits(episodeCount)
-    const projects = Math.floor(quota.remaining / Math.max(1, perProject))
-    // 这里不再引用 10 集口径的「可跑 N 个完整项目」，否则和按集数估算的数字自相矛盾
     const inlineTitle = exhausted
       ? `${label}（本日 ${quota.remaining}/${quota.limit} 单位），明天按北京时间恢复。`
-      : `${label}：本日 ${quota.remaining}/${quota.limit} 单位。按 ${episodeCount} 集/部估算，每部约 ${perProject} 单位，约可跑 ${projects} 部。`
+      : `${label}：${detail}`
     return (
       <span
         className="h-quota"
         style={exhausted || low ? { color: 'rgb(var(--c-accent-700))' } : undefined}
         title={inlineTitle}
       >
-        {exhausted ? '创作额度用尽' : `创作额度 ${quota.remaining}/${quota.limit} · ${projects} 部`}
+        {exhausted
+          ? '创作额度用尽'
+          : `创作额度 ${quota.remaining}/${quota.limit} · ${estimate.projectsLeft} 部 ${estimate.episodeCount} 集`}
       </span>
     )
   }

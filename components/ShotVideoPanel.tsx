@@ -10,6 +10,7 @@ import {
   generateShotVideo,
   selectVideo,
 } from '@/lib/video/client'
+import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
 
 interface Props {
   projectId: string | null
@@ -26,6 +27,10 @@ const PRICE_PER_SECOND = 0.26
 
 function formatCost(duration: number): string {
   return `¥${(Math.max(1, duration) * PRICE_PER_SECOND).toFixed(2)}`
+}
+
+function quotaCost(duration: number): number {
+  return quotaUnitsForCostMicros(Math.ceil(Math.max(1, duration) * PRICE_PER_SECOND * 1_000_000))
 }
 
 function isPending(task: GenerationTask | null): boolean {
@@ -187,7 +192,7 @@ export default function ShotVideoPanel({
             </span>
           </div>
           <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">
-            草片约 {formatCost(duration)}，结果先保存为候选；切换菜单后任务仍在服务端继续。
+            草片约 {formatCost(duration)} · {quotaCost(duration)} 创作额度，结果先保存为候选；切换菜单后任务仍在服务端继续。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">

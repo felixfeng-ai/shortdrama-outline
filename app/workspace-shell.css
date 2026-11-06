@@ -293,11 +293,10 @@
 .wfx-project-delete-confirm {
   display: flex;
   grid-column: 1 / -1;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
   gap: 5px;
-  padding: 4px 5px 5px;
-  border-top: 1px solid var(--wfx-line);
+  padding: 0 5px;
 }
 
 .wfx-project-delete-confirm span {
@@ -323,6 +322,11 @@
   border-color: color-mix(in srgb, var(--wfx-danger) 36%, var(--wfx-line));
   background: color-mix(in srgb, var(--wfx-danger) 13%, transparent);
   color: var(--wfx-danger);
+}
+
+.wfx-project-delete-confirm button:disabled {
+  cursor: wait;
+  opacity: .58;
 }
 
 .wfx-project-empty {
@@ -2520,5 +2524,29 @@
 @media (max-width: 420px) {
   .auth-page .auth-story h1 {
     font-size: 28px;
+  }
+}
+
+/* 工作区提示必须位于固定侧栏和主内容之上，避免删除结果被侧栏遮住。 */
+.wfx-workspace .work-toast {
+  left: 256px;
+  bottom: 24px;
+  z-index: 140;
+  max-width: min(520px, calc(100vw - 280px));
+}
+
+@media (min-width: 961px) and (max-width: 1080px) {
+  .wfx-workspace .work-toast {
+    left: 100px;
+    max-width: min(520px, calc(100vw - 124px));
+  }
+}
+
+@media (max-width: 960px) {
+  .wfx-workspace .work-toast {
+    right: 12px;
+    bottom: 86px;
+    left: 12px;
+    max-width: none;
   }
 }

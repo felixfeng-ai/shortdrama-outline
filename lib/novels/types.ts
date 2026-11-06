@@ -178,6 +178,8 @@ export interface NovelRunRecord {
   completed: number
   budgetUnits: number
   usedUnits: number
+  quotaReservationId: string | null
+  quotaUnits: number
   idempotencyKey: string
   error: string | null
   startedAt: number | null

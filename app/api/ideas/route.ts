@@ -9,7 +9,7 @@ import { buildIdeaPrompt } from '@/lib/prompts'
 import { GENRES, readGenre, MAX_IDEAS_PER_ROUND, MAX_KEYWORD_LENGTH } from '@/lib/types'
 import { readRecommendedGenres } from '@/lib/prompts'
 import { getDbForRequest } from '@/lib/assets/store'
-import { chargeQuota } from '@/lib/quota'
+import { withQuotaReservation } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
@@ -52,15 +52,13 @@ export async function POST(req: Request) {
     const db = getDbForRequest()
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
-    chargeQuota(db, identity, 'ideas')
+    const { value } = await withQuotaReservation(db, identity, 'ideas', 1, async () => {
+      const { system, user } = buildIdeaPrompt(keywords, genre, GENRES)
+      const raw = await chatJson<unknown>(system, user, { temperature: 1.1 })
+      return { ideas: normalizeIdeas(raw), genres: readRecommendedGenres(raw) }
+    })
 
-    const { system, user } = buildIdeaPrompt(keywords, genre, GENRES)
-    // 联想需要发散，温度比人物生成再高一点
-    const raw = await chatJson<unknown>(system, user, { temperature: 1.1 })
-    const ideas = normalizeIdeas(raw)
-    const genres = readRecommendedGenres(raw)
-
-    return NextResponse.json(ok({ ideas, genres }))
+    return NextResponse.json(ok(value))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

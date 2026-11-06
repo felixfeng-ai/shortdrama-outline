@@ -17,6 +17,7 @@ import type {
 } from '@/lib/audio/types'
 import { countSpeechCharacters } from '@/lib/audio/text'
 import type { GenerationTask } from '@/lib/generation/types'
+import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
 
 interface Props {
   projectId: string | null
@@ -350,7 +351,7 @@ export default function VoiceProfilePanel({
                   >
                     {generatingId === character.id
                       ? '生成中…'
-                      : `生成 ${dialogueLines.length} 句 · ¥${costLabel(estimatedCost)}`}
+                      : `生成 ${dialogueLines.length} 句 · ¥${costLabel(estimatedCost)} · ${quotaUnitsForCostMicros(estimatedCost)} 额度`}
                   </button>
                 )}
               </div>
@@ -364,7 +365,7 @@ export default function VoiceProfilePanel({
           <span>
             {episode === null
               ? '先选择单集'
-              : `${batchLines.length} 句可生成 · ${batchCharacters} 字符 · ¥${costLabel(batchEstimatedCost)}`}
+              : `${batchLines.length} 句可生成 · ${batchCharacters} 字符 · ¥${costLabel(batchEstimatedCost)} · ${quotaUnitsForCostMicros(batchEstimatedCost)} 额度`}
           </span>
         </div>
         <button

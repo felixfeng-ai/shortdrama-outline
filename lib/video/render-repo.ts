@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { randomUUID } from "node:crypto"
 
 import type { VideoRender, VideoRenderStatus } from "./render-types.ts"
+import { releaseQuota, settleQuota } from "../quota.ts"
 
 interface VideoRenderRow {
   id: string
@@ -16,6 +17,8 @@ interface VideoRenderRow {
   video_storage_key: string | null
   srt_storage_key: string | null
   manifest_storage_key: string | null
+  quota_reservation_id: string | null
+  quota_units: number
   created_at: number
   started_at: number | null
   finished_at: number | null
@@ -36,6 +39,8 @@ function toVideoRender(row: VideoRenderRow): VideoRender {
     videoStorageKey: row.video_storage_key,
     srtStorageKey: row.srt_storage_key,
     manifestStorageKey: row.manifest_storage_key,
+    quotaReservationId: row.quota_reservation_id ?? null,
+    quotaUnits: Number(row.quota_units ?? 0),
     createdAt: row.created_at,
     startedAt: row.started_at,
     finishedAt: row.finished_at,
@@ -50,6 +55,8 @@ export function createVideoRender(
     episode: number
     timelineVersionId: string
     timelineRevision: number
+    quotaReservationId?: string | null
+    quotaUnits?: number
   },
 ): VideoRender {
   // 同一版本已经排队或渲染中时复用现有任务，避免刷新页面重复占满队列。
@@ -65,14 +72,16 @@ export function createVideoRender(
   db.prepare(
     `INSERT INTO video_renders
       (id, project_id, episode, timeline_version_id, timeline_revision, status,
-       progress, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'queued', 0, ?, ?)`,
+       progress, quota_reservation_id, quota_units, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'queued', 0, ?, ?, ?, ?)`,
   ).run(
     id,
     input.projectId,
     Math.max(0, Math.floor(input.episode)),
     input.timelineVersionId,
     Math.max(0, Math.floor(input.timelineRevision)),
+    input.quotaReservationId ?? null,
+    Math.max(0, Math.floor(input.quotaUnits ?? 0)),
     now,
     now,
   )
@@ -109,6 +118,11 @@ export function listVideoRenders(
 
 export function recoverInterruptedVideoRenders(db: DatabaseSync): number {
   const now = Date.now()
+  const interrupted = db.prepare(
+    `SELECT quota_reservation_id
+     FROM video_renders
+     WHERE status = 'running' AND quota_reservation_id IS NOT NULL`,
+  ).all() as { quota_reservation_id: string }[]
   const result = db.prepare(
     `UPDATE video_renders
      SET status = 'failed',
@@ -117,6 +131,9 @@ export function recoverInterruptedVideoRenders(db: DatabaseSync): number {
          updated_at = ?
      WHERE status = 'running'`,
   ).run(now, now)
+  for (const row of interrupted) {
+    releaseQuota(db, row.quota_reservation_id, "render_process_interrupted")
+  }
   return Number(result.changes)
 }
 
@@ -197,7 +214,11 @@ export function completeVideoRender(
     | VideoRenderRow
     | undefined
   if (!row) throw new Error("渲染任务不存在")
-  return toVideoRender(row)
+  const render = toVideoRender(row)
+  if (render.quotaReservationId && render.quotaUnits > 0) {
+    settleQuota(db, render.quotaReservationId, render.quotaUnits)
+  }
+  return render
 }
 
 export function failVideoRender(
@@ -215,5 +236,9 @@ export function failVideoRender(
     | VideoRenderRow
     | undefined
   if (!row) throw new Error("渲染任务不存在")
-  return toVideoRender(row)
+  const render = toVideoRender(row)
+  if (render.quotaReservationId) {
+    releaseQuota(db, render.quotaReservationId, message)
+  }
+  return render
 }

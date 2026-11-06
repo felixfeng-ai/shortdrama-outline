@@ -21,7 +21,7 @@ import { buildPlaceRefMap, buildRefMap } from "@/lib/assets/refs"
 import type { Scene, Shot, VisualCharacter } from "@/lib/assets/types"
 import { extractCompleteItems } from "@/lib/partial-json"
 import { readActs, readCharacters, readIdea } from "@/lib/validate"
-import { chargeQuota } from "@/lib/quota"
+import { releaseQuota, reserveQuota, settleQuota } from "@/lib/quota"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
@@ -136,8 +136,12 @@ export async function POST(req: Request) {
   )
 
   // 额度闸门：同 episodes，必须在 new ReadableStream 之前；续跑只收尚未完成批次的额度。
+  let quotaHold!: ReturnType<typeof reserveQuota>
   try {
-    chargeQuota(db, identity, "shots", Date.now(), shotUnits)
+    quotaHold = reserveQuota(db, identity, "shots", {
+      units: shotUnits,
+      ttlMs: 60 * 60_000,
+    })
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })
@@ -252,9 +256,11 @@ export async function POST(req: Request) {
           kinds: ["scenes", "visualCharacters"],
         })
         if (projectId) clearTextGenerationCheckpoint(db, projectId, "shots")
+        settleQuota(db, quotaHold.id, shotUnits)
         send("done", { shots: finalShots })
         finish()
       } catch (error) {
+        releaseQuota(db, quotaHold.id, error instanceof Error ? error.message : "shots_failed")
         const { body } = errorResponse(error)
         send("error", {
           error: body.error,
@@ -265,6 +271,9 @@ export async function POST(req: Request) {
         })
         finish()
       }
+    },
+    cancel() {
+      releaseQuota(db, quotaHold.id, "client_cancelled_shots")
     },
   })
 

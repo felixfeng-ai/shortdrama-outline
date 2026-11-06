@@ -7,6 +7,8 @@ import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { createGenerationBatch, getGenerationBatch } from "@/lib/generation/repo"
 import type { GenerationTask } from "@/lib/generation/types"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
+import { releaseQuota, reserveQuota } from "@/lib/quota"
+import { quotaUnitsForCostMicros } from "@/lib/model-pricing"
 import {
   estimateVideoCostMicros,
   getMiniMaxVideoConfig,
@@ -35,8 +37,9 @@ export async function POST(req: Request) {
   try {
     const db = getDbForRequest()
     const ownerId = resolveProjectOwner(db, req)
+    const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "video", {
-      identity: resolveRequestIdentity(db, req),
+      identity,
     })
     const body = await req.json().catch(() => null)
     const projectId = requiredString(body?.projectId, "缺少 projectId")
@@ -134,6 +137,13 @@ export async function POST(req: Request) {
         cursor += 1
         if (index >= ready.length) return
         const item = ready[index]
+        const itemKey = idempotencyKey ? `${idempotencyKey}:${item.targetId}` : null
+        const quotaUnits = quotaUnitsForCostMicros(item.estimatedCostMicros)
+        const hold = reserveQuota(db, identity, "video", {
+          requestId: itemKey ? `video:${itemKey}` : undefined,
+          units: quotaUnits,
+          ttlMs: 24 * 60 * 60_000,
+        })
         try {
           const result = await createAndSubmitVideoTask(db, {
             projectId,
@@ -147,10 +157,15 @@ export async function POST(req: Request) {
             ratio: item.ratio,
             batchId: batch.id,
             maxBudgetMicros: item.estimatedCostMicros,
-            idempotencyKey: idempotencyKey ? `${idempotencyKey}:${item.targetId}` : null,
+            idempotencyKey: itemKey,
             autoSelect: false,
+            quotaReservationId: hold.id,
+            quotaUnits,
             signal: req.signal,
           })
+          if (result.reused && result.task.quotaReservationId !== hold.id) {
+            releaseQuota(db, hold.id, "video_batch_task_reused")
+          }
           if (result.task.status === "failed" || result.task.status === "canceled") {
             outcomes[index] = {
               failure: {
@@ -162,6 +177,7 @@ export async function POST(req: Request) {
             outcomes[index] = { task: result.task }
           }
         } catch (error) {
+          releaseQuota(db, hold.id, error instanceof Error ? error.message : "video_batch_failed")
           outcomes[index] = {
             failure: {
               targetId: item.targetId,

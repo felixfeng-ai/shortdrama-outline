@@ -12,7 +12,7 @@ import {
   updateNovelChapter,
 } from "@/lib/novels/repo"
 import { buildNovelSourcePack } from "@/lib/novels/source-pack"
-import { chargeQuota } from "@/lib/quota"
+import { withQuotaReservation } from "@/lib/quota"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 
 export const runtime = "nodejs"
@@ -46,25 +46,26 @@ export async function POST(req: Request, context: RouteContext) {
       )
     }
     enforceApiRateLimit(db, req, "novel", { identity })
-    chargeQuota(db, identity, "novel", Date.now(), 1)
-    const sourcePack = buildNovelSourcePack(db, id)
-    const previousChapters = listNovelChapters(db, novelId)
-      .filter((item) => item.number < chapter.number && item.summary)
-      .slice(-2)
-      .map((item) => ({ number: item.number, title: item.title, summary: item.summary }))
-    const result = await generateNovelChapterWithModel({
-      chapter,
-      previousChapters,
-      sourcePack,
+    const { value } = await withQuotaReservation(db, identity, "novel", 1, async () => {
+      const sourcePack = buildNovelSourcePack(db, id)
+      const previousChapters = listNovelChapters(db, novelId)
+        .filter((item) => item.number < chapter.number && item.summary)
+        .slice(-2)
+        .map((item) => ({ number: item.number, title: item.title, summary: item.summary }))
+      const result = await generateNovelChapterWithModel({
+        chapter,
+        previousChapters,
+        sourcePack,
+      })
+      return updateNovelChapter(db, novelId, chapter.number, {
+        title: result.title,
+        content: result.content,
+        summary: result.summary || chapter.outline,
+        sourceSignature: sourcePack.signature,
+        changeKind: "regenerated",
+      })
     })
-    const updated = updateNovelChapter(db, novelId, chapter.number, {
-      title: result.title,
-      content: result.content,
-      summary: result.summary || chapter.outline,
-      sourceSignature: sourcePack.signature,
-      changeKind: "regenerated",
-    })
-    return NextResponse.json(ok({ chapter: updated }), {
+    return NextResponse.json(ok({ chapter: value }), {
       headers: { "cache-control": "no-store" },
     })
   } catch (error) {

@@ -13,7 +13,7 @@ import { errorResponse, ok, InputError } from '@/lib/api'
 import { chatJson } from '@/lib/deepseek'
 import { buildAssetMatchPrompt } from '@/lib/assets/prompts'
 import { getDbForRequest } from '@/lib/assets/store'
-import { chargeQuota } from '@/lib/quota'
+import { withQuotaReservation } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
 import { readGenre } from '@/lib/types'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
@@ -109,14 +109,17 @@ export async function POST(req: Request) {
     const db = getDbForRequest()
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "model", { identity })
-    chargeQuota(db, identity, 'assetMatch')
+    const { value } = await withQuotaReservation(db, identity, 'assetMatch', 1, async () => {
+      const { system, user } = buildAssetMatchPrompt(names, files, genre)
+      const raw = await chatJson<unknown>(system, user, { temperature: 0.2 })
+      return {
+        matches: normalizeMatches(raw, names, files),
+        scanned: files.length,
+        characters: names.length,
+      }
+    })
 
-    const { system, user } = buildAssetMatchPrompt(names, files, genre)
-    // 判断归属需要推理但不需要发散，温度压低
-    const raw = await chatJson<unknown>(system, user, { temperature: 0.2 })
-    const matches = normalizeMatches(raw, names, files)
-
-    return NextResponse.json(ok({ matches, scanned: files.length, characters: names.length }))
+    return NextResponse.json(ok(value))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

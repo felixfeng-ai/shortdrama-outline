@@ -16,7 +16,13 @@ import { fetchLatestTimelineVersions } from '@/lib/timeline/client'
 import { buildMobileVideoView } from '@/lib/mobile-video'
 import { countShotsMissingAnchors } from '@/lib/assets/anchors'
 import type { Scene, Shot, VisualCharacter, VisualPlace } from '@/lib/assets/types'
-import { runAgentLoop, type AgentMessage, type LoopEvent, type ModelReply } from '@/lib/agent/loop'
+import {
+  AGENT_CHAT_MAX_CALLS,
+  runAgentLoop,
+  type AgentMessage,
+  type LoopEvent,
+  type ModelReply,
+} from '@/lib/agent/loop'
 import { createToolExecutors, type AgentCard, type AgentState } from '@/lib/agent/tools'
 import type { Act, Character, Episode, StepKey } from '@/lib/types'
 import type { SkillDefinition } from '@/lib/skills/catalog'
@@ -394,6 +400,10 @@ export default function SkillAgentDrawer({
       contextToSend,
     ].filter(Boolean).join('\n\n')
     const skillModelLimit = skill ? maxModelCallsForSkill(skill.id) : 0
+    const turnLimit = skillModelLimit > 0 ? skillModelLimit : AGENT_CHAT_MAX_CALLS
+    const turnId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `turn-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const steps: ProcessStep[] = []
     const updateSteps = (next: ProcessStep[]) => {
       setProcessSteps([...next])
@@ -473,12 +483,17 @@ export default function SkillAgentDrawer({
             reply?: string
             toolCalls?: ModelReply['toolCalls']
             degraded?: boolean
-          }>('/api/agent', { messages: [...historyRef.current, ...messages] })
+          }>('/api/agent', {
+            messages: [...historyRef.current, ...messages],
+            turnId,
+            mode: 'skill',
+            maxUnits: turnLimit,
+          })
           if (data.degraded) setDegraded(true)
           return { reply: data.reply, toolCalls: data.toolCalls }
         },
         executors: createToolExecutors(state),
-        maxModelCalls: skillModelLimit > 0 ? skillModelLimit : undefined,
+        maxModelCalls: turnLimit,
         onEvent: (event: LoopEvent) => {
           if (event.type === 'tool-call') {
             steps.push({
@@ -577,7 +592,7 @@ export default function SkillAgentDrawer({
             <div className="agent-welcome">
               <div className="agent-bubble">
                 <b>你可以直接说要完成什么。</b><br />
-                我会先匹配 Skill、读取项目，再给计划。没有确认不会改内容或消耗创作额度。
+                我会先匹配 Skill、读取项目，再给计划；不会擅自改内容。发送问题会按模型往返消耗创作额度。
               </div>
               <div className="agent-suggestions">
                 {[

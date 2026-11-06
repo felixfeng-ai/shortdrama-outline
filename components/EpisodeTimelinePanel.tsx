@@ -13,6 +13,7 @@ import {
   enqueueVideoRender,
   fetchVideoRenders,
 } from '@/lib/video/render-client'
+import { RENDER_UNITS } from '@/lib/model-pricing'
 import {
   inspectTimelineDialogue,
   type TimelineShotInput,
@@ -784,7 +785,7 @@ export default function EpisodeTimelinePanel({
             <header>
               <div>
                 <b>成片渲染</b>
-                <span>使用固化版本，不改写后续草稿</span>
+                <span>使用固化版本，不改写后续草稿 · 每集约 {RENDER_UNITS} 创作额度</span>
               </div>
               <span className={renders.some((render) => render.status === 'running') ? 'is-running' : ''}>
                 {renders.some((render) => render.status === 'running')

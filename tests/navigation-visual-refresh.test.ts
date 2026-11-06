@@ -53,5 +53,12 @@ test("N9 我的项目支持逐条删除，并在原位置二次确认", () => {
   assert.match(sidebar, /确认删除/)
   assert.match(sidebar, /取消/)
   assert.match(sidebar, /aria-label=\{`删除项目/)
-  assert.match(page, /onDeleteProject=\{\(id\) => \{ void handleDeleteProject\(id\) \}\}/)
+  assert.match(sidebar, /isConfirming \?/)
+  assert.match(page, /onDeleteProject=\{handleDeleteProject\}/)
+})
+
+test("N10 工作区提示不被侧栏覆盖，删除后明确显示剩余项目数", () => {
+  assert.match(css, /\.wfx-workspace \.work-toast\s*\{[^}]*z-index:\s*140/s)
+  assert.match(css, /\.wfx-workspace \.work-toast\s*\{[^}]*left:\s*256px/s)
+  assert.match(page, /还剩 \$\{remaining\.length\} 个项目/)
 })

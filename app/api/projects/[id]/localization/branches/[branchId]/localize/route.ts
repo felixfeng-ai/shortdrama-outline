@@ -7,7 +7,7 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { parseJson, streamChat } from "@/lib/deepseek"
 import { episodeQuotaUnits } from "@/lib/episodes"
-import { chargeQuota } from "@/lib/quota"
+import { releaseQuota, reserveQuota, settleQuota } from "@/lib/quota"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
   buildLocalizationPrompt,
@@ -108,15 +108,14 @@ export async function POST(req: Request, context: RouteContext) {
     : []
 
   const identity = resolveRequestIdentity(db, req)
+  const localizedUnits = Math.max(1, Math.ceil(episodeQuotaUnits(sourceEpisodes.length) / 2))
+  let quotaHold!: ReturnType<typeof reserveQuota>
   try {
     enforceApiRateLimit(db, req, "model", { identity })
-    chargeQuota(
-      db,
-      identity,
-      "episodes",
-      Date.now(),
-      Math.max(1, Math.ceil(episodeQuotaUnits(sourceEpisodes.length) / 2)),
-    )
+    quotaHold = reserveQuota(db, identity, "episodes", {
+      units: localizedUnits,
+      ttlMs: 60 * 60_000,
+    })
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })
@@ -164,9 +163,11 @@ export async function POST(req: Request, context: RouteContext) {
           state: { items },
           status: "done",
         })
+        settleQuota(db, quotaHold.id, localizedUnits)
         send("done", { items, signature })
         finish()
       } catch (error) {
+        releaseQuota(db, quotaHold.id, error instanceof Error ? error.message : "localization_failed")
         const { body } = errorResponse(error)
         send("error", {
           error: body.error,
@@ -174,6 +175,9 @@ export async function POST(req: Request, context: RouteContext) {
         })
         finish()
       }
+    },
+    cancel() {
+      releaseQuota(db, quotaHold.id, "client_cancelled_localization")
     },
   })
 

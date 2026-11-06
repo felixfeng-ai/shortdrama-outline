@@ -71,6 +71,8 @@ interface RunRow {
   completed: number
   budget_units: number
   used_units: number
+  quota_reservation_id: string | null
+  quota_units: number
   idempotency_key: string
   error: string | null
   started_at: number | null
@@ -154,6 +156,8 @@ function runRow(row: RunRow): NovelRunRecord {
     completed: Number(row.completed),
     budgetUnits: Number(row.budget_units),
     usedUnits: Number(row.used_units),
+    quotaReservationId: row.quota_reservation_id ?? null,
+    quotaUnits: Number(row.quota_units ?? 0),
     idempotencyKey: row.idempotency_key,
     error: row.error,
     startedAt: row.started_at === null ? null : Number(row.started_at),
@@ -549,6 +553,7 @@ export function enqueueNovelRun(
   idempotencyKey: string,
   budgetUnits: number,
   now = Date.now(),
+  quota?: { reservationId: string; units: number },
 ): NovelRunRecord {
   const edition = getNovelEdition(db, novelId)
   if (!edition) throw new Error("小说稿不存在")
@@ -567,9 +572,20 @@ export function enqueueNovelRun(
   db.prepare(
     `INSERT INTO novel_generation_runs
       (id, novel_id, project_id, owner_id, status, cursor, total, completed,
-       budget_units, used_units, idempotency_key, updated_at)
-     VALUES (?, ?, ?, ?, 'queued', 0, ?, 0, ?, 0, ?, ?)`,
-  ).run(id, novelId, edition.projectId, edition.ownerId, total, Math.max(1, budgetUnits), idempotencyKey, now)
+       budget_units, used_units, quota_reservation_id, quota_units, idempotency_key, updated_at)
+     VALUES (?, ?, ?, ?, 'queued', 0, ?, 0, ?, 0, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    novelId,
+    edition.projectId,
+    edition.ownerId,
+    total,
+    Math.max(1, budgetUnits),
+    quota?.reservationId ?? null,
+    Math.max(0, Math.floor(quota?.units ?? 0)),
+    idempotencyKey,
+    now,
+  )
   db.prepare(
     "UPDATE novel_editions SET status = 'generating', current_run_id = ?, updated_at = ? WHERE id = ?",
   ).run(id, now, novelId)

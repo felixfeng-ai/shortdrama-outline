@@ -39,6 +39,21 @@ export interface MobileContextQuota {
   limit: number
   used: number
   projectsLeft: number
+  episodeCount?: number
+  projectCost?: number
+  pricingVersion?: string
+  estimates?: {
+    selected: {
+      episodeCount: number
+      units: number
+      projectsLeft: number
+    }
+    presets: Array<{
+      episodeCount: number
+      units: number
+      projectsLeft: number
+    }>
+  }
 }
 
 export interface MobileContextProject {

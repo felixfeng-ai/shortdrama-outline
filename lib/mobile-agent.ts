@@ -1,5 +1,10 @@
 import { EMPTY_BRIEF } from './brief.ts'
-import { runAgentLoop, type AgentMessage, type ModelReply } from './agent/loop.ts'
+import {
+  AGENT_CHAT_MAX_CALLS,
+  runAgentLoop,
+  type AgentMessage,
+  type ModelReply,
+} from './agent/loop.ts'
 import {
   createToolExecutors,
   type AgentCard,
@@ -10,7 +15,7 @@ import {
 import type { ArtifactKind } from './assets/types.ts'
 import type { StepKey } from './types.ts'
 
-export const MOBILE_AGENT_MAX_CALLS = 3
+export const MOBILE_AGENT_MAX_CALLS = AGENT_CHAT_MAX_CALLS
 
 type SnapshotPayloads = Partial<Record<ArtifactKind, unknown>>
 
@@ -33,6 +38,8 @@ export interface MobileAgentQuota {
   remaining: number
   limit: number
   projectsLeft: number
+  episodeCount?: number
+  projectCost?: number
 }
 
 export interface MobileAgentTurnResult {

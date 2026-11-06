@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite"
 import { createHash, randomUUID } from "node:crypto"
+import { releaseQuota, settleQuota } from "../quota.ts"
 
 import type {
   GeneratedAsset,
@@ -44,6 +45,8 @@ interface TaskRow {
   retry_of_task_id: string | null
   idempotency_key: string | null
   next_poll_at: number | null
+  quota_reservation_id: string | null
+  quota_units: number
   created_at: number
   started_at: number | null
   finished_at: number | null
@@ -139,6 +142,8 @@ function toTask(row: TaskRow): GenerationTask {
     retryOfTaskId: row.retry_of_task_id,
     idempotencyKey: row.idempotency_key,
     nextPollAt: row.next_poll_at,
+    quotaReservationId: row.quota_reservation_id ?? null,
+    quotaUnits: Number(row.quota_units ?? 0),
     createdAt: row.created_at,
     startedAt: row.started_at,
     finishedAt: row.finished_at,
@@ -257,6 +262,8 @@ export function createGenerationTask(
     retryOfTaskId?: string | null
     idempotencyKey?: string | null
     nextPollAt?: number | null
+    quotaReservationId?: string | null
+    quotaUnits?: number
   },
 ): GenerationTask {
   const idempotencyKey = input.idempotencyKey?.trim() || null
@@ -276,8 +283,9 @@ export function createGenerationTask(
         (id, project_id, target_type, target_id, provider_id, model, prompt, prompt_hash,
          status, media_kind, batch_id, provider_task_id, provider_status, request_json,
          pricing_version, estimated_cost_micros, actual_cost_micros, max_attempts,
-         attempt, retry_of_task_id, idempotency_key, next_poll_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         attempt, retry_of_task_id, idempotency_key, next_poll_at,
+         quota_reservation_id, quota_units, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       input.projectId,
@@ -300,6 +308,8 @@ export function createGenerationTask(
       input.retryOfTaskId ?? null,
       idempotencyKey,
       input.nextPollAt ?? now,
+      input.quotaReservationId ?? null,
+      Math.max(0, Math.floor(input.quotaUnits ?? 0)),
       now,
     )
     syncGenerationBatch(db, input.batchId)
@@ -381,6 +391,9 @@ export function markGenerationTaskRunning(db: DatabaseSync, id: string): Generat
   ).run(now, id)
   const task = getGenerationTask(db, id)
   if (!task) throw new Error("生成任务不存在")
+  if (task.quotaReservationId && (task.quotaUnits ?? 0) > 0) {
+    settleQuota(db, task.quotaReservationId, task.quotaUnits)
+  }
   return task
 }
 
@@ -456,6 +469,9 @@ export function completeGenerationTask(
   }
   const task = getGenerationTask(db, id)
   if (!task) throw new Error("生成任务不存在")
+  if (task.quotaReservationId && (task.quotaUnits ?? 0) > 0) {
+    settleQuota(db, task.quotaReservationId, task.quotaUnits)
+  }
   return task
 }
 
@@ -475,6 +491,7 @@ export function failGenerationTask(db: DatabaseSync, id: string, error: string):
   }
   const task = getGenerationTask(db, id)
   if (!task) throw new Error("生成任务不存在")
+  if (task.quotaReservationId) releaseQuota(db, task.quotaReservationId, message)
   return task
 }
 
@@ -497,6 +514,7 @@ export function cancelGenerationTask(
   }
   const task = getGenerationTask(db, id)
   if (!task) throw new Error("生成任务不存在")
+  if (task.quotaReservationId) releaseQuota(db, task.quotaReservationId, reason)
   return task
 }
 
@@ -530,6 +548,17 @@ export function reconcileStaleGenerationTasks(
   staleAfterMs = 10 * 60 * 1000,
 ): number {
   const cutoff = now - Math.max(1, Math.floor(staleAfterMs))
+  const staleHolds = db.prepare(
+    `SELECT quota_reservation_id
+     FROM generation_tasks
+     WHERE project_id = ?
+       AND media_kind = 'image'
+       AND quota_reservation_id IS NOT NULL
+       AND (
+         (status = 'queued' AND created_at < ?)
+         OR (status = 'running' AND COALESCE(started_at, created_at) < ?)
+       )`,
+  ).all(projectId, cutoff, cutoff) as { quota_reservation_id: string }[]
   const result = db.prepare(
     `UPDATE generation_tasks
      SET status = 'failed',
@@ -548,6 +577,9 @@ export function reconcileStaleGenerationTasks(
     cutoff,
     cutoff,
   )
+  for (const row of staleHolds) {
+    releaseQuota(db, row.quota_reservation_id, "image_generation_interrupted")
+  }
   return Number(result.changes)
 }
 

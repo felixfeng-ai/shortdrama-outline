@@ -13,6 +13,8 @@ export interface VideoRender {
   videoStorageKey: string | null
   srtStorageKey: string | null
   manifestStorageKey: string | null
+  quotaReservationId: string | null
+  quotaUnits: number
   createdAt: number
   startedAt: number | null
   finishedAt: number | null
@@ -21,7 +23,7 @@ export interface VideoRender {
 
 export interface VideoRenderDto extends Omit<
   VideoRender,
-  "videoStorageKey" | "srtStorageKey" | "manifestStorageKey"
+  "videoStorageKey" | "srtStorageKey" | "manifestStorageKey" | "quotaReservationId"
 > {
   videoUrl: string | null
   subtitleUrl: string | null

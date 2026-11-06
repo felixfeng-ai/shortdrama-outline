@@ -48,7 +48,8 @@ export interface LoopResult {
   cards: AgentCard[]
 }
 
-const DEFAULT_MAX_CALLS = 6
+/** 普通 Agent 每轮最多 3 次模型往返；Skill 可以显式覆盖，但必须在计划里展示。 */
+export const AGENT_CHAT_MAX_CALLS = 3
 
 /**
  * 跑一轮对话。返回完整的消息轨迹，调用方只管展示。
@@ -59,7 +60,7 @@ const DEFAULT_MAX_CALLS = 6
  * - 到模型调用上限 → 用已查到的信息收尾，**不再多调一次模型**（额度是硬约束）
  */
 export async function runAgentLoop(userText: string, deps: LoopDeps): Promise<LoopResult> {
-  const maxCalls = deps.maxModelCalls ?? DEFAULT_MAX_CALLS
+  const maxCalls = deps.maxModelCalls ?? AGENT_CHAT_MAX_CALLS
   const emit = deps.onEvent ?? (() => {})
   const messages: AgentMessage[] = [{ role: 'user', content: userText }]
   const cards: AgentCard[] = []

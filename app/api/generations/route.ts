@@ -6,6 +6,8 @@ import { getDbForRequest } from "@/lib/assets/store"
 import { latestSnapshot } from "@/lib/assets/repo"
 import { placeGenerationTargetId } from "@/lib/assets/anchors"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
+import { withQuotaReservation } from "@/lib/quota"
+import { IMAGE_EDIT_UNITS, IMAGE_GENERATION_UNITS } from "@/lib/model-pricing"
 import { readLook } from "@/lib/look"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
@@ -258,50 +260,62 @@ export async function POST(req: Request) {
         : references.candidates,
     )
 
-    const task = createGenerationTask(db, {
-      projectId,
-      targetType: type,
-      targetId,
-      providerId: "aliyun",
-      model: generationModel,
-      prompt: effectivePrompt,
-    })
-    taskId = task.id
-    notification = { taskId: task.id, targetType: type, projectId, targetId }
-    markGenerationTaskRunning(db, task.id)
+    const identity = resolveRequestIdentity(db, req)
+    const quotaUnits = generationReferences.length > 0 ? IMAGE_EDIT_UNITS : IMAGE_GENERATION_UNITS
+    const { value } = await withQuotaReservation(
+      db,
+      identity,
+      "image",
+      quotaUnits,
+      async () => {
+        const task = createGenerationTask(db, {
+          projectId,
+          targetType: type,
+          targetId,
+          providerId: "aliyun",
+          model: generationModel,
+          prompt: effectivePrompt,
+        })
+        taskId = task.id
+        notification = { taskId: task.id, targetType: type, projectId, targetId }
+        markGenerationTaskRunning(db, task.id)
 
-    const image = await runImageGeneration({
-      prompt: effectivePrompt,
-      aspect: body?.aspect,
-      seed,
-      referenceImages: generationReferences.length > 0 ? generationReferences : undefined,
-      signal: req.signal,
-    })
-    const file = writeGeneratedImage(projectId, task.id, image.bytes, image.mime)
-    const asset = saveGeneratedAsset(db, {
-      taskId: task.id,
-      projectId,
-      targetType: type,
-      targetId,
-      storageKey: file.storageKey,
-      mime: image.mime,
-      bytes: file.bytes,
-      providerId: "aliyun",
-      model: generationModel,
-      prompt: effectivePrompt,
-    })
-    if (autoSelect) selectGeneratedAsset(db, projectId, asset.id)
-    const completed = completeGenerationTask(db, task.id, asset.id)
-    await notifyGeneration(db, ownerId, {
-      ...notification,
-      status: "succeeded",
-      assetId: completed.assetId,
-    })
-    return NextResponse.json(ok({
-      task: completed,
-      asset: autoSelect ? selectGeneratedAsset(db, projectId, asset.id) : asset,
-      referenceCount: generationReferences.length,
-    }))
+        const image = await runImageGeneration({
+          prompt: effectivePrompt,
+          aspect: body?.aspect,
+          seed,
+          referenceImages: generationReferences.length > 0 ? generationReferences : undefined,
+          signal: req.signal,
+        })
+        const file = writeGeneratedImage(projectId, task.id, image.bytes, image.mime)
+        const asset = saveGeneratedAsset(db, {
+          taskId: task.id,
+          projectId,
+          targetType: type,
+          targetId,
+          storageKey: file.storageKey,
+          mime: image.mime,
+          bytes: file.bytes,
+          providerId: "aliyun",
+          model: generationModel,
+          prompt: effectivePrompt,
+        })
+        if (autoSelect) selectGeneratedAsset(db, projectId, asset.id)
+        const completed = completeGenerationTask(db, task.id, asset.id)
+        await notifyGeneration(db, ownerId, {
+          ...notification,
+          status: "succeeded",
+          assetId: completed.assetId,
+        })
+        return {
+          task: completed,
+          asset: autoSelect ? selectGeneratedAsset(db, projectId, asset.id) : asset,
+          referenceCount: generationReferences.length,
+          quotaUnits,
+        }
+      },
+    )
+    return NextResponse.json(ok(value))
   } catch (error) {
     const message = error instanceof Error ? error.message : "生成失败，请重试"
     if (taskId) {
@@ -311,8 +325,14 @@ export async function POST(req: Request) {
         } else {
           failGenerationTask(db, taskId, message)
           if (notification) {
+            const currentNotification = notification as {
+              taskId: string
+              targetType: GenerationTargetType
+              projectId: string
+              targetId: string
+            }
             await notifyGeneration(db, ownerId, {
-              ...notification,
+              ...currentNotification,
               status: "failed",
               error: message,
             })

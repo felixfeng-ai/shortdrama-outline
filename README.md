@@ -680,7 +680,7 @@ chengju/
 | GET | `/api/export` | `?projectId=` | `{ manifest: { project, latest, refs, exportedAt } }` |
 | POST | `/api/project-shares` | `{ projectId }` | 生成 7 天只读审阅链接，并撤销该项目旧链接 |
 | GET | `/api/share/[token]` | — | 无需登录读取故事 + 六步文本快照；不返回本地图库、生成文件或 owner |
-| GET | `/api/quota` | — | 当前身份额度、全站额度与完整项目成本 |
+| GET | `/api/quota?episodeCount=30` | — | 统一额度快照、三档集数估算、媒体成本与价格版本 |
 | GET | `/api/health` | — | 服务健康检查 |
 
 登录界面使用独立页面 `/login?next=...`，不从工作台弹出覆盖内容的 modal。`next` 只接受站内路径，登录成功后返回原来的步骤。
@@ -826,7 +826,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 7. **断点续跑**：分集和分镜每批成功后保存 checkpoint；输入签名不一致自动失效，成功完成后清理；用户主动“重新生成”不续跑旧批次。
 8. **快照与血缘**：每一步正式产物落快照，下游记录父快照 id；过期不等于清空，影响范围沿血缘反向查询。
 9. **关键帧任务恢复**：读取任务列表时把超过安全时限的 queued/running 任务恢复为 failed；活跃任务不误判，终态任务不重复处理。
-10. **入参与额度硬上限**（`lib/validate.ts` / `lib/quota.ts`）：想法、人物、三幕、字段长度都有上限；额度在模型调用前检查，按北京时间切日，并有全站熔断。
+10. **入参与额度硬上限**（`lib/validate.ts` / `lib/quota.ts`）：所有生成动作共用一个余额；文本、Agent、小说、图片、视频、TTS 与成片统一预扣，成功结算，供应商失败、超时或取消时释放。普通 Agent 每轮最多 3 单位，额度按北京时间切日并有全站熔断。
 11. **身份与数据隔离**：匿名会话和登录用户都解析成统一 owner；项目、快照、任务、关键帧和推送订阅按 owner 校验。本地参考图像素不进入服务端。
 12. **PWA 与推送边界**：Service Worker 不缓存 `/api/`、个人图片和生成资产；推送订阅只接受 HTTPS 浏览器端点，失效订阅会被清理，推送失败不影响生成结果。
 
@@ -1023,7 +1023,7 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 只在 localhost 配合开发验证码；生产域名即使误开也不会生效 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 图片、视频、TTS 与成片文件目录；仅用户主动生成后写入 |
-| `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的额度（1 个完整项目 = 13，默认够跑 5 个项目） |
+| `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的**统一创作额度**；10 集纯文本项目 13 单位、30 集 19 单位、60 集 28 单位。图片、视频、TTS、成片与 Agent 共用 |
 | `CHENGJU_DAILY_UNITS_GLOBAL` | | `3900` | 全站每天熔断阈值（约 300 个项目/天） |
 | `CHENGJU_TZ` | | `Asia/Shanghai` | 额度按哪个时区切日（服务器在 UTC 时尤其要留意） |
 | `CHENGJU_CLAIM_LEGACY_PROJECTS` | | 关闭 | 升级到匿名会话隔离后，如需把旧版无 owner 项目归给首次访问会话，设为 `1`；localhost 会自动使用稳定开发会话 |

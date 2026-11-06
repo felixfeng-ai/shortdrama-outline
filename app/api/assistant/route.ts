@@ -8,7 +8,7 @@ import { chatJson } from '@/lib/deepseek'
 import { buildAssistantPrompt, parseAssistantReply, readQuestion, type AssistantShot } from '@/lib/assistant'
 import { readGenre } from '@/lib/types'
 import { getDbForRequest } from '@/lib/assets/store'
-import { chargeQuota } from '@/lib/quota'
+import { withQuotaReservation } from '@/lib/quota'
 import { resolveRequestIdentity } from '@/lib/auth/request'
 import { enforceApiRateLimit } from '@/lib/security/api-rate-limit'
 
@@ -62,22 +62,23 @@ export async function POST(req: Request) {
     const db = getDbForRequest()
     const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "assistant", { identity })
-    chargeQuota(db, identity, 'assistant')
+    const { value } = await withQuotaReservation(db, identity, 'assistant', 1, async () => {
+      const { system, user } = buildAssistantPrompt(question, {
+        idea: typeof body?.idea === 'string' ? body.idea.slice(0, 500) : '',
+        genre: readGenre(body?.genre),
+        shot: readShot(body?.shot),
+        characters: readCast(body?.characters),
+      })
 
-    const { system, user } = buildAssistantPrompt(question, {
-      idea: typeof body?.idea === 'string' ? body.idea.slice(0, 500) : '',
-      genre: readGenre(body?.genre),
-      shot: readShot(body?.shot),
-      characters: readCast(body?.characters),
+      let raw: unknown
+      try {
+        raw = await chatJson<unknown>(system, user, { temperature: 0.6 })
+      } catch {
+        throw new InputError('助手暂时没回应，稍后再试一次')
+      }
+      return parseAssistantReply(raw)
     })
-
-    let raw: unknown
-    try {
-      raw = await chatJson<unknown>(system, user, { temperature: 0.6 })
-    } catch {
-      throw new InputError('助手暂时没回应，稍后再试一次')
-    }
-    return NextResponse.json(ok(parseAssistantReply(raw)))
+    return NextResponse.json(ok(value))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { InputError, errorResponse, ok } from "@/lib/api"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { getDbForRequest } from "@/lib/assets/store"
-import { createAndSynthesizeShotTts } from "@/lib/audio/tts-tasks"
+import { createAndSynthesizeShotTts, prepareShotTts } from "@/lib/audio/tts-tasks"
 import {
   listGeneratedAssets,
   listGenerationBatches,
@@ -11,6 +11,8 @@ import {
 } from "@/lib/generation/repo"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
+import { withQuotaReservation } from "@/lib/quota"
+import { quotaUnitsForCostMicros } from "@/lib/model-pricing"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -60,16 +62,26 @@ export async function POST(req: Request) {
     const shotId = requiredString(body?.shotId, "缺少镜头 id")
     const maxBudgetMicros = integer(body?.maxBudgetMicros, "缺少本次最大预算")
     assertProjectAccess(db, projectId, ownerId)
-    const result = await createAndSynthesizeShotTts(db, {
-      projectId,
-      shotId,
-      maxBudgetMicros,
-      idempotencyKey: typeof body?.idempotencyKey === "string"
-        ? body.idempotencyKey
-        : null,
-      signal: req.signal,
-    })
-    return NextResponse.json(ok(result))
+    const prepared = prepareShotTts(db, projectId, shotId)
+    const quotaUnits = quotaUnitsForCostMicros(prepared.estimatedCostMicros)
+    const idempotencyKey = typeof body?.idempotencyKey === "string"
+      ? body.idempotencyKey
+      : null
+    const { value } = await withQuotaReservation(
+      db,
+      resolveRequestIdentity(db, req),
+      "audio",
+      quotaUnits,
+      () => createAndSynthesizeShotTts(db, {
+        projectId,
+        shotId,
+        maxBudgetMicros,
+        idempotencyKey,
+        signal: req.signal,
+      }),
+      { requestId: idempotencyKey ? `tts:${idempotencyKey}` : undefined },
+    )
+    return NextResponse.json(ok({ ...value, quotaUnits }))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

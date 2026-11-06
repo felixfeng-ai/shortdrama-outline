@@ -1041,7 +1041,13 @@ export default function Home() {
     return () => window.clearInterval(timer)
   }, [anyRunning])
   /** 给助手的额度快照：它要能回答「还能用几次」 */
-  const [agentQuota, setAgentQuota] = useState<{ remaining: number; limit: number; projectsLeft: number } | null>(null)
+  const [agentQuota, setAgentQuota] = useState<{
+    remaining: number
+    limit: number
+    projectsLeft: number
+    episodeCount: number
+    projectCost: number
+  } | null>(null)
   /** 上一次扫描的挂接明细：角色名 -> 命中记录（带置信度），界面据此标注「靠什么认出来的」 */
   const [matchDetail, setMatchDetail] = useState<Record<string, MatchHit[]>>({})
   /** 扫描汇总：挂了几张、谁没命中。静默失败是之前最大的问题 */
@@ -2080,10 +2086,33 @@ export default function Home() {
 
   // 额度快照：场记要用它回答「还能用几次」，每次生成后跟着刷新
   useEffect(() => {
-    fetchQuota()
-      .then((q) => setAgentQuota({ remaining: q.remaining, limit: q.limit, projectsLeft: q.projectsLeft }))
-      .catch(() => {})
-  }, [quotaRefreshKey])
+    let cancelled = false
+    const load = () => {
+      fetchQuota(episodeCount)
+        .then((q) => {
+          if (cancelled) return
+          setAgentQuota({
+            remaining: q.remaining,
+            limit: q.limit,
+            projectsLeft: q.projectsLeft,
+            episodeCount: q.episodeCount,
+            projectCost: q.projectCost,
+          })
+        })
+        .catch(() => {})
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') load()
+    }
+    load()
+    window.addEventListener('focus', load)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', load)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [quotaRefreshKey, episodeCount])
 
   /**
    * 恢复上次的项目。
@@ -2980,6 +3009,7 @@ export default function Home() {
   }
 
   async function handleDeleteProject(id: string) {
+    const target = projects.find((project) => project.id === id)
     try {
       await deleteProject(id)
       // 删的正好是当前项目：工作台也一起清掉，免得用户在一个已经不存在的项目上继续写
@@ -2988,10 +3018,14 @@ export default function Home() {
         setProjectId(null)
         writeProjectToUrl(null, 'replace')
       }
-      await refreshProjects()
-      setNotice('项目已删除，连带它的快照与图台账一起清掉了。')
+      const remaining = await refreshProjects()
+      setNotice(
+        `已删除「${target?.title ?? '当前项目'}」，还剩 ${remaining.length} 个项目。快照与图台账已一起清理。`,
+      )
+      return true
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '删除失败，请重试')
+      return false
     }
   }
 
@@ -3577,11 +3611,12 @@ export default function Home() {
         todoCount={todoItems.length}
         savedLabel={workspaceSavedLabel}
         quotaRefreshKey={quotaRefreshKey}
+        episodeCount={episodeCount}
         mobileOpen={workspaceMobileOpen}
         onCloseMobile={() => setWorkspaceMobileOpen(false)}
         onHome={goWorkspaceHome}
         onSwitchProject={(id) => { void handleSwitchProject(id) }}
-        onDeleteProject={(id) => { void handleDeleteProject(id) }}
+        onDeleteProject={handleDeleteProject}
         onNewProject={handleNewProject}
         onOpenTodo={openWorkspaceTodo}
         onOpenCreate={() => openWorkspaceMode('create')}

@@ -13,6 +13,7 @@ import { publicGenerationError, type ImageAspect } from '@/lib/generation/model'
 import type { GeneratedAsset, GenerationTargetType, GenerationTask } from '@/lib/generation/types'
 import { isLookEmpty, type LookBook } from '@/lib/look'
 import { isAbortError } from '@/lib/api'
+import { IMAGE_EDIT_UNITS, IMAGE_GENERATION_UNITS } from '@/lib/model-pricing'
 
 interface Props {
   projectId: string | null
@@ -186,6 +187,9 @@ export default function KeyframePanel({
             {isPlace
               ? '由平台默认生成；会带入当前地点已采用场景图作一致性参考，本地参考图不会上传。'
               : '由平台默认生成；会带入当前项目已采用的关键帧作一致性参考，本地参考图不会上传。'}
+          </p>
+          <p className="mt-1 text-[10px] text-ink-400">
+            文生图约 {IMAGE_GENERATION_UNITS} 单位；带入参考图编辑约 {IMAGE_EDIT_UNITS} 单位。
           </p>
           <p className={`mt-1 text-[10px] ${isLookEmpty(look) ? 'text-accent-700' : 'text-done-700'}`}>
             {isLookEmpty(look)

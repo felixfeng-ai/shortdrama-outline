@@ -1060,6 +1060,20 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         WHERE kind = 'take' AND is_best = 1;
     `,
   },
+  {
+    version: 24,
+    name: "unified-quota-v2-links",
+    sql: `
+      -- 异步任务先绑定额度预扣；成功结算、失败或取消时释放。
+      -- 历史任务默认 0 / NULL，不做追溯扣费。
+      ALTER TABLE novel_generation_runs ADD COLUMN quota_reservation_id TEXT;
+      ALTER TABLE novel_generation_runs ADD COLUMN quota_units INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE generation_tasks ADD COLUMN quota_reservation_id TEXT;
+      ALTER TABLE generation_tasks ADD COLUMN quota_units INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE video_renders ADD COLUMN quota_reservation_id TEXT;
+      ALTER TABLE video_renders ADD COLUMN quota_units INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

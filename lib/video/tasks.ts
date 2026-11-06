@@ -65,6 +65,8 @@ export async function createAndSubmitVideoTask(
     retryOfTaskId?: string | null
     requireSelectedFrame?: boolean
     autoSelect?: boolean
+    quotaReservationId?: string | null
+    quotaUnits?: number
     signal?: AbortSignal
   },
 ): Promise<{ task: GenerationTask; reused: boolean }> {
@@ -120,6 +122,8 @@ export async function createAndSubmitVideoTask(
     idempotencyKey: input.idempotencyKey,
     retryOfTaskId: input.retryOfTaskId ?? null,
     nextPollAt: Date.now(),
+    quotaReservationId: input.quotaReservationId ?? null,
+    quotaUnits: input.quotaUnits ?? 0,
   })
   if (task.status !== "queued" || task.providerTaskId) {
     return { task, reused: true }

@@ -53,7 +53,12 @@ export async function requestAuthCode(phone: string): Promise<{
 
 export async function verifyAuthCode(phone: string, code: string): Promise<{
   user: AuthUserDto
-  claimed?: { projects?: number; pushSubscriptions?: number }
+  claimed?: {
+    projects?: number
+    pushSubscriptions?: number
+    quotaEntries?: number
+    quotaReservations?: number
+  }
 }> {
   return payload(await fetch("/api/auth/verify-code", {
     method: "POST",
@@ -76,7 +81,12 @@ export async function requestEmailAuthCode(email: string): Promise<{
 
 export async function verifyEmailAuthCode(email: string, code: string): Promise<{
   user: AuthUserDto
-  claimed?: { projects?: number; pushSubscriptions?: number }
+  claimed?: {
+    projects?: number
+    pushSubscriptions?: number
+    quotaEntries?: number
+    quotaReservations?: number
+  }
 }> {
   return payload(await fetch("/api/auth/email/verify-code", {
     method: "POST",

@@ -12,7 +12,7 @@ import {
 import { auditNovelChapter } from "@/lib/novels/lint"
 import { getNovelChapter, updateNovelChapter } from "@/lib/novels/repo"
 import { chatJson } from "@/lib/deepseek"
-import { chargeQuota } from "@/lib/quota"
+import { withQuotaReservation } from "@/lib/quota"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 
 export const runtime = "nodejs"
@@ -82,16 +82,20 @@ export async function POST(req: Request, context: RouteContext) {
     }
 
     enforceApiRateLimit(db, req, "novel", { identity })
-    chargeQuota(db, identity, "novel", Date.now(), 1)
-    const prompt = buildDeslopPrompt(chapter, report)
-    const raw = await chatJson<unknown>(prompt.system, prompt.user, {
-      temperature: 0.35,
-      maxTokens: Math.max(4_000, Math.min(9_000, chapter.targetWords * 2)),
+    const { value } = await withQuotaReservation(db, identity, "novel", 1, async () => {
+      const prompt = buildDeslopPrompt(chapter, report)
+      const raw = await chatJson<unknown>(prompt.system, prompt.user, {
+        temperature: 0.35,
+        maxTokens: Math.max(4_000, Math.min(9_000, chapter.targetWords * 2)),
+      })
+      return {
+        proposed: normalizeDeslopResult(raw),
+        promptVersion: prompt.promptVersion,
+      }
     })
-    const result = normalizeDeslopResult(raw)
     return NextResponse.json(ok({
-      proposed: result,
-      promptVersion: prompt.promptVersion,
+      proposed: value.proposed,
+      promptVersion: value.promptVersion,
       report,
       chapter,
     }), { headers: { "cache-control": "no-store" } })

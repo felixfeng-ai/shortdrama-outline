@@ -1,7 +1,12 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { runAgentLoop, type AgentMessage, type LoopEvent } from "../lib/agent/loop.ts"
+import {
+  AGENT_CHAT_MAX_CALLS,
+  runAgentLoop,
+  type AgentMessage,
+  type LoopEvent,
+} from "../lib/agent/loop.ts"
 
 // ── AL 循环 ──
 //
@@ -82,6 +87,21 @@ test("AL4 模型停不下来时在步数上限收尾：不再多调一次模型"
   assert.equal(model.calls.length, 3, "上限是 3 次模型调用，不能再多")
   assert.equal(r.stoppedBy, "cap")
   assert.match(r.messages[r.messages.length - 1].content, /别墅夜戏/, "收尾时要把已查到的东西说出来")
+})
+
+test("AL4b 普通 Agent 默认最多 3 次模型往返", async () => {
+  assert.equal(AGENT_CHAT_MAX_CALLS, 3)
+  let calls = 0
+  const r = await runAgentLoop("一直查", {
+    callModel: async () => {
+      calls += 1
+      return { toolCalls: [{ id: `c${calls}`, name: "get_project_status", args: {} }] }
+    },
+    executors,
+  })
+  assert.equal(calls, 3)
+  assert.equal(r.modelCalls, 3)
+  assert.equal(r.stoppedBy, "cap")
 })
 
 test("AL5 模型调用本身失败：抛给调用方（由接口层决定是否降级）", async () => {

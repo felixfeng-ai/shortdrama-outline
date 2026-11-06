@@ -234,6 +234,8 @@ export function enqueueEpisodeRender(
     projectId: string
     episode: number
     timelineVersionId: string
+    quotaReservationId?: string | null
+    quotaUnits?: number
   },
 ): VideoRender {
   const preflight = preflightTimelineVersion(db, input.projectId, input.timelineVersionId)
@@ -254,6 +256,8 @@ export function enqueueEpisodeRender(
     episode: input.episode,
     timelineVersionId: preflight.version.id,
     timelineRevision: preflight.version.revision,
+    quotaReservationId: input.quotaReservationId ?? null,
+    quotaUnits: input.quotaUnits ?? 0,
   })
 }
 
@@ -262,6 +266,7 @@ export function enqueueFrozenEpisodeQueue(
   input: {
     projectId: string
     episodes: number[]
+    quotaReservations?: Record<string, { reservationId: string; units: number }>
   },
 ): {
   renders: VideoRender[]
@@ -278,6 +283,8 @@ export function enqueueFrozenEpisodeQueue(
         projectId: input.projectId,
         episode: version.episode,
         timelineVersionId: version.id,
+        quotaReservationId: input.quotaReservations?.[version.id]?.reservationId,
+        quotaUnits: input.quotaReservations?.[version.id]?.units,
       }))
     } catch (error) {
       blocked.push({

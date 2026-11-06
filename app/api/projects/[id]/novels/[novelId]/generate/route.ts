@@ -8,7 +8,7 @@ import { assertNovelAccess } from "@/lib/novels/access"
 import { runNovelGenerationTick } from "@/lib/novels/generator"
 import { estimateNovelGeneration, requireNovelPreset } from "@/lib/novels/presets"
 import { enqueueNovelRun } from "@/lib/novels/repo"
-import { chargeQuota } from "@/lib/quota"
+import { releaseQuota, reserveQuota, settleQuota } from "@/lib/quota"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 
 export const runtime = "nodejs"
@@ -19,6 +19,7 @@ type RouteContext = {
 }
 
 export async function POST(req: Request, context: RouteContext) {
+  let quotaReservationId: string | null = null
   try {
     const body = await req.json().catch(() => null)
     const db = getDbForRequest()
@@ -36,20 +37,36 @@ export async function POST(req: Request, context: RouteContext) {
     const preset = requireNovelPreset(body?.preset ?? edition.preset)
     const estimate = estimateNovelGeneration(preset, edition.plannedChapters)
     enforceApiRateLimit(db, req, "novel", { identity })
-    chargeQuota(db, identity, "novel", Date.now(), Math.min(estimate.quotaUnits, 18))
+    const quotaUnits = Math.min(estimate.quotaUnits, 18)
+    const idempotencyKey = String(
+      body?.idempotencyKey || `novel:${edition.sourceSignature}:${preset.id}:v1`,
+    )
+    const hold = reserveQuota(db, identity, "novel", {
+      requestId: `novel-quota:${idempotencyKey}`,
+      units: quotaUnits,
+      ttlMs: 24 * 60 * 60_000,
+    })
+    quotaReservationId = hold.id
     const run = enqueueNovelRun(
       db,
       novelId,
-      String(body?.idempotencyKey || `novel:${edition.sourceSignature}:${preset.id}:v1`),
+      idempotencyKey,
       estimate.quotaUnits,
+      Date.now(),
+      { reservationId: hold.id, units: quotaUnits },
     )
     after(async () => {
-      await runNovelGenerationTick(db, run.id)
+      const tick = await runNovelGenerationTick(db, run.id)
+      if (tick.state === "complete") settleQuota(db, hold.id, quotaUnits)
+      if (tick.state === "failed") releaseQuota(db, hold.id, tick.run.error ?? "novel_failed")
     })
     return NextResponse.json(ok({ run, estimate }), {
       headers: { "cache-control": "no-store" },
     })
   } catch (error) {
+    if (quotaReservationId) {
+      releaseQuota(getDbForRequest(), quotaReservationId, "novel_enqueue_failed")
+    }
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })
   }

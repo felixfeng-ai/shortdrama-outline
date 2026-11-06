@@ -15,6 +15,8 @@ import {
 } from "@/lib/generation/repo"
 import type { GeneratedAsset, GenerationTask } from "@/lib/generation/types"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
+import { withQuotaReservation } from "@/lib/quota"
+import { quotaUnitsForCostMicros } from "@/lib/model-pricing"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -111,6 +113,7 @@ export async function POST(req: Request) {
     const outcomes: Array<{
       task?: GenerationTask
       asset?: GeneratedAsset | null
+      quotaUnits?: number
       failure?: { targetId: string; reason: string }
     }> = new Array(ready.length)
     let cursor = 0
@@ -122,16 +125,25 @@ export async function POST(req: Request) {
         if (index >= ready.length) return
         const item = ready[index]
         try {
-          const result = await createAndSynthesizeShotTts(db, {
-            projectId,
-            shotId: item.shotId,
-            maxBudgetMicros: item.estimatedCostMicros,
-            batchId: batch.id,
-            idempotencyKey: idempotencyKey
-              ? `batch:${idempotencyKey}:${item.shotId}`
-              : null,
-          })
-          outcomes[index] = { task: result.task, asset: result.asset }
+          const itemKey = idempotencyKey
+            ? `batch:${idempotencyKey}:${item.shotId}`
+            : null
+          const quotaUnits = quotaUnitsForCostMicros(item.estimatedCostMicros)
+          const { value: result } = await withQuotaReservation(
+            db,
+            resolveRequestIdentity(db, req),
+            "audio",
+            quotaUnits,
+            () => createAndSynthesizeShotTts(db, {
+              projectId,
+              shotId: item.shotId,
+              maxBudgetMicros: item.estimatedCostMicros,
+              batchId: batch.id,
+              idempotencyKey: itemKey,
+            }),
+            { requestId: itemKey ? `tts:${itemKey}` : undefined },
+          )
+          outcomes[index] = { task: result.task, asset: result.asset, quotaUnits }
         } catch (error) {
           outcomes[index] = {
             failure: {

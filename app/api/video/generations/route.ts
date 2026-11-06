@@ -18,6 +18,11 @@ import {
 } from "@/lib/generation/repo"
 import { enforceApiRateLimit } from "@/lib/security/api-rate-limit"
 import {
+  quotaUnitsForCostMicros,
+  QUOTA_PRICING_VERSION,
+} from "@/lib/model-pricing"
+import { releaseQuota, reserveQuota } from "@/lib/quota"
+import {
   estimateVideoCostMicros,
   getMiniMaxVideoConfig,
   publicVideoGenerationError,
@@ -78,9 +83,11 @@ export async function POST(req: Request) {
   const db = getDbForRequest()
   const ownerId = resolveProjectOwner(db, req)
   let taskId: string | null = null
+  let quotaHoldId: string | null = null
   try {
+    const identity = resolveRequestIdentity(db, req)
     enforceApiRateLimit(db, req, "video", {
-      identity: resolveRequestIdentity(db, req),
+      identity,
     })
     const body = await req.json().catch(() => null)
     const projectId = requiredString(body?.projectId, "缺少 projectId")
@@ -111,6 +118,13 @@ export async function POST(req: Request) {
     const idempotencyKey = typeof body?.idempotencyKey === "string"
       ? body.idempotencyKey.trim().slice(0, 200)
       : null
+    const quotaUnits = quotaUnitsForCostMicros(estimatedCostMicros)
+    const quotaHold = reserveQuota(db, identity, "video", {
+      requestId: idempotencyKey ? `video:${idempotencyKey}` : undefined,
+      units: quotaUnits,
+      ttlMs: 24 * 60 * 60_000,
+    })
+    quotaHoldId = quotaHold.id
     const batch = createGenerationBatch(db, {
       projectId,
       episode: integer(shot.episode, 0),
@@ -134,14 +148,22 @@ export async function POST(req: Request) {
       maxBudgetMicros,
       idempotencyKey,
       autoSelect,
+      quotaReservationId: quotaHold.id,
+      quotaUnits,
       signal: req.signal,
     })
     taskId = result.task.id
+    if (result.reused && result.task.quotaReservationId !== quotaHold.id) {
+      releaseQuota(db, quotaHold.id, "video_task_reused")
+      quotaHoldId = null
+    }
     return NextResponse.json(ok({
       task: result.task,
       asset: null,
       batch: getGenerationBatch(db, batch.id),
       reused: result.reused,
+      quotaUnits,
+      pricingVersion: QUOTA_PRICING_VERSION,
     }))
   } catch (error) {
     if (taskId) {
@@ -153,6 +175,8 @@ export async function POST(req: Request) {
           error instanceof Error ? error.message : "视频任务创建失败",
         )
       }
+    } else if (quotaHoldId) {
+      releaseQuota(db, quotaHoldId, error instanceof Error ? error.message : "video_create_failed")
     }
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })
@@ -197,23 +221,38 @@ export async function PATCH(req: Request) {
         task.estimatedCostMicros ?? 0,
         estimateVideoCostMicros({ model: task.model, resolution, duration }),
       )
-      const retried = await createAndSubmitVideoTask(db, {
-        projectId,
-        targetId: task.targetId,
-        sourceAssetId,
-        prompt: task.prompt,
-        mode,
-        model: task.model,
-        resolution,
-        duration,
-        ratio,
-        batchId: task.batchId ?? null,
-        maxBudgetMicros,
-        idempotencyKey: `retry:${task.id}`,
-        retryOfTaskId: task.id,
-        requireSelectedFrame: false,
-        autoSelect: request.autoSelect === true,
+      const quotaUnits = quotaUnitsForCostMicros(maxBudgetMicros)
+      const hold = reserveQuota(db, resolveRequestIdentity(db, req), "video", {
+        requestId: `video-retry:${task.id}:${task.attempt ?? 1}`,
+        units: quotaUnits,
+        ttlMs: 24 * 60 * 60_000,
       })
+      let retried
+      try {
+        retried = await createAndSubmitVideoTask(db, {
+          projectId,
+          targetId: task.targetId,
+          sourceAssetId,
+          prompt: task.prompt,
+          mode,
+          model: task.model,
+          resolution,
+          duration,
+          ratio,
+          batchId: task.batchId ?? null,
+          maxBudgetMicros,
+          idempotencyKey: `retry:${task.id}`,
+          retryOfTaskId: task.id,
+          requireSelectedFrame: false,
+          autoSelect: request.autoSelect === true,
+          quotaReservationId: hold.id,
+          quotaUnits,
+        })
+      } catch (error) {
+        releaseQuota(db, hold.id, error instanceof Error ? error.message : "video_retry_failed")
+        throw error
+      }
+      if (retried.reused) releaseQuota(db, hold.id, "video_retry_reused")
       return NextResponse.json(ok({ task: retried.task, reused: retried.reused }))
     }
     if (task.status !== "queued" && task.status !== "running") {

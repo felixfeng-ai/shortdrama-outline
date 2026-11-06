@@ -7,6 +7,7 @@ import { resolveProjectOwner } from "@/lib/auth/request"
 import { assertNovelAccess } from "@/lib/novels/access"
 import { runNovelGenerationTick } from "@/lib/novels/generator"
 import { resumeNovelRun } from "@/lib/novels/repo"
+import { releaseQuota, settleQuota } from "@/lib/quota"
 
 export const runtime = "nodejs"
 export const maxDuration = 600
@@ -25,7 +26,13 @@ export async function POST(req: Request, context: RouteContext) {
     const run = resumeNovelRun(db, novelId)
     if (run) {
       after(async () => {
-        await runNovelGenerationTick(db, run.id)
+        const tick = await runNovelGenerationTick(db, run.id)
+        if (run.quotaReservationId && tick.state === "complete") {
+          settleQuota(db, run.quotaReservationId, run.quotaUnits)
+        }
+        if (run.quotaReservationId && tick.state === "failed") {
+          releaseQuota(db, run.quotaReservationId, tick.run.error ?? "novel_failed")
+        }
       })
     }
     return NextResponse.json(ok({ run }), {
