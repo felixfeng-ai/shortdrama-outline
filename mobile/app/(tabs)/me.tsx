@@ -1,7 +1,16 @@
 import { Feather } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -26,6 +35,11 @@ import {
   setAnalyticsEnabled,
 } from '@/lib/analytics-service';
 import {
+  applyAppUpdate,
+  checkInternalUpdate,
+  type AppUpdateState,
+} from '@/lib/app-updates';
+import {
   disableNativeNotifications,
   enableNativeNotifications,
   notificationPermission,
@@ -40,6 +54,10 @@ export default function MeScreen() {
   >('checking');
   const [pushToken, setPushToken] = useState('');
   const [analyticsOn, setAnalyticsOn] = useState(false);
+  const [updateState, setUpdateState] = useState<AppUpdateState>({
+    status: 'idle',
+    message: '与内测通道同步',
+  });
   const quota = data.quota;
   const progress = quota.limit > 0 ? Math.round((quota.used / quota.limit) * 100) : 0;
   useEffect(() => {
@@ -87,6 +105,44 @@ export default function MeScreen() {
     }
   }
 
+  async function onCheckUpdate() {
+    if (updateState.status === 'checking') return;
+    if (updateState.status === 'ready') {
+      Alert.alert(
+        '重启应用更新',
+        '更新已经下载，重启后生效。',
+        [
+          { text: '稍后', style: 'cancel' },
+          {
+            text: '立即重启',
+            onPress: () => {
+              void applyAppUpdate().catch(() => {
+                setUpdateState({
+                  status: 'error',
+                  message: '重启更新失败，请关闭 App 后重试',
+                });
+              });
+            },
+          },
+        ],
+      );
+      return;
+    }
+    setUpdateState({ status: 'checking', message: '正在检查内测更新…' });
+    const next = await checkInternalUpdate();
+    setUpdateState(next);
+    if (next.status === 'ready') {
+      Alert.alert(
+        '新版本已下载',
+        '重启应用后生效。',
+        [
+          { text: '稍后', style: 'cancel' },
+          { text: '立即重启', onPress: () => void applyAppUpdate() },
+        ],
+      );
+    }
+  }
+
   const notificationValue =
     notificationState === 'loading'
       ? '正在设置…'
@@ -98,6 +154,20 @@ export default function MeScreen() {
             ? '仅 iOS / Android 构建可用'
           : '任务 · 审片 · 额度';
   const settings = [
+    {
+      key: 'updates',
+      icon: 'refresh-cw',
+      label: '检查内测更新',
+      value: updateState.message,
+      onPress: () => void onCheckUpdate(),
+    },
+    {
+      key: 'feedback',
+      icon: 'message-square',
+      label: '内测反馈',
+      value: '问题、版本与设备信息',
+      onPress: () => router.push('/feedback'),
+    },
     {
       key: 'notifications',
       icon: 'bell',
@@ -278,7 +348,9 @@ export default function MeScreen() {
             </Pressable>
           </View>
 
-          <Text style={styles.version}>成剧 VeyaFrame · Native Preview 0.1</Text>
+          <Text style={styles.version}>
+            成剧 VeyaFrame · Native Preview {Constants.expoConfig?.version ?? 'dev'}
+          </Text>
         </ScrollView>
       </ScreenFade>
     </SafeAreaView>

@@ -1,9 +1,12 @@
 import { Feather } from '@expo/vector-icons';
+import { usePathname } from 'expo-router';
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BodyText, PrimaryButton } from '@/components/ui';
 import { colors, spacing, type } from '@/constants/tokens';
 import { trackEvent } from '@/lib/analytics-service';
+import { reportDiagnostic } from '@/lib/diagnostics-service';
 
 export function AppErrorBoundary({
   error,
@@ -12,10 +15,16 @@ export function AppErrorBoundary({
   error: Error;
   retry: () => Promise<void>;
 }) {
-  void trackEvent('crash_boundary', {
-    screen: error.name,
-    result: error.message.slice(0, 80),
-  });
+  const pathname = usePathname();
+
+  useEffect(() => {
+    void trackEvent('crash_boundary', {
+      screen: pathname ?? error.name,
+      result: error.message.slice(0, 80),
+    });
+    void reportDiagnostic(error, undefined, pathname ?? '');
+  }, [error, pathname]);
+
   return (
     <View style={styles.root}>
       <View style={styles.icon}>

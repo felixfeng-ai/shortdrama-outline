@@ -8,6 +8,13 @@
     "icon": "./assets/images/icon.png",
     "scheme": "veyaframe",
     "userInterfaceStyle": "light",
+    "updates": {
+      "url": "https://u.expo.dev/fd5d8e4e-37c8-4c4f-a8c9-7d0612a5f435",
+      "checkAutomatically": "ON_LOAD"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "work.chenju.veyaframe",

@@ -247,3 +247,4 @@ npx eas-cli@latest submit --profile production --platform ios
 - [原生 App 设计系统](mobile/DESIGN.md)
 - [整集草片优先工作流规格](specs/mobile-draft-first/spec.md)
 - [App 商店就绪状态](docs/APP-STORE-READINESS.md)
+- [App 分享内测指南](docs/INTERNAL-TEST-GUIDE.md)

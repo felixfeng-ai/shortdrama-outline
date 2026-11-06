@@ -23,6 +23,7 @@
     "expo-splash-screen": "~58.0.13",
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
+    "expo-updates": "~58.0.21",
     "expo-video": "~58.0.13",
     "expo-web-browser": "~58.0.7",
     "react": "19.3.0",
@@ -44,6 +45,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "update:preview": "npx eas-cli@latest update --channel preview --environment preview",
     "check:store": "node scripts/store-readiness.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test lib/*.test.ts"

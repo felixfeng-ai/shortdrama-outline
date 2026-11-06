@@ -13,6 +13,13 @@ const ALLOWED_PROPERTIES = new Set([
   'mode',
   'from',
   'to',
+  'appVersion',
+  'buildVersion',
+  'platform',
+  'osVersion',
+  'deviceModel',
+  'errorName',
+  'errorCode',
 ]);
 
 export function sanitizeAnalyticsEvent(value: {

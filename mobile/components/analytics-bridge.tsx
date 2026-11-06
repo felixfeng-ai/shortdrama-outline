@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 
 import { flushAnalytics, initializeAnalytics, trackEvent } from '@/lib/analytics-service';
 import { useAuth } from '@/lib/auth-store';
+import { flushDiagnostics } from '@/lib/diagnostics-service';
 
 const appStartedAt = Date.now();
 
@@ -13,6 +14,7 @@ export function AnalyticsBridge() {
 
   useEffect(() => {
     void initializeAnalytics().then((enabled) => {
+      void flushDiagnostics(authorizedFetch);
       if (!enabled) return;
       void trackEvent('app_open', { durationMs: Date.now() - appStartedAt }, '/')
         .then(() => flushAnalytics(authorizedFetch));
@@ -28,6 +30,7 @@ export function AnalyticsBridge() {
     }, pathname);
     previous.current = pathname;
     void flushAnalytics(authorizedFetch);
+    void flushDiagnostics(authorizedFetch);
   }, [authorizedFetch, pathname]);
 
   return null;
