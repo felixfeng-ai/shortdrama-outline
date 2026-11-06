@@ -57,6 +57,17 @@ else
     exit 1
 fi
 
+# App 下载二维码只指向稳定路由，真实 APK 地址保存在运行时清单。
+# 首次部署写入引导清单；后续 App 发版通过 npm run app:release 原子更新，
+# Web 重新部署时绝不能用仓库里的旧地址覆盖服务器上的最新值。
+APP_RELEASE_FILE="$CHENGJU_DATA_DIR/app-release.json"
+if [ ! -f "$APP_RELEASE_FILE" ]; then
+    install -m 600 deploy/app-release.bootstrap.json "$APP_RELEASE_FILE"
+    echo "已写入初始 App 发布清单"
+else
+    echo "保留现有 App 发布清单"
+fi
+
 echo "=== 2/6 同步代码 ==="
 # 服务器是 GitHub main 的镜像：服务器上的未提交改动会被这里清掉。
 # 要上线的任何改动都必须先 commit + push。

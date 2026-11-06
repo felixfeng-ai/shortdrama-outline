@@ -1021,6 +1021,9 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `API_*_IDENTITY_10M_LIMIT` | | 见 `.env.example` | 各调用组按登录账号或匿名会话计算的十分钟上限 |
 | `API_*_GLOBAL_DAILY_LIMIT` | | 见 `.env.example` | 各调用组的全站 24 小时预算；超限返回 429 和 `Retry-After` |
 | `AUTH_ALLOW_DEV_CODE` | | `0` | 只在 localhost 配合开发验证码；生产域名即使误开也不会生效 |
+| `CHENGJU_APP_RELEASE_FILE` | | `<CHENGJU_DATA_DIR>/app-release.json` | App 运行时发布清单；更新后下一次扫码立即生效，无需重新部署 Web |
+| `CHENGJU_APP_ANDROID_URL` | | — | App 清单和环境变量都没有直链时使用 EAS 构建记录 |
+| `CHENGJU_APP_IOS_URL` | | — | App 清单和环境变量都没有直链时使用 EAS 构建记录 |
 | `CHENGJU_DATA_DIR` | | `./data` | SQLite 库所在目录（建议放仓库外） |
 | `CHENGJU_GENERATED_DIR` | | `<CHENGJU_DATA_DIR>/generated` | 图片、视频、TTS 与成片文件目录；仅用户主动生成后写入 |
 | `CHENGJU_DAILY_UNITS` | | `65` | 单个身份每天的**统一创作额度**；10 集纯文本项目 13 单位、30 集 19 单位、60 集 28 单位。图片、视频、TTS、成片与 Agent 共用 |
@@ -1030,6 +1033,24 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 
 > 额度相关变量只对**托管版**有意义——自建时是你自己的 key，额度限制形同虚设，
 > 想关掉就把两个值调到很大。
+
+### App 发版不重新部署 Web
+
+二维码永久指向 `https://chenju.work/app/download/android`。该地址每次请求读取运行时
+`app-release.json`，并直接 `302` 到最新 APK；不需要登录，也不需要更换二维码。
+
+App 构建完成后，只需把 APK 上传到稳定对象存储，然后执行：
+
+```bash
+npm run app:release -- \
+  --version 1.2.0 \
+  --released-at 2026-11-12 \
+  --android-url https://cdn.example.com/veyaframe-1.2.0.apk \
+  --notes "新的移动工作台|视频审片修复"
+```
+
+脚本会原子写入 `CHENGJU_DATA_DIR/app-release.json`。Web 状态、二维码和静态资源都不会变化；
+下一次扫码直接下载新 APK。
 
 ---
 

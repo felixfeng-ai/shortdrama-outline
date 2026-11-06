@@ -25,14 +25,22 @@ function httpsUrl(value: string | undefined): string | null {
   }
 }
 
+function validVersion(value: unknown): string | null {
+  const raw = typeof value === "string" ? value.trim() : ""
+  return /^[0-9A-Za-z._-]{1,32}$/.test(raw) ? raw : null
+}
+
 function version(value: string | undefined): string {
-  const raw = value?.trim() ?? ""
-  return /^[0-9A-Za-z._-]{1,32}$/.test(raw) ? raw : "1.0.0"
+  return validVersion(value) ?? "1.0.0"
+}
+
+function validDate(value: unknown): string | null {
+  const raw = typeof value === "string" ? value.trim() : ""
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null
 }
 
 function date(value: string | undefined): string {
-  const raw = value?.trim() ?? ""
-  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : ""
+  return validDate(value) ?? ""
 }
 
 function notes(value: string | undefined): string[] {
@@ -68,5 +76,43 @@ export function resolveMobileRelease(
       direct: Boolean(ios),
     },
     notes: notes(env.CHENGJU_APP_RELEASE_NOTES),
+  }
+}
+
+/** 把服务器热更新的 JSON 清单叠加到环境变量默认值上。 */
+export function applyMobileReleaseRecord(
+  base: MobileRelease,
+  record: unknown,
+): MobileRelease {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return base
+  const src = record as Record<string, unknown>
+  const android = httpsUrl(
+    typeof src.androidUrl === "string"
+      ? src.androidUrl
+      : typeof src.android_url === "string"
+        ? src.android_url
+        : undefined,
+  )
+  const ios = httpsUrl(
+    typeof src.iosUrl === "string"
+      ? src.iosUrl
+      : typeof src.ios_url === "string"
+        ? src.ios_url
+        : undefined,
+  )
+  const recordNotes = Array.isArray(src.notes)
+    ? src.notes
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 6)
+    : []
+
+  return {
+    version: validVersion(src.version) ?? base.version,
+    releasedAt: validDate(src.releasedAt ?? src.released_at) ?? base.releasedAt,
+    android: android ? { url: android, direct: true } : base.android,
+    ios: ios ? { url: ios, direct: true } : base.ios,
+    notes: recordNotes.length > 0 ? recordNotes : base.notes,
   }
 }

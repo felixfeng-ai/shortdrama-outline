@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+const ANDROID_DOWNLOAD_URL = 'https://chenju.work/app/download/android'
 
 interface Props {
   open: boolean
@@ -9,6 +11,7 @@ interface Props {
 
 export default function AppDownloadDialog({ open, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement | null>(null)
+  const [version, setVersion] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -25,6 +28,23 @@ export default function AppDownloadDialog({ open, onClose }: Props) {
       document.body.style.overflow = previousOverflow
     }
   }, [onClose, open])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    fetch('/api/mobile/release', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled) {
+          const value = payload?.data?.release?.version
+          setVersion(typeof value === 'string' ? value : null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setVersion(null)
+      })
+    return () => { cancelled = true }
+  }, [open])
 
   if (!open) return null
 
@@ -56,11 +76,19 @@ export default function AppDownloadDialog({ open, onClose }: Props) {
             src="/app-download-qr.png"
             alt="VeyaFrame 手机 App 下载二维码"
             width="411"
-            height="405"
+            height="411"
           />
         </div>
 
-        <p>使用手机官方自带浏览器或微信扫一扫，下载 VeyaFrame App 体验。</p>
+        <p>使用手机官方自带浏览器或微信扫一扫，直接下载最新 Android APK。</p>
+        <a
+          className="wfx-app-download-direct"
+          href={ANDROID_DOWNLOAD_URL}
+          rel="noreferrer"
+        >
+          直接下载 Android APK
+          {version ? <span>v{version}</span> : null}
+        </a>
         <small>
           目前仅支持安卓和鸿蒙手机，iOS 版本更新中。
           登录后，Web、PWA 与 App 共用同一个项目与创作额度。

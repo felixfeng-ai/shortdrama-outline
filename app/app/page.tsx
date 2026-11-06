@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 
-import { resolveMobileRelease } from "@/lib/mobile-release"
+import { resolveRuntimeMobileRelease } from "@/lib/mobile-release-store"
 
 import "./app-download.css"
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 }
 
 export default function AppDownloadPage() {
-  const release = resolveMobileRelease()
+  const release = resolveRuntimeMobileRelease()
 
   return (
     <main className="app-download-page">

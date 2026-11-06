@@ -894,6 +894,32 @@
   text-align: center;
 }
 
+.wfx-workspace a.wfx-app-download-direct {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px auto 0;
+  padding: 0 16px;
+  border-radius: var(--wfx-radius-sm);
+  background: var(--wfx-primary);
+  color: var(--wfx-primary-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wfx-workspace a.wfx-app-download-direct span {
+  color: color-mix(in srgb, var(--wfx-primary-ink) 58%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.wfx-workspace a.wfx-app-download-direct:hover {
+  background: #fff;
+}
+
 .wfx-app-download-dialog > small {
   display: block;
   margin-top: 7px;

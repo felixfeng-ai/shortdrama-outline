@@ -13,6 +13,9 @@ const footer = read("components/SiteLegalFooter.tsx")
 const skillCatalog = read("components/SkillCatalog.tsx")
 const skillsCss = read("app/skills/skills.css")
 const shellCss = read("app/workspace-shell.css")
+const appReleasePage = read("app/app/page.tsx")
+const appReleaseApi = read("app/api/mobile/release/route.ts")
+const androidDownloadRoute = read("app/app/download/android/route.ts")
 
 test("WEP1 教程入口进入主菜单，并保留更多菜单备用入口", () => {
   const sidebar = read("components/WorkspaceSidebar.tsx")
@@ -56,4 +59,14 @@ test("WEP5 问场记改为圆形图标，不再使用横向文字胶囊", () => 
   assert.doesNotMatch(skillCatalog, /选技能、查项目或直接开工/)
   assert.match(skillsCss, /\.skill-page \.agent-entry\s*\{[^}]*width:\s*56px;[^}]*height:\s*56px;[^}]*border-radius:\s*50%/s)
   assert.match(shellCss, /\.is-create-mode \.skill-page\.skill-page-embedded \.agent-entry\s*\{[^}]*bottom:\s*76px;/s)
+})
+
+test("WEP6 App 下载二维码指向稳定安装页，版本信息运行时读取", () => {
+  assert.match(appDownload, /\/app\/download\/android/)
+  assert.match(appDownload, /\/api\/mobile\/release/)
+  assert.match(appReleasePage, /resolveRuntimeMobileRelease/)
+  assert.match(appReleaseApi, /force-dynamic/)
+  assert.match(appReleaseApi, /stableUrl/)
+  assert.match(androidDownloadRoute, /NextResponse\.redirect/)
+  assert.match(androidDownloadRoute, /resolveRuntimeMobileRelease/)
 })

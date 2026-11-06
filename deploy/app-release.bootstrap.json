@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "releasedAt": "2026-11-06",
+  "androidUrl": "https://expo.dev/artifacts/eas/y-hjl4Maxu8-w_6Bbg_vt6IGWLtaUndF6dn-klJvamI.apk",
+  "notes": [
+    "Agent 完整项目上下文与受控写回",
+    "移动端视频审片与逐镜定稿",
+    "语音识别诊断与恢复"
+  ]
+}
