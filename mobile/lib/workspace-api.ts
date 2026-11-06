@@ -27,6 +27,21 @@ export interface WorkspaceQuota {
   limit: number;
   used: number;
   projectsLeft: number;
+  episodeCount: number;
+  projectCost: number;
+  pricingVersion: string;
+  estimates: WorkspaceQuotaEstimates;
+}
+
+export interface WorkspaceQuotaEstimate {
+  episodeCount: number;
+  units: number;
+  projectsLeft: number;
+}
+
+export interface WorkspaceQuotaEstimates {
+  selected: WorkspaceQuotaEstimate;
+  presets: WorkspaceQuotaEstimate[];
 }
 
 export type WorkspaceTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
@@ -215,7 +230,18 @@ export const demoWorkspace: WorkspaceData = {
     remaining: 18,
     limit: 60,
     used: 42,
-    projectsLeft: 1,
+    projectsLeft: 0,
+    episodeCount: 30,
+    projectCost: 19,
+    pricingVersion: 'legacy',
+    estimates: {
+      selected: { episodeCount: 30, units: 19, projectsLeft: 0 },
+      presets: [
+        { episodeCount: 10, units: 13, projectsLeft: 1 },
+        { episodeCount: 30, units: 19, projectsLeft: 0 },
+        { episodeCount: 60, units: 28, projectsLeft: 0 },
+      ],
+    },
   },
   tasks: [],
   generationTargets: [],
@@ -280,12 +306,13 @@ export function normalizeWorkspaceData(value: unknown): WorkspaceData {
         actualCostMicros: Number(task.actualCostMicros) || 0,
       }))
     : [];
+  const quota = normalizeWorkspaceQuota(data.quota);
   return {
     activeProject: (data.activeProject as WorkspaceProject | null | undefined) ?? null,
     projects: Array.isArray(data.projects) ? (data.projects as WorkspaceProject[]) : [],
     totalProjects: Number.isFinite(data.totalProjects) ? Number(data.totalProjects) : 0,
     hero: (data.hero as WorkspaceHero | null | undefined) ?? null,
-    quota: data.quota as WorkspaceQuota,
+    quota,
     tasks,
     generationTargets: Array.isArray(data.generationTargets)
       ? (data.generationTargets as WorkspaceGenerationTarget[])
@@ -306,6 +333,68 @@ export function normalizeWorkspaceData(value: unknown): WorkspaceData {
     pacing: data.pacing && typeof data.pacing === 'object'
       ? data.pacing as WorkspacePacingReport
       : demoWorkspace.pacing,
+  };
+}
+
+function nonNegativeInteger(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : null;
+}
+
+function readQuotaEstimate(value: unknown): WorkspaceQuotaEstimate | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const episodeCount = nonNegativeInteger(record.episodeCount);
+  const units = nonNegativeInteger(record.units);
+  const projectsLeft = nonNegativeInteger(record.projectsLeft);
+  if (
+    episodeCount === null
+    || units === null
+    || projectsLeft === null
+    || episodeCount <= 0
+    || units <= 0
+  ) return null;
+  return { episodeCount, units, projectsLeft };
+}
+
+export function normalizeWorkspaceQuota(value: unknown): WorkspaceQuota {
+  const record = value && typeof value === 'object'
+    ? value as Record<string, unknown>
+    : {};
+  const remaining = nonNegativeInteger(record.remaining) ?? 0;
+  const limit = nonNegativeInteger(record.limit) ?? 0;
+  const used = nonNegativeInteger(record.used) ?? 0;
+  const flatProjectsLeft = nonNegativeInteger(record.projectsLeft) ?? 0;
+  const nested = record.estimates && typeof record.estimates === 'object'
+    ? record.estimates as Record<string, unknown>
+    : {};
+  const selected = readQuotaEstimate(nested.selected) ?? {
+    episodeCount: 0,
+    units: 0,
+    projectsLeft: flatProjectsLeft,
+  };
+  const presets = Array.isArray(nested.presets)
+    ? nested.presets
+        .map(readQuotaEstimate)
+        .filter((item): item is WorkspaceQuotaEstimate => item !== null)
+    : [];
+  const episodeCount = nonNegativeInteger(record.episodeCount)
+    ?? (selected.episodeCount > 0 ? selected.episodeCount : 0);
+  const projectCost = nonNegativeInteger(record.projectCost)
+    ?? (selected.units > 0 ? selected.units : 0);
+  const pricingVersion = typeof record.pricingVersion === 'string'
+    && record.pricingVersion.trim()
+    ? record.pricingVersion.trim().slice(0, 40)
+    : 'legacy';
+  return {
+    remaining,
+    limit,
+    used,
+    projectsLeft: selected.projectsLeft,
+    episodeCount,
+    projectCost,
+    pricingVersion,
+    estimates: { selected, presets },
   };
 }
 

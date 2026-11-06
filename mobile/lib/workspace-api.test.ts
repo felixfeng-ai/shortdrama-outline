@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   fetchWorkspace,
+  normalizeWorkspaceData,
   resolveApiBaseUrl,
   workspaceToAgentContext,
   type WorkspaceData,
@@ -38,10 +39,21 @@ const payload: WorkspaceData = {
     evidence: '24 个镜头 · 林昭 V3 定妆',
   },
   quota: {
-    remaining: 18,
-    limit: 60,
-    used: 42,
-    projectsLeft: 1,
+    remaining: 38,
+    limit: 65,
+    used: 27,
+    projectsLeft: 2,
+    episodeCount: 30,
+    projectCost: 19,
+    pricingVersion: '2026-11-v1',
+    estimates: {
+      selected: { episodeCount: 30, units: 19, projectsLeft: 2 },
+      presets: [
+        { episodeCount: 10, units: 13, projectsLeft: 2 },
+        { episodeCount: 30, units: 19, projectsLeft: 2 },
+        { episodeCount: 60, units: 28, projectsLeft: 1 },
+      ],
+    },
   },
   tasks: [
     {
@@ -190,6 +202,18 @@ test('workspace fetch uses the mobile context endpoint with credentials', async 
   assert.equal(data.videoReadiness.missingVideo, 21)
   assert.equal(data.agentMemory.lockedCharacters[0], '林昭 · 深蓝快递服')
   assert.equal(data.pacing.rows[0].averageShotSeconds, 8)
+  assert.equal(data.quota.episodeCount, 30);
+  assert.equal(data.quota.projectCost, 19);
+  assert.equal(data.quota.pricingVersion, '2026-11-v1');
+  assert.deepEqual(data.quota.estimates?.selected, {
+    episodeCount: 30,
+    units: 19,
+    projectsLeft: 2,
+  });
+  assert.deepEqual(
+    data.quota.estimates?.presets.map((item) => item.episodeCount),
+    [10, 30, 60],
+  );
 });
 
 test('workspace fetch can request a selected project', async () => {
@@ -259,6 +283,43 @@ test('workspace fetch rejects malformed or incomplete payloads', async () => {
     () => fetchWorkspace('http://127.0.0.1:3200', missingQuota as typeof fetch),
     /缺少额度信息/,
   );
+});
+
+test('旧服务端额度字段仍可加载，非法新估算回退到扁平字段', () => {
+  const legacy = normalizeWorkspaceData({
+    ...payload,
+    quota: { remaining: 12, limit: 65, used: 53, projectsLeft: 0 },
+  });
+  assert.equal(legacy.quota.projectsLeft, 0);
+  assert.equal(legacy.quota.episodeCount, 0);
+  assert.equal(legacy.quota.projectCost, 0);
+  assert.deepEqual(legacy.quota.estimates?.selected, {
+    episodeCount: 0,
+    units: 0,
+    projectsLeft: 0,
+  });
+
+  const malformed = normalizeWorkspaceData({
+    ...payload,
+    quota: {
+      remaining: 38,
+      limit: 65,
+      used: 27,
+      projectsLeft: 2,
+      episodeCount: 'bad',
+      projectCost: -1,
+      pricingVersion: '',
+      estimates: {
+        selected: { episodeCount: -1, units: 'bad', projectsLeft: -3 },
+        presets: [{ episodeCount: 10 }],
+      },
+    },
+  });
+  assert.equal(malformed.quota.episodeCount, 0);
+  assert.equal(malformed.quota.projectCost, 0);
+  assert.equal(malformed.quota.pricingVersion, 'legacy');
+  assert.equal(malformed.quota.estimates?.selected.projectsLeft, 2);
+  assert.deepEqual(malformed.quota.estimates?.presets, []);
 });
 
 test('remote workspace produces the native Agent context without hardcoded shot counts', () => {

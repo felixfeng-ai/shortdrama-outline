@@ -44,6 +44,12 @@ import {
   enableNativeNotifications,
   notificationPermission,
 } from '@/lib/native-notifications';
+import {
+  quotaCostLabel,
+  quotaPresetRows,
+  quotaPriceVersionLabel,
+  quotaProjectLabel,
+} from '@/lib/quota-view';
 import { useWorkspace } from '@/lib/workspace-store';
 
 export default function MeScreen() {
@@ -59,6 +65,7 @@ export default function MeScreen() {
     message: '与内测通道同步',
   });
   const quota = data.quota;
+  const quotaPresets = quotaPresetRows(quota);
   const progress = quota.limit > 0 ? Math.round((quota.used / quota.limit) * 100) : 0;
   useEffect(() => {
     let active = true;
@@ -280,10 +287,14 @@ export default function MeScreen() {
                   <Text style={styles.quotaTotal}> / {quota.limit} 单位</Text>
                 </View>
               </View>
-              <StatusBadge tone="info">可跑 {quota.projectsLeft} 个完整项目</StatusBadge>
+              <StatusBadge tone="info">{quotaProjectLabel(quota)}</StatusBadge>
             </View>
             <ProgressTrack value={progress} />
             <View style={styles.quotaFacts}>
+              <View>
+                <Text style={styles.factLabel}>当前项目</Text>
+                <MonoText>{quota.episodeCount > 0 ? `${quota.episodeCount} 集` : '待同步'}</MonoText>
+              </View>
               <View>
                 <Text style={styles.factLabel}>本期已用</Text>
                 <MonoText>{quota.used} 单位</MonoText>
@@ -292,11 +303,37 @@ export default function MeScreen() {
                 <Text style={styles.factLabel}>剩余额度</Text>
                 <MonoText>{quota.remaining} 单位</MonoText>
               </View>
-              <View>
-                <Text style={styles.factLabel}>完整项目</Text>
-                <MonoText>{quota.projectsLeft} 次</MonoText>
-              </View>
             </View>
+            <View style={styles.quotaPresetHead}>
+              <View>
+                <Kicker>集数预设</Kicker>
+                <Text style={styles.quotaCost}>{quotaCostLabel(quota)}</Text>
+              </View>
+              <Text numberOfLines={1} style={styles.pricingVersion}>
+                {quotaPriceVersionLabel(quota)}
+              </Text>
+            </View>
+            {quotaPresets.length > 0 ? (
+              <View style={styles.quotaPresets}>
+                {quotaPresets.map((preset) => {
+                  const selected = preset.episodeCount === quota.episodeCount;
+                  return (
+                    <View
+                      key={preset.episodeCount}
+                      style={[styles.quotaPreset, selected && styles.quotaPresetSelected]}
+                    >
+                      <Text style={[styles.presetEpisodes, selected && styles.presetSelectedText]}>
+                        {preset.episodeCount} 集
+                      </Text>
+                      <Text style={[styles.presetCost, selected && styles.presetSelectedText]}>
+                        {preset.cost}
+                      </Text>
+                      <Text style={styles.presetProjects}>{preset.projects}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
           </Panel>
 
           <View style={styles.sectionHead}>
@@ -426,6 +463,65 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.sm,
     paddingTop: spacing.xs,
+  },
+  quotaPresetHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  quotaCost: {
+    marginTop: 2,
+    color: colors.textSecondary,
+    fontSize: type.micro,
+  },
+  pricingVersion: {
+    maxWidth: '52%',
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: type.micro,
+    textAlign: 'right',
+  },
+  quotaPresets: {
+    flexDirection: 'row',
+    gap: spacing.xxs,
+  },
+  quotaPreset: {
+    minWidth: 0,
+    flex: 1,
+    gap: 3,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 6,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  quotaPresetSelected: {
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.elevated,
+  },
+  presetEpisodes: {
+    color: colors.text,
+    fontFamily: fonts.mono,
+    fontSize: type.caption,
+    fontWeight: '600',
+  },
+  presetCost: {
+    color: colors.textSecondary,
+    fontSize: type.micro,
+    lineHeight: 15,
+  },
+  presetProjects: {
+    color: colors.textMuted,
+    fontSize: type.micro,
+    lineHeight: 15,
+  },
+  presetSelectedText: {
+    color: colors.text,
   },
   factLabel: {
     color: colors.textMuted,
