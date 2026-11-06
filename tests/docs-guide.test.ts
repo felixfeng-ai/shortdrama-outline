@@ -79,3 +79,37 @@ test("教程用真实界面截图解释关键生产节点", () => {
   assert.match(guide, /查看\$\{label\}界面原图/)
   assert.match(guide, /loading="lazy"/)
 })
+
+test("教程顶栏不提供创作技能跳转，并沿用主页反相白主操作", () => {
+  const guide = fs.readFileSync("components/DocsGuide.tsx", "utf8")
+  const css = fs.readFileSync("app/docs/docs.css", "utf8")
+  const topnav = guide.match(/<nav className="docs-topnav"[\s\S]*?<\/nav>/)?.[0] ?? ""
+
+  assert.ok(topnav.includes('href="/docs"'))
+  assert.ok(topnav.includes('href="/"'))
+  assert.ok(!topnav.includes('href="/skills"'))
+  assert.match(css, /--docs-primary:\s*#f2f2ee/i)
+  assert.match(css, /\.docs-top-cta\s*\{[^}]*background:\s*var\(--docs-primary\)/s)
+  assert.match(css, /\.docs-hero-actions a:first-child\s*\{[^}]*background:\s*var\(--docs-primary\)/s)
+  assert.match(css, /\.docs-end > a\s*\{[^}]*background:\s*var\(--docs-primary\)/s)
+})
+
+test("教程首屏按已确认 Demo 重排为任务优先", () => {
+  const guide = fs.readFileSync("components/DocsGuide.tsx", "utf8")
+  const css = fs.readFileSync("app/docs/docs.css", "utf8")
+
+  assert.match(guide, /<h1>完成第一部短剧<\/h1>/)
+  assert.match(guide, /docs-start-rail/)
+  assert.match(guide, /只有一句想法/)
+  assert.match(guide, /已有小说或剧本/)
+  assert.match(guide, /继续当前项目/)
+  assert.match(guide, /docs-hero-preview/)
+  assert.match(guide, /src="\/docs\/tutorial\/01-quick-start\.png"/)
+  for (const group of ["快速开始", "创作与制作", "交付与扩展", "工作区与排障"]) {
+    assert.ok(guide.includes(group), `教程目录缺少分组：${group}`)
+  }
+  assert.match(css, /\.docs-start-rail/)
+  assert.match(css, /\.docs-hero-preview/)
+  assert.match(css, /\.docs-sidebar a[^{]*\{[^}]*font-size:\s*12px/s)
+  assert.match(css, /\.docs-toc a[^{]*\{[^}]*font-size:\s*11\.5px/s)
+})

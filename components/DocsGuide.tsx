@@ -11,37 +11,55 @@ const FLOW = [
   ['06', '分镜', '生成逐镜提示词、首帧与镜头视频。'],
 ] as const
 
+const START_PATHS = [
+  {
+    index: '01',
+    title: '只有一句想法',
+    description: '先探索方向，再补齐人物与分集。',
+  },
+  {
+    index: '02',
+    title: '已有小说或剧本',
+    description: '导入原文，整理人物关系和改编计划。',
+  },
+  {
+    index: '03',
+    title: '继续当前项目',
+    description: '从真实待办恢复，不重置已有版本。',
+  },
+] as const
+
 const CHAPTERS = [
   {
     title: '快速开始',
     links: [
       ['platform-map', '平台能做什么'],
-      ['quick-start', '开始第一次创作'],
+      ['quick-start', '完成第一部短剧'],
       ['project-flow', '认识六步工作流'],
     ],
   },
   {
-    title: '从分镜到成片',
+    title: '创作与制作',
     links: [
       ['visual-output', '定妆、场景与首帧'],
       ['shot-video', '镜头视频'],
       ['timeline-final', '声音与时间线成片'],
-      ['export-delivery', '导出与外部交付'],
-      ['novel-companion', '项目附赠小说稿'],
     ],
   },
   {
-    title: '工作区与跨端',
+    title: '交付与扩展',
+    links: [
+      ['export-delivery', '导出与外部交付'],
+      ['novel-companion', '项目附赠小说稿'],
+      ['skills-agent', '创作技能与 Agent'],
+    ],
+  },
+  {
+    title: '工作区与排障',
     links: [
       ['workspace-modes', '总览 / 创作 / 画布'],
       ['canvas-window', '全屏画布'],
       ['mobile-app', '手机 App 与跨端'],
-    ],
-  },
-  {
-    title: '协作与排障',
-    links: [
-      ['skills-agent', '创作技能与 Agent'],
       ['cost-recovery', '费用、恢复与版本'],
       ['faq', '常见问题'],
     ],
@@ -131,7 +149,6 @@ export default function DocsGuide() {
         </a>
         <nav className="docs-topnav" aria-label="站点导航">
           <a className="active" href="/docs" aria-current="page">教程</a>
-          <a href="/skills">创作技能</a>
           <a href="/">工作台</a>
         </nav>
         <a className="docs-top-cta" href="/">立即创作 <ArrowIcon /></a>
@@ -147,7 +164,13 @@ export default function DocsGuide() {
             <section key={chapter.title}>
               <b>{chapter.title}</b>
               {chapter.links.map(([id, label]) => (
-                <a key={id} href={`#${id}`}>{label}</a>
+                <a
+                  key={id}
+                  className={id === 'quick-start' ? 'active' : ''}
+                  href={`#${id}`}
+                >
+                  {label}
+                </a>
               ))}
             </section>
           ))}
@@ -164,24 +187,54 @@ export default function DocsGuide() {
           </details>
 
           <header className="docs-hero">
-            <p className="docs-kicker">START HERE / PRODUCTION GUIDE</p>
-            <h1>从想法、原文到成片</h1>
+            <p className="docs-kicker">QUICK START · ABOUT 8 MIN</p>
+            <h1>完成第一部短剧</h1>
             <p className="docs-lede">
-              成剧把故事、角色、场次、分镜、图片、视频、声音和时间线放在同一条项目链里。
-              工作区用“总览 / 创作 / 画布”组织当前项目，手机 App 与 Web 登录同一账号后可以继续同一项目。
+              从一句想法或已有原文开始，完成人物、分集、分镜、镜头视频和第一集成片。
+              成剧把“从想法、原文到成片”的路径放在同一条项目链里，每个阶段都先告诉你需要准备什么、
+              会产出什么，写入和付费前仍由你确认。
             </p>
             <div className="docs-hero-actions">
               <a href="#quick-start">开始第一次创作 <ArrowIcon /></a>
-              <a href="/">载入或新建项目</a>
+              <a href="/skills?mode=source">从已有小说或剧本开始</a>
             </div>
-            <div className="docs-flow-strip" aria-label="从想法到成片">
-              {['想法 / 原文', '人物与分集', '场次与分镜', '首帧与视频', '声音与成片'].map((item, index) => (
-                <span key={item}>
-                  <i>{String(index + 1).padStart(2, '0')}</i>
-                  <b>{item}</b>
-                </span>
+
+            <div className="docs-start-rail" aria-label="三种开始方式">
+              {START_PATHS.map((item) => (
+                <div key={item.index}>
+                  <i>{item.index}</i>
+                  <b>{item.title}</b>
+                  <span>{item.description}</span>
+                </div>
               ))}
             </div>
+
+            <figure className="docs-hero-preview">
+              <div className="docs-hero-preview-shot">
+                <a
+                  href="/docs/tutorial/01-quick-start.png"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="查看工作台当前项目界面原图"
+                >
+                  <img
+                    src="/docs/tutorial/01-quick-start.png"
+                    alt="VeyaFrame 工作台当前项目总览"
+                    width={1440}
+                    height={1000}
+                    loading="eager"
+                    decoding="async"
+                  />
+                </a>
+                <span className="docs-hero-preview-label">工作台 · 当前项目</span>
+              </div>
+              <figcaption>
+                <span>先看当前阻断与下一步，再进入具体步骤。</span>
+                <a href="/docs/tutorial/01-quick-start.png" target="_blank" rel="noreferrer">
+                  查看原图 ↗
+                </a>
+              </figcaption>
+            </figure>
           </header>
 
           <section id="platform-map" className="docs-section">
@@ -236,16 +289,6 @@ export default function DocsGuide() {
                 <p>在第 6 步打开“镜头视频”，完成后进入“时间线成片”；需要更大空间时可从画布页头打开全屏画布。</p>
               </li>
             </ol>
-            <TutorialFigure
-              src="/docs/tutorial/01-quick-start.png"
-              alt="VeyaFrame 当前工作区首页，展示总览、创作、画布三模式、当前项目和右侧项目状态"
-              label="工作台 · 总览"
-              points={[
-                '左侧菜单固定提供首页、项目、创作技能、资产库和使用教程。',
-                '顶部三模式共享当前项目：总览看阻断，创作进入技能与 Agent，画布查看节点关系。',
-                '右下角 Veya 图标按需展开 Agent；它可以解释下一步和提出修改，写入前会等待确认。',
-              ]}
-            />
             <Callout title="第一次使用">
               可以先载入示例项目，查看完整六步和成片入口；示例不会调用模型，也不消耗创作额度。
             </Callout>
@@ -254,6 +297,14 @@ export default function DocsGuide() {
           <section id="project-flow" className="docs-section">
             <p className="docs-section-kicker">03 / SIX-STEP FLOW</p>
             <h2>认识六步工作流</h2>
+            <div className="docs-flow-strip" aria-label="从想法到成片">
+              {['想法 / 原文', '人物与分集', '场次与分镜', '首帧与视频', '声音与成片'].map((item, index) => (
+                <span key={item}>
+                  <i>{String(index + 1).padStart(2, '0')}</i>
+                  <b>{item}</b>
+                </span>
+              ))}
+            </div>
             <div className="docs-step-list">
               {FLOW.map(([index, title, description]) => (
                 <div key={index}>
@@ -530,7 +581,9 @@ export default function DocsGuide() {
         <aside className="docs-toc" aria-label="本页目录">
           <b>本页目录</b>
           {CHAPTERS.flatMap((chapter) => chapter.links.map(([id, label]) => (
-            <a key={id} href={`#${id}`}>{label}</a>
+            <a key={id} className={id === 'quick-start' ? 'active' : ''} href={`#${id}`}>
+              {label}
+            </a>
           )))}
         </aside>
       </main>
