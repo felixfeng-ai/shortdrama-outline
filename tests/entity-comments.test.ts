@@ -144,7 +144,62 @@ test("EC2 评论按项目隔离，并可从 open 标为 resolved", () => {
   }
 })
 
-test("EC3 Agent 能读取评论，只生成实体级待确认修改卡", () => {
+test("EC3 现场 Take 保存连续性结果，同一镜头只能有一个好镜", () => {
+  const { db, project } = projectWithEntities()
+  try {
+    const first = createEntityComment(db, project.id, owner, {
+      targetType: "shot",
+      targetId: "shot-entity-1",
+      body: "雨停后重拍，演员站位比上条更稳。",
+      kind: "take",
+      isBest: true,
+      continuityStatus: "issues",
+      continuitySummary: "门口亮度偏高，其他一致",
+      continuityIssueCount: 2,
+    }, 250)
+    assert.equal(first.kind, "take")
+    assert.equal(first.isBest, true)
+    assert.equal(first.continuityStatus, "issues")
+    assert.equal(first.continuityIssueCount, 2)
+
+    const second = createEntityComment(db, project.id, owner, {
+      targetType: "shot",
+      targetId: "shot-entity-1",
+      body: "补一个侧逆光版本。",
+      kind: "take",
+      isBest: true,
+      continuityStatus: "passed",
+      continuitySummary: "人物、地点和道具一致",
+      continuityIssueCount: 0,
+    }, 300)
+    const third = createEntityComment(db, project.id, owner, {
+      targetType: "shot",
+      targetId: "shot-entity-1",
+      body: "再补一条更稳的侧拍。",
+      kind: "take",
+    }, 350)
+
+    const takes = listEntityComments(db, project.id, {
+      targetType: "shot",
+      targetId: "shot-entity-1",
+    }).filter((comment) => comment.kind === "take")
+    assert.equal(takes.length, 3)
+    assert.equal(takes.filter((take) => take.isBest).length, 1)
+    assert.equal(takes.find((take) => take.isBest)?.id, second.id)
+
+    updateEntityComment(db, project.id, third.id, owner, { isBest: true }, 400)
+    const updatedTakes = listEntityComments(db, project.id, {
+      targetType: "shot",
+      targetId: "shot-entity-1",
+    }).filter((comment) => comment.kind === "take")
+    assert.equal(updatedTakes.filter((take) => take.isBest).length, 1)
+    assert.equal(updatedTakes.find((take) => take.isBest)?.id, third.id)
+  } finally {
+    db.close()
+  }
+})
+
+test("EC4 Agent 能读取评论，只生成实体级待确认修改卡", () => {
   const state = agentState()
   const executors = createToolExecutors(state)
   assert.ok(AGENT_TOOL_SCHEMAS.some((tool) => tool.name === "get_entity_comments"))

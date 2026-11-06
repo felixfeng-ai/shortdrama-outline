@@ -77,7 +77,7 @@ export function buildMobileAgentMemory(input: {
     })
     .filter(Boolean)
   const openComments = records(input.comments)
-    .filter((item) => item.status !== "resolved")
+    .filter((item) => item.status !== "resolved" && item.kind !== "take")
     .map((item) => `${text(item.targetName) || "未命名镜头"}：${text(item.body, 200)}`)
     .filter((item) => !item.endsWith("："))
     .slice(0, 4)

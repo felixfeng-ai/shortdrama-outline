@@ -89,3 +89,48 @@ test("ECA2 无权限项目不能读评论", async () => {
   )
   assert.equal(response.status, 403)
 })
+
+test("ECA3 视频时间码与 Take 元数据通过项目批注接口持久化", async () => {
+  const project = seedProject()
+  const timecode = await postComment(
+    request(`/api/projects/${project.id}/comments`, {
+      method: "POST",
+      body: JSON.stringify({
+        targetType: "shot",
+        targetId: "shot-stable",
+        body: "眼神再停半拍",
+        kind: "timecode",
+        timecodeMs: 5400,
+        frameMarked: true,
+      }),
+    }),
+    projectContext(project.id),
+  )
+  assert.equal(timecode.status, 200)
+  const timecodeComment = (await timecode.json()).data.comment
+  assert.equal(timecodeComment.kind, "timecode")
+  assert.equal(timecodeComment.timecodeMs, 5400)
+  assert.equal(timecodeComment.frameMarked, true)
+
+  const take = await postComment(
+    request(`/api/projects/${project.id}/comments`, {
+      method: "POST",
+      body: JSON.stringify({
+        targetType: "shot",
+        targetId: "shot-stable",
+        body: "这一条表演最好",
+        kind: "take",
+        isBest: true,
+        continuityStatus: "passed",
+        continuitySummary: "与 Canon 一致",
+        continuityIssueCount: 0,
+      }),
+    }),
+    projectContext(project.id),
+  )
+  assert.equal(take.status, 200)
+  const takeComment = (await take.json()).data.comment
+  assert.equal(takeComment.kind, "take")
+  assert.equal(takeComment.isBest, true)
+  assert.equal(takeComment.continuityStatus, "passed")
+})

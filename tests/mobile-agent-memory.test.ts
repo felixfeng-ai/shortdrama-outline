@@ -36,6 +36,7 @@ test("Agent 记忆层汇总锁定资产、决策、否决方向和开放批注",
     ],
     comments: [
       { targetName: "第 3 集 · 第 3 镜", body: "门口不要太亮" },
+      { targetName: "第 3 集 · 第 3 镜", body: "现场 Take 噪声", kind: "take" },
     ],
   })
 
@@ -45,4 +46,5 @@ test("Agent 记忆层汇总锁定资产、决策、否决方向和开放批注",
   assert.match(memory.lockedDecisions[0], /母女/)
   assert.equal(memory.rejectedDirections[0], "否决反转：前两集没有铺垫")
   assert.equal(memory.openComments[0], "第 3 集 · 第 3 镜：门口不要太亮")
+  assert.ok(!memory.openComments.some((item) => item.includes("噪声")))
 })

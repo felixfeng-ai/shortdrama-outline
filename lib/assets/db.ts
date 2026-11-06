@@ -1041,6 +1041,25 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON novel_chapter_versions(chapter_id, revision);
     `,
   },
+  {
+    version: 23,
+    name: "shot-review-signals",
+    sql: `
+      -- 现场 Take、时间码批注和逐镜确认复用实体批注，
+      -- 这样 Web 与 App 读的是同一条镜头记录，不需要第二套评论体系。
+      ALTER TABLE entity_comments ADD COLUMN kind TEXT NOT NULL DEFAULT 'comment';
+      ALTER TABLE entity_comments ADD COLUMN timecode_ms INTEGER;
+      ALTER TABLE entity_comments ADD COLUMN frame_marked INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE entity_comments ADD COLUMN is_best INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE entity_comments ADD COLUMN continuity_status TEXT NOT NULL DEFAULT 'not_checked';
+      ALTER TABLE entity_comments ADD COLUMN continuity_summary TEXT NOT NULL DEFAULT '';
+      ALTER TABLE entity_comments ADD COLUMN continuity_issue_count INTEGER NOT NULL DEFAULT 0;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_comments_best_take
+        ON entity_comments(project_id, target_type, target_id)
+        WHERE kind = 'take' AND is_best = 1;
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

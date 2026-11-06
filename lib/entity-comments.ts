@@ -8,6 +8,9 @@ import type { ArtifactKind } from "./assets/types.ts"
 export const ENTITY_COMMENT_TARGETS = ["character", "place", "episode", "shot"] as const
 export type EntityCommentTarget = (typeof ENTITY_COMMENT_TARGETS)[number]
 export type EntityCommentStatus = "open" | "resolved"
+export const ENTITY_COMMENT_KINDS = ["comment", "reject", "take", "timecode", "final"] as const
+export type EntityCommentKind = (typeof ENTITY_COMMENT_KINDS)[number]
+export type ContinuityStatus = "not_checked" | "passed" | "issues"
 
 export interface EntityComment {
   id: string
@@ -17,6 +20,13 @@ export interface EntityComment {
   targetName: string
   body: string
   status: EntityCommentStatus
+  kind: EntityCommentKind
+  timecodeMs: number | null
+  frameMarked: boolean
+  isBest: boolean
+  continuityStatus: ContinuityStatus
+  continuitySummary: string
+  continuityIssueCount: number
   authorId: string
   createdAt: number
   updatedAt: number
@@ -31,6 +41,13 @@ interface CommentRow {
   target_name: string
   body: string
   status: string
+  kind: string
+  timecode_ms: number | null
+  frame_marked: number
+  is_best: number
+  continuity_status: string
+  continuity_summary: string
+  continuity_issue_count: number
   author_id: string
   created_at: number
   updated_at: number
@@ -53,6 +70,17 @@ function commentRow(row: CommentRow): EntityComment {
     targetName: row.target_name,
     body: row.body,
     status: row.status === "resolved" ? "resolved" : "open",
+    kind: (ENTITY_COMMENT_KINDS as readonly string[]).includes(row.kind)
+      ? row.kind as EntityCommentKind
+      : "comment",
+    timecodeMs: row.timecode_ms === null ? null : Math.max(0, Number(row.timecode_ms) || 0),
+    frameMarked: row.frame_marked === 1,
+    isBest: row.is_best === 1,
+    continuityStatus: row.continuity_status === "passed" || row.continuity_status === "issues"
+      ? row.continuity_status
+      : "not_checked",
+    continuitySummary: row.continuity_summary,
+    continuityIssueCount: Math.max(0, Number(row.continuity_issue_count) || 0),
     authorId: row.author_id,
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),
@@ -71,6 +99,24 @@ function parseTargetType(value: unknown): EntityCommentTarget {
     throw new InputError("评论实体类型不合法")
   }
   return value as EntityCommentTarget
+}
+
+function parseKind(value: unknown): EntityCommentKind {
+  const kind = typeof value === "string" ? value.trim() : ""
+  return (ENTITY_COMMENT_KINDS as readonly string[]).includes(kind)
+    ? kind as EntityCommentKind
+    : "comment"
+}
+
+function parseContinuityStatus(value: unknown): ContinuityStatus {
+  return value === "passed" || value === "issues" ? value : "not_checked"
+}
+
+function optionalTimecode(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) throw new InputError("批注时间码不合法")
+  return Math.min(24 * 60 * 60 * 1_000, Math.max(0, Math.floor(parsed)))
 }
 
 function objectRecords(payload: unknown): Record<string, unknown>[] {
@@ -139,6 +185,13 @@ export function createEntityComment(
     targetType?: unknown
     targetId?: unknown
     body?: unknown
+    kind?: unknown
+    timecodeMs?: unknown
+    frameMarked?: unknown
+    isBest?: unknown
+    continuityStatus?: unknown
+    continuitySummary?: unknown
+    continuityIssueCount?: unknown
   },
   now = Date.now(),
 ): EntityComment {
@@ -150,13 +203,56 @@ export function createEntityComment(
   const body = text(input.body, 2_000)
   if (!body) throw new InputError("评论正文不能为空")
   const target = resolveCommentTarget(db, projectId, input.targetType, input.targetId)
+  const kind = parseKind(input.kind)
+  const timecodeMs = optionalTimecode(input.timecodeMs)
+  const frameMarked = input.frameMarked === true && timecodeMs !== null ? 1 : 0
+  const isBest = kind === "take" && input.isBest === true ? 1 : 0
+  const continuityStatus = kind === "take"
+    ? parseContinuityStatus(input.continuityStatus)
+    : "not_checked"
+  const continuitySummary = kind === "take" ? text(input.continuitySummary, 500) : ""
+  const continuityIssueCount = kind === "take"
+    ? Math.min(999, Math.max(0, Math.floor(Number(input.continuityIssueCount) || 0)))
+    : 0
   const id = `comment_${randomUUID()}`
-  db.prepare(
-    `INSERT INTO entity_comments
-      (id, project_id, target_type, target_id, target_name, body, status,
-       author_id, created_at, updated_at, resolved_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, NULL)`,
-  ).run(id, projectId, target.type, target.id, target.name, body, ownerId, now, now)
+  db.exec("BEGIN IMMEDIATE")
+  try {
+    if (isBest) {
+      db.prepare(
+        `UPDATE entity_comments SET is_best = 0, updated_at = ?
+         WHERE project_id = ? AND target_type = ? AND target_id = ?
+           AND kind = 'take' AND is_best = 1`,
+      ).run(now, projectId, target.type, target.id)
+    }
+    db.prepare(
+      `INSERT INTO entity_comments
+        (id, project_id, target_type, target_id, target_name, body, status,
+         kind, timecode_ms, frame_marked, is_best, continuity_status, continuity_summary,
+         continuity_issue_count, author_id, created_at, updated_at, resolved_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+    ).run(
+      id,
+      projectId,
+      target.type,
+      target.id,
+      target.name,
+      body,
+      kind,
+      timecodeMs,
+      frameMarked,
+      isBest,
+      continuityStatus,
+      continuitySummary,
+      continuityIssueCount,
+      ownerId,
+      now,
+      now,
+    )
+    db.exec("COMMIT")
+  } catch (error) {
+    db.exec("ROLLBACK")
+    throw error
+  }
   return commentRow(db.prepare("SELECT * FROM entity_comments WHERE id = ?").get(id) as CommentRow)
 }
 
@@ -184,7 +280,7 @@ export function updateEntityComment(
   projectId: string,
   commentId: string,
   ownerId: string,
-  input: { status?: unknown; body?: unknown },
+  input: { status?: unknown; body?: unknown; isBest?: unknown },
   now = Date.now(),
 ): EntityComment {
   if (!getProject(db, projectId, ownerId)) {
@@ -204,10 +300,26 @@ export function updateEntityComment(
   const nextBody = input.body === undefined ? current.body : text(input.body, 2_000)
   if (!nextBody) throw new InputError("评论正文不能为空")
   const resolvedAt = nextStatus === "resolved" ? (current.resolved_at ?? now) : null
-  db.prepare(
-    `UPDATE entity_comments
-     SET body = ?, status = ?, updated_at = ?, resolved_at = ?
-     WHERE id = ? AND project_id = ?`,
-  ).run(nextBody, nextStatus, now, resolvedAt, commentId, projectId)
+  const markBest = input.isBest === true && current.kind === "take"
+  db.exec("BEGIN IMMEDIATE")
+  try {
+    if (markBest) {
+      db.prepare(
+        `UPDATE entity_comments SET is_best = 0, updated_at = ?
+         WHERE project_id = ? AND target_type = ? AND target_id = ?
+           AND kind = 'take' AND is_best = 1`,
+      ).run(now, projectId, current.target_type, current.target_id)
+    }
+    db.prepare(
+      `UPDATE entity_comments
+       SET body = ?, status = ?, updated_at = ?, resolved_at = ?,
+           is_best = CASE WHEN ? = 1 THEN 1 ELSE is_best END
+       WHERE id = ? AND project_id = ?`,
+    ).run(nextBody, nextStatus, now, resolvedAt, markBest ? 1 : 0, commentId, projectId)
+    db.exec("COMMIT")
+  } catch (error) {
+    db.exec("ROLLBACK")
+    throw error
+  }
   return commentRow(db.prepare("SELECT * FROM entity_comments WHERE id = ?").get(commentId) as CommentRow)
 }
