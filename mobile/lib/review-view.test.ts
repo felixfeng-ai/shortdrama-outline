@@ -28,6 +28,8 @@ function asset(id: string, createdAt: number, selectedAt: number | null = null):
     prompt: 'rain',
     mediaKind: 'image',
     durationMs: null,
+    width: 1080,
+    height: 1920,
     selectedAt,
     createdAt,
     downloadUrl: `/api/generated-assets/${id}`,

@@ -29,6 +29,15 @@ function readComment(value: unknown): ReviewComment {
     targetName: typeof item.targetName === 'string' ? item.targetName : item.targetId,
     body: item.body,
     status: item.status === 'resolved' ? 'resolved' : 'open',
+    kind: item.kind === 'final' || item.body.startsWith(DRAFT_FINAL_MARKER)
+      ? 'final'
+      : 'comment',
+    timecodeMs: Number.isFinite(Number(item.timecodeMs)) ? Number(item.timecodeMs) : null,
+    frameMarked: item.frameMarked === true,
+    isBest: item.isBest === true,
+    continuityStatus: 'not_checked',
+    continuitySummary: '',
+    continuityIssueCount: 0,
     authorId: typeof item.authorId === 'string' ? item.authorId : '',
     createdAt: Number(item.createdAt) || 0,
     updatedAt: Number(item.updatedAt) || Number(item.createdAt) || 0,
@@ -39,7 +48,7 @@ function readComment(value: unknown): ReviewComment {
 export function isDraftFinalMark(comment: ReviewComment): boolean {
   return comment.targetType === 'shot'
     && comment.status === 'open'
-    && comment.body.startsWith(DRAFT_FINAL_MARKER);
+    && (comment.kind === 'final' || comment.body.startsWith(DRAFT_FINAL_MARKER));
 }
 
 export function draftFinalTargetIds(comments: readonly ReviewComment[]): Set<string> {
@@ -91,6 +100,7 @@ export async function markDraftShotForFinal(
         targetType: 'shot',
         targetId: shot.targetId,
         body: DRAFT_FINAL_BODY,
+        kind: 'final',
       }),
     },
   );

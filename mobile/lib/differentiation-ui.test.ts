@@ -24,3 +24,20 @@ test('三个辅助页面沿用现有原生壳和真实数据状态', () => {
   assert.match(overseas, /字幕上限/);
   assert.match(overseas, /文化适配/);
 });
+
+test('现场连续性页提供 Take、好镜、语音备注和返修队列', () => {
+  const continuity = fs.readFileSync('app/continuity.tsx', 'utf8');
+  const repairs = fs.readFileSync('app/repairs.tsx', 'utf8');
+  const repairQueue = fs.readFileSync('lib/repair-queue.ts', 'utf8');
+
+  for (const text of ['现场 Take', '好镜', '语音备注', '返修队列']) {
+    assert.ok(continuity.includes(text), `现场连续性页缺少 ${text}`);
+  }
+  assert.match(continuity, /ExpoSpeechRecognitionModule/);
+  assert.match(continuity, /markBestReviewComment/);
+  assert.match(continuity, /kind: 'take'/);
+  assert.match(repairs, /fetchProjectReviewComments/);
+  assert.match(repairs, /repairQueueItems/);
+  assert.match(repairQueue, /comment\.kind === kind/);
+  assert.match(repairs, /resolveReviewComment/);
+});

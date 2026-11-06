@@ -2,9 +2,18 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,6 +38,12 @@ import { ReviewComments } from '@/components/review-comments';
 import { colors, fonts, radii, spacing, type } from '@/constants/tokens';
 import { downloadAuthenticatedFile } from '@/lib/asset-download';
 import { useAuth } from '@/lib/auth-store';
+import type { ReviewComment } from '@/lib/review-comments-api';
+import {
+  reviewAspectCheck,
+  reviewDecisionState,
+  reviewSubtitleTrackState,
+} from '@/lib/review-signals';
 import {
   fetchReviewState,
   selectReviewAsset,
@@ -52,6 +67,14 @@ import { workspaceApiBaseUrl, type WorkspaceTaskTargetType } from '@/lib/workspa
 import { useWorkspace } from '@/lib/workspace-store';
 
 const TARGET_TYPES: WorkspaceTaskTargetType[] = ['shot', 'character', 'place'];
+
+interface VideoReviewController {
+  captureFrame: () => Promise<{
+    source: ComponentProps<typeof Image>['source'];
+    timecodeMs: number;
+  }>;
+  seekTo: (timecodeMs: number) => void;
+}
 
 function readTargetType(value: string | string[] | undefined): WorkspaceTaskTargetType {
   const candidate = Array.isArray(value) ? value[0] : value;
@@ -103,7 +126,14 @@ export default function ReviewScreen() {
   const [compareMode, setCompareMode] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [imageHeaders, setImageHeaders] = useState<Record<string, string>>({});
+  const [videoTimeMs, setVideoTimeMs] = useState(0);
+  const [screenshotSource, setScreenshotSource] =
+    useState<ComponentProps<typeof Image>['source'] | null>(null);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const [subtitleTrackCount, setSubtitleTrackCount] = useState(0);
+  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
   const controllerRef = useRef<AbortController | null>(null);
+  const videoControllerRef = useRef<VideoReviewController | null>(null);
 
   const mediaKinds = useMemo(() => reviewMediaKinds(state.assets), [state.assets]);
   const versions = useMemo(
@@ -120,6 +150,11 @@ export default function ReviewScreen() {
   const comparePair = current
     ? [current, ...versions.filter((asset) => asset.id !== current.id)].slice(0, 2)
     : [];
+  const aspectCheck = current
+    ? reviewAspectCheck(current.width, current.height, current.targetType)
+    : null;
+  const decision = reviewDecisionState(reviewComments, current?.selectedAt ?? null);
+  const subtitleState = reviewSubtitleTrackState(subtitleTrackCount);
 
   const load = useCallback(() => {
     if (workspaceStatus === 'loading') {
@@ -182,6 +217,12 @@ export default function ReviewScreen() {
   }, [load]);
 
   useEffect(() => {
+    setVideoTimeMs(0);
+    setScreenshotSource(null);
+    setSubtitleTrackCount(0);
+  }, [currentId]);
+
+  useEffect(() => {
     let active = true;
     void getAccessHeaders().then((headers) => {
       if (active) setImageHeaders(headers);
@@ -240,6 +281,30 @@ export default function ReviewScreen() {
     } finally {
       setDownloading(false);
     }
+  }
+
+  async function captureCurrentFrame() {
+    if (captureBusy) return;
+    if (!videoControllerRef.current) {
+      setError('当前视频还没有准备好，暂时无法截帧');
+      return;
+    }
+    setCaptureBusy(true);
+    setError('');
+    try {
+      const captured = await videoControllerRef.current.captureFrame();
+      setScreenshotSource(captured.source);
+      setVideoTimeMs(captured.timecodeMs);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '当前画面截取失败');
+    } finally {
+      setCaptureBusy(false);
+    }
+  }
+
+  function seekVideo(timecodeMs: number) {
+    setVideoTimeMs(timecodeMs);
+    videoControllerRef.current?.seekTo(timecodeMs);
   }
 
   return (
@@ -352,8 +417,11 @@ export default function ReviewScreen() {
                 <View style={styles.previewWrap}>
                   {current.mediaKind === 'video' && currentVideoSource ? (
                     <VideoReviewPreview
+                      controllerRef={videoControllerRef}
                       key={current.id}
                       label={`${targetLabel}，${reviewVersionLabel(versions, versions.indexOf(current))}`}
+                      onSubtitleTracks={setSubtitleTrackCount}
+                      onTimeChange={setVideoTimeMs}
                       source={currentVideoSource}
                       aspectRatio={reviewAspectRatio(current.targetType)}
                     />
@@ -428,8 +496,8 @@ export default function ReviewScreen() {
                       </Text>
                     </Pressable>
                   ) : null}
-                  <StatusBadge tone={current.selectedAt ? 'success' : 'warning'}>
-                    {current.selectedAt ? '当前采用' : '待我确认'}
+                  <StatusBadge tone={decision.tone}>
+                    {decision.label}
                   </StatusBadge>
                 </View>
               </View>
@@ -507,15 +575,38 @@ export default function ReviewScreen() {
                     value={`${(current.durationMs / 1000).toFixed(1)} 秒`}
                   />
                 ) : null}
+                {current.mediaKind === 'video' && aspectCheck ? (
+                  <DetailRow
+                    label="画幅"
+                    value={
+                      aspectCheck.status === 'mismatch'
+                        ? `${aspectCheck.label} · 应为 ${aspectCheck.expected}`
+                        : aspectCheck.label
+                    }
+                  />
+                ) : null}
+                {current.mediaKind === 'video' ? (
+                  <DetailRow label="字幕轨" value={subtitleState.label} />
+                ) : null}
               </Panel>
 
               {targetType === 'shot' ? (
                 <Panel style={styles.commentsPanel}>
                   <ReviewComments
                     apiBaseUrl={workspaceApiBaseUrl}
+                    capturing={captureBusy}
                     fetchImpl={authorizedFetch}
+                    onCapture={current.mediaKind === 'video' && !compareMode
+                      ? () => void captureCurrentFrame()
+                      : undefined}
+                    onCommentsChange={setReviewComments}
+                    onSeek={current.mediaKind === 'video' ? seekVideo : undefined}
                     projectId={projectId}
+                    screenshot={current.mediaKind === 'video' && !compareMode
+                      ? screenshotSource
+                      : null}
                     targetId={targetId}
+                    timecodeMs={current.mediaKind === 'video' ? videoTimeMs : null}
                   />
                 </Panel>
               ) : null}
@@ -542,7 +633,9 @@ export default function ReviewScreen() {
                     ? '当前采用'
                     : selecting
                       ? '采用中…'
-                      : '采用此版'
+                      : current.mediaKind === 'video'
+                        ? '通过并采用'
+                        : '采用此版'
                 }
                 icon={current.selectedAt ? 'check-circle' : selecting ? 'loader' : 'check'}
                 disabled={Boolean(current.selectedAt) || selecting || downloading}
@@ -564,6 +657,9 @@ function VideoReviewPreview({
   compact = false,
   controls = true,
   muted = false,
+  controllerRef,
+  onTimeChange,
+  onSubtitleTracks,
 }: {
   source: {
     uri: string;
@@ -575,6 +671,9 @@ function VideoReviewPreview({
   compact?: boolean;
   controls?: boolean;
   muted?: boolean;
+  controllerRef?: { current: VideoReviewController | null };
+  onTimeChange?: (timecodeMs: number) => void;
+  onSubtitleTracks?: (count: number) => void;
 }) {
   const player = useVideoPlayer({
     uri: source.uri,
@@ -586,6 +685,40 @@ function VideoReviewPreview({
     instance.muted = muted;
     instance.staysActiveInBackground = false;
   });
+
+  useEffect(() => {
+    if (compact) return;
+    const sync = () => {
+      onTimeChange?.(Math.max(0, Math.round(player.currentTime * 1_000)));
+      onSubtitleTracks?.(player.availableSubtitleTracks.length);
+    };
+    sync();
+    const timer = setInterval(sync, 400);
+    if (controllerRef) {
+      controllerRef.current = {
+        captureFrame: async () => {
+          if (Platform.OS === 'web') {
+            throw new Error('浏览器预览不支持截帧，请在 Android/iOS 内测包中操作');
+          }
+          const timecodeMs = Math.max(0, Math.round(player.currentTime * 1_000));
+          const [thumbnail] = await player.generateThumbnailsAsync(
+            timecodeMs / 1_000,
+            { maxWidth: 720, maxHeight: 1280 },
+          );
+          if (!thumbnail) throw new Error('当前画面还没有准备好');
+          return { source: thumbnail, timecodeMs };
+        },
+        seekTo: (timecodeMs) => {
+          player.currentTime = Math.max(0, timecodeMs / 1_000);
+        },
+      };
+    }
+    return () => {
+      clearInterval(timer);
+      if (controllerRef?.current) controllerRef.current = null;
+    };
+  }, [compact, controllerRef, onSubtitleTracks, onTimeChange, player]);
+
   return (
     <VideoView
       accessible

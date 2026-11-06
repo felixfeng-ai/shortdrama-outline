@@ -42,6 +42,8 @@ const payload = {
     downloadUrl: '/api/generated-assets/asset-1',
     mediaKind: 'image',
     durationMs: null,
+    width: 1080,
+    height: 1920,
   }],
 };
 
@@ -76,6 +78,8 @@ test('审片同时读取图片与视频状态并保留媒体类型', async () =>
   assert.equal(init?.credentials, 'include');
   assert.equal(state.assets[0].id, 'asset-1');
   assert.equal(state.assets[0].mediaKind, 'image');
+  assert.equal(state.assets[0].width, 1080);
+  assert.equal(state.assets[0].height, 1920);
 });
 
 test('图片审片采用调用图片接口，视频审片采用调用视频接口', async () => {

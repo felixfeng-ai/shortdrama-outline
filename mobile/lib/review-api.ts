@@ -28,6 +28,8 @@ export interface ReviewAsset {
   prompt: string;
   mediaKind: WorkspaceTaskMediaKind;
   durationMs: number | null;
+  width: number | null;
+  height: number | null;
   selectedAt: number | null;
   createdAt: number;
   downloadUrl: string;
@@ -81,6 +83,8 @@ function readAsset(value: unknown): ReviewAsset {
       ? item.mediaKind
       : 'image',
     durationMs: Number.isFinite(Number(item.durationMs)) ? Number(item.durationMs) : null,
+    width: Number.isFinite(Number(item.width)) ? Number(item.width) : null,
+    height: Number.isFinite(Number(item.height)) ? Number(item.height) : null,
     selectedAt: Number.isFinite(Number(item.selectedAt)) ? Number(item.selectedAt) : null,
     createdAt: Number(item.createdAt),
     downloadUrl: item.downloadUrl,

@@ -18,4 +18,9 @@ test('审片页使用真实资产和图片，不再渲染静态分镜', () => {
   assert.ok(!review.includes('SceneFrame'), '审片页仍在渲染静态 SceneFrame');
   assert.ok(!review.includes('REVIEW_VERSIONS'), '审片页仍使用固定版本');
   assert.ok(tasks.includes('assetId'), '任务页没有提供真实审片入口');
+  assert.match(comments, /timecodeMs/);
+  assert.match(comments, /截取当前帧/);
+  assert.match(comments, /标记定稿/);
+  assert.match(review, /reviewAspectCheck/);
+  assert.match(review, /通过并采用/);
 });

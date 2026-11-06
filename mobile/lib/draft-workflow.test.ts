@@ -170,6 +170,13 @@ function comment(overrides: Partial<ReviewComment>): ReviewComment {
     targetName: '第 1 镜 · 码头',
     body: '【定稿】草片通过，后续 768P/2K 出片',
     status: 'open',
+    kind: 'final',
+    timecodeMs: null,
+    frameMarked: false,
+    isBest: false,
+    continuityStatus: 'not_checked',
+    continuitySummary: '',
+    continuityIssueCount: 0,
     authorId: 'user-1',
     createdAt: 1,
     updatedAt: 1,
@@ -181,7 +188,7 @@ function comment(overrides: Partial<ReviewComment>): ReviewComment {
 test('定稿标记只识别开放镜头批注，普通审片批注不进入定稿队列', () => {
   const ids = draftFinalTargetIds([
     comment({}),
-    comment({ id: 'comment-2', targetId: 'shot-2', body: '门口太暗' }),
+    comment({ id: 'comment-2', targetId: 'shot-2', body: '门口太暗', kind: 'comment' }),
     comment({ id: 'comment-3', targetId: 'shot-3', status: 'resolved' }),
   ]);
   assert.deepEqual([...ids], ['shot-1']);
