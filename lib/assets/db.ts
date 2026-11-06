@@ -889,6 +889,31 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON canvas_graphs(updated_at);
     `,
   },
+  {
+    version: 21,
+    name: "mobile-feedback",
+    sql: `
+      -- 内测反馈只保存用户主动填写的说明和最小设备上下文，
+      -- 不关联项目正文，也不复制 Agent 会话内容。
+      CREATE TABLE IF NOT EXISTS mobile_feedback (
+        id             TEXT PRIMARY KEY,
+        owner_id       TEXT NOT NULL,
+        category       TEXT NOT NULL,
+        body           TEXT NOT NULL,
+        app_version    TEXT NOT NULL DEFAULT '',
+        build_version  TEXT NOT NULL DEFAULT '',
+        platform       TEXT NOT NULL DEFAULT '',
+        os_version     TEXT NOT NULL DEFAULT '',
+        device_model   TEXT NOT NULL DEFAULT '',
+        screen         TEXT NOT NULL DEFAULT '',
+        status         TEXT NOT NULL DEFAULT 'open',
+        created_at     INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_mobile_feedback_owner
+        ON mobile_feedback(owner_id, created_at DESC);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

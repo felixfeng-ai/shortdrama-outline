@@ -35,3 +35,35 @@ test("分析批量拒绝空事件和过长安装标识", () => {
     events: [{ name: "app_open" }],
   }), /安装标识/)
 })
+
+test("内测诊断事件保留设备与错误字段，拒绝正文和其他敏感属性", () => {
+  const batch = readAnalyticsBatch({
+    installId: "install_1234567890",
+    events: [{
+      name: "app_error",
+      path: "/review/shot-1",
+      properties: {
+        appVersion: "1.1.0",
+        buildVersion: "12",
+        platform: "android",
+        osVersion: "36",
+        deviceModel: "Redmi",
+        errorName: "TypeError",
+        errorCode: 5,
+        result: "SpeechRecognizer failed [链接]",
+        prompt: "secret",
+        email: "user@example.com",
+      },
+    }],
+  })
+  assert.deepEqual(batch.events[0].properties, {
+    appVersion: "1.1.0",
+    buildVersion: "12",
+    platform: "android",
+    osVersion: "36",
+    deviceModel: "Redmi",
+    errorName: "TypeError",
+    errorCode: 5,
+    result: "SpeechRecognizer failed [链接]",
+  })
+})

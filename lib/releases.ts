@@ -1,7 +1,9 @@
 export interface ProductRelease {
   version: string
   publishedAt: string
+  status: string
   title: string
+  summary: string
   highlights: readonly string[]
 }
 
@@ -13,7 +15,9 @@ export const PRODUCT_RELEASES = [
   {
     version: "v2026.11.06",
     publishedAt: "2026-11-06T00:00:00+08:00",
+    status: "LIVE BETA",
     title: "VeyaFrame 火热内测中",
+    summary: "AI 短剧与漫剧工作流已开放，欢迎进入体验",
     highlights: [
       "平台正在火热内测，欢迎踊跃体验 AI 短剧创作、协作画布、Veya Agent 与全屏编排画布。",
       "手机 App 已支持安卓和鸿蒙扫码体验，iOS 版本更新中。",

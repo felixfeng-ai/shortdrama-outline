@@ -6,6 +6,7 @@ import {
   LATEST_PRODUCT_RELEASE,
   formatReleaseTimestamp,
 } from '@/lib/releases'
+import SmoothCollapse from './SmoothCollapse'
 
 const STORAGE_KEY = `chengju:inline-release:${LATEST_PRODUCT_RELEASE.version}`
 const RELEASE_AT = Date.parse(LATEST_PRODUCT_RELEASE.publishedAt)
@@ -49,29 +50,42 @@ export default function InlineReleaseNotice({ hidden = false }: Props) {
   }
 
   return (
-    <section className="inline-release" aria-label="产品公告">
+    <section className="inline-release" aria-label="平台公告">
       <div className="inline-release-bar">
-        <i aria-hidden="true" />
-        <span>平台公告</span>
-        <p>
-          <b>{LATEST_PRODUCT_RELEASE.version}</b>
-          {' · '}
-          {LATEST_PRODUCT_RELEASE.title}
-        </p>
+        <span className="inline-release-status" aria-label="内测运行中">
+          <span className="inline-release-orbit" aria-hidden="true"><i /></span>
+          <span className="inline-release-status-copy">
+            <b>{LATEST_PRODUCT_RELEASE.status}</b>
+            <small>内测进行中</small>
+          </span>
+        </span>
+        <span className="inline-release-copy">
+          <b>{LATEST_PRODUCT_RELEASE.title}</b>
+          <span>{LATEST_PRODUCT_RELEASE.summary}</span>
+        </span>
         <button
+          className="inline-release-action"
           type="button"
           aria-expanded={open}
           aria-controls="inline-release-detail"
           onClick={() => setOpen((current) => !current)}
         >
-          {open ? '收起' : '了解内测'}
+          <span className="inline-release-action-label">{open ? '收起' : '了解内测'}</span>
+          <span className="inline-release-action-label-mobile">{open ? '收起' : '查看'}</span>
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d={open ? 'm6 12 4-4 4 4' : 'm8 5 5 5-5 5'} />
+          </svg>
         </button>
-        <button type="button" aria-label="关闭平台公告" onClick={dismiss}>×</button>
+        <button className="inline-release-close" type="button" aria-label="关闭平台公告" onClick={dismiss}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
+        </button>
       </div>
-      {open && (
+      <SmoothCollapse open={open}>
         <div className="inline-release-detail" id="inline-release-detail">
           <header>
-            <b>{LATEST_PRODUCT_RELEASE.title}</b>
+            <span className="inline-release-detail-status">
+              {LATEST_PRODUCT_RELEASE.status} · {LATEST_PRODUCT_RELEASE.version}
+            </span>
             <time dateTime={LATEST_PRODUCT_RELEASE.publishedAt}>
               {formatReleaseTimestamp(LATEST_PRODUCT_RELEASE.publishedAt)}
             </time>
@@ -82,7 +96,7 @@ export default function InlineReleaseNotice({ hidden = false }: Props) {
             ))}
           </ul>
         </div>
-      )}
+      </SmoothCollapse>
     </section>
   )
 }

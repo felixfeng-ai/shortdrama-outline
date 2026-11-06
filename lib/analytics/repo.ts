@@ -11,6 +11,13 @@ const PROPERTY_KEYS = new Set([
   "mode",
   "from",
   "to",
+  "appVersion",
+  "buildVersion",
+  "platform",
+  "osVersion",
+  "deviceModel",
+  "errorName",
+  "errorCode",
 ])
 
 export interface AnalyticsEventInput {
