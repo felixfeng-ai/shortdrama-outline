@@ -57,7 +57,7 @@ test("WFS3 总览首屏使用确认稿主区和右栏，不再以故事输入为
   assert.match(home, /项目脉搏/)
   assert.doesNotMatch(home, /IdeaPanel/)
   assert.match(home, /onContinue/)
-  assert.match(home, /onOpenCanvas/)
+  assert.doesNotMatch(home, /onOpenCanvas/)
 })
 
 test("WFS4 画布使用真实 CanvasGraphWorkspace 并内嵌显示", () => {

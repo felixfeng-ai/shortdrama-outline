@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server'
 import { errorResponse, ok } from '@/lib/api'
 import { getDbForRequest } from '@/lib/assets/store'
-import { createProject } from '@/lib/assets/repo'
+import { createProject, findProjectByTitle } from '@/lib/assets/repo'
 import { persistIfProject } from '@/lib/assets/persist'
 import { saveProjectContext } from '@/lib/assets/project-context'
 import {
@@ -32,6 +32,10 @@ export async function POST(req: Request) {
   try {
     const db = getDbForRequest()
     const ownerId = resolveProjectOwner(db, req)
+    const existing = findProjectByTitle(db, SAMPLE_TITLE, ownerId)
+    if (existing) {
+      return NextResponse.json(ok({ project: existing, reused: true }))
+    }
     const project = createProject(db, SAMPLE_TITLE, ownerId)
     saveProjectContext(db, project.id, ownerId, {
       brief: SAMPLE_BRIEF,
@@ -49,7 +53,7 @@ export async function POST(req: Request) {
     persistIfProject(db, project.id, 'scenes', SAMPLE_SCENES, { kinds: ['episodes'] })
     persistIfProject(db, project.id, 'shots', SAMPLE_SHOTS, { kinds: ['scenes', 'visualCharacters', 'visualPlaces'] })
 
-    return NextResponse.json(ok({ project }))
+    return NextResponse.json(ok({ project, reused: false }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

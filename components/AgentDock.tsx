@@ -33,6 +33,7 @@ import SmoothCollapse from './SmoothCollapse'
 import StreamingText from './StreamingText'
 import AgentRichText from './AgentRichText'
 import AgentRunPanel from './AgentRunPanel'
+import AgentIntentBadge from './AgentIntentBadge'
 
 type MaybePromise<T> = T | Promise<T>
 
@@ -846,6 +847,13 @@ export default function AgentDock({
             <p className="border-t border-surface-line px-4 py-2 text-xs text-ink-400">
               本次模型不支持工具调用，只能用对话上下文回答。
             </p>
+          )}
+
+          {input.trim() && (
+            <div className="agent-intent-row">
+              <span>本轮识别</span>
+              <AgentIntentBadge text={input} />
+            </div>
           )}
 
           <form

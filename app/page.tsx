@@ -37,6 +37,8 @@ import ProductionLedgerPanel from '@/components/ProductionLedgerPanel'
 import TodoPanel from '@/components/TodoPanel'
 import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
 import CanvasGraphWorkspace from '@/components/CanvasGraphWorkspace'
+import CanvasViewSwitch, { type CanvasWorkspaceView } from '@/components/CanvasViewSwitch'
+import ProductionCanvas from '@/components/ProductionCanvas'
 import SkillCatalog from '@/components/SkillCatalog'
 import WorkspaceModeTabs from '@/components/WorkspaceModeTabs'
 import InlineReleaseNotice from '@/components/InlineReleaseNotice'
@@ -90,6 +92,7 @@ import {
   listProjects,
   renameProject,
   deleteProject,
+  bulkDeleteProjects,
   fetchQuota,
   fetchProjectContext,
   fetchProjectMaterials,
@@ -111,7 +114,7 @@ import {
   saveProjectContext,
   findImpact,
 } from '@/lib/assets/api'
-import type { ProjectDecisionDto } from '@/lib/assets/api'
+import type { ProjectBulkDeleteScope, ProjectDecisionDto } from '@/lib/assets/api'
 import type { ProjectCanonDto } from '@/lib/assets/api'
 import type { ProjectSkillBinding } from '@/lib/skills/personal'
 import type { EntityComment } from '@/lib/entity-comments'
@@ -196,6 +199,21 @@ import { fetchLocalizationBackup } from '@/lib/localization/client'
 import { fetchNovelEditions, fetchNovelWorkspace } from '@/lib/novels/client'
 import { buildNovelExport } from '@/lib/novels/export'
 import { novelPresetLabel } from '@/lib/novels/presets'
+import {
+  createProductionPlan as createProjectProductionPlan,
+  extendProductionPlan as extendProjectProductionPlan,
+  fetchProductionPlan,
+  type ProductionPlanDto,
+} from '@/lib/production/client'
+import {
+  PRODUCTION_MODE_PRESETS,
+  type ProductionPlanSuggestion,
+} from '@/lib/production/presets'
+import type {
+  ProductionMode,
+  ProductionStageKey,
+  ProjectType,
+} from '@/lib/production/types'
 import { keyframeManifestEntry } from '@/lib/generation/export'
 import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
 import {
@@ -414,6 +432,7 @@ export default function Home() {
       setWorkspaceStepDetail(nextMode === 'overview' && Boolean(step))
       setCanvasOpen(nextMode === 'canvas')
       setCanvasInitialMode('graph')
+      setCanvasView('production')
     }
     const syncFromPopState = () => {
       syncRouteFromUrl()
@@ -477,6 +496,8 @@ export default function Home() {
   const [agentUnread, setAgentUnread] = useState(0)
   /** 项目画布：全局节点视图，关键字段可直接修改 */
   const [canvasOpen, setCanvasOpen] = useState(false)
+  /** 生产画布是默认视图，自由画布保留给熟悉节点编排的高级用户。 */
+  const [canvasView, setCanvasView] = useState<CanvasWorkspaceView>("production")
   /** 工作台三种同层模式：总览、创作、画布。 */
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('overview')
   /** 从顶层「画布」进入时优先落到真实可拖拽的编排画布。 */
@@ -554,6 +575,16 @@ export default function Home() {
   }, [deckOpen])
   /** 本剧集数：默认 30，记住上次选择 */
   const [episodeCount, setEpisodeCount] = useState(DEFAULT_EPISODE_COUNT)
+  /** 生产计划是样片/小批/整季的真实事实源，未设置时首页先让用户做选择。 */
+  const [productionPlan, setProductionPlan] = useState<ProductionPlanDto | null>(null)
+  const [productionProjectType, setProductionProjectType] = useState<ProjectType | null>(null)
+  const [productionMode, setProductionMode] = useState<ProductionMode | null>(null)
+  const [productionTargetEpisodes, setProductionTargetEpisodes] = useState(
+    PRODUCTION_MODE_PRESETS.sample.defaultEpisodes,
+  )
+  const [productionSaving, setProductionSaving] = useState(false)
+  const [productionPromoting, setProductionPromoting] = useState(false)
+  const [productionError, setProductionError] = useState<string | null>(null)
   const episodeProjectRef = useRef<string | null>(null)
   useEffect(() => {
     try {
@@ -621,6 +652,11 @@ export default function Home() {
       setVoiceConfig(null)
       setTimelineVersions([])
       setJudgments([])
+      setProductionPlan(null)
+      setProductionProjectType(null)
+      setProductionMode(null)
+      setProductionTargetEpisodes(PRODUCTION_MODE_PRESETS.sample.defaultEpisodes)
+      setProductionError(null)
       return
     }
     if (briefLoadedFor.current === projectId) return
@@ -666,6 +702,7 @@ export default function Home() {
           generationData,
           voiceData,
           timelineData,
+          productionData,
         ] = await Promise.all([
           fetchProjectContext(projectId),
           fetchProjectDecisions(projectId),
@@ -676,6 +713,7 @@ export default function Home() {
           fetchProjectGenerationAssets(projectId).catch(() => ({ tasks: [], assets: [] })),
           fetchVoiceProfiles(projectId).catch(() => null),
           fetchLatestTimelineVersions(projectId).catch(() => []),
+          fetchProductionPlan(projectId).catch(() => null),
         ])
         if (cancelled) return
         setProjectSkill(skillBinding)
@@ -685,6 +723,16 @@ export default function Home() {
         setProductionAssets(generationData.assets)
         setVoiceConfig(voiceData)
         setTimelineVersions(timelineData)
+        setProductionPlan(productionData)
+        if (productionData) {
+          setProductionProjectType(productionData.projectType)
+          setProductionMode(productionData.mode)
+          setProductionTargetEpisodes(productionData.targetEpisodes)
+        } else {
+          setProductionProjectType(null)
+          setProductionMode(null)
+          setProductionTargetEpisodes(PRODUCTION_MODE_PRESETS.sample.defaultEpisodes)
+        }
         setCanon(canonData)
         setDecisions(decisionData.decisions)
         if (decisionData.judgments.length > 0) {
@@ -701,7 +749,7 @@ export default function Home() {
         if (server) {
           setBrief(server.brief)
           setLook(server.look)
-          setEpisodeCount(server.episodeCount)
+          setEpisodeCount(productionData?.targetEpisodes ?? server.episodeCount)
           setContextVersion(server.version)
           lastContextSig.current = JSON.stringify([
             briefSignature(server.brief),
@@ -716,6 +764,7 @@ export default function Home() {
           })
           if (cancelled) return
           setContextVersion(migrated.version)
+          if (productionData) setEpisodeCount(productionData.targetEpisodes)
           lastContextSig.current = JSON.stringify([
             briefSignature(localBrief),
             lookSignature(localLook),
@@ -1347,7 +1396,7 @@ export default function Home() {
   const canJump = () => true
 
   /** 画布是工作台 URL 的一等状态；确认稿中它内嵌在主工作区，不再是全屏覆盖层。 */
-  const openCanvas = (initialMode: 'production' | 'flow' | 'graph' = 'graph') => {
+  const openCanvas = (initialMode: 'production' | 'flow' | 'graph' = 'production') => {
     const search = withWorkspaceModeQuery(window.location.search, 'canvas')
     const href = `${window.location.pathname}${search}${window.location.hash}`
     const previous = window.history.state && typeof window.history.state === 'object'
@@ -1355,6 +1404,7 @@ export default function Home() {
       : {}
     window.history.pushState({ ...previous, canvasEntry: true }, '', href)
     setCanvasInitialMode(initialMode)
+    setCanvasView('production')
     setWorkspaceMode('canvas')
     setWorkspaceStepDetail(false)
     setCanvasOpen(false)
@@ -1468,6 +1518,14 @@ export default function Home() {
   const openWorkspaceAssets = () => {
     setProjectToolsTab('assets')
     setProjectToolsOpen(true)
+  }
+
+  const openWorkspaceSource = () => {
+    const params = new URLSearchParams()
+    if (projectId) params.set('project', projectId)
+    params.set('step', view)
+    params.set('mode', 'source')
+    window.location.assign(`/skills?${params.toString()}`)
   }
 
   const openWorkspaceLedger = () => {
@@ -1828,6 +1886,98 @@ export default function Home() {
       // 建项目失败不阻断生成：退化为匿名使用（F3 降级不阻断）
       return null
     }
+  }
+
+  /**
+   * 建立生产计划。项目仍是惰性创建：用户确认类型和模式后才会留下空项目。
+   * 快速出片暂时复用样片目标，后续接入独立 Composer 时不需要改项目协议。
+   */
+  async function handleCreateProductionPlan(suggestion?: ProductionPlanSuggestion) {
+    const selectedProjectType = suggestion ? "drama" : productionProjectType
+    if (!selectedProjectType || productionSaving) return
+    if (selectedProjectType === "quick_video") {
+      openWorkspaceMode("create")
+      setNotice("快速出片保留在创作技能页；它不会强制建立六步短剧项目。")
+      return
+    }
+    const mode = suggestion?.mode
+      ?? (selectedProjectType === "drama" ? productionMode : "sample")
+    if (selectedProjectType === "drama" && !mode) {
+      setProductionError("请先选择生产模式。")
+      return
+    }
+
+    setProductionSaving(true)
+    setProductionError(null)
+    try {
+      const pid = projectId ?? await ensureProject(idea.trim().slice(0, 20) || "未命名短剧")
+      if (!pid) throw new Error("项目创建失败，请稍后重试。")
+      const plan = await createProjectProductionPlan(pid, {
+        projectType: selectedProjectType,
+        mode: mode!,
+        targetEpisodes: suggestion?.targetEpisodes ?? productionTargetEpisodes,
+      })
+      setProductionPlan(plan)
+      setProductionProjectType(plan.projectType)
+      setProductionMode(plan.mode)
+      setProductionTargetEpisodes(plan.targetEpisodes)
+      setEpisodeCount(plan.targetEpisodes)
+      await refreshProjects()
+      setNotice(`已建立${plan.mode === "sample" ? "样片" : plan.mode === "batch" ? "小批" : "整季"}生产计划，目标 ${plan.targetEpisodes} 集。`)
+    } catch (error) {
+      setProductionError(error instanceof Error ? error.message : "生产计划建立失败，请重试。")
+    } finally {
+      setProductionSaving(false)
+    }
+  }
+
+  /** 样片晋级小批、小批晋级整季时，只扩展缺失集并保留已有集号。 */
+  async function handlePromoteProductionPlan() {
+    if (!projectId || !productionPlan || productionPromoting) return
+    const nextMode: ProductionMode | null = productionPlan.mode === "sample"
+      ? "batch"
+      : productionPlan.mode === "batch"
+        ? "season"
+        : null
+    if (!nextMode) return
+    const nextTarget = nextMode === "batch" ? 10 : 30
+
+    setProductionPromoting(true)
+    setProductionError(null)
+    try {
+      const result = await extendProjectProductionPlan(projectId, {
+        mode: nextMode,
+        targetEpisodes: nextTarget,
+        existingEpisodeNumbers: episodes.map((episode) => episode.number),
+      })
+      setProductionPlan(result.plan)
+      setProductionMode(result.plan.mode)
+      setProductionTargetEpisodes(result.plan.targetEpisodes)
+      setEpisodeCount(result.plan.targetEpisodes)
+      setNotice(
+        `已晋级${nextMode === "batch" ? "小批" : "整季"}，新增 ${result.extension.newEpisodeNumbers.length} 集；已有 ${result.extension.existingEpisodeNumbers.length} 集保持原版本。`,
+      )
+    } catch (error) {
+      setProductionError(error instanceof Error ? error.message : "生产计划晋级失败，请重试。")
+    } finally {
+      setProductionPromoting(false)
+    }
+  }
+
+  /** 生产阶段只做导航，具体编辑仍落在现有六步，避免正文出现第二套事实源。 */
+  function openProductionStage(stage: ProductionStageKey) {
+    const target: StepKey = stage === "source" || stage === "characters"
+      ? "characters"
+      : stage === "outline"
+        ? "acts"
+        : stage === "episodes"
+          ? "episodes"
+          : stage === "visuals"
+            ? "visuals"
+            : stage === "scenes"
+              ? "scenes"
+              : "shots"
+    goToStep(target)
   }
 
   /** 挂一张本地图到角色上：只登记引用与指纹，图不上传（P1） */
@@ -2985,6 +3135,13 @@ export default function Home() {
     setVisualsBuiltFrom(null)
     setShotsBuiltFrom(null)
     setImpact(null)
+    setProductionPlan(null)
+    setProductionProjectType(null)
+    setProductionMode(null)
+    setProductionTargetEpisodes(PRODUCTION_MODE_PRESETS.sample.defaultEpisodes)
+    setProductionSaving(false)
+    setProductionPromoting(false)
+    setProductionError(null)
     setNotice(null)
   }
 
@@ -3029,6 +3186,27 @@ export default function Home() {
     }
   }
 
+  async function handleBulkDeleteProjects(scope: ProjectBulkDeleteScope): Promise<boolean> {
+    try {
+      const result = await bulkDeleteProjects(scope)
+      if (projectId && result.deletedIds.includes(projectId)) {
+        clearWorkspace()
+        setProjectId(null)
+        writeProjectToUrl(null, 'replace')
+      }
+      const remaining = await refreshProjects()
+      setNotice(
+        scope === 'duplicate-samples'
+          ? `已清理 ${result.deletedCount} 个重复示例，保留一份示例。当前还剩 ${remaining.length} 个项目。`
+          : `已删除 ${result.deletedCount} 个项目，当前项目列表已清空。`,
+      )
+      return true
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '批量清理失败，请重试')
+      return false
+    }
+  }
+
   /** 新建：先给一张白纸，下一次生成时才真正落成项目 */
   function handleNewProject() {
     writeProjectToUrl(null, 'push')
@@ -3043,13 +3221,17 @@ export default function Home() {
    */
   async function handleLoadSample() {
     try {
-      const { project } = await loadSampleProject()
+      const { project, reused } = await loadSampleProject()
       await refreshProjects()
       clearWorkspace()
       const restored = await loadProject(project.id).catch(() => false)
       if (!restored) throw new Error('示例没有载入成功，请重试')
       writeProjectToUrl(project.id, 'push')
-      setNotice(`已载入示例项目「${project.title}」——六步都有内容，可以直接乱点着看。`)
+      setNotice(
+        reused
+          ? `已打开现有示例项目「${project.title}」，没有重复创建副本。`
+          : `已载入示例项目「${project.title}」——六步都有内容，可以直接乱点着看。`,
+      )
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '示例载入失败，请重试')
     }
@@ -3617,6 +3799,7 @@ export default function Home() {
         onHome={goWorkspaceHome}
         onSwitchProject={(id) => { void handleSwitchProject(id) }}
         onDeleteProject={handleDeleteProject}
+        onBulkDeleteProjects={handleBulkDeleteProjects}
         onNewProject={handleNewProject}
         onOpenTodo={openWorkspaceTodo}
         onOpenCreate={() => openWorkspaceMode('create')}
@@ -3663,7 +3846,6 @@ export default function Home() {
               completed={stepCompleted}
               canJump={canJump}
               onContinue={goToStep}
-              onOpenCanvas={() => openCanvas('graph')}
               onOpenStep={goToStep}
               onOpenArtifacts={openArtifactCenter}
               onOpenAgent={() => {
@@ -3671,7 +3853,33 @@ export default function Home() {
                 setAgentOpen(true)
                 setInspectorOpen(false)
               }}
+              onOpenSource={openWorkspaceSource}
               onLoadSample={() => { void handleLoadSample() }}
+              productionPlan={productionPlan}
+              productionProjectType={productionProjectType}
+              productionMode={productionMode}
+              productionTargetEpisodes={productionTargetEpisodes}
+              productionSaving={productionSaving}
+              productionPromoting={productionPromoting}
+              productionError={productionError}
+              onProductionProjectTypeChange={(value) => {
+                setProductionProjectType(value)
+                setProductionError(null)
+                if (value !== "drama") setProductionMode(null)
+              }}
+              onProductionModeChange={(value) => {
+                setProductionMode(value)
+                setProductionTargetEpisodes(
+                  value === "sample" ? 3 : value === "batch" ? 10 : 30,
+                )
+                setProductionError(null)
+              }}
+              onProductionTargetEpisodesChange={setProductionTargetEpisodes}
+              onCreateProductionPlan={(suggestion) => {
+                void handleCreateProductionPlan(suggestion)
+              }}
+              onPromoteProductionPlan={() => { void handlePromoteProductionPlan() }}
+              onOpenProductionStage={openProductionStage}
             />
           )}
 
@@ -4302,24 +4510,39 @@ export default function Home() {
               <header className="wfx-canvas-head">
                 <div>
                   <h1 id="wfx-canvas-title">画布</h1>
-                  <p>复用线上真实编排画布，可拖拽、缩放、连线并自动同步。</p>
+                  <p>
+                    {canvasView === "production"
+                      ? "从项目事实查看人物、分集、场次、分镜、视频和交付缺口。"
+                      : "复用线上真实编排画布，可拖拽、缩放、连线并自动同步。"}
+                  </p>
                 </div>
                 <div className="wfx-canvas-actions">
+                  <CanvasViewSwitch value={canvasView} onChange={setCanvasView} />
                   <button className="wfx-button is-secondary" type="button" onClick={openCanvasWindow}>
                     在新窗口打开
                   </button>
-                  <button className="wfx-button is-secondary" type="button" onClick={() => openCanvas('graph')}>
-                    适应当前窗口
-                  </button>
                 </div>
               </header>
-              <div className="wfx-canvas-frame">
-                <CanvasGraphWorkspace
-                  projectId={projectId}
-                  projectTitle={workspaceProjectTitle}
-                  onOpenStep={(step) => goToStep(step)}
+              {canvasView === "production" ? (
+                <ProductionCanvas
+                  productionPlan={productionPlan}
+                  characterCount={characters.length}
+                  episodes={episodes}
+                  scenes={scenes}
+                  shots={shots}
+                  assets={productionAssets}
+                  onOpenShot={(shotId) => openCanvasItem("shots", shotId)}
+                  onShowFlow={() => goToStep("shots")}
                 />
-              </div>
+              ) : (
+                <div className="wfx-canvas-frame">
+                  <CanvasGraphWorkspace
+                    projectId={projectId}
+                    projectTitle={workspaceProjectTitle}
+                    onOpenStep={(step) => goToStep(step)}
+                  />
+                </div>
+              )}
             </section>
           )}
 

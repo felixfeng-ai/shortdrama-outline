@@ -9,6 +9,7 @@ import { ARTIFACT_KINDS } from "../lib/assets/types.ts"
 import { hasAllAnchors } from "../lib/assets/anchors.ts"
 import { getProjectContext } from "../lib/assets/project-context.ts"
 import { SAMPLE_SHOTS, SAMPLE_VISUALS } from "../lib/sample.ts"
+import { listProjects } from "../lib/assets/repo.ts"
 
 // ── S 示例项目 ──
 //
@@ -65,4 +66,18 @@ test("S4 示例项目自带一份可用的创作契约 V2", async () => {
   assert.match(context.brief.payoff, /七桩交易|真相|代价/)
   assert.match(context.brief.destination, /选择|放弃|道歉|真相/)
   assert.equal(context.brief.audience, "25-35 女性")
+})
+
+test("S5 同一用户重复载入示例时复用已有项目，不再制造副本", async () => {
+  __resetDbForTests(":memory:")
+  const first = await (await postSample(
+    new Request("http://localhost/api/sample", { method: "POST" }),
+  )).json()
+  const second = await (await postSample(
+    new Request("http://localhost/api/sample", { method: "POST" }),
+  )).json()
+
+  assert.equal(second.data.project.id, first.data.project.id)
+  assert.equal(second.data.reused, true)
+  assert.equal(listProjects(getDbForRequest(), "local").length, 1)
 })

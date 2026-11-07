@@ -31,6 +31,15 @@ export interface ProjectDto {
   createdAt: number
   updatedAt: number
 }
+
+export type ProjectBulkDeleteScope = "duplicate-samples" | "all"
+
+export interface ProjectBulkDeleteResult {
+  scope: ProjectBulkDeleteScope
+  deletedCount: number
+  deletedIds: string[]
+  keptProjectId: string | null
+}
 export interface SnapshotDto<T = unknown> {
   id: string; projectId?: string; branchId?: string; kind: string; version: number; payload: T; parents: string[]; createdAt: number
 }
@@ -137,8 +146,12 @@ export const deleteProject = (id: string) =>
       return true
     })
 
-/** 载入示例项目：服务端写一整套六步产物，返回新项目（不调模型、不扣额度） */
-export const loadSampleProject = () => postJson<{ project: ProjectDto }>('/api/sample', {})
+export const bulkDeleteProjects = (scope: ProjectBulkDeleteScope) =>
+  postJson<ProjectBulkDeleteResult>("/api/projects/bulk", { scope })
+
+/** 载入示例项目：已有示例时直接复用，不会继续制造重复副本。 */
+export const loadSampleProject = () =>
+  postJson<{ project: ProjectDto; reused: boolean }>('/api/sample', {})
 
 export const listSnapshots = <T>(projectId: string, kind: string, branchId = "") =>
   fetch(`/api/snapshots?projectId=${encodeURIComponent(projectId)}&kind=${encodeURIComponent(kind)}${branchId ? `&branchId=${encodeURIComponent(branchId)}` : ""}`)

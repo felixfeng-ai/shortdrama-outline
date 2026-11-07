@@ -85,6 +85,22 @@ export function listProjects(db: DatabaseSync, ownerId?: string): Project[] {
   return (rows as ProjectRow[]).map(toProject)
 }
 
+/** 按标题查找当前 owner 下最近更新的项目，供示例等固定项目复用。 */
+export function findProjectByTitle(
+  db: DatabaseSync,
+  title: string,
+  ownerId?: string,
+): Project | null {
+  const row = ownerId
+    ? db.prepare(
+      "SELECT * FROM projects WHERE title = ? AND owner_id = ? ORDER BY updated_at DESC LIMIT 1",
+    ).get(title, ownerId)
+    : db.prepare(
+      "SELECT * FROM projects WHERE title = ? ORDER BY updated_at DESC LIMIT 1",
+    ).get(title)
+  return row ? toProject(row as ProjectRow) : null
+}
+
 /** 仅用于本地升级：把旧版没有 owner 的项目一次性归到当前本地会话。 */
 export function claimLegacyProjects(db: DatabaseSync, ownerId: string): number {
   const result = db.prepare("UPDATE projects SET owner_id = ? WHERE owner_id IS NULL").run(ownerId)

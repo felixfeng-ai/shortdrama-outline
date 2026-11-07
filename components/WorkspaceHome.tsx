@@ -4,6 +4,13 @@ import type { TodoItem } from '@/lib/todo'
 import type { Act, Character, Episode, StepKey } from '@/lib/types'
 import { STEPS } from '@/lib/types'
 import type { Scene, Shot, VisualCharacter } from '@/lib/assets/types'
+import type {
+  ProductionMode,
+  ProductionStageKey,
+  ProjectType,
+} from '@/lib/production/types'
+import type { ProductionPlanDto } from '@/lib/production/client'
+import type { ProductionPlanSuggestion } from '@/lib/production/presets'
 import { buildWorkbenchCommand } from '@/lib/workbench-command'
 import {
   buildProjectPulse,
@@ -11,6 +18,8 @@ import {
   selectCurrentShot,
   workspaceStepLabel,
 } from '@/lib/workspace-view'
+import ProductionStageHeader from './ProductionStageHeader'
+import WorkspaceOnboarding from './WorkspaceOnboarding'
 
 interface Props {
   projectTitle: string
@@ -27,24 +36,28 @@ interface Props {
   completed: Record<StepKey, boolean>
   canJump: (step: StepKey) => boolean
   onContinue: (step: StepKey) => void
-  onOpenCanvas: () => void
   onOpenStep: (step: StepKey) => void
   onOpenArtifacts: () => void
   onOpenAgent: () => void
+  onOpenSource: () => void
   onLoadSample: () => void
+  productionPlan: ProductionPlanDto | null
+  productionProjectType: ProjectType | null
+  productionMode: ProductionMode | null
+  productionTargetEpisodes: number
+  productionSaving: boolean
+  productionPromoting: boolean
+  productionError: string | null
+  onProductionProjectTypeChange: (value: ProjectType) => void
+  onProductionModeChange: (value: ProductionMode) => void
+  onProductionTargetEpisodesChange: (value: number) => void
+  onCreateProductionPlan: (suggestion?: ProductionPlanSuggestion) => void
+  onPromoteProductionPlan: () => void
+  onOpenProductionStage: (stage: ProductionStageKey) => void
 }
 
 function ArrowIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg>
-}
-
-function CanvasIcon() {
-  return (
-    <svg viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="5" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" /><circle cx="10" cy="15" r="1.5" />
-      <path d="M6.5 5h7M6 6.5l3 7M14 6.5l-3 7" />
-    </svg>
-  )
 }
 
 export default function WorkspaceHome({
@@ -62,11 +75,24 @@ export default function WorkspaceHome({
   completed,
   canJump,
   onContinue,
-  onOpenCanvas,
   onOpenStep,
   onOpenArtifacts,
   onOpenAgent,
+  onOpenSource,
   onLoadSample,
+  productionPlan,
+  productionProjectType,
+  productionMode,
+  productionTargetEpisodes,
+  productionSaving,
+  productionPromoting,
+  productionError,
+  onProductionProjectTypeChange,
+  onProductionModeChange,
+  onProductionTargetEpisodesChange,
+  onCreateProductionPlan,
+  onPromoteProductionPlan,
+  onOpenProductionStage,
 }: Props) {
   const step = STEPS.find((item) => item.index === currentStep) ?? STEPS[0]
   const command = buildWorkbenchCommand({
@@ -100,6 +126,28 @@ export default function WorkspaceHome({
       ? `当前主链停在「${step.nav}」。先完成这一步，再进入下一步生成。`
       : "这个项目还没有开始。载入示例查看完整流程，或从核心人物开始建立故事圣经。"
   const recentShots = [...shots].sort((a, b) => a.shot - b.shot).slice(0, 3)
+  const missingAssetCount =
+    characters.filter((character) => !visuals.some((visual) => visual.name === character.name)).length
+    + shots.filter((shot) => shot.missingRefFor.length > 0).length
+  const blockedTaskCount = todoItems.filter((item) => item.kind === "fix").length
+  const hasExistingContent = Boolean(
+    characters.length
+    || acts.length
+    || episodes.length
+    || visuals.length
+    || scenes.length
+    || shots.length,
+  )
+
+  if (!hasExistingContent) {
+    return (
+      <WorkspaceOnboarding
+        onCreateIdea={() => onOpenStep("characters")}
+        onOpenSource={onOpenSource}
+        onLoadSample={onLoadSample}
+      />
+    )
+  }
 
   return (
     <div className="wfx-home">
@@ -111,14 +159,32 @@ export default function WorkspaceHome({
           </p>
         </div>
         <div className="wfx-page-actions">
-          <button className="wfx-button is-secondary" type="button" onClick={onOpenCanvas}>
-            <CanvasIcon />编排画布
-          </button>
           <button className="wfx-button" type="button" onClick={() => onContinue(step.key)}>
             继续{step.nav}<ArrowIcon />
           </button>
         </div>
       </header>
+
+      <ProductionStageHeader
+        plan={productionPlan}
+        projectType={productionProjectType}
+        mode={productionMode}
+        targetEpisodes={productionTargetEpisodes}
+        episodeCount={episodes.length}
+        missingAssetCount={missingAssetCount}
+        blockedTaskCount={blockedTaskCount}
+        saving={productionSaving}
+        promoting={productionPromoting}
+        error={productionError}
+        hasExistingContent={hasExistingContent}
+        onProjectTypeChange={onProductionProjectTypeChange}
+        onModeChange={onProductionModeChange}
+        onTargetEpisodesChange={onProductionTargetEpisodesChange}
+        onCreatePlan={() => onCreateProductionPlan()}
+        onAcceptSuggestion={onCreateProductionPlan}
+        onPromote={onPromoteProductionPlan}
+        onOpenStage={onOpenProductionStage}
+      />
 
       <section className="wfx-command" aria-labelledby="wfx-command-title">
         <div className="wfx-command-copy">

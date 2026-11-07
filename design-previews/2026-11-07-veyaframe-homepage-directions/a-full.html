@@ -1,0 +1,1190 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08090A">
+  <title>VeyaFrame 首页 · A 石墨导演台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #08090a;
+      --side: #0a0b0c;
+      --panel: #101214;
+      --raised: #15181a;
+      --floating: #1b1f22;
+      --line: rgba(255,255,255,.075);
+      --line-strong: rgba(255,255,255,.13);
+      --text: #f0f2ef;
+      --text-2: #b0b5b5;
+      --text-3: #8f9697;
+      --disabled: #687174;
+      --primary: #f2f2ee;
+      --primary-ink: #0d0e0f;
+      --accent: #8dc8dc;
+      --warning: #d58d73;
+      --danger: #e08b84;
+      --font-ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --font-brand: "Space Grotesk", var(--font-ui);
+      --font-num: "Space Grotesk", var(--font-ui);
+      --ease-out: cubic-bezier(.23, 1, .32, 1);
+      --radius: 8px;
+      --sidebar: 232px;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--canvas); }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 14px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      font-variant-numeric: tabular-nums;
+    }
+    button, input, textarea { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 3px;
+    }
+    button:active { transform: scale(.98); }
+    img { display: block; max-width: 100%; }
+    .skip-link {
+      position: fixed;
+      z-index: 100;
+      top: 8px;
+      left: 8px;
+      transform: translateY(-160%);
+      padding: 9px 12px;
+      background: var(--primary);
+      color: var(--primary-ink);
+      border-radius: 6px;
+      text-decoration: none;
+    }
+    .skip-link:focus { transform: translateY(0); }
+    .app { min-height: 100dvh; }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 20;
+      width: var(--sidebar);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--line);
+      background: var(--side);
+    }
+    .brand {
+      min-height: 66px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--font-brand);
+    }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      flex: none;
+      color: var(--text);
+    }
+    .brand-mark svg { width: 30px; height: 30px; }
+    .brand-name { font-size: 15px; font-weight: 600; line-height: 1.1; }
+    .brand-sub { margin-top: 2px; color: var(--text-3); font-family: var(--font-ui); font-size: 11px; font-weight: 400; }
+    .workspace-switch {
+      margin: 12px 12px 6px;
+      min-height: 42px;
+      padding: 0 11px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-2);
+      text-align: left;
+    }
+    .workspace-switch span { min-width: 0; display: grid; gap: 1px; }
+    .workspace-switch b { overflow: hidden; color: var(--text); font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    .workspace-switch small { color: var(--text-3); font-size: 11px; }
+    .workspace-switch svg { width: 14px; height: 14px; margin-left: auto; fill: none; stroke: var(--text-3); }
+    .side-scroll { min-height: 0; flex: 1; overflow-y: auto; padding: 0 10px 12px; scrollbar-width: thin; scrollbar-color: #2f3537 transparent; }
+    .side-group { margin-top: 13px; }
+    .side-label { padding: 6px 9px; color: #7b8385; font-size: 11px; }
+    .side-item {
+      width: 100%;
+      min-height: 38px;
+      padding: 0 9px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-3);
+      text-align: left;
+      text-decoration: none;
+      transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
+    }
+    .side-item:hover { background: var(--raised); color: var(--text-2); }
+    .side-item.is-active { background: #1a1d1f; color: var(--text); }
+    .side-item svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; }
+    .side-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .side-count {
+      margin-left: auto;
+      min-width: 20px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #4a4640;
+      border-radius: 999px;
+      color: #d4a681;
+      font-family: var(--font-num);
+      font-size: 11px;
+    }
+    .project-menu { margin-top: 6px; }
+    .project-menu summary {
+      min-height: 36px;
+      padding: 0 9px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border-radius: 7px;
+      color: var(--text-2);
+      cursor: pointer;
+      list-style: none;
+    }
+    .project-menu summary::-webkit-details-marker { display: none; }
+    .project-menu summary svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+    .project-menu summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .project-menu summary::after { content: "⌄"; margin-left: auto; color: var(--text-3); font-size: 11px; }
+    .project-menu[open] summary::after { content: "⌃"; }
+    .project-steps { margin: 4px 0 0 17px; padding-left: 9px; border-left: 1px solid var(--line); }
+    .project-step {
+      min-height: 30px;
+      padding: 0 7px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 5px;
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .project-step.current { background: #17191a; color: var(--text); }
+    .project-step i { width: 5px; height: 5px; border-radius: 50%; background: #3c4547; }
+    .project-step.done i { background: var(--accent); }
+    .project-step.current i { background: var(--primary); }
+    .side-bottom {
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .account {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 34px;
+    }
+    .avatar {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #3a3f40;
+      border-radius: 50%;
+      color: var(--text);
+      font-family: var(--font-num);
+      font-size: 11px;
+    }
+    .account b { display: block; color: var(--text-2); font-size: 11px; font-weight: 500; }
+    .account small { display: block; color: var(--text-3); font-size: 11px; }
+    .quota {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 9px;
+      font-family: var(--font-num);
+    }
+    .quota b { color: var(--text); font-size: 11px; font-weight: 500; }
+    .quota span { font-size: 11px; }
+    .quota-track {
+      height: 3px;
+      margin-top: 6px;
+      overflow: hidden;
+      background: #232728;
+    }
+    .quota-track span { display: block; width: 86%; height: 100%; background: var(--accent); }
+    .main { min-height: 100dvh; margin-left: var(--sidebar); }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      min-height: 58px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8,9,10,.96);
+    }
+    .mobile-menu {
+      display: none;
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-2);
+    }
+    .breadcrumbs {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-3);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .breadcrumbs b { overflow: hidden; color: var(--text); font-weight: 500; text-overflow: ellipsis; }
+    .top-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+    .top-button {
+      min-height: 32px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-2);
+      font-size: 11px;
+      text-decoration: none;
+      transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
+    }
+    .top-button:hover { border-color: var(--line-strong); color: var(--text); }
+    .top-button.primary-action { border-color: var(--line-strong); background: var(--primary); color: var(--primary-ink); font-weight: 600; }
+    .save-state { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 11px; }
+    .save-state i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .account-button {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: transparent;
+      color: var(--text);
+    }
+    .content { width: 100%; max-width: 1500px; margin: 0 auto; padding: 0 28px 34px; }
+    .release {
+      min-height: 46px;
+      margin-top: 12px;
+      padding: 0 13px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel);
+    }
+    .release-signal { display: inline-flex; align-items: center; gap: 7px; flex: none; color: var(--accent); font-family: var(--font-num); font-size: 11px; font-weight: 600; }
+    .release-signal i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(141,200,220,.08); }
+    .release-copy { min-width: 0; flex: 1; color: var(--text-2); font-size: 11px; }
+    .release-copy b { color: var(--text); font-weight: 500; }
+    .release-action { flex: none; color: var(--text-3); font-size: 11px; text-decoration: none; }
+    .release-action:hover { color: var(--text); }
+    .modebar {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .mode {
+      min-height: 32px;
+      padding: 0 13px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+      transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
+    }
+    .mode:hover { background: #171a1b; color: var(--text-2); }
+    .mode.active { background: var(--primary); color: var(--primary-ink); font-weight: 600; }
+    .mode-note { margin-left: auto; color: var(--text-3); font-size: 11px; }
+    .home { padding-top: 30px; }
+    .page-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+    .page-head h1 {
+      margin: 0 0 7px;
+      font-family: var(--font-brand);
+      font-size: 32px;
+      line-height: 1.1;
+      font-weight: 600;
+      letter-spacing: -.018em;
+      text-wrap: balance;
+    }
+    .page-head p { margin: 0; color: var(--text-2); font-size: 12px; line-height: 1.6; }
+    .agent-launch {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      flex: none;
+      border: 1px solid rgba(141,200,220,.32);
+      border-radius: 50%;
+      background: #0f1315;
+      color: var(--accent);
+      transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .agent-launch:hover { border-color: rgba(141,200,220,.58); background: #14191b; transform: translateY(-1px); }
+    .agent-launch svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.45; }
+    .creation-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .72fr); gap: 18px; align-items: stretch; }
+    .composer {
+      min-width: 0;
+      min-height: 284px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+    .composer-head {
+      min-height: 46px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border-bottom: 1px solid var(--line);
+    }
+    .source-tab {
+      min-height: 30px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .source-tab:hover { color: var(--text-2); background: #171a1b; }
+    .source-tab.active { color: var(--text); background: #1b1f21; }
+    .composer-status { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 11px; }
+    .composer-status i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .composer textarea {
+      width: 100%;
+      min-height: 118px;
+      flex: 1;
+      resize: none;
+      border: 0;
+      background: transparent;
+      padding: 16px 17px 8px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.7;
+      outline: none;
+    }
+    .composer textarea::placeholder { color: #767f81; }
+    .example-row { padding: 0 16px 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .example-chip {
+      min-height: 25px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .example-chip:hover { border-color: var(--line-strong); color: var(--text-2); }
+    .composer-foot {
+      min-height: 52px;
+      padding: 8px 10px 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid var(--line);
+    }
+    .path-switch {
+      display: inline-flex;
+      padding: 3px;
+      gap: 2px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #090b0c;
+    }
+    .path-switch button {
+      min-height: 29px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .path-switch button.active { background: var(--primary); color: var(--primary-ink); font-weight: 600; }
+    .setting-chip {
+      min-height: 28px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .setting-chip:hover { border-color: var(--line-strong); color: var(--text-2); }
+    .start-button {
+      min-width: 108px;
+      min-height: 34px;
+      margin-left: auto;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--primary);
+      color: var(--primary-ink);
+      font-size: 11px;
+      font-weight: 600;
+      transition: background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .start-button:hover { background: #fff; }
+    .mode-help {
+      min-height: 30px;
+      padding: 0 14px 9px;
+      color: var(--text-3);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .resume {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+    .resume-media { position: relative; height: 142px; overflow: hidden; background: #171a1c; }
+    .resume-media img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.72) contrast(1.08); }
+    .resume-media::after { content: ""; position: absolute; inset: 0; background: rgb(3 4 5 / 38%); }
+    .resume-label { position: absolute; z-index: 1; left: 12px; bottom: 11px; right: 12px; }
+    .resume-label span { display: block; color: rgba(255,255,255,.7); font-size: 11px; }
+    .resume-label b { display: block; margin-top: 2px; color: #fff; font-size: 14px; font-weight: 500; }
+    .resume-body { flex: 1; padding: 12px 13px 13px; display: flex; flex-direction: column; gap: 10px; }
+    .resume-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-3); font-size: 11px; }
+    .status-pill { min-height: 21px; padding: 0 7px; display: inline-flex; align-items: center; border-radius: 999px; background: #24201d; color: #e0ae86; }
+    .resume-step { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 9px; align-items: start; }
+    .resume-step > span { color: var(--text-3); font-family: var(--font-num); font-size: 11px; }
+    .resume-step b { display: block; color: var(--text); font-size: 11px; font-weight: 500; }
+    .resume-step p { margin: 3px 0 0; color: var(--text-3); font-size: 11px; line-height: 1.55; }
+    .resume-progress { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: auto; }
+    .resume-progress span { height: 3px; background: #282d2f; }
+    .resume-progress .done { background: var(--accent); }
+    .resume-progress .current { background: var(--primary); }
+    .resume-button {
+      width: 100%;
+      min-height: 33px;
+      border: 1px solid var(--line-strong);
+      border-radius: 5px;
+      background: #171a1c;
+      color: var(--text);
+      font-size: 11px;
+    }
+    .dashboard { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(310px, .82fr); gap: 18px; }
+    .panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .panel-head { min-height: 44px; padding: 0 13px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+    .panel-head h2 { margin: 0; color: var(--text); font-size: 12px; font-weight: 500; }
+    .panel-head span { margin-left: auto; color: var(--text-3); font-size: 11px; }
+    .project-status { display: grid; grid-template-columns: 164px minmax(0, 1fr); }
+    .project-art { min-height: 176px; padding: 12px; border-right: 1px solid var(--line); }
+    .project-art img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.7) contrast(1.06); }
+    .project-info { padding: 13px 14px; min-width: 0; }
+    .project-info h3 { margin: 0 0 4px; font-size: 14px; font-weight: 500; }
+    .project-info > p { margin: 0; color: var(--text-3); font-size: 11px; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); margin-top: 13px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .stat { padding: 10px 9px 9px 0; min-width: 0; }
+    .stat + .stat { padding-left: 10px; border-left: 1px solid var(--line); }
+    .stat span { display: block; color: var(--text-3); font-size: 11px; }
+    .stat b { display: inline-block; margin-top: 2px; color: var(--text); font-family: var(--font-num); font-size: 18px; font-weight: 500; }
+    .stat em { margin-left: 3px; color: var(--text-3); font-style: normal; font-size: 11px; }
+    .status-callout { margin-top: 11px; display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 11px; }
+    .status-callout i { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--warning); }
+    .inline-link { margin-left: auto; color: var(--text); font-size: 11px; text-decoration: none; }
+    .inline-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .recent { padding-bottom: 4px; }
+    .recent-list { display: grid; }
+    .recent-row {
+      min-height: 58px;
+      padding: 8px 12px;
+      display: grid;
+      grid-template-columns: 44px minmax(0,1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+    }
+    .recent-row:last-child { border-bottom: 0; }
+    .recent-row:hover { background: #141719; }
+    .recent-row img { width: 44px; height: 40px; object-fit: cover; filter: saturate(.72); }
+    .recent-copy { min-width: 0; }
+    .recent-copy b { display: block; overflow: hidden; font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    .recent-copy span { display: block; margin-top: 2px; color: var(--text-3); font-size: 11px; }
+    .recent-meta { color: var(--text-3); font-family: var(--font-num); font-size: 11px; text-align: right; white-space: nowrap; }
+    .artifact-strip { margin-top: 18px; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .artifact {
+      min-width: 0;
+      min-height: 82px;
+      padding: 7px;
+      display: grid;
+      grid-template-columns: 78px minmax(0,1fr);
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel);
+      color: var(--text);
+      text-align: left;
+    }
+    .artifact:hover { border-color: var(--line-strong); background: #121517; }
+    .artifact img { width: 78px; height: 68px; object-fit: cover; filter: saturate(.75); }
+    .artifact-copy { min-width: 0; padding: 5px 1px; }
+    .artifact-copy span { display: block; color: var(--text-3); font-size: 11px; }
+    .artifact-copy b { display: -webkit-box; margin-top: 4px; overflow: hidden; color: var(--text-2); font-size: 11px; font-weight: 500; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .footer {
+      margin-top: 20px;
+      padding-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-top: 1px solid var(--line);
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 12px; }
+    .footer a { color: var(--text-3); text-decoration: none; }
+    .footer a:hover { color: var(--text-2); }
+    .agent-fab {
+      position: fixed;
+      z-index: 30;
+      right: 20px;
+      bottom: 20px;
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(141,200,220,.36);
+      border-radius: 50%;
+      background: #111517;
+      color: var(--accent);
+      box-shadow: 0 12px 30px rgb(0 0 0 / 28%);
+      transition: border-color 160ms var(--ease-out), transform 160ms var(--ease-out), background-color 160ms var(--ease-out);
+    }
+    .agent-fab:hover { border-color: rgba(141,200,220,.62); background: #171c1e; transform: translateY(-2px); }
+    .agent-fab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+    .agent-fab .agent-dot { position: absolute; right: 5px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .mobile-nav { display: none; }
+    .overlay { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / 62%); overscroll-behavior: contain; }
+    .overlay[hidden] { display: none; }
+    .intent-dialog {
+      position: fixed;
+      z-index: 41;
+      left: 50%;
+      top: 50%;
+      width: min(560px, calc(100vw - 32px));
+      max-height: min(720px, calc(100dvh - 32px));
+      overflow: auto;
+      transform: translate(-50%, -50%);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #111416;
+      box-shadow: 0 24px 80px rgba(0,0,0,.42);
+    }
+    .dialog-head { padding: 16px 18px 13px; display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; }
+    .dialog-head p { margin: 0; color: var(--text-3); font-size: 11px; }
+    .dialog-close {
+      width: 32px;
+      height: 32px;
+      margin-left: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-2);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .dialog-body { padding: 15px 18px 17px; }
+    .intent-summary { padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: #0d1011; }
+    .intent-summary h3 { margin: 0 0 5px; font-size: 13px; font-weight: 500; }
+    .intent-summary p { margin: 0; color: var(--text-2); font-size: 11px; line-height: 1.65; }
+    .intent-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .intent-field { padding: 10px 11px; border-top: 1px solid var(--line); }
+    .intent-field span { display: block; color: var(--text-3); font-size: 11px; }
+    .intent-field b { display: block; margin-top: 3px; color: var(--text-2); font-size: 11px; font-weight: 500; line-height: 1.5; }
+    .intent-note { margin-top: 12px; color: var(--text-3); font-size: 11px; line-height: 1.6; }
+    .dialog-actions { padding: 13px 18px 16px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); }
+    .dialog-button { min-height: 36px; padding: 0 13px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--text-2); font-size: 11px; }
+    .dialog-button.primary { border-color: var(--primary); background: var(--primary); color: var(--primary-ink); font-weight: 600; }
+    .agent-drawer {
+      position: fixed;
+      z-index: 41;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(400px, calc(100vw - 32px));
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--line-strong);
+      background: #101315;
+      transform: translateX(100%);
+      transition: transform 220ms var(--ease-out);
+    }
+    .agent-drawer.open { transform: translateX(0); }
+    .agent-drawer[hidden] { display: none; }
+    .agent-head { min-height: 62px; padding: 13px 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+    .agent-head b { display: block; font-size: 12px; font-weight: 500; }
+    .agent-head span { display: block; margin-top: 2px; color: var(--text-3); font-size: 11px; }
+    .agent-context { padding: 10px 15px; border-bottom: 1px solid var(--line); color: var(--text-3); font-size: 11px; }
+    .agent-context b { color: var(--text-2); font-weight: 500; }
+    .agent-message { margin: 16px 15px; padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: #14181a; color: var(--text-2); font-size: 11px; line-height: 1.7; }
+    .agent-message b { color: var(--text); font-weight: 500; }
+    .agent-tools { margin: 0 15px; display: grid; gap: 5px; }
+    .agent-tool { padding: 8px 9px; display: flex; align-items: center; gap: 7px; border-top: 1px solid var(--line); color: var(--text-3); font-size: 11px; }
+    .agent-tool i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .agent-compose { margin-top: auto; padding: 12px; border-top: 1px solid var(--line); }
+    .agent-compose input { width: 100%; min-height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 6px; background: #0b0e0f; color: var(--text); font-size: 11px; }
+    .agent-compose p { margin: 7px 0 0; color: var(--text-3); font-size: 11px; }
+    .toast {
+      position: fixed;
+      z-index: 60;
+      left: 50%;
+      bottom: 18px;
+      transform: translate(-50%, 160%);
+      max-width: calc(100vw - 32px);
+      padding: 10px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: #171b1d;
+      color: var(--text-2);
+      font-size: 11px;
+      transition: transform 180ms var(--ease-out);
+    }
+    .toast.show { transform: translate(-50%, 0); }
+    .mobile-scrim { display: none; }
+
+    @media (hover: hover) and (pointer: fine) {
+      .recent-row, .artifact, .side-item, .source-tab, .example-chip, .setting-chip, .top-button, .mode { will-change: transform; }
+    }
+    @media (max-width: 1120px) {
+      :root { --sidebar: 76px; }
+      .brand { padding-left: 18px; }
+      .brand-name, .brand-sub, .workspace-switch span, .workspace-switch svg, .side-label, .side-item span, .project-menu summary span, .project-steps, .side-bottom .account div, .quota { display: none; }
+      .workspace-switch { justify-content: center; padding: 0; }
+      .workspace-switch::before { content: "W"; color: var(--text-2); font-family: var(--font-num); font-size: 11px; }
+      .side-item, .project-menu summary { justify-content: center; padding: 0; }
+      .side-count { position: absolute; transform: translate(13px,-10px); }
+      .side-bottom { padding: 12px 10px; }
+      .account { justify-content: center; }
+    }
+    @media (max-width: 900px) {
+      :root { --sidebar: 0px; }
+      .sidebar {
+        width: 264px;
+        transform: translateX(-100%);
+        transition: transform 220ms var(--ease-out);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .brand { padding-left: 16px; }
+      .brand-name, .brand-sub, .workspace-switch span, .workspace-switch svg, .side-label, .side-item span, .project-menu summary span, .project-steps, .side-bottom .account div, .quota { display: initial; }
+      .workspace-switch { justify-content: flex-start; padding: 0 11px; }
+      .workspace-switch::before { display: none; }
+      .side-item, .project-menu summary { justify-content: flex-start; padding: 0 9px; }
+      .side-count { position: static; transform: none; }
+      .side-bottom .account { justify-content: flex-start; }
+      .mobile-scrim { position: fixed; inset: 0; z-index: 19; display: none; background: rgb(0 0 0 / 58%); }
+      .mobile-scrim.open { display: block; }
+      .main { margin-left: 0; }
+      .mobile-menu { display: grid; place-items: center; }
+      .topbar { padding: 0 16px; }
+      .content { padding: 0 16px 86px; }
+      .top-actions .top-button:not(.primary-action) { display: none; }
+      .save-state { display: none; }
+      .release { margin-top: 10px; }
+      .release-copy span { display: none; }
+      .release-action { display: none; }
+      .mode-note { display: none; }
+      .creation-grid, .dashboard { grid-template-columns: 1fr; }
+      .resume { min-height: 250px; }
+      .resume-media { height: 154px; }
+      .project-status { grid-template-columns: 124px minmax(0,1fr); }
+      .artifact-strip { grid-template-columns: 1fr; }
+      .artifact { min-height: 74px; }
+      .agent-fab { right: 16px; bottom: 76px; }
+      .mobile-nav {
+        position: fixed;
+        z-index: 25;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        min-height: calc(62px + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+        display: grid;
+        grid-template-columns: repeat(5,1fr);
+        border-top: 1px solid var(--line);
+        background: rgba(9,10,11,.97);
+      }
+      .mobile-nav button {
+        min-height: 61px;
+        border: 0;
+        background: transparent;
+        color: var(--text-3);
+        font-size: 11px;
+      }
+      .mobile-nav button.active { color: var(--text); }
+      .mobile-nav svg { display: block; width: 18px; height: 18px; margin: 0 auto 4px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+      .footer { padding-bottom: 12px; }
+    }
+    @media (max-width: 620px) {
+      .page-head { align-items: center; }
+      .page-head h1 { font-size: 27px; }
+      .page-head p { max-width: 28ch; font-size: 11px; }
+      .composer-head { overflow-x: auto; }
+      .composer-status { display: none; }
+      .composer-foot { flex-wrap: wrap; padding: 9px 10px 11px; }
+      .start-button { width: 100%; margin: 2px 0 0; min-height: 42px; }
+      .path-switch { flex: 1; }
+      .path-switch button { flex: 1; }
+      .setting-chip { display: none; }
+      .project-status { grid-template-columns: 1fr; }
+      .project-art { min-height: 116px; height: 116px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .project-art img { object-position: center 54%; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stat:nth-child(3) { border-left: 0; }
+      .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+      .recent-meta { display: none; }
+      .footer { align-items: flex-start; flex-direction: column; }
+      .intent-fields { grid-template-columns: 1fr; }
+      .dialog-actions { flex-direction: column-reverse; }
+      .dialog-button { width: 100%; min-height: 42px; }
+      .agent-drawer { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#home-content">跳到创作内容</a>
+  <div class="app">
+    <div class="mobile-scrim" id="mobileScrim"></div>
+    <aside class="sidebar" id="sidebar" aria-label="工作区导航">
+      <a class="brand" href="#home-content" aria-label="VeyaFrame 成剧">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M16 2.8 27.3 9.4v13.2L16 29.2 4.7 22.6V9.4z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m10.8 11.4 5.2 9.4 5.2-9.4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        </span>
+        <span><span class="brand-name">VeyaFrame</span><span class="brand-sub">成剧</span></span>
+      </a>
+      <button class="workspace-switch" type="button" aria-label="切换创作空间">
+        <span><b>我的创作空间</b><small>个人工作区</small></span>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg>
+      </button>
+      <div class="side-scroll">
+        <nav class="side-group" aria-label="工作区">
+          <div class="side-label">工作区</div>
+          <button class="side-item is-active" type="button"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9H4z"/><path d="M9 20v-6h6v6"/></svg><span>首页</span></button>
+          <button class="side-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg><span>我的项目</span></button>
+          <button class="side-item" type="button"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="m8 12 2.5 2.5L16 9"/></svg><span>项目待办</span><i class="side-count">2</i></button>
+          <button class="side-item" type="button"><svg viewBox="0 0 24 24"><path d="m12 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><path d="m19 16 1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/></svg><span>创作方法</span></button>
+          <button class="side-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 8h16v11H4z"/><path d="M8 8V5h8v3M4 12h16"/></svg><span>资产库</span></button>
+          <a class="side-item" href="#footer"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21.5v-16Z"/></svg><span>使用教程</span></a>
+        </nav>
+        <details class="project-menu" open>
+          <summary><svg viewBox="0 0 24 24"><path d="M4 6h16v13H4z"/><path d="M4 10h16"/></svg><span>示例 · 快递员的最后一单</span></summary>
+          <div class="project-steps">
+            <div class="project-step done"><i></i><span>核心人物</span></div>
+            <div class="project-step done"><i></i><span>三幕大纲</span></div>
+            <div class="project-step done"><i></i><span>分集剧情</span></div>
+            <div class="project-step current"><i></i><span>角色定妆</span></div>
+            <div class="project-step"><i></i><span>场次剧本</span></div>
+            <div class="project-step"><i></i><span>分镜</span></div>
+          </div>
+        </details>
+        <nav class="side-group" aria-label="项目工具">
+          <div class="side-label">项目工具</div>
+          <button class="side-item" type="button"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M7 8l4 8M17 8l-4 8"/></svg><span>画布</span></button>
+          <button class="side-item" type="button"><svg viewBox="0 0 24 24"><path d="m12 3 8 5-8 5-8-5z"/><path d="m4 13 8 5 8-5"/></svg><span>产物中心</span></button>
+          <button class="side-item" type="button"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>生产台账</span></button>
+        </nav>
+      </div>
+      <div class="side-bottom">
+        <div class="account">
+          <span class="avatar">F</span>
+          <div><b>我的账号</b><small>Web 与 App 同步</small></div>
+        </div>
+        <div class="quota"><b>65 / 65</b><span>今日创作额度</span></div>
+        <div class="quota-track" aria-hidden="true"><span></span></div>
+      </div>
+    </aside>
+
+    <main class="main" id="home-content">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu" type="button" aria-label="打开菜单" aria-controls="sidebar" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="breadcrumbs"><span>我的项目</span><span>/</span><b>创作首页</b></div>
+        <div class="top-actions">
+          <span class="save-state"><i></i>项目已保存</span>
+          <a class="top-button" href="#footer">使用教程</a>
+          <button class="top-button" type="button" data-toast="完整版中进入手机应用下载">获取 App</button>
+          <button class="top-button primary-action" type="button" data-toast="完整版中进入项目导出">导出</button>
+          <button class="account-button" type="button" aria-label="账号菜单">F</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="release" aria-label="内测公告">
+          <span class="release-signal"><i></i>LIVE BETA</span>
+          <div class="release-copy"><b>VeyaFrame 火热内测中。</b> <span>一句话先出试片，需要精修时再展开六步。</span></div>
+          <a class="release-action" href="#footer">了解内测</a>
+        </section>
+
+        <nav class="modebar" aria-label="工作台模式">
+          <button class="mode" type="button" data-toast="完整版：进入项目总览">总览</button>
+          <button class="mode active" type="button" aria-current="page">创作</button>
+          <button class="mode" type="button" data-toast="完整版：进入项目画布">画布</button>
+          <span class="mode-note">当前：创建新短剧</span>
+        </nav>
+
+        <div class="home">
+          <header class="page-head">
+            <div>
+              <h1>今天想拍什么？</h1>
+              <p>先给出一版能看的试片，需要时再展开人物、分集和分镜。</p>
+            </div>
+            <button class="agent-launch" id="openAgent" type="button" aria-label="打开 Veya Agent">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3z"/><path d="M8 9h8M8 12h5"/></svg>
+            </button>
+          </header>
+
+          <section class="creation-grid" aria-label="开始创作">
+            <div class="composer">
+              <div class="composer-head" role="tablist" aria-label="创作来源">
+                <button class="source-tab active" type="button" role="tab" aria-selected="true" data-source="idea">从想法开始</button>
+                <button class="source-tab" type="button" role="tab" aria-selected="false" data-source="source">从小说剧本开始</button>
+                <button class="source-tab" type="button" role="tab" aria-selected="false" data-source="project">继续当前项目</button>
+                <span class="composer-status"><i></i><span id="draftState">草稿自动保存</span></span>
+              </div>
+              <label class="sr-only" for="storyInput" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">描述你想创作的短剧</label>
+              <textarea id="storyInput" placeholder="写下一句想法、一个人物或一场冲突……">婚礼开始前，新娘收到死去前女友的消息：“别嫁给他，下一个就是你。”</textarea>
+              <div class="example-row" aria-label="示例想法">
+                <button class="example-chip" type="button" data-example="一个快递员意外继承了百万遗产，条件却是替原主人完成七桩未竟的交易。">快递员的最后一单</button>
+                <button class="example-chip" type="button" data-example="被退婚的赘婿三年后带资归来，却发现前妻正被一场更大的骗局困住。">退婚三年后</button>
+                <button class="example-chip" type="button" data-example="保洁阿姨其实是隐退的商业女王，她在公司年会前发现有人准备卖掉所有人的股份。">隐退的商业女王</button>
+              </div>
+              <div class="composer-foot">
+                <div class="path-switch" role="group" aria-label="创作方式">
+                  <button class="active" type="button" data-path="quick" aria-pressed="true">快速试片</button>
+                  <button type="button" data-path="step" aria-pressed="false">分步创作</button>
+                </div>
+                <button class="setting-chip" type="button" data-toast="完整版中打开题材选择">都市情感悬疑</button>
+                <button class="setting-chip" type="button" data-toast="完整版中打开时长设置">30 秒</button>
+                <button class="setting-chip" type="button" data-toast="完整版中打开画幅设置">9:16</button>
+                <button class="start-button" id="startCreate" type="button">开始创作</button>
+              </div>
+              <div class="mode-help" id="modeHelp">Agent 自动编排，先给一版 30 秒试片；完成后可一键展开为六步项目。</div>
+            </div>
+
+            <aside class="resume" aria-labelledby="resume-title">
+              <div class="resume-media">
+                <img src="./assets/manor.png" width="1280" height="720" alt="示例项目中的城郊别墅场景">
+                <div class="resume-label"><span>上次创作 · 12 分钟前</span><b id="resume-title">示例 · 快递员的最后一单</b></div>
+              </div>
+              <div class="resume-body">
+                <div class="resume-status"><span>6 集 · 64 个镜头 · 2 个阻断</span><span class="status-pill">待补定妆</span></div>
+                <div class="resume-step">
+                  <span>04</span>
+                  <div><b>继续角色定妆</b><p>苏婉缺少可用参考图，补齐后才能继续生成第 3 集镜头。</p></div>
+                </div>
+                <div class="resume-progress" aria-label="六步项目进度"><span class="done"></span><span class="done"></span><span class="done"></span><span class="current"></span><span></span><span></span></div>
+                <button class="resume-button" type="button" data-toast="完整版：进入角色定妆">继续上次创作</button>
+              </div>
+            </aside>
+          </section>
+
+          <section class="dashboard" aria-label="项目与产物">
+            <section class="panel" aria-labelledby="project-title">
+              <header class="panel-head"><h2 id="project-title">当前项目</h2><span>示例数据来自可载入项目</span></header>
+              <div class="project-status">
+                <div class="project-art"><img src="./assets/delivery.png" width="1440" height="1000" alt="项目画布界面"></div>
+                <div class="project-info">
+                  <h3>快递员的最后一单</h3>
+                  <p>都市情感悬疑 · 3 集短剧 · 30 秒试片已就绪</p>
+                  <div class="stats">
+                    <div class="stat"><span>分集</span><b>3</b><em>集</em></div>
+                    <div class="stat"><span>场次</span><b>3</b><em>场</em></div>
+                    <div class="stat"><span>镜头</span><b>3</b><em>镜</em></div>
+                    <div class="stat"><span>待复核</span><b class="warning-text">2</b><em>项</em></div>
+                  </div>
+                  <div class="status-callout"><i></i><span>第 3 镜缺少苏婉参考图，镜头提示词已过期。</span><a class="inline-link" href="#recent-artifacts">去处理</a></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel recent" id="recent-artifacts" aria-labelledby="recent-title">
+              <header class="panel-head"><h2 id="recent-title">最近产物</h2><span>3 项</span></header>
+              <div class="recent-list">
+                <button class="recent-row" type="button" data-toast="完整版：打开第 1 集分集">
+                  <img src="./assets/story.png" width="720" height="1280" alt="">
+                  <span class="recent-copy"><b>第 1 集 · 暴雨夜的签收</b><span>分集剧情 · 钩子已建立</span></span>
+                  <span class="recent-meta">v03</span>
+                </button>
+                <button class="recent-row" type="button" data-toast="完整版：打开角色定妆">
+                  <img src="./assets/canon.png" width="720" height="1280" alt="">
+                  <span class="recent-copy"><b>陈默 · 苏婉 · 沈之遥</b><span>角色定妆 · 3 人已有视觉锚点</span></span>
+                  <span class="recent-meta">v02</span>
+                </button>
+                <button class="recent-row" type="button" data-toast="完整版：打开分镜">
+                  <img src="./assets/manor.png" width="1280" height="720" alt="">
+                  <span class="recent-copy"><b>镜头 01–03</b><span>分镜 · 1 镜待出图，1 镜待返修</span></span>
+                  <span class="recent-meta">v04</span>
+                </button>
+              </div>
+            </section>
+          </section>
+
+          <section class="artifact-strip" aria-label="快捷产物">
+            <button class="artifact" type="button" data-toast="完整版：打开故事与世界">
+              <img src="./assets/story.png" width="720" height="1280" alt="">
+              <span class="artifact-copy"><span>故事</span><b>人物、分集与钩子都可以继续编辑</b></span>
+            </button>
+            <button class="artifact" type="button" data-toast="完整版：打开制作资产">
+              <img src="./assets/canon.png" width="720" height="1280" alt="">
+              <span class="artifact-copy"><span>制作</span><b>定妆、场次与分镜共享同一项目状态</b></span>
+            </button>
+            <button class="artifact" type="button" data-toast="完整版：打开成片与导出">
+              <img src="./assets/delivery.png" width="1440" height="1000" alt="">
+              <span class="artifact-copy"><span>交付</span><b>试片满意后再进入时间线与成片</b></span>
+            </button>
+          </section>
+        </div>
+
+        <footer class="footer" id="footer">
+          <span>VeyaFrame 内测版 · 作品与判断留在项目里</span>
+          <nav class="footer-links" aria-label="页脚"><a href="#footer">用户协议</a><a href="#footer">隐私说明</a><a href="#footer">AI 内容说明</a><a href="#footer">内容举报</a><a href="mailto:support@chenju.work">联系邮箱</a></nav>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <button class="agent-fab" id="agentFab" type="button" aria-label="打开 Veya Agent"><span class="agent-dot"></span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 5.5c5.5 0 9.4 3.1 9.4 7.6s-3.9 7.6-9.4 7.6c-1.2 0-2.3-.15-3.4-.47L8 23l1.2-4C7.5 17.7 6.6 15.8 6.6 13.1c0-4.5 3.9-7.6 9.4-7.6Z"/><circle cx="12.6" cy="13.1" r="1"/><circle cx="19.4" cy="13.1" r="1"/><path d="M12.8 17c.9 1.1 2 1.7 3.2 1.7s2.3-.6 3.2-1.7"/></svg></button>
+
+  <nav class="mobile-nav" aria-label="移动端导航">
+    <button class="active" type="button"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9H4z"/><path d="M9 20v-6h6v6"/></svg><span>首页</span></button>
+    <button type="button" data-toast="完整版：打开我的项目"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg><span>项目</span></button>
+    <button type="button" data-toast="完整版：打开项目待办"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="m8 12 2.5 2.5L16 9"/></svg><span>待办</span></button>
+    <button type="button" data-toast="完整版：打开创作方法"><svg viewBox="0 0 24 24"><path d="m12 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg><span>创作</span></button>
+    <button type="button" data-toast="完整版：打开我的账号"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20c1-4 3.2-6 7-6s6 2 7 6"/></svg><span>我的</span></button>
+  </nav>
+
+  <div class="overlay" id="intentOverlay" hidden></div>
+  <section class="intent-dialog" id="intentDialog" role="dialog" aria-modal="true" aria-labelledby="intentTitle" hidden>
+    <header class="dialog-head">
+      <div><h2 id="intentTitle">我理解的方向</h2><p>确认后再开始，不会立即扣费。</p></div>
+      <button class="dialog-close" id="closeIntent" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="dialog-body">
+      <div class="intent-summary"><h3>现代都市情感悬疑</h3><p>婚礼开始前，新娘收到死去前女友的消息：“别嫁给他，下一个就是你。”故事围绕婚礼当天的秘密、谎言和一场被掩盖的死亡展开。</p></div>
+      <div class="intent-fields">
+        <div class="intent-field"><span>目标观众</span><b>喜欢快节奏、关系反转的移动短剧用户</b></div>
+        <div class="intent-field"><span>3 秒钩子</span><b>新娘在婚礼前收到已故前女友的警告</b></div>
+        <div class="intent-field"><span>人物关系</span><b>新娘 · 新郎 · 已故前女友 · 新郎母亲</b></div>
+        <div class="intent-field"><span>视觉风格</span><b>写实、冷峻，婚礼红与冷灰形成冲突</b></div>
+        <div class="intent-field"><span>本次形式</span><b id="intentMode">30 秒竖屏试片</b></div>
+        <div class="intent-field"><span>预计费用</span><b>约 ¥18–28 · 生成前可再确认</b></div>
+      </div>
+      <p class="intent-note">快速试片会先生成人物、分集与必要镜头，在付费视频生成前暂停。生成完成后可以展开为分步创作。</p>
+    </div>
+    <div class="dialog-actions"><button class="dialog-button" id="editIntent" type="button">返回修改</button><button class="dialog-button primary" id="confirmIntent" type="button">开始快速试片</button></div>
+  </section>
+
+  <div class="overlay" id="agentOverlay" hidden></div>
+  <aside class="agent-drawer" id="agentDrawer" aria-label="Veya Agent" hidden>
+    <header class="agent-head">
+      <span class="avatar">V</span><div><b>Veya Agent</b><span>已读取当前项目与创作意图</span></div>
+      <button class="dialog-close" id="closeAgent" type="button" aria-label="关闭 Agent">×</button>
+    </header>
+    <div class="agent-context">正在查看 <b>示例 · 快递员的最后一单</b> · 第 4 步角色的定妆</div>
+    <div class="agent-message"><b>当前最值得先处理的是苏婉的参考图。</b><br>第 3 镜提示词仍然引用她，但定妆里没有可用参考图。补齐后可以只重生成第 3 镜，不需要重做整场。</div>
+    <div class="agent-tools"><div class="agent-tool"><i></i>已读取 3 个角色、3 个场次和 3 个镜头</div><div class="agent-tool"><i></i>发现 1 个镜头引用缺失参考图</div></div>
+    <div class="agent-compose"><input aria-label="向 Agent 提问" placeholder="继续、检查问题或改某一镜…"><p>所有写入会先生成确认卡，不会直接覆盖项目。</p></div>
+  </aside>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const state = { path: 'quick', lastFocus: null };
+    const qs = (selector) => document.querySelector(selector);
+    const qsa = (selector) => [...document.querySelectorAll(selector)];
+    const story = qs('#storyInput');
+    const toast = qs('#toast');
+    let toastTimer = null;
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('show');
+      toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    qsa('[data-toast]').forEach((button) => {
+      button.addEventListener('click', () => showToast(button.dataset.toast));
+    });
+
+    story.addEventListener('input', () => {
+      qs('#draftState').textContent = '草稿已暂存';
+    });
+
+    qsa('[data-example]').forEach((button) => {
+      button.addEventListener('click', () => {
+        story.value = button.dataset.example;
+        story.focus();
+        showToast('已填入示例想法');
+      });
+    });
+
+    const sourceText = {
+      idea: '写下一句想法、一个人物或一场冲突……',
+      source: '粘贴小说、剧本或大纲原文，或加入 TXT / Markdown 文件……',
+      project: '告诉 Agent 这一步要检查、修改或继续什么……',
+    };
+    qsa('[data-source]').forEach((button) => {
+      button.addEventListener('click', () => {
+        qsa('[data-source]').forEach((item) => {
+          const active = item === button;
+          item.classList.toggle('active', active);
+          item.setAttribute('aria-selected', String(active));
+        });
+        story.placeholder = sourceText[button.dataset.source];
+        story.focus();
+      });
+    });
+
+    function setPath(path) {
+      state.path = path;
+      qsa('[data-path]').forEach((button) => {
+        const active = button.dataset.path === path;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      qs('#modeHelp').textContent = path === 'quick'
+        ? 'Agent 自动编排，先给一版 30 秒试片；完成后可一键展开为六步项目。'
+        : '从人物和三幕开始逐步生成，每一步都停在可编辑、可确认的位置。';
+      qs('#intentMode').textContent = path === 'quick' ? '30 秒竖屏试片' : '六步分步创作';
+      qs('#confirmIntent').textContent = path === 'quick' ? '开始快速试片' : '进入分步创作';
+    }
+    qsa('[data-path]').forEach((button) => button.addEventListener('click', () => setPath(button.dataset.path)));
+
+    const intentOverlay = qs('#intentOverlay');
+    const intentDialog = qs('#intentDialog');
+    const agentOverlay = qs('#agentOverlay');
+    const agentDrawer = qs('#agentDrawer');
+    const mobileSidebar = qs('#sidebar');
+    const mobileMenu = qs('#mobileMenu');
+    const mobileScrim = qs('#mobileScrim');
+
+    function openIntent() {
+      state.lastFocus = document.activeElement;
+      intentOverlay.hidden = false;
+      intentDialog.hidden = false;
+      document.body.style.overflow = 'hidden';
+      qs('#closeIntent').focus();
+    }
+    function closeIntent() {
+      intentOverlay.hidden = true;
+      intentDialog.hidden = true;
+      document.body.style.overflow = '';
+      state.lastFocus?.focus?.();
+    }
+    qs('#startCreate').addEventListener('click', () => {
+      if (!story.value.trim()) {
+        story.focus();
+        showToast('先写下一句想法');
+        return;
+      }
+      openIntent();
+    });
+    qs('#closeIntent').addEventListener('click', closeIntent);
+    qs('#editIntent').addEventListener('click', () => {
+      closeIntent();
+      story.focus();
+    });
+    qs('#confirmIntent').addEventListener('click', () => {
+      closeIntent();
+      showToast(state.path === 'quick' ? '样机：已进入 30 秒快速试片' : '样机：已进入分步创作');
+    });
+    intentOverlay.addEventListener('click', closeIntent);
+
+    function openAgent() {
+      state.lastFocus = document.activeElement;
+      agentOverlay.hidden = false;
+      agentDrawer.hidden = false;
+      requestAnimationFrame(() => agentDrawer.classList.add('open'));
+      document.body.style.overflow = 'hidden';
+      qs('#closeAgent').focus();
+    }
+    function closeAgent() {
+      agentDrawer.classList.remove('open');
+      window.setTimeout(() => {
+        agentOverlay.hidden = true;
+        agentDrawer.hidden = true;
+        document.body.style.overflow = '';
+        state.lastFocus?.focus?.();
+      }, 220);
+    }
+    qs('#openAgent').addEventListener('click', openAgent);
+    qs('#agentFab').addEventListener('click', openAgent);
+    qs('#closeAgent').addEventListener('click', closeAgent);
+    agentOverlay.addEventListener('click', closeAgent);
+
+    function openMobileMenu() {
+      mobileSidebar.classList.add('open');
+      mobileScrim.classList.add('open');
+      mobileMenu.setAttribute('aria-expanded', 'true');
+    }
+    function closeMobileMenu() {
+      mobileSidebar.classList.remove('open');
+      mobileScrim.classList.remove('open');
+      mobileMenu.setAttribute('aria-expanded', 'false');
+    }
+    mobileMenu.addEventListener('click', openMobileMenu);
+    mobileScrim.addEventListener('click', closeMobileMenu);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!intentDialog.hidden) closeIntent();
+      else if (!agentDrawer.hidden) closeAgent();
+      else if (mobileSidebar.classList.contains('open')) closeMobileMenu();
+    });
+  </script>
+</body>
+</html>

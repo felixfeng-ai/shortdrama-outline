@@ -12,6 +12,7 @@ import { AiError, chatWithTools, chatJson, type ToolChatMessage } from '@/lib/de
 import { AGENT_TOOL_SCHEMAS } from '@/lib/agent/tools'
 import { toWireMessages } from '@/lib/agent/wire'
 import { AGENT_SYSTEM_PROMPT } from '@/lib/agent/system'
+import { buildAgentIntentSystemBlock, detectAgentIntent } from '@/lib/agent/intent'
 import { getDbForRequest } from '@/lib/assets/store'
 import { releaseQuota, reserveQuota, settleQuota } from '@/lib/quota'
 import { AGENT_CHAT_MAX_CALLS } from '@/lib/agent/loop'
@@ -52,7 +53,14 @@ export async function POST(req: Request) {
     reservationId = hold.id
 
     const withSystem: ToolChatMessage[] = [
-      { role: 'system', content: AGENT_SYSTEM_PROMPT },
+      {
+        role: 'system',
+        content: `${AGENT_SYSTEM_PROMPT}
+
+${buildAgentIntentSystemBlock(detectAgentIntent(
+  [...messages].reverse().find((message) => message.role === 'user')?.content ?? '',
+))}`,
+      },
       ...messages,
     ]
 
@@ -62,6 +70,9 @@ export async function POST(req: Request) {
       return NextResponse.json(ok({
         ...result,
         degraded: false,
+        intent: detectAgentIntent(
+          [...messages].reverse().find((message) => message.role === 'user')?.content ?? '',
+        ).intent,
         turnId,
         turnLimit,
         turnUsed: 1,
@@ -85,6 +96,7 @@ export async function POST(req: Request) {
         ok({
           reply: reply.reply ?? reply.answer ?? '（这次没能回答，换个说法再问一次）',
           degraded: true,
+          intent: detectAgentIntent(lastUser).intent,
           turnId,
           turnLimit,
           turnUsed: 1,

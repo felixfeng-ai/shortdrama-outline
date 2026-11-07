@@ -1,0 +1,1007 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VeyaFrame 首页方向样机</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --shell: #efefec;
+      --shell-ink: #171817;
+      --shell-muted: #6f716d;
+      --shell-line: #d7d8d4;
+      --shell-paper: #f9faf8;
+      --font-ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --font-brand: "Space Grotesk", var(--font-ui);
+      --font-mono: var(--font-brand);
+      --ease-out: cubic-bezier(.23, 1, .32, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--shell);
+      color: var(--shell-ink);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      font-variant-numeric: tabular-nums;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 2px solid #1b5f87;
+      outline-offset: 2px;
+    }
+    img { display: block; max-width: 100%; }
+    .shell-bar {
+      min-height: 54px;
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid var(--shell-line);
+      background: var(--shell-paper);
+    }
+    .shell-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+    .shell-title h1 { margin: 0; font-family: var(--font-brand); font-size: 15px; }
+    .shell-title span, .shell-bar > span {
+      color: var(--shell-muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .shell-bar .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .status i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #868b84;
+    }
+    .dials {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      padding: 15px 28px;
+      border-bottom: 1px solid var(--shell-line);
+      background: var(--shell-paper);
+    }
+    .dial { display: grid; gap: 6px; min-width: 0; }
+    .dial-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .dial output {
+      font-family: var(--font-mono);
+      color: var(--shell-muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .dial input {
+      width: 100%;
+      accent-color: #1f2524;
+    }
+    .directions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+      padding: 22px 28px 28px;
+    }
+    .direction-card {
+      min-width: 0;
+      border: 1px solid #cfd0cb;
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+      transition: border-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .direction-card:hover { border-color: #989b95; }
+    .direction-card.is-selected {
+      border-color: #171817;
+      box-shadow: 0 0 0 1px #171817;
+    }
+    .card-head {
+      min-height: 48px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #e3e4df;
+    }
+    .card-id {
+      width: 27px;
+      height: 27px;
+      display: grid;
+      place-items: center;
+      border-radius: 5px;
+      background: #e7e8e3;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .card-name { font-size: 14px; font-weight: 600; }
+    .card-tag {
+      margin-left: auto;
+      color: var(--shell-muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .recommend {
+      margin-left: auto;
+      padding: 4px 8px;
+      border: 1px solid #9fb8b7;
+      border-radius: 999px;
+      color: #265d5d;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .recommend + .card-tag { margin-left: 0; }
+    .mockup {
+      position: relative;
+      aspect-ratio: 1.6 / 1;
+      overflow: hidden;
+      background: #d9dad5;
+    }
+    .desktop-ui {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 960px;
+      height: 600px;
+      overflow: hidden;
+      transform-origin: center;
+      background: #fff;
+    }
+    .mobile-ui { display: none; }
+    .card-meta {
+      padding: 12px 14px 0;
+      min-height: 50px;
+      color: #535650;
+      font-size: 12px;
+      line-height: 1.55;
+      display: block;
+    }
+    .qmdp-pick-button {
+      width: calc(100% - 28px);
+      min-height: 44px;
+      margin: 10px 14px 14px;
+      border: 1px solid #1c1e1d;
+      border-radius: 7px;
+      background: #1c1e1d;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 160ms var(--ease-out), transform 120ms var(--ease-out);
+    }
+    .qmdp-pick-button:hover { background: #303331; }
+    .qmdp-pick-button:active { transform: scale(.99); }
+    .notes {
+      padding: 0 28px 42px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .note {
+      border-top: 1px solid #c7c9c3;
+      padding-top: 12px;
+      min-width: 0;
+    }
+    .note b { display: block; margin-bottom: 6px; font-size: 12px; }
+    .note p { margin: 0; color: #5f625d; font-size: 11.5px; line-height: 1.65; }
+    .confirm {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgb(15 17 16 / 55%);
+    }
+    .confirm.open { display: grid; }
+    .confirm-dialog {
+      width: min(510px, 100%);
+      border: 1px solid #bfc1bb;
+      border-radius: 10px;
+      background: #fbfbf8;
+      box-shadow: 0 20px 60px rgb(0 0 0 / 22%);
+      padding: 20px;
+    }
+    .confirm-dialog h2 { margin: 0 0 8px; font-size: 20px; }
+    .confirm-dialog p { margin: 0 0 14px; color: #62655f; font-size: 13px; line-height: 1.6; }
+    .confirm-dialog textarea {
+      width: 100%;
+      min-height: 86px;
+      resize: vertical;
+      border: 1px solid #c9cbc5;
+      border-radius: 7px;
+      background: #fff;
+      padding: 10px 11px;
+      color: #171817;
+      line-height: 1.55;
+    }
+    .confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .confirm-actions button {
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 7px;
+      border: 1px solid #c7c9c3;
+      background: #fff;
+      color: #202220;
+      font-weight: 600;
+    }
+    .confirm-actions .primary { border-color: #1b1d1c; background: #1b1d1c; color: #fff; }
+    .pick-toast {
+      position: fixed;
+      z-index: 60;
+      left: 50%;
+      bottom: 18px;
+      transform: translate(-50%, 140%);
+      padding: 11px 16px;
+      border-radius: 7px;
+      background: #171817;
+      color: #fff;
+      font-size: 13px;
+      transition: transform 220ms var(--ease-out);
+    }
+    .pick-toast.show { transform: translate(-50%, 0); }
+
+    /* A. Signal studio */
+    .a-screen {
+      display: grid;
+      grid-template-columns: 196px 1fr;
+      background: #08090a;
+      color: #f0f2ef;
+      font-family: var(--font-ui);
+    }
+    .a-side {
+      padding: 18px 14px;
+      border-right: 1px solid rgba(255,255,255,.075);
+      background: #0a0b0c;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .a-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-family: var(--font-brand);
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .brand-mark {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .a-brand small { color: #868d90; font-family: var(--font-ui); font-size: 11px; font-weight: 400; }
+    .a-workspace {
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: 7px;
+      padding: 9px 10px;
+      color: #b0b5b5;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .a-workspace b { display: block; color: #f0f2ef; font-size: 12px; font-weight: 500; }
+    .a-nav { display: grid; gap: 3px; }
+    .a-nav-label {
+      margin: 7px 8px 4px;
+      color: #6f777a;
+      font-size: 11px;
+    }
+    .a-nav-row {
+      min-height: 30px;
+      padding: 0 9px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border-radius: 6px;
+      color: #8f9799;
+      font-size: 12px;
+    }
+    .a-nav-row.active { background: #171a1d; color: #f0f2ef; }
+    .a-nav-row svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+    .a-side-project {
+      margin-top: auto;
+      padding: 11px;
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: 7px;
+      color: #aeb4b4;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .a-side-project b { display: block; color: #eef0ed; font-size: 12px; font-weight: 500; }
+    .a-main { min-width: 0; display: flex; flex-direction: column; }
+    .a-top {
+      height: 48px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      border-bottom: 1px solid rgba(255,255,255,.075);
+      color: #7e8789;
+      font-size: 11px;
+    }
+    .a-top strong { color: #f0f2ef; font-size: 12px; font-weight: 500; }
+    .a-top .a-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .a-pill {
+      min-height: 27px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 999px;
+      color: #b8bdbc;
+      font-size: 11px;
+    }
+    .a-body { padding: 28px 40px 24px; display: grid; gap: 22px; min-height: 0; }
+    .a-intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+    .a-intro h2 {
+      margin: 0 0 7px;
+      font-family: var(--font-brand);
+      font-size: 30px;
+      line-height: 1.12;
+      letter-spacing: -.02em;
+      font-weight: 600;
+    }
+    .a-intro p { margin: 0; color: #9ba2a2; font-size: 12px; }
+    .a-agent {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(141,200,220,.4);
+      border-radius: 50%;
+      color: #8dc8dc;
+      background: transparent;
+    }
+    .a-agent svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+    .a-composer {
+      position: relative;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 9px;
+      background: #111416;
+      box-shadow: 0 18px 48px rgb(0,0,0,.28);
+      padding: 15px;
+    }
+    .a-composer textarea {
+      width: 100%;
+      height: 68px;
+      resize: none;
+      border: 0;
+      background: transparent;
+      color: #f0f2ef;
+      font-size: 14px;
+      line-height: 1.6;
+      outline: none;
+    }
+    .a-composer textarea::placeholder { color: #717a7c; }
+    .a-command-row { display: flex; align-items: center; gap: 9px; }
+    .a-mode-switch {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 6px;
+      background: #090b0c;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .a-mode-switch span { padding: 5px 9px; border-radius: 4px; color: #7f898b; font-size: 11px; }
+    .a-mode-switch .active { background: #f2f2ee; color: #0d0e0f; }
+    .a-chip { padding: 5px 8px; border: 1px solid rgba(255,255,255,.09); border-radius: 4px; color: #8f9899; font-size: 11px; }
+    .a-run {
+      margin-left: auto;
+      min-height: 31px;
+      padding: 0 13px;
+      border: 0;
+      border-radius: 6px;
+      background: #f2f2ee;
+      color: #0d0e0f;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .a-mode-note { margin-top: 8px; color: #899294; font-size: 11px; }
+    .a-grid { display: grid; grid-template-columns: 1.12fr .88fr; gap: 14px; min-height: 0; }
+    .a-panel {
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: 8px;
+      background: #0e1112;
+      min-width: 0;
+    }
+    .a-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.065); }
+    .a-panel-head b { font-size: 11px; font-weight: 500; }
+    .a-panel-head span { color: #7d8688; font-size: 11px; }
+    .a-steps { padding: 11px 12px 12px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+    .a-step { min-width: 0; color: #737d7f; font-size: 11px; }
+    .a-step i { display: block; width: 100%; height: 3px; margin-bottom: 7px; background: #263034; }
+    .a-step.done i { background: #8dc8dc; }
+    .a-step.current i { background: #f2f2ee; }
+    .a-step b { display: block; color: #a8b0b0; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .a-step span { display: block; margin-top: 2px; font-family: var(--font-mono); font-size: 11px; }
+    .a-project { overflow: hidden; }
+    .a-cover { position: relative; height: 102px; overflow: hidden; }
+    .a-cover img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.75); }
+    .a-cover::after { content: ""; position: absolute; inset: 0; background: rgb(2 4 5 / 35%); }
+    .a-cover-meta { position: absolute; z-index: 1; left: 12px; bottom: 10px; color: #fff; }
+    .a-cover-meta b { display: block; font-size: 12px; font-weight: 500; }
+    .a-cover-meta span { color: rgba(255,255,255,.68); font-size: 11px; }
+    .a-project-bottom { padding: 10px 12px; display: flex; align-items: center; gap: 9px; color: #8d9697; font-size: 11px; }
+    .a-avatar-stack { display: flex; margin-left: auto; }
+    .a-avatar-stack img { width: 20px; height: 20px; border: 2px solid #0e1112; border-radius: 50%; object-fit: cover; margin-left: -6px; }
+
+    /* B. Paper director */
+    .b-screen { background: #f3f4f0; color: #161715; font-family: var(--font-ui); }
+    .b-top {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 0 36px;
+      border-bottom: 1px solid #d8dad4;
+      color: #62665f;
+      font-size: 11px;
+    }
+    .b-top .b-brand { font-family: var(--font-brand); color: #161715; font-size: 15px; font-weight: 600; }
+    .b-top nav { display: flex; gap: 18px; }
+    .b-top .active { color: #111210; font-weight: 600; }
+    .b-top .b-account { margin-left: auto; display: flex; gap: 9px; align-items: center; }
+    .b-main { height: 486px; display: grid; grid-template-columns: 1.05fr .95fr; }
+    .b-copy { padding: 50px 28px 26px 66px; display: flex; flex-direction: column; min-width: 0; }
+    .b-kicker { color: #7a7c76; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .b-copy h2 {
+      margin: 14px 0 9px;
+      font-family: var(--font-brand);
+      font-size: 38px;
+      line-height: 1.08;
+      font-weight: 500;
+      letter-spacing: -.04em;
+    }
+    .b-copy > p { margin: 0; max-width: 30em; color: #5d615a; font-size: 12px; line-height: 1.65; }
+    .b-compose {
+      margin-top: 29px;
+      border-top: 2px solid #20211f;
+      border-bottom: 1px solid #bfc2ba;
+      padding: 13px 0 12px;
+    }
+    .b-compose textarea {
+      width: 100%;
+      height: 62px;
+      resize: none;
+      border: 0;
+      background: transparent;
+      color: #191a18;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    .b-compose textarea::placeholder { color: #7b7e76; }
+    .b-compose-row { display: flex; align-items: center; gap: 8px; }
+    .b-mode { padding: 6px 0; color: #62665f; font-size: 11px; }
+    .b-mode.active { color: #111210; font-weight: 600; }
+    .b-separator { width: 1px; height: 12px; background: #bfc2ba; }
+    .b-send {
+      margin-left: auto;
+      min-height: 34px;
+      padding: 0 13px;
+      border: 0;
+      border-radius: 5px;
+      background: #c64b2f;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .b-mode-description { margin-top: 7px; color: #62665f; font-size: 11px; }
+    .b-recent { margin-top: auto; display: flex; align-items: center; gap: 12px; color: #5f635c; font-size: 11px; }
+    .b-recent b { color: #242622; font-weight: 500; }
+    .b-board { margin: 34px 40px 26px 0; border-left: 1px solid #cfd1ca; padding-left: 18px; display: grid; grid-template-rows: 1fr auto; gap: 15px; min-width: 0; }
+    .b-board-grid { display: grid; grid-template-columns: 1.2fr .8fr; grid-template-rows: 1fr .8fr; gap: 9px; }
+    .b-frame { overflow: hidden; background: #dedfd9; }
+    .b-frame img { width: 100%; height: 100%; object-fit: cover; }
+    .b-frame.main { grid-row: 1 / 3; }
+    .b-frame.main img { object-position: center; filter: saturate(.68) contrast(1.06); }
+    .b-frame.portrait img { object-position: center 12%; }
+    .b-frame.copy { padding: 13px; display: flex; flex-direction: column; justify-content: space-between; background: #e7e8e2; color: #31332f; }
+    .b-frame.copy span { font-family: var(--font-mono); font-size: 11px; color: #5d6059; }
+    .b-frame.copy b { max-width: 10em; font-size: 14px; line-height: 1.25; font-weight: 500; }
+    .b-board-foot { display: flex; justify-content: space-between; align-items: end; gap: 16px; color: #666a62; font-size: 11px; }
+    .b-board-foot b { display: block; margin-bottom: 3px; color: #1f211e; font-size: 12px; font-weight: 500; }
+
+    /* C. Agent studio */
+    .c-screen { background: #e8eff0; color: #152328; font-family: var(--font-ui); }
+    .c-shell { height: 100%; display: grid; grid-template-columns: 1.22fr .78fr; }
+    .c-chat { padding: 20px 28px 18px 34px; display: flex; flex-direction: column; min-width: 0; }
+    .c-top { display: flex; align-items: center; gap: 10px; color: #5f7379; font-size: 11px; }
+    .c-brand { color: #152328; font-family: var(--font-brand); font-size: 14px; font-weight: 600; }
+    .c-project-pill { padding: 5px 9px; border: 1px solid #bdcbce; border-radius: 999px; background: #f4f8f8; }
+    .c-agent-status { margin-left: auto; color: #23727b; }
+    .c-thread { display: grid; gap: 10px; margin-top: 18px; }
+    .c-user { justify-self: end; max-width: 78%; padding: 10px 12px; border-radius: 9px 9px 3px 9px; background: #1f5865; color: #f6fbfb; font-size: 11px; line-height: 1.55; }
+    .c-assistant { max-width: 88%; padding: 12px 13px; border: 1px solid #cbd7d9; border-radius: 3px 9px 9px 9px; background: #f7fafa; font-size: 11px; line-height: 1.65; color: #2c3c40; }
+    .c-assistant b { color: #152328; font-weight: 600; }
+    .c-tool { display: flex; align-items: center; gap: 8px; color: #4e6267; font-size: 11px; }
+    .c-tool i { width: 6px; height: 6px; border-radius: 50%; background: #2d7a83; }
+    .c-composer { margin-top: auto; border: 1px solid #bac9cc; border-radius: 9px; background: #f9fbfb; box-shadow: 0 10px 30px rgb(37 75 83 / 10%); padding: 12px; }
+    .c-composer input { width: 100%; border: 0; background: transparent; color: #24363a; font-size: 12px; outline: none; }
+    .c-compose-row { margin-top: 9px; display: flex; align-items: center; gap: 8px; color: #61757a; font-size: 11px; }
+    .c-mode { padding: 4px 7px; border: 1px solid #c7d4d6; border-radius: 4px; background: #fff; }
+    .c-mode.active { border-color: #1f5865; color: #1f5865; }
+    .c-send { margin-left: auto; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #1f5865; color: #fff; }
+    .c-send svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+    .c-stage { margin: 18px 20px 18px 0; border: 1px solid #c5d2d4; border-radius: 9px; background: #f4f8f8; overflow: hidden; display: flex; flex-direction: column; }
+    .c-stage-head { padding: 13px 15px 10px; display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #d7e0e1; }
+    .c-stage-head h3 { margin: 0; font-size: 13px; font-weight: 600; }
+    .c-stage-head span { color: #52676c; font-family: var(--font-mono); font-size: 11px; }
+    .c-media { position: relative; height: 274px; margin: 12px; overflow: hidden; background: #cad5d6; }
+    .c-media img { width: 100%; height: 100%; object-fit: cover; object-position: center; filter: saturate(.78) contrast(1.03); }
+    .c-media-label { position: absolute; left: 9px; bottom: 9px; padding: 5px 7px; background: rgb(10 26 30 / 72%); color: #fff; font-size: 11px; }
+    .c-progress { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin: 0 12px; }
+    .c-progress span { height: 3px; background: #ccd8da; }
+    .c-progress .done { background: #2d7a83; }
+    .c-progress .current { background: #173b43; }
+    .c-stage-copy { padding: 10px 13px 0; color: #607479; font-size: 11px; line-height: 1.55; }
+    .c-stage-actions { margin-top: auto; padding: 11px 13px 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .c-stage-actions span { min-height: 30px; display: grid; place-items: center; border: 1px solid #bfd0d2; border-radius: 5px; color: #295860; font-size: 11px; }
+    .c-stage-actions .primary { border-color: #1f5865; background: #1f5865; color: #fff; }
+
+    /* D. Production wall */
+    .d-screen { background: #11100f; color: #ebe9e3; font-family: var(--font-brand); }
+    .d-top { height: 52px; padding: 0 22px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #2b2925; }
+    .d-brand { font-size: 14px; font-weight: 600; }
+    .d-nav { display: flex; gap: 17px; color: #8c8982; font-family: var(--font-ui); font-size: 11px; }
+    .d-nav .active { color: #ebe9e3; }
+    .d-top-right { margin-left: auto; display: flex; align-items: center; gap: 12px; color: #99958d; font-size: 11px; }
+    .d-quota { font-family: var(--font-mono); color: #c8a268; }
+    .d-body { height: 548px; display: grid; grid-template-columns: 174px 1fr; }
+    .d-rail { border-right: 1px solid #2b2925; padding: 17px 13px; display: flex; flex-direction: column; gap: 17px; }
+    .d-section-label { color: #9b978f; font-family: var(--font-ui); font-size: 11px; }
+    .d-project-row { padding: 8px 0; border-bottom: 1px solid #24221f; color: #a8a49c; font-family: var(--font-ui); font-size: 11px; }
+    .d-project-row.active { color: #ece9e2; }
+    .d-project-row small { display: block; margin-top: 3px; color: #969289; font-size: 11px; }
+    .d-new-project { margin-top: auto; min-height: 31px; border: 1px solid #3d3932; border-radius: 5px; background: transparent; color: #c7c3ba; font-size: 11px; }
+    .d-main { padding: 24px 28px 22px; display: grid; grid-template-rows: auto auto 1fr; gap: 16px; min-width: 0; }
+    .d-command { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+    .d-input { min-height: 42px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3b3832; border-radius: 6px; background: #181614; color: #8c8880; font-family: var(--font-ui); font-size: 11px; }
+    .d-mode { display: flex; border: 1px solid #3b3832; border-radius: 6px; overflow: hidden; font-family: var(--font-ui); font-size: 11px; }
+    .d-mode span { padding: 9px 10px; color: #8f8b83; }
+    .d-mode .active { background: #d1a45d; color: #17130f; }
+    .d-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+    .d-shot { min-width: 0; border: 1px solid #302d28; background: #171512; }
+    .d-shot-media { position: relative; height: 88px; overflow: hidden; background: #25221d; }
+    .d-shot-media img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.7) contrast(1.08); }
+    .d-shot-media span { position: absolute; left: 7px; top: 7px; padding: 2px 5px; background: #11100f; color: #d2a25e; font-family: var(--font-mono); font-size: 11px; }
+    .d-shot-copy { padding: 7px; font-family: var(--font-ui); color: #928e86; font-size: 11px; line-height: 1.5; }
+    .d-shot-copy b { display: block; color: #d8d4ca; font-size: 11px; font-weight: 500; }
+    .d-lower { display: grid; grid-template-columns: 1.1fr .9fr; gap: 12px; min-height: 0; }
+    .d-sheet { border-top: 1px solid #39352f; padding-top: 10px; min-height: 0; }
+    .d-sheet-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 7px; font-family: var(--font-ui); font-size: 11px; color: #9b978f; }
+    .d-sheet-head b { color: #d7d3ca; font-weight: 500; }
+    .d-step-row { min-height: 26px; display: grid; grid-template-columns: 24px 1fr 66px; align-items: center; gap: 8px; border-bottom: 1px solid #221f1c; font-family: var(--font-ui); font-size: 11px; color: #8a867e; }
+    .d-step-row em { font-family: var(--font-mono); font-style: normal; color: #c49a5d; text-align: right; }
+    .d-summary-number { font-family: var(--font-mono); font-size: 34px; line-height: 1; color: #e7e1d6; }
+    .d-summary-copy { margin-top: 6px; color: #8e8a82; font-family: var(--font-ui); font-size: 11px; line-height: 1.55; }
+
+    /* Mobile previews */
+    .m-screen { width: 100%; min-height: 390px; padding: 15px; font-family: var(--font-ui); }
+    .m-top { display: flex; align-items: center; gap: 9px; font-family: var(--font-brand); font-size: 13px; font-weight: 600; }
+    .m-top span { margin-left: auto; font-family: var(--font-ui); font-size: 11px; font-weight: 400; color: #7b817b; }
+    .m-title { margin: 22px 0 7px; font-size: 23px; line-height: 1.15; letter-spacing: -.02em; }
+    .m-copy { color: #696f69; font-size: 11px; line-height: 1.6; }
+    .m-compose { margin-top: 18px; padding: 12px; border: 1px solid #d0d2cc; border-radius: 8px; background: #fff; }
+    .m-compose p { margin: 0; color: #7b817b; font-size: 11px; line-height: 1.6; }
+    .m-modes { display: flex; gap: 6px; margin-top: 12px; }
+    .m-modes span { padding: 5px 7px; border: 1px solid #d2d4ce; border-radius: 4px; color: #676c66; font-size: 11px; }
+    .m-modes .active { background: #1d2220; border-color: #1d2220; color: #fff; }
+    .m-action { width: 100%; min-height: 34px; margin-top: 10px; border: 0; border-radius: 5px; background: #1d2220; color: #fff; font-size: 11px; }
+    .m-recent { margin-top: 16px; display: flex; align-items: center; gap: 10px; }
+    .m-recent img { width: 67px; height: 44px; object-fit: cover; border-radius: 4px; }
+    .m-recent b { display: block; color: #2e332f; font-size: 11px; font-weight: 500; }
+    .m-recent small { color: #777d77; font-size: 11px; }
+    .m-a { background: #08090a; color: #f0f2ef; }
+    .m-a .m-top span, .m-a .m-copy, .m-a .m-compose p { color: #9ba2a2; }
+    .m-a .m-compose { border-color: #2a3032; background: #111416; }
+    .m-a .m-modes span { border-color: #343b3d; color: #8e9798; }
+    .m-a .m-modes .active { background: #f2f2ee; border-color: #f2f2ee; color: #0d0e0f; }
+    .m-a .m-action { background: #f2f2ee; color: #0d0e0f; }
+    .m-a .m-recent b { color: #eef0ed; }
+    .m-a .m-recent small { color: #8e9798; }
+    .m-b { background: #f3f4f0; color: #161715; }
+    .m-b .m-title { font-family: var(--font-brand); font-size: 27px; font-weight: 500; letter-spacing: -.03em; }
+    .m-b .m-action { background: #c64b2f; }
+    .m-c { background: #e8eff0; color: #152328; }
+    .m-c .m-chat { margin-top: 14px; display: grid; gap: 8px; }
+    .m-c .m-user { justify-self: end; max-width: 82%; padding: 8px 9px; border-radius: 8px 8px 2px 8px; background: #1f5865; color: #fff; font-size: 11px; line-height: 1.5; }
+    .m-c .m-assistant { padding: 9px 10px; border: 1px solid #cbd7d9; border-radius: 2px 8px 8px 8px; background: #f7fafa; color: #35464a; font-size: 11px; line-height: 1.55; }
+    .m-c .m-result { display: grid; grid-template-columns: 78px 1fr; gap: 9px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #cbd7d9; }
+    .m-c .m-result img { width: 78px; height: 91px; object-fit: cover; }
+    .m-c .m-result b { display: block; font-size: 11px; font-weight: 600; }
+    .m-c .m-result small { display: block; margin-top: 4px; color: #65797d; font-size: 11px; line-height: 1.5; }
+    .m-c .m-compose { border-color: #b9c9cc; background: #f9fbfb; }
+    .m-c .m-action { background: #1f5865; }
+    .m-d { background: #11100f; color: #ebe9e3; }
+    .m-d .m-top span { color: #8a867f; }
+    .m-d .m-command { margin-top: 17px; min-height: 37px; padding: 0 10px; display: flex; align-items: center; border: 1px solid #3b3832; border-radius: 5px; color: #8f8b83; font-size: 11px; }
+    .m-d .m-modes { margin-top: 8px; }
+    .m-d .m-modes span { border-color: #3b3832; color: #8f8b83; }
+    .m-d .m-modes .active { background: #d1a45d; border-color: #d1a45d; color: #17130f; }
+    .m-d .m-strip { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .m-d .m-shot { border: 1px solid #302d28; background: #171512; }
+    .m-d .m-shot img { width: 100%; height: 58px; object-fit: cover; filter: saturate(.7); }
+    .m-d .m-shot b { display: block; padding: 5px; color: #c8c4bb; font-size: 11px; font-weight: 500; }
+    .m-d .m-status { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; padding-top: 9px; border-top: 1px solid #2b2925; color: #8b877f; font-size: 11px; }
+    .m-d .m-status em { color: #d2a25e; font-family: var(--font-mono); font-style: normal; }
+
+    @media (max-width: 980px) {
+      .notes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 900px) {
+      .shell-bar { padding: 12px 16px; align-items: flex-start; }
+      .shell-bar > span { max-width: 150px; text-align: right; }
+      .dials { grid-template-columns: 1fr; gap: 12px; padding: 14px 16px; }
+      .directions { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
+      .mockup { aspect-ratio: auto; min-height: 390px; }
+      .desktop-ui { display: none; }
+      .mobile-ui { display: block; }
+      .notes { grid-template-columns: 1fr; padding: 0 16px 32px; }
+      .card-head { flex-wrap: wrap; }
+      .card-tag { margin-left: 0; width: 100%; }
+      .recommend { margin-left: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell-bar">
+    <div class="shell-title">
+      <h1>VeyaFrame 首页方向样机</h1>
+      <span>方向样机，不是最终页面</span>
+    </div>
+    <div class="status"><i></i><span id="statusText">键盘 1-4 打开确认</span></div>
+  </header>
+
+  <section class="dials" aria-label="设计拨盘">
+    <label class="dial">
+      <span class="dial-head"><span>视觉冒险度</span><output data-qmdp-output="variance">5</output></span>
+      <input data-qmdp-dial="variance" id="variance" type="range" min="1" max="10" value="5">
+    </label>
+    <label class="dial">
+      <span class="dial-head"><span>动效强度</span><output data-qmdp-output="motion">5</output></span>
+      <input data-qmdp-dial="motion" id="motion" type="range" min="1" max="10" value="5">
+    </label>
+    <label class="dial">
+      <span class="dial-head"><span>信息密度</span><output data-qmdp-output="density">6</output></span>
+      <input data-qmdp-dial="density" id="density" type="range" min="1" max="10" value="6">
+    </label>
+  </section>
+
+  <main class="directions" id="directions">
+    <article class="direction-card" data-card="A" data-name="石墨导演台">
+      <header class="card-head">
+        <span class="card-id">A</span>
+        <span class="card-name">石墨导演台</span>
+        <span class="recommend">推荐</span>
+        <span class="card-tag">延续现有品牌 · 双路径最清楚</span>
+      </header>
+      <div class="mockup">
+        <div class="desktop-ui a-screen" data-ui>
+          <aside class="a-side">
+            <div class="a-brand"><span class="brand-mark">V</span><span>VeyaFrame <small>成剧</small></span></div>
+            <div class="a-workspace"><b>我的创作空间</b><span>本地素材 · 今日额度 65</span></div>
+            <nav class="a-nav" aria-label="侧栏样机">
+              <span class="a-nav-label">工作区</span>
+              <div class="a-nav-row active"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg><span>开始创作</span></div>
+              <div class="a-nav-row"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h5"/></svg><span>我的项目</span></div>
+              <div class="a-nav-row"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="m8 12 2.4 2.4L16 9"/></svg><span>项目待办</span></div>
+              <div class="a-nav-row"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="2"/><circle cx="16" cy="8" r="2"/><circle cx="12" cy="16" r="2"/></svg><span>创作方法</span></div>
+            </nav>
+            <div class="a-side-project"><b>婚礼前夜</b><span>第 3 集 · 分镜 64 · 2 个阻断</span></div>
+          </aside>
+          <main class="a-main">
+            <header class="a-top"><span>我的项目</span><strong>新创作</strong><span>草稿自动保存</span><div class="a-actions"><span class="a-pill">教程</span><span class="a-pill">额度 65</span></div></header>
+            <div class="a-body">
+              <div class="a-intro">
+                <div><h2>今天想拍什么？</h2><p>先给出一版能看的试片，需要时再展开六步精修。</p></div>
+                <button class="a-agent" aria-label="打开 Agent"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M8 9h8M8 12h5"/></svg></button>
+              </div>
+              <div class="a-composer">
+                <textarea aria-label="故事想法">婚礼开始前，新娘收到死去前女友的消息：“别嫁给他，下一个就是你。”</textarea>
+                <div class="a-command-row">
+                  <span class="a-mode-switch"><span class="active">快速试片</span><span>分步创作</span></span>
+                  <span class="a-chip">情感悬疑</span><span class="a-chip">30 秒</span><span class="a-chip">9:16</span>
+                  <button class="a-run">开始创作</button>
+                </div>
+                <p class="a-mode-note">快速试片由 Agent 自动编排，完成后可以一键展开人物、分集和分镜。</p>
+              </div>
+              <div class="a-grid">
+                <section class="a-panel">
+                  <header class="a-panel-head"><b>分步创作时，你会得到</b><span>每一步都可编辑、可验证</span></header>
+                  <div class="a-steps">
+                    <div class="a-step done"><i></i><b>人物</b><span>3 人</span></div>
+                    <div class="a-step done"><i></i><b>三幕</b><span>已确认</span></div>
+                    <div class="a-step current"><i></i><b>分集</b><span>6 集</span></div>
+                    <div class="a-step"><i></i><b>定妆</b><span>待生成</span></div>
+                    <div class="a-step"><i></i><b>场次</b><span>待生成</span></div>
+                    <div class="a-step"><i></i><b>分镜</b><span>待生成</span></div>
+                  </div>
+                </section>
+                <section class="a-panel a-project">
+                  <div class="a-cover"><img src="./assets/manor.png" alt="项目场景参考"><div class="a-cover-meta"><b>婚礼前夜</b><span>上次编辑 12 分钟前 · 6 集</span></div></div>
+                  <div class="a-project-bottom"><span>继续分集</span><div class="a-avatar-stack"><img src="./assets/story.png" alt="人物定妆"><img src="./assets/canon.png" alt="人物定妆"></div></div>
+                </section>
+              </div>
+            </div>
+          </main>
+        </div>
+        <div class="mobile-ui m-screen m-a">
+          <div class="m-top">VeyaFrame <span>Agent</span></div>
+          <h3 class="m-title">今天想拍什么？</h3>
+          <p class="m-copy">先试片，再决定要不要展开六步。</p>
+          <div class="m-compose"><p>婚礼开始前，新娘收到死去前女友的消息……</p><div class="m-modes"><span class="active">快速试片</span><span>分步创作</span></div><button class="m-action">开始创作</button></div>
+          <div class="m-recent"><img src="./assets/manor.png" alt=""><span><b>婚礼前夜</b><small>第 3 集 · 分镜 64</small></span></div>
+        </div>
+      </div>
+      <p class="card-meta">最贴近当前产品：左侧项目导航不动，首页把一句话输入和两条创作路径合并成唯一主动作。</p>
+      <button class="qmdp-pick-button" data-qmdp-managed="page" data-direction="A">选择 A · 石墨导演台</button>
+    </article>
+
+    <article class="direction-card" data-card="B" data-name="纸上制片厂">
+      <header class="card-head"><span class="card-id">B</span><span class="card-name">纸上制片厂</span><span class="card-tag">明亮编辑室 · 更像创作刊物</span></header>
+      <div class="mockup">
+        <div class="desktop-ui b-screen" data-ui>
+          <header class="b-top"><span class="b-brand">VeyaFrame</span><nav><span class="active">开始</span><span>项目</span><span>画布</span><span>教程</span></nav><div class="b-account"><span>今日额度 65</span><span>登录</span></div></header>
+          <main class="b-main">
+            <section class="b-copy">
+              <h2>今天，想拍什么？</h2>
+              <p>一句话写下人物和冲突。Agent 会先给出可看的试片，六步工作流始终留在项目里。</p>
+              <div class="b-compose">
+                <textarea aria-label="故事输入样机">婚礼开始前，新娘收到死去前女友的消息：“别嫁给他，下一个就是你。”</textarea>
+                <div class="b-compose-row"><span class="b-mode active">快速试片</span><span class="b-separator"></span><span class="b-mode">分步创作</span><button class="b-send">开始创作</button></div>
+                <div class="b-mode-description">先出 30 秒，再决定是否展开六步精修。</div>
+              </div>
+              <div class="b-recent"><b>最近项目</b><span>婚礼前夜 · 6 集 · 分镜 64</span><span>快递员的最后一单 · 示例项目</span></div>
+            </section>
+            <aside class="b-board">
+              <div class="b-board-grid">
+                <div class="b-frame main"><img src="./assets/manor.png" alt="婚礼前夜场景"></div>
+                <div class="b-frame portrait"><img src="./assets/story.png" alt="人物定妆参考"></div>
+                <div class="b-frame copy"><span>CHARACTER FILE / 03</span><b>一个婚礼，三个说谎的人。</b></div>
+              </div>
+              <div class="b-board-foot"><div><b>婚礼前夜</b><span>都市情感悬疑 · 30 秒试片 · 可展开六步</span></div><span>EST. ¥18–28</span></div>
+            </aside>
+          </main>
+        </div>
+        <div class="mobile-ui m-screen m-b">
+          <div class="m-top">VeyaFrame <span>开始创作</span></div>
+          <h3 class="m-title">今天，想拍什么？</h3>
+          <p class="m-copy">一句话写下人物和冲突，先看见结果。</p>
+          <div class="m-compose"><p>婚礼开始前，新娘收到死去前女友的消息……</p><div class="m-modes"><span class="active">快速试片</span><span>分步创作</span></div><button class="m-action">开始创作</button></div>
+          <div class="m-recent"><img src="./assets/manor.png" alt=""><span><b>婚礼前夜</b><small>6 集 · 30 秒试片</small></span></div>
+        </div>
+      </div>
+      <p class="card-meta">用编辑式排版强调“故事先于工具”，试片和精修仍在同一页面，但更轻、更有写作感。</p>
+      <button class="qmdp-pick-button" data-qmdp-managed="page" data-direction="B">选择 B · 纸上制片厂</button>
+    </article>
+
+    <article class="direction-card" data-card="C" data-name="Agent 工作间">
+      <header class="card-head"><span class="card-id">C</span><span class="card-name">Agent 工作间</span><span class="card-tag">对话优先 · 产物始终可见</span></header>
+      <div class="mockup">
+        <div class="desktop-ui c-screen" data-ui>
+          <div class="c-shell">
+            <section class="c-chat">
+              <header class="c-top"><span class="c-brand">VeyaFrame</span><span class="c-project-pill">婚礼前夜 · 6 集</span><span class="c-agent-status">Veya Agent · 在线</span></header>
+              <div class="c-thread">
+                <div class="c-user">我想拍一个婚礼前夜收到死去前女友警告的短剧，先看 30 秒试片。</div>
+                <div class="c-tool"><i></i><span>已读取项目意图 · 选择“快速试片” · 预算上限 ¥28</span></div>
+                <div class="c-assistant"><b>方向确认：</b>现代都市情感悬疑。3 秒钩子发生在第一镜，先用 6 集结构保证后续可以继续，不直接生成全季。<br><br>我会先生成人物、分集和 6 个镜头，再暂停给你审片。</div>
+                <div class="c-tool"><i></i><span>正在生成 · 人物 / 分集 / 镜头首帧</span></div>
+              </div>
+              <div class="c-composer">
+                <input aria-label="Agent 对话输入" value="继续，先生成 30 秒试片">
+                <div class="c-compose-row"><span class="c-mode active">快速试片</span><span class="c-mode">分步创作</span><span>预计 ¥18–28</span><button class="c-send" aria-label="发送"><svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button></div>
+              </div>
+            </section>
+            <aside class="c-stage">
+              <header class="c-stage-head"><div><h3>婚礼前夜</h3><span>30 SEC / 9:16 / DRAFT</span></div><span>6 集</span></header>
+              <div class="c-media"><img src="./assets/manor.png" alt="婚礼前夜试片画面"><span class="c-media-label">镜头 01 · 铁门外的雨</span></div>
+              <div class="c-progress"><span class="done"></span><span class="done"></span><span class="current"></span><span></span></div>
+              <p class="c-stage-copy">试片完成后，可逐镜采用或重新生成；需要继续时展开分步创作。</p>
+              <div class="c-stage-actions"><span>查看运行明细</span><span class="primary">展开分步创作</span></div>
+            </aside>
+          </div>
+        </div>
+        <div class="mobile-ui m-screen m-c">
+          <div class="m-top">VeyaFrame <span>婚礼前夜 · 6 集</span></div>
+          <div class="m-chat"><div class="m-user">婚礼前夜收到死去前女友警告，先看 30 秒。</div><div class="m-assistant">方向已确认：都市情感悬疑。先生成人物、分集和 6 个镜头，再暂停审片。</div></div>
+          <div class="m-result"><img src="./assets/manor.png" alt=""><span><b>30 秒试片 · 运行中</b><small>预计 ¥18–28<br>完成后可展开六步</small></span></div>
+          <div class="m-compose"><p>继续，先生成试片</p><div class="m-modes"><span class="active">快速试片</span><span>分步创作</span></div><button class="m-action">发送</button></div>
+        </div>
+      </div>
+      <p class="card-meta">适合不想先理解六步的用户。对话负责推进，右侧始终保留产物、预算和“展开分步创作”出口。</p>
+      <button class="qmdp-pick-button" data-qmdp-managed="page" data-direction="C">选择 C · Agent 工作间</button>
+    </article>
+
+    <article class="direction-card" data-card="D" data-name="制片墙">
+      <header class="card-head"><span class="card-id">D</span><span class="card-name">制片墙</span><span class="card-tag">高密度 · 多项目制作台</span></header>
+      <div class="mockup">
+        <div class="desktop-ui d-screen" data-ui>
+          <header class="d-top"><span class="d-brand">VeyaFrame</span><nav class="d-nav"><span class="active">总览</span><span>创作</span><span>画布</span></nav><div class="d-top-right"><span class="d-quota">65 / 65</span><span>今日额度</span><span>V</span></div></header>
+          <div class="d-body">
+            <aside class="d-rail">
+              <span class="d-section-label">最近项目</span>
+              <div class="d-project-row active">婚礼前夜<small>第 3 集 · 分镜 64</small></div>
+              <div class="d-project-row">快递员的最后一单<small>示例项目 · 已载入</small></div>
+              <div class="d-project-row">雨夜来信<small>人物 · 3 人</small></div>
+              <button class="d-new-project">+ 新建项目</button>
+            </aside>
+            <main class="d-main">
+              <div class="d-command"><div class="d-input">婚礼开始前，新娘收到死去前女友的消息……</div><div class="d-mode"><span class="active">快速试片</span><span>分步创作</span></div></div>
+              <div class="d-strip">
+                <div class="d-shot"><div class="d-shot-media"><img src="./assets/manor.png" alt="婚礼前夜场景"><span>01</span></div><div class="d-shot-copy"><b>铁门外的雨</b>镜头 01 · 5 秒</div></div>
+                <div class="d-shot"><div class="d-shot-media"><img src="./assets/story.png" alt="人物定妆"><span>02</span></div><div class="d-shot-copy"><b>新娘的短信</b>镜头 02 · 5 秒</div></div>
+                <div class="d-shot"><div class="d-shot-media"><img src="./assets/canon.png" alt="人物定妆"><span>03</span></div><div class="d-shot-copy"><b>她抬头看向门</b>镜头 03 · 5 秒</div></div>
+                <div class="d-shot"><div class="d-shot-media"><img src="./assets/delivery.png" alt="工作台界面"><span>04</span></div><div class="d-shot-copy"><b>制作控制台</b>任务 · 6 项</div></div>
+              </div>
+              <div class="d-lower">
+                <section class="d-sheet"><div class="d-sheet-head"><b>当前项目 · 婚礼前夜</b><span>6 集 / 30 秒试片</span></div><div class="d-step-row"><span>01</span><span>创作意图</span><em>已确认</em></div><div class="d-step-row"><span>02</span><span>人物与分集</span><em>已完成</em></div><div class="d-step-row"><span>03</span><span>镜头首帧</span><em>生成中</em></div><div class="d-step-row"><span>04</span><span>试片输出</span><em>待确认</em></div></section>
+                <section class="d-sheet"><div class="d-sheet-head"><b>今日制作</b><span>真实任务台账</span></div><div class="d-summary-number">64</div><p class="d-summary-copy">个分镜已建立<br>2 个镜头待复核<br>预计试片费用 ¥18–28</p></section>
+              </div>
+            </main>
+          </div>
+        </div>
+        <div class="mobile-ui m-screen m-d">
+          <div class="m-top">VeyaFrame <span>今日额度 65</span></div>
+          <div class="m-command">婚礼开始前，新娘收到死去前女友的消息……</div>
+          <div class="m-modes"><span class="active">快速试片</span><span>分步创作</span></div>
+          <div class="m-strip"><div class="m-shot"><img src="./assets/manor.png" alt=""><b>铁门外的雨</b></div><div class="m-shot"><img src="./assets/story.png" alt=""><b>新娘的短信</b></div></div>
+          <div class="m-status"><span>婚礼前夜 · 6 集</span><em>¥18–28</em></div>
+          <div class="m-status"><span>64 个分镜 · 2 个待复核</span><em>运行中</em></div>
+        </div>
+      </div>
+      <p class="card-meta">把首页做成制作台而不是门户，适合频繁管理多个项目的人；新用户入口不如 A 直接。</p>
+      <button class="qmdp-pick-button" data-qmdp-managed="page" data-direction="D">选择 D · 制片墙</button>
+    </article>
+  </main>
+
+  <section class="notes" aria-label="方向说明">
+    <div class="note"><b>A · 石墨导演台</b><p>字体：Space Grotesk 与中文系统栈。色彩：石墨、反相白、冷蓝。记忆点：一句话输入下方的六步进度条。适合保留现有工作区。</p></div>
+    <div class="note"><b>B · 纸上制片厂</b><p>字体：轻盈中文标题加系统正文。色彩：浅灰纸面与朱砂操作。记忆点：编辑式标题和真实定妆图。适合强调编剧与故事。</p></div>
+    <div class="note"><b>C · Agent 工作间</b><p>字体：Manrope 与系统中文。色彩：雾蓝灰与松石绿。记忆点：对话与产物并排，试片始终可见。适合快速用户。</p></div>
+    <div class="note"><b>D · 制片墙</b><p>字体：Space Grotesk、等宽数字。色彩：暖黑、纸灰、低饱和金。记忆点：四格镜头台和项目台账。适合多项目制片。</p></div>
+  </section>
+
+  <div class="confirm" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="confirm-dialog">
+      <h2 id="confirmTitle">确认首页方向</h2>
+      <p id="confirmMeta"></p>
+      <label for="adjustments">调整建议</label>
+      <textarea id="adjustments" placeholder="可选，例如：要 A 的布局 + B 的明亮感"></textarea>
+      <div class="confirm-actions"><button type="button" id="cancelPick">取消</button><button type="button" class="primary" id="confirmPick">确认并回传</button></div>
+    </div>
+  </div>
+  <div class="pick-toast" id="pickToast" role="status" aria-live="polite"></div>
+
+  <script>
+    const cards = [...document.querySelectorAll('.direction-card')];
+    const dialInputs = [...document.querySelectorAll('[data-qmdp-dial]')];
+    let pending = null;
+
+    function fitStages() {
+      document.querySelectorAll('.desktop-ui').forEach((stage) => {
+        const box = stage.parentElement;
+        const scale = Math.min(box.clientWidth / 960, box.clientHeight / 600);
+        stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      });
+    }
+
+    function dialValues() {
+      return {
+        variance: Number(document.getElementById('variance').value),
+        motion: Number(document.getElementById('motion').value),
+        density: Number(document.getElementById('density').value),
+      };
+    }
+
+    function syncDialOutputs() {
+      dialInputs.forEach((input) => {
+        const output = document.querySelector(`[data-qmdp-output="${input.dataset.qmdpDial}"]`);
+        if (output) output.textContent = input.value;
+      });
+    }
+
+    function openConfirm(card) {
+      const values = dialValues();
+      pending = {
+        id: card.dataset.card,
+        name: card.dataset.name,
+        label: `选 ${card.dataset.card}：${card.dataset.name}`,
+      };
+      cards.forEach((item) => item.classList.toggle('is-selected', item === card));
+      document.getElementById('confirmMeta').textContent =
+        `${pending.label} · 视觉冒险度 ${values.variance} / 动效强度 ${values.motion} / 信息密度 ${values.density}`;
+      document.getElementById('confirm').classList.add('open');
+      document.getElementById('adjustments').value = '';
+      requestAnimationFrame(() => document.getElementById('adjustments').focus());
+    }
+
+    async function sendSelection(payload) {
+      const message = `${payload.label}；拨盘：视觉冒险度 ${payload.dials.variance} / 动效强度 ${payload.dials.motion} / 信息密度 ${payload.dials.density}${payload.adjustments ? `；建议：${payload.adjustments}` : ''}`;
+      if (location.protocol === 'file:') {
+        if (navigator.clipboard) await navigator.clipboard.writeText(message).catch(() => {});
+        return { ok: false, fallback: true };
+      }
+      try {
+        const response = await fetch('/api/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        return await response.json();
+      } catch {
+        if (navigator.clipboard) await navigator.clipboard.writeText(message).catch(() => {});
+        return { ok: false, fallback: true };
+      }
+    }
+
+    async function confirmSelection() {
+      if (!pending) return;
+      const payload = {
+        ...pending,
+        dials: dialValues(),
+        adjustments: document.getElementById('adjustments').value.trim(),
+      };
+      const result = await sendSelection(payload);
+      const toast = document.getElementById('pickToast');
+      toast.textContent = result.ok
+        ? `已选择 ${pending.name}，已回传`
+        : `已选择 ${pending.name}，请回到对话发送选择`;
+      toast.classList.add('show');
+      document.getElementById('statusText').textContent = `已选择 ${pending.id} · ${pending.name}`;
+      document.getElementById('confirm').classList.remove('open');
+      window.setTimeout(() => toast.classList.remove('show'), 4200);
+    }
+
+    cards.forEach((card) => {
+      card.querySelector('.qmdp-pick-button').addEventListener('click', () => openConfirm(card));
+    });
+    dialInputs.forEach((input) => input.addEventListener('input', syncDialOutputs));
+    document.getElementById('cancelPick').addEventListener('click', () => {
+      document.getElementById('confirm').classList.remove('open');
+    });
+    document.getElementById('confirmPick').addEventListener('click', confirmSelection);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') document.getElementById('confirm').classList.remove('open');
+      const index = ['1', '2', '3', '4'].indexOf(event.key);
+      if (index >= 0 && cards[index] && !document.getElementById('confirm').classList.contains('open')) openConfirm(cards[index]);
+    });
+    window.addEventListener('resize', fitStages);
+    requestAnimationFrame(fitStages);
+    syncDialOutputs();
+  </script>
+</body>
+</html>

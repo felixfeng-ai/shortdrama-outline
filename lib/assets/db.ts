@@ -1074,6 +1074,75 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       ALTER TABLE video_renders ADD COLUMN quota_units INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 25,
+    name: "production-operating-system",
+    sql: `
+      -- 短剧生产计划把“做到第几阶段、目标多少集”变成项目事实，
+      -- 而不是散落在前端 localStorage 或某一次生成请求里。
+      CREATE TABLE IF NOT EXISTS project_production_plans (
+        id              TEXT PRIMARY KEY,
+        project_id      TEXT NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+        project_type    TEXT NOT NULL,
+        mode            TEXT NOT NULL,
+        target_episodes INTEGER NOT NULL,
+        current_stage   TEXT NOT NULL,
+        status          TEXT NOT NULL,
+        created_at      INTEGER NOT NULL,
+        updated_at      INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS production_stages (
+        id          TEXT PRIMARY KEY,
+        plan_id     TEXT NOT NULL REFERENCES project_production_plans(id) ON DELETE CASCADE,
+        stage_key   TEXT NOT NULL,
+        position    INTEGER NOT NULL,
+        status      TEXT NOT NULL,
+        label       TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        created_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL,
+        UNIQUE (plan_id, stage_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS production_gate_results (
+        id           TEXT PRIMARY KEY,
+        plan_id      TEXT NOT NULL REFERENCES project_production_plans(id) ON DELETE CASCADE,
+        stage_key    TEXT NOT NULL,
+        ready        INTEGER NOT NULL DEFAULT 0,
+        blockers     TEXT NOT NULL DEFAULT '[]',
+        evaluated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS production_asset_locks (
+        id          TEXT PRIMARY KEY,
+        plan_id     TEXT NOT NULL REFERENCES project_production_plans(id) ON DELETE CASCADE,
+        asset_type  TEXT NOT NULL,
+        asset_id    TEXT NOT NULL,
+        lock_version INTEGER NOT NULL DEFAULT 1,
+        locked_at   INTEGER NOT NULL,
+        UNIQUE (plan_id, asset_type, asset_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS production_extensions (
+        id                      TEXT PRIMARY KEY,
+        plan_id                 TEXT NOT NULL REFERENCES project_production_plans(id) ON DELETE CASCADE,
+        from_mode               TEXT NOT NULL,
+        to_mode                 TEXT NOT NULL,
+        from_target_episodes    INTEGER NOT NULL,
+        to_target_episodes      INTEGER NOT NULL,
+        existing_episode_numbers TEXT NOT NULL DEFAULT '[]',
+        new_episode_numbers      TEXT NOT NULL DEFAULT '[]',
+        estimated_units          INTEGER NOT NULL DEFAULT 0,
+        created_at                INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_production_stages_plan
+        ON production_stages(plan_id, position);
+      CREATE INDEX IF NOT EXISTS idx_production_extensions_plan
+        ON production_extensions(plan_id, created_at DESC);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import type { ProjectDto } from '@/lib/assets/api'
+import type { ProjectBulkDeleteScope, ProjectDto } from '@/lib/assets/api'
 import type { WorkspaceMode } from '@/lib/app-nav'
 import type { StepKey } from '@/lib/types'
 import { orderWorkspaceSteps, workspaceStepLabel } from '@/lib/workspace-view'
@@ -27,6 +27,7 @@ interface Props {
   onHome: () => void
   onSwitchProject: (id: string) => void
   onDeleteProject: (id: string) => Promise<boolean>
+  onBulkDeleteProjects: (scope: ProjectBulkDeleteScope) => Promise<boolean>
   onNewProject: () => void
   onOpenTodo: () => void
   onOpenCreate: () => void
@@ -70,6 +71,7 @@ export default function WorkspaceSidebar({
   onHome,
   onSwitchProject,
   onDeleteProject,
+  onBulkDeleteProjects,
   onNewProject,
   onOpenTodo,
   onOpenCreate,
@@ -82,10 +84,13 @@ export default function WorkspaceSidebar({
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [confirmingProjectId, setConfirmingProjectId] = useState<string | null>(null)
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
+  const [bulkConfirm, setBulkConfirm] = useState<ProjectBulkDeleteScope | null>(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const orderedSteps = orderWorkspaceSteps(
     ['characters', 'acts', 'episodes', 'visuals', 'scenes', 'shots'],
     currentStep,
   )
+  const sampleCount = projects.filter((project) => project.title.startsWith('示例 · ')).length
 
   function closeAnd(action: () => void) {
     action()
@@ -121,84 +126,148 @@ export default function WorkspaceSidebar({
           <div className="wfx-project-menu" aria-label="项目列表">
             {projects.length === 0 ? (
               <p className="wfx-project-empty">还没有项目</p>
-            ) : projects.map((project) => {
-              const isActive = project.id === projectId
-              const isConfirming = project.id === confirmingProjectId
-              return (
-                <div
-                  key={project.id}
-                  className={`wfx-project-menu-row ${isActive ? 'is-active' : ''} ${isConfirming ? 'is-confirming' : ''}`}
-                >
-                  {isConfirming ? (
-                    <div className="wfx-project-delete-confirm" role="alert">
-                      <span>删除后无法恢复</span>
-                      <button
-                        type="button"
-                        className="is-confirm"
-                        disabled={deletingProjectId === project.id}
-                        onClick={() => {
-                          setDeletingProjectId(project.id)
-                          void onDeleteProject(project.id).then((deleted) => {
-                            setDeletingProjectId(null)
-                            if (!deleted) return
-                            setConfirmingProjectId(null)
-                            if (project.id === projectId) setProjectMenuOpen(false)
-                          })
-                        }}
-                      >
-                        {deletingProjectId === project.id ? '删除中…' : '确认删除'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deletingProjectId === project.id}
-                        onClick={() => setConfirmingProjectId(null)}
-                      >
-                        取消
-                      </button>
+            ) : (
+              <div className="wfx-project-list-scroll">
+                {projects.map((project) => {
+                  const isActive = project.id === projectId
+                  const isConfirming = project.id === confirmingProjectId
+                  return (
+                    <div
+                      key={project.id}
+                      className={`wfx-project-menu-row ${isActive ? 'is-active' : ''} ${isConfirming ? 'is-confirming' : ''}`}
+                    >
+                      {isConfirming ? (
+                        <div className="wfx-project-delete-confirm" role="alert">
+                          <span>删除后无法恢复</span>
+                          <button
+                            type="button"
+                            className="is-confirm"
+                            disabled={deletingProjectId === project.id}
+                            onClick={() => {
+                              setDeletingProjectId(project.id)
+                              void onDeleteProject(project.id).then((deleted) => {
+                                setDeletingProjectId(null)
+                                if (!deleted) return
+                                setConfirmingProjectId(null)
+                                if (project.id === projectId) setProjectMenuOpen(false)
+                              })
+                            }}
+                          >
+                            {deletingProjectId === project.id ? '删除中…' : '确认删除'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingProjectId === project.id}
+                            onClick={() => setConfirmingProjectId(null)}
+                          >
+                            取消
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="wfx-project-select"
+                            onClick={() => {
+                              onSwitchProject(project.id)
+                              setProjectMenuOpen(false)
+                              setConfirmingProjectId(null)
+                              onCloseMobile()
+                            }}
+                          >
+                            <span>{project.title}</span>
+                            {isActive && <small>当前</small>}
+                          </button>
+                          <button
+                            type="button"
+                            className="wfx-project-delete"
+                            aria-label={`删除项目 ${project.title}`}
+                            title="删除项目"
+                            onClick={() => setConfirmingProjectId(project.id)}
+                          >
+                            <svg viewBox="0 0 20 20" aria-hidden="true">
+                              <path d="M4.5 6h11M8 3.8h4M6.5 6l.6 9.2h5.8l.6-9.2M8.5 9v3.5M11.5 9v3.5" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="wfx-project-select"
-                        onClick={() => {
-                          onSwitchProject(project.id)
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="wfx-project-menu-footer">
+              {bulkConfirm ? (
+                <div className="wfx-project-bulk-confirm" role="alert">
+                  <p>
+                    {bulkConfirm === 'duplicate-samples'
+                      ? `将清理 ${Math.max(0, sampleCount - 1)} 个较旧示例，保留最近一份。`
+                      : `将删除当前账号的全部 ${projects.length} 个项目，无法恢复。`}
+                  </p>
+                  <div>
+                    <button
+                      type="button"
+                      className="is-confirm"
+                      disabled={bulkDeleting}
+                      onClick={() => {
+                        setBulkDeleting(true)
+                        void onBulkDeleteProjects(bulkConfirm).then((deleted) => {
+                          setBulkDeleting(false)
+                          if (!deleted) return
+                          setBulkConfirm(null)
                           setProjectMenuOpen(false)
-                          setConfirmingProjectId(null)
                           onCloseMobile()
-                        }}
-                      >
-                        <span>{project.title}</span>
-                        {isActive && <small>当前</small>}
-                      </button>
-                      <button
-                        type="button"
-                        className="wfx-project-delete"
-                        aria-label={`删除项目 ${project.title}`}
-                        title="删除项目"
-                        onClick={() => setConfirmingProjectId(project.id)}
-                      >
-                        <svg viewBox="0 0 20 20" aria-hidden="true">
-                          <path d="M4.5 6h11M8 3.8h4M6.5 6l.6 9.2h5.8l.6-9.2M8.5 9v3.5M11.5 9v3.5" />
-                        </svg>
-                      </button>
-                    </>
-                  )}
+                        })
+                      }}
+                    >
+                      {bulkDeleting ? '清理中…' : '确认清理'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={bulkDeleting}
+                      onClick={() => setBulkConfirm(null)}
+                    >
+                      取消
+                    </button>
+                  </div>
                 </div>
-              )
-            })}
-            <button
-              type="button"
-              className="wfx-project-new"
-              onClick={() => {
-                onNewProject()
-                setProjectMenuOpen(false)
-                setConfirmingProjectId(null)
-                onCloseMobile()
-              }}
-            >
-              + 新建项目
-            </button>
+              ) : (
+                <>
+                  {sampleCount > 1 && (
+                    <button
+                      type="button"
+                      className="wfx-project-bulk-action"
+                      onClick={() => setBulkConfirm('duplicate-samples')}
+                    >
+                      清理重复示例 <small>{sampleCount - 1}</small>
+                    </button>
+                  )}
+                  {projects.length > 0 && (
+                    <button
+                      type="button"
+                      className="wfx-project-bulk-action is-danger"
+                      onClick={() => setBulkConfirm('all')}
+                    >
+                      删除全部项目
+                    </button>
+                  )}
+                </>
+              )}
+              <button
+                type="button"
+                className="wfx-project-new"
+                onClick={() => {
+                  onNewProject()
+                  setProjectMenuOpen(false)
+                  setConfirmingProjectId(null)
+                  setBulkConfirm(null)
+                  onCloseMobile()
+                }}
+              >
+                + 新建项目
+              </button>
+            </div>
           </div>
         )}
 

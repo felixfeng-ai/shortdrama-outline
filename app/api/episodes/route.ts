@@ -36,6 +36,8 @@ import {
   saveTextGenerationCheckpoint,
 } from "@/lib/generation/checkpoint"
 import { listProjectDecisions, listProjectJudgments } from "@/lib/assets/decisions"
+import { getProductionPlan } from "@/lib/production/repo"
+import { normalizeProductionTarget } from "@/lib/production/presets"
 import {
   buildVariantMemoryBlock,
   readVariantStrategy,
@@ -71,10 +73,17 @@ export async function POST(req: Request) {
     characters = readCharacters(body?.characters, '请先生成核心人物，再生成分集剧情')
     acts = readActs(body?.acts, '请先生成三幕大纲，再生成分集剧情')
     genre = readGenre(body?.genre)
-    count = readEpisodeCount(body?.count)
+    const productionMode = projectId
+      ? getProductionPlan(db, projectId)?.mode ?? null
+      : null
+    count = productionMode
+      ? normalizeProductionTarget(productionMode, body?.count)
+      : readEpisodeCount(body?.count)
     brief = readBrief(body?.brief)
     start = readEpisodeStart(body?.start)
-    total = readEpisodeCount(body?.total ?? start + count - 1, start + count - 1)
+    total = productionMode
+      ? normalizeProductionTarget(productionMode, body?.total ?? start + count - 1)
+      : readEpisodeCount(body?.total ?? start + count - 1, start + count - 1)
     preview = body?.preview === true
     variant = body?.variant === 'B' ? 'B' : 'A'
     variantStrategy = readVariantStrategy(body?.variantStrategy)
