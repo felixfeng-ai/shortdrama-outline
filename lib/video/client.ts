@@ -1,5 +1,6 @@
 import { patchJson, postJson } from "../api.ts"
 import type { GeneratedAsset, GenerationBatch, GenerationTask } from "../generation/types.ts"
+import type { PublicVideoCapabilities } from "./model.ts"
 
 export interface VideoGenerationState {
   tasks: GenerationTask[]
@@ -18,6 +19,15 @@ export interface VideoBatchResult {
   tasks: GenerationTask[]
   blocked: Array<{ targetId: string; reason: string }>
   failures: Array<{ targetId: string; reason: string }>
+}
+
+export async function fetchVideoCapabilities(): Promise<PublicVideoCapabilities> {
+  const response = await fetch("/api/video/capabilities", { cache: "no-store" })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "视频能力读取失败")
+  }
+  return payload.data as PublicVideoCapabilities
 }
 
 export function generateShotVideo(input: {

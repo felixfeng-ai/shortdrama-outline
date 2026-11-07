@@ -8,9 +8,16 @@ import {
   cancelVideoTask,
   fetchShotVideoState,
   generateShotVideo,
+  retryVideoTask,
   selectVideo,
 } from '@/lib/video/client'
+import {
+  estimateVideoSelectionCost,
+  supportsVideoDuration,
+} from '@/lib/video/catalog'
+import { useVideoCapabilities } from '@/lib/video/use-video-capabilities'
 import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
+import VideoGenerationSettings from './VideoGenerationSettings'
 
 interface Props {
   projectId: string | null
@@ -19,18 +26,6 @@ interface Props {
   prompt: string
   duration: number
   ratio: string
-}
-
-const VIDEO_MODEL = 'MiniMax-H3-Lite'
-const VIDEO_RESOLUTION = '768P'
-const PRICE_PER_SECOND = 0.26
-
-function formatCost(duration: number): string {
-  return `¥${(Math.max(1, duration) * PRICE_PER_SECOND).toFixed(2)}`
-}
-
-function quotaCost(duration: number): number {
-  return quotaUnitsForCostMicros(Math.ceil(Math.max(1, duration) * PRICE_PER_SECOND * 1_000_000))
 }
 
 function isPending(task: GenerationTask | null): boolean {
@@ -50,10 +45,12 @@ export default function ShotVideoPanel({
   const [tasks, setTasks] = useState<GenerationTask[]>([])
   const [assets, setAssets] = useState<GeneratedAsset[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const [selectingId, setSelectingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const videoSettings = useVideoCapabilities()
 
   const refresh = useCallback(async () => {
     if (!projectId) {
@@ -104,7 +101,29 @@ export default function ShotVideoPanel({
 
   const selected = useMemo(() => assets.find((asset) => asset.selectedAt) ?? null, [assets])
   const preview = selected ?? assets[0] ?? null
-  const blocked = mode === 'image-to-video' && !frame
+  const estimatedCostMicros = videoSettings.capabilities
+    ? estimateVideoSelectionCost(
+        videoSettings.capabilities,
+        videoSettings.model,
+        videoSettings.resolution,
+        duration,
+      )
+    : null
+  const durationSupported = videoSettings.capabilities
+    ? supportsVideoDuration(videoSettings.capabilities, videoSettings.model, duration)
+    : false
+  const capabilityBlocked = videoSettings.loading
+    || !videoSettings.capabilities?.enabled
+    || !videoSettings.model
+    || !videoSettings.resolution
+    || !durationSupported
+    || estimatedCostMicros === null
+  const frameBlocked = mode === 'image-to-video' && !frame
+  const blocked = capabilityBlocked || frameBlocked
+  const retryable = latestTask?.status === 'failed' || latestTask?.status === 'canceled'
+  const costLabel = estimatedCostMicros === null
+    ? '费用读取中'
+    : `草片约 ¥${(estimatedCostMicros / 1_000_000).toFixed(2)} · ${quotaUnitsForCostMicros(estimatedCostMicros)} 创作额度`
 
   async function handleGenerate() {
     if (submitting || pendingTask || blocked) return
@@ -122,11 +141,11 @@ export default function ShotVideoPanel({
         sourceAssetId: mode === 'image-to-video' ? frame?.id : null,
         prompt,
         mode,
-        model: VIDEO_MODEL,
-        resolution: VIDEO_RESOLUTION,
+        model: videoSettings.model,
+        resolution: videoSettings.resolution,
         duration,
         ratio,
-        maxBudgetMicros: Math.ceil(duration * PRICE_PER_SECOND * 1_000_000),
+        maxBudgetMicros: estimatedCostMicros!,
         autoSelect: false,
         idempotencyKey: crypto.randomUUID(),
       }, controller.signal)
@@ -175,6 +194,23 @@ export default function ShotVideoPanel({
     }
   }
 
+  async function handleRetry() {
+    if (!projectId || !latestTask || retrying) return
+    setRetrying(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await retryVideoTask(projectId, latestTask.id)
+      setTasks((current) => [result.task, ...current])
+      setNotice(result.reused ? '已恢复现有重试任务。' : '失败任务已重新提交。')
+      window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '视频重试失败')
+    } finally {
+      setRetrying(false)
+    }
+  }
+
   return (
     <section className="shot-video-panel mt-3 min-w-0" aria-label="镜头视频">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -188,11 +224,11 @@ export default function ShotVideoPanel({
               镜头视频
             </span>
             <span className="rounded-pill bg-info-100 px-2 py-0.5 text-[9px] font-semibold text-info-800">
-              {VIDEO_MODEL} · {VIDEO_RESOLUTION}
+              {videoSettings.model || '读取模型'} · {videoSettings.resolution || '--'}
             </span>
           </div>
           <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">
-            草片约 {formatCost(duration)} · {quotaCost(duration)} 创作额度，结果先保存为候选；切换菜单后任务仍在服务端继续。
+            {costLabel}，结果先保存为候选；切换菜单后任务仍在服务端继续。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -226,6 +262,15 @@ export default function ShotVideoPanel({
             >
               取消任务
             </button>
+          ) : retryable ? (
+            <button
+              type="button"
+              onClick={() => void handleRetry()}
+              disabled={retrying}
+              className="shot-video-generate w-full rounded-chip border border-info-300 bg-info-50 px-2.5 py-1.5 text-[10.5px] font-semibold text-info-900 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+            >
+              {retrying ? '重新提交中…' : '重试失败任务'}
+            </button>
           ) : (
             <button
               type="button"
@@ -233,11 +278,29 @@ export default function ShotVideoPanel({
               disabled={submitting || blocked || !prompt.trim()}
               className="shot-video-generate w-full rounded-chip border border-info-300 bg-info-50 px-2.5 py-1.5 text-[10.5px] font-semibold text-info-900 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
             >
-              {submitting ? '提交中…' : blocked ? '先采用首帧' : '生成视频'}
+              {submitting
+                ? '提交中…'
+                : frameBlocked
+                  ? '先采用首帧'
+                  : capabilityBlocked
+                    ? '视频设置不可用'
+                    : '生成视频'}
             </button>
           )}
         </div>
       </div>
+
+      <VideoGenerationSettings
+        capabilities={videoSettings.capabilities}
+        model={videoSettings.model}
+        resolution={videoSettings.resolution}
+        duration={duration}
+        loading={videoSettings.loading}
+        error={videoSettings.error}
+        disabled={Boolean(pendingTask) || submitting || retrying}
+        onModelChange={videoSettings.setModel}
+        onResolutionChange={videoSettings.setResolution}
+      />
 
       {pendingTask && (
         <p role="status" className="mt-2 rounded-chip bg-info-50 px-2.5 py-1.5 text-[10.5px] text-info-800">
@@ -319,6 +382,14 @@ export default function ShotVideoPanel({
             </button>
           ))}
         </div>
+      )}
+
+      {latestTask && (
+        <p className="mt-2 text-[10px] text-ink-400">
+          本任务：预计 ¥{((latestTask.estimatedCostMicros ?? 0) / 1_000_000).toFixed(2)}
+          {' · '}
+          已结算 ¥{((latestTask.actualCostMicros ?? 0) / 1_000_000).toFixed(2)}
+        </p>
       )}
 
       {error && (

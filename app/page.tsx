@@ -45,6 +45,7 @@ import InlineReleaseNotice from '@/components/InlineReleaseNotice'
 import WorkspaceSidebar from '@/components/WorkspaceSidebar'
 import WorkspaceTopbar from '@/components/WorkspaceTopbar'
 import WorkspaceHome from '@/components/WorkspaceHome'
+import QuickTrialProgress, { type QuickTrialPhase } from '@/components/QuickTrialProgress'
 import '@/app/skills/skills.css'
 import '@/app/workspace-shell.css'
 import { buildTodoList } from '@/lib/todo'
@@ -586,6 +587,11 @@ export default function Home() {
   const [productionSaving, setProductionSaving] = useState(false)
   const [productionPromoting, setProductionPromoting] = useState(false)
   const [productionError, setProductionError] = useState<string | null>(null)
+  /** 快速试片一次只跑故事骨架三步；视觉和视频仍走付费前确认。 */
+  const [quickTrial, setQuickTrial] = useState<{
+    phase: QuickTrialPhase
+    error: string | null
+  } | null>(null)
   const episodeProjectRef = useRef<string | null>(null)
   useEffect(() => {
     try {
@@ -1720,8 +1726,8 @@ export default function Home() {
     )
 
   /**
-   * 首次价值入口：快速试片不是另一套 Demo。
-   * 它先建立 1 集样片计划，再用同一套核心人物接口开始生产。
+   * 首次价值入口：快速试片先生成能判断的第一集故事骨架。
+   * 三步都写回现有项目接口和快照；视觉与视频仍保留付费前确认。
    */
   async function startQuickTrial(rawIdea: string): Promise<void> {
     const quickIdea = rawIdea.trim()
@@ -1730,7 +1736,12 @@ export default function Home() {
       return
     }
 
+    const epoch = resetEpoch.current
     setIdea(quickIdea)
+    setQuickTrial({ phase: "characters", error: null })
+    const controller = new AbortController()
+    abortRef.current = controller
+    let activePhase: QuickTrialPhase = "characters"
     try {
       const pid = await ensureProject(quickIdea.slice(0, 20))
       if (!pid) throw new Error("项目创建失败，请稍后重试。")
@@ -1759,23 +1770,107 @@ export default function Home() {
       await refreshProjects()
 
       goToStep("characters")
-      setNotice("已建立 1 集样片，正在生成核心人物。后续步骤仍由你逐项确认。")
-      await runStep(
-        "characters",
-        () => postJson<{ characters: Character[] }>(
-          "/api/characters",
-          {
-            idea: quickIdea,
-            genre: genre.id,
-            projectId: pid,
-            brief,
-          },
-          abortRef.current?.signal,
-        ),
-        ({ characters: list }) => setCharacters(list),
+      setStatus((state) => ({ ...state, characters: "loading" }))
+      setErrors((state) => ({ ...state, characters: null }))
+      setNotice("已建立 1 集样片，正在生成核心人物、三幕和第一集。")
+
+      const characterData = await postJson<{ characters: Character[] }>(
+        "/api/characters",
+        {
+          idea: quickIdea,
+          genre: genre.id,
+          projectId: pid,
+          brief,
+        },
+        controller.signal,
       )
+      if (isCleared(epoch)) return
+      const quickCharacters = characterData.characters
+      setCharacters(quickCharacters)
+      setStatus((state) => ({ ...state, characters: "done" }))
+
+      activePhase = "acts"
+      setQuickTrial({ phase: "acts", error: null })
+      setStatus((state) => ({ ...state, acts: "loading" }))
+      setErrors((state) => ({ ...state, acts: null }))
+      const actData = await postJson<{ acts: Act[] }>(
+        "/api/acts",
+        {
+          idea: quickIdea,
+          genre: genre.id,
+          characters: quickCharacters,
+          projectId: pid,
+          brief,
+        },
+        controller.signal,
+      )
+      if (isCleared(epoch)) return
+      const quickActs = actData.acts
+      setActs(quickActs)
+      setActsBuiltFrom(`${JSON.stringify(quickCharacters)}|${briefSig}`)
+      setStatus((state) => ({ ...state, acts: "done" }))
+
+      activePhase = "episodes"
+      setQuickTrial({ phase: "episodes", error: null })
+      setStatus((state) => ({ ...state, episodes: "streaming" }))
+      setErrors((state) => ({ ...state, episodes: null }))
+      let quickEpisodes: Episode[] = []
+      let episodeDone = false
+      await postSse(
+        "/api/episodes",
+        {
+          idea: quickIdea,
+          genre: genre.id,
+          characters: quickCharacters,
+          acts: quickActs,
+          projectId: pid,
+          count: 1,
+          start: 1,
+          total: 1,
+          brief,
+          resume: false,
+        },
+        (event, data) => {
+          if (event !== "episodes" && event !== "done") return
+          const incoming = (data as { episodes?: Episode[] }).episodes
+          if (Array.isArray(incoming)) quickEpisodes = incoming
+          if (event === "done") episodeDone = true
+        },
+        controller.signal,
+      )
+      if (isCleared(epoch)) return
+      if (!episodeDone || quickEpisodes.length === 0) {
+        throw new Error("第一集没有生成出有效内容，请重试。")
+      }
+      setEpisodes(quickEpisodes)
+      setEpisodesBuiltFrom(
+        `${JSON.stringify(quickCharacters)}|${JSON.stringify(quickActs)}|${briefSig}`,
+      )
+      setStatus((state) => ({ ...state, episodes: "done" }))
+      episodeCheckpointRef.current = false
+      setQuotaRefreshKey((value) => value + 1)
+
+      activePhase = "ready"
+      setQuickTrial({ phase: "ready", error: null })
+      goToStep("episodes")
+      setNotice("第一集故事骨架已生成，可以检查人物、钩子和分集内容。")
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "样片启动失败，请重试。")
+      if (isCleared(epoch)) return
+      const message = isAbortError(error)
+        ? "快速试片已停止，已经完成的内容会保留。"
+        : error instanceof Error
+          ? error.message
+          : "样片启动失败，请重试。"
+      const failedPhase = activePhase === "ready" ? "episodes" : activePhase
+      setQuickTrial({ phase: failedPhase, error: message })
+      setStatus((state) => ({
+        ...state,
+        [failedPhase]: isAbortError(error) ? "idle" : "error",
+      }))
+      setErrors((state) => ({ ...state, [failedPhase]: message }))
+      setNotice(message)
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null
     }
   }
 
@@ -3233,6 +3328,7 @@ export default function Home() {
     setProductionSaving(false)
     setProductionPromoting(false)
     setProductionError(null)
+    setQuickTrial(null)
     setNotice(null)
   }
 
@@ -3919,6 +4015,15 @@ export default function Home() {
           <div className="wfx-mode-strip">
             <WorkspaceModeTabs mode={workspaceMode} onChange={openWorkspaceMode} />
           </div>
+
+          {quickTrial && (
+            <QuickTrialProgress
+              phase={quickTrial.phase}
+              error={quickTrial.error}
+              onOpenEpisodes={() => goToStep("episodes")}
+              onDismiss={() => setQuickTrial(null)}
+            />
+          )}
 
           {workspaceMode === 'overview' && !workspaceStepDetail && (
             <WorkspaceHome

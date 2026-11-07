@@ -10,7 +10,10 @@ import {
   generateShotVideoBatch,
   retryVideoTask,
 } from '@/lib/video/client'
+import { supportsVideoDuration } from '@/lib/video/catalog'
+import { useVideoCapabilities } from '@/lib/video/use-video-capabilities'
 import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
+import VideoGenerationSettings from './VideoGenerationSettings'
 
 interface Props {
   projectId: string | null
@@ -19,8 +22,6 @@ interface Props {
   assets: GeneratedAsset[]
   title: string
 }
-
-const PRICE_PER_SECOND = 0.26
 
 function selectedFrameFor(shot: Shot, assets: GeneratedAsset[]): GeneratedAsset | null {
   return assets.find((asset) =>
@@ -63,10 +64,25 @@ export default function BatchVideoPanel({
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const videoSettings = useVideoCapabilities()
 
+  const capabilityReason = videoSettings.loading
+    ? '视频能力读取中'
+    : videoSettings.error
+      ? videoSettings.error
+      : !videoSettings.capabilities?.enabled
+        ? '视频生成未启用'
+        : !videoSettings.model || !videoSettings.resolution
+          ? '视频模型不可用'
+          : null
   const targets = useMemo(() => shots.map((shot) => {
     const frame = selectedFrameFor(shot, assets)
     const prompt = (shot.prompt || shot.action || shot.scene).trim()
+    const durationReason = videoSettings.capabilities && videoSettings.model
+      ? supportsVideoDuration(videoSettings.capabilities, videoSettings.model, shot.params.duration)
+        ? null
+        : `当前模型不支持 ${shot.params.duration} 秒镜头`
+      : null
     return {
       key: shot.id,
       targetId: shot.entityId,
@@ -76,13 +92,21 @@ export default function BatchVideoPanel({
       prompt,
       duration: shot.params.duration,
       ratio: shot.params.ratio,
-      reason: !prompt
-        ? '缺镜头提示词'
-        : !frame
-          ? '先去分镜属性采用首帧'
-          : null,
+      reason: capabilityReason
+        ?? durationReason
+        ?? (!prompt
+          ? '缺镜头提示词'
+          : !frame
+            ? '先去分镜属性采用首帧'
+            : null),
     }
-  }), [assets, shots])
+  }), [
+    assets,
+    capabilityReason,
+    shots,
+    videoSettings.capabilities,
+    videoSettings.model,
+  ])
   const readyTargets = useMemo(
     () => targets.filter((target) => !target.reason),
     [targets],
@@ -93,7 +117,12 @@ export default function BatchVideoPanel({
     selected.has(target.key) && !target.reason && !isPending(latestByTarget.get(target.targetId))
   )
   const totalSeconds = selectedTargets.reduce((sum, target) => sum + Math.max(1, target.duration), 0)
-  const estimatedCost = totalSeconds * PRICE_PER_SECOND
+  const estimatedCost = videoSettings.pricePerSecond === null
+    ? null
+    : totalSeconds * videoSettings.pricePerSecond
+  const estimatedQuota = estimatedCost === null
+    ? null
+    : quotaUnitsForCostMicros(estimatedCost * 1_000_000)
   const relevantTasks = targets
     .map((target) => latestByTarget.get(target.targetId))
     .filter((task): task is GenerationTask => Boolean(task))
@@ -157,7 +186,13 @@ export default function BatchVideoPanel({
   }
 
   async function startBatch() {
-    if (starting || selectedTargets.length === 0) return
+    if (
+      starting
+      || selectedTargets.length === 0
+      || !videoSettings.model
+      || !videoSettings.resolution
+      || estimatedCost === null
+    ) return
     setStarting(true)
     setError(null)
     setNotice(null)
@@ -173,8 +208,8 @@ export default function BatchVideoPanel({
           duration: target.duration,
           ratio: target.ratio,
         })),
-        model: 'MiniMax-H3-Lite',
-        resolution: '768P',
+        model: videoSettings.model,
+        resolution: videoSettings.resolution,
         budgetLimitMicros: Math.ceil(estimatedCost * 1_000_000),
         idempotencyKey: crypto.randomUUID(),
       })
@@ -237,7 +272,7 @@ export default function BatchVideoPanel({
               <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
               <span className="font-mono text-[10.5px] text-ink-400">{readyTargets.length} 镜可生成</span>
               {targets.length > readyTargets.length && (
-                <span className="text-[10.5px] text-accent-700">{targets.length - readyTargets.length} 镜缺首帧</span>
+                <span className="text-[10.5px] text-accent-700">{targets.length - readyTargets.length} 镜未就绪</span>
               )}
             </div>
             <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500">
@@ -261,6 +296,17 @@ export default function BatchVideoPanel({
         <span>不会自动采用</span>
         <span>仅服务端首帧</span>
       </div>
+
+      <VideoGenerationSettings
+        capabilities={videoSettings.capabilities}
+        model={videoSettings.model}
+        resolution={videoSettings.resolution}
+        loading={videoSettings.loading}
+        error={videoSettings.error}
+        disabled={starting}
+        onModelChange={videoSettings.setModel}
+        onResolutionChange={videoSettings.setResolution}
+      />
 
       <SmoothCollapse open={open}>
         <div className="batch-generation-selector">
@@ -333,15 +379,19 @@ export default function BatchVideoPanel({
           <div className="batch-generation-footer">
             <div className="min-w-0">
               <p>
-                已选 <b>{selectedTargets.length}</b> 镜 · {totalSeconds} 秒 · 约 <b>¥{estimatedCost.toFixed(2)}</b>
-                {' '}· {quotaUnitsForCostMicros(estimatedCost * 1_000_000)} 创作额度
+                已选 <b>{selectedTargets.length}</b> 镜 · {totalSeconds} 秒 · 约{' '}
+                <b>{estimatedCost === null ? '--' : `¥${estimatedCost.toFixed(2)}`}</b>
+                {' '}· {estimatedQuota === null ? '--' : estimatedQuota} 创作额度
               </p>
-              <p>MiniMax H3 Lite 768P，结果不会覆盖已采用视频。</p>
+              <p>
+                {videoSettings.model || '模型读取中'} {videoSettings.resolution || '--'}，
+                结果不会覆盖已采用视频。
+              </p>
             </div>
             <button
               type="button"
               className="batch-generation-run"
-              disabled={selectedTargets.length === 0 || starting}
+              disabled={selectedTargets.length === 0 || starting || estimatedCost === null}
               onClick={() => void startBatch()}
             >
               {starting ? '提交中…' : `开始生成 ${selectedTargets.length} 镜`}

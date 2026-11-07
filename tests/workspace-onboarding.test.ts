@@ -67,8 +67,24 @@ test("ONB6 快速试片建立 1 集生产计划并立即生成核心人物", () 
   assert.match(page, /mode:\s*"sample"/)
   assert.match(page, /targetEpisodes:\s*1/)
   assert.match(page, /currentStage:\s*"characters"/)
-  assert.match(page, /runStep\(\s*["']characters["']/)
   assert.match(home, /onStartQuickTrial/)
+})
+
+test("ONB8 快速试片自动生成人物、三幕和第一集并显示进度", () => {
+  const page = fs.readFileSync("app/page.tsx", "utf8")
+  const progress = fs.readFileSync("components/QuickTrialProgress.tsx", "utf8")
+
+  assert.match(page, /type QuickTrialPhase/)
+  assert.match(page, /\/api\/characters/)
+  assert.match(page, /\/api\/acts/)
+  assert.match(page, /\/api\/episodes/)
+  assert.match(page, /setQuickTrial\(\{\s*phase:\s*["']acts["']/)
+  assert.match(page, /setQuickTrial\(\{\s*phase:\s*["']episodes["']/)
+  assert.match(page, /setQuickTrial\(\{\s*phase:\s*["']ready["']/)
+  assert.match(page, /<QuickTrialProgress/)
+  assert.match(progress, /核心人物/)
+  assert.match(progress, /三幕大纲/)
+  assert.match(progress, /第一集/)
 })
 
 test("ONB7 分步制作只带入想法，不提前建计划或消耗额度", () => {
