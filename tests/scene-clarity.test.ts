@@ -25,4 +25,9 @@ test("SCENE-CLARITY 第五步使用场次剧本术语，不从视觉上伪装成
 
   assert.ok(css.includes(".scene-card-head"), "场次卡缺少独立抬头样式")
   assert.ok(css.includes(".scene-card-type"), "场次剧本类型标识缺少样式")
+  assert.match(
+    css,
+    /\.scene-card-setting\s*\{[^}]*grid-template-columns:\s*minmax\(240px,\s*1fr\)\s+minmax\(120px,\s*160px\);[^}]*max-width:\s*720px;/s,
+    "地点与时间必须保持紧凑双列，不能在宽卡片里被拉到两端",
+  )
 })

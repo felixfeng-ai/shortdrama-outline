@@ -50,7 +50,6 @@ import '@/app/workspace-shell.css'
 import { buildTodoList } from '@/lib/todo'
 import {
   DEFAULT_EPISODE_COUNT,
-  MIN_EPISODE_COUNT,
   clampEpisodeCount,
   episodeQuotaUnits,
   episodeTimeEstimate,
@@ -573,8 +572,9 @@ export default function Home() {
       document.body.style.overflow = previous
     }
   }, [deckOpen])
-  /** 本剧集数：默认 30，记住上次选择 */
+  /** 本剧集数：内部保留默认估算值，但用户未确认前选择器不显示为已选中。 */
   const [episodeCount, setEpisodeCount] = useState(DEFAULT_EPISODE_COUNT)
+  const [episodeCountConfirmed, setEpisodeCountConfirmed] = useState(false)
   /** 生产计划是样片/小批/整季的真实事实源，未设置时首页先让用户做选择。 */
   const [productionPlan, setProductionPlan] = useState<ProductionPlanDto | null>(null)
   const [productionProjectType, setProductionProjectType] = useState<ProjectType | null>(null)
@@ -609,11 +609,13 @@ export default function Home() {
     流式生成期间不同步——否则一集集到达时会把用户刚选的 60 集改回 3、5、8…
   */
   useEffect(() => {
-    // 少于下限时不要回写：第一集 A/B 选完后只剩 1 集，会把集数误改成 6
-    if (episodes.length < MIN_EPISODE_COUNT) return
+    if (episodes.length === 0) return
+    // 已有内容说明这是可继续项目：集数应被视为已确认。
+    setEpisodeCountConfirmed(true)
     if (status.episodes === 'streaming' || status.episodes === 'loading') return
-    setEpisodeCount(clampEpisodeCount(episodes.length))
-  }, [episodes.length, status.episodes])
+    // 有生产计划时以计划目标为准；没有计划时沿用项目真实集数，避免凭空变成 30。
+    if (!productionPlan) setEpisodeCount(episodes.length)
+  }, [episodes.length, status.episodes, productionPlan])
 
   /** 创作意图卡 + 判断日志：都是项目级资产，P0 先存本地 */
   const [brief, setBrief] = useState<CreativeBrief>(EMPTY_BRIEF)
@@ -682,7 +684,6 @@ export default function Home() {
       setBrief(localBrief)
       setJudgments(localJudgments)
       setLook(localLook)
-      setEpisodeCount(localEpisodeCount)
       episodeProjectRef.current = projectId
     } catch {
       setBrief(EMPTY_BRIEF)
@@ -728,6 +729,7 @@ export default function Home() {
           setProductionProjectType(productionData.projectType)
           setProductionMode(productionData.mode)
           setProductionTargetEpisodes(productionData.targetEpisodes)
+          setEpisodeCountConfirmed(true)
         } else {
           setProductionProjectType(null)
           setProductionMode(null)
@@ -749,7 +751,8 @@ export default function Home() {
         if (server) {
           setBrief(server.brief)
           setLook(server.look)
-          setEpisodeCount(productionData?.targetEpisodes ?? server.episodeCount)
+          // 已有项目以真实分集或生产计划为准；旧上下文的默认 30/6 不能覆盖实际内容。
+          if (productionData) setEpisodeCount(productionData.targetEpisodes)
           setContextVersion(server.version)
           lastContextSig.current = JSON.stringify([
             briefSignature(server.brief),
@@ -1018,6 +1021,10 @@ export default function Home() {
   /** 第一集开两个方向：各生成 1 集，选定后从第 2 集接着写 */
   const requestFirstEpisodes = async () => {
     if (variantLoading) return
+    if (!episodeCountConfirmed) {
+      setNotice('请先选择本剧集数，再生成第一集方向。')
+      return
+    }
     setVariantLoading(true)
     setErrors((e) => ({ ...e, episodes: null }))
     try {
@@ -1785,6 +1792,10 @@ export default function Home() {
   // 这里不复用 runStep：它的 task 只在全部完成时返回一次结果，
   // 而流式需要在接收过程中就反复更新界面。
   const generateEpisodes = async () => {
+    if (!episodeCountConfirmed) {
+      setNotice('请先选择本剧集数，再生成分集剧情。')
+      return
+    }
     if (episodes.length > 0) recordJudgment('episodes', '重新生成分集')
     const epoch = resetEpoch.current
     const builtFrom = `${charactersSig}|${actsSig}|${briefSig}`
@@ -1922,6 +1933,7 @@ export default function Home() {
       setProductionMode(plan.mode)
       setProductionTargetEpisodes(plan.targetEpisodes)
       setEpisodeCount(plan.targetEpisodes)
+      setEpisodeCountConfirmed(true)
       await refreshProjects()
       setNotice(`已建立${plan.mode === "sample" ? "样片" : plan.mode === "batch" ? "小批" : "整季"}生产计划，目标 ${plan.targetEpisodes} 集。`)
     } catch (error) {
@@ -1954,6 +1966,7 @@ export default function Home() {
       setProductionMode(result.plan.mode)
       setProductionTargetEpisodes(result.plan.targetEpisodes)
       setEpisodeCount(result.plan.targetEpisodes)
+      setEpisodeCountConfirmed(true)
       setNotice(
         `已晋级${nextMode === "batch" ? "小批" : "整季"}，新增 ${result.extension.newEpisodeNumbers.length} 集；已有 ${result.extension.existingEpisodeNumbers.length} 集保持原版本。`,
       )
@@ -2345,6 +2358,10 @@ export default function Home() {
     setScenes(nextScenes)
     setPlaces(nextPlaces)
     setShots(nextShots)
+    if (nextEpisodes.length > 0) {
+      setEpisodeCount(nextEpisodes.length)
+      setEpisodeCountConfirmed(true)
+    }
     setAttached(attachmentGroups.characters)
     setPlaceAttached(attachmentGroups.places)
 
@@ -3128,6 +3145,7 @@ export default function Home() {
     setPlaceAttached({})
     setShots([])
     setActiveShotId(null)
+    setEpisodeCountConfirmed(false)
     setStatus(IDLE_STATUS)
     setErrors(IDLE_ERRORS)
     setActsBuiltFrom(null)
@@ -4198,12 +4216,17 @@ export default function Home() {
               actionLabel="分集"
               onGenerate={generateEpisodes}
               skeletonVariant="episodes"
-              actionHint={`${episodesQuote.label} · ${episodeCount} 集 · ${episodeTimeEstimate(episodeCount)}`}
+              actionHint={episodeCountConfirmed
+                ? `${episodesQuote.label} · ${episodeCount} 集 · ${episodeTimeEstimate(episodeCount)}`
+                : '请选择本剧集数后再生成'}
               quotaBlocked={!episodesQuote.affordable}
             >
               <EpisodeCountPicker
-                value={episodeCount}
-                onChange={setEpisodeCount}
+                value={episodeCountConfirmed ? episodeCount : null}
+                onChange={(value) => {
+                  setEpisodeCount(value)
+                  setEpisodeCountConfirmed(true)
+                }}
                 existing={episodes.length}
                 disabled={status.episodes === 'streaming' || status.episodes === 'loading'}
               />
@@ -4211,7 +4234,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => { void requestFirstEpisodes() }}
-                  disabled={variantLoading || !hasActs || !variantQuote.affordable}
+                  disabled={variantLoading || !hasActs || !episodeCountConfirmed || !variantQuote.affordable}
                   title={`各生成 1 集第一集方向 · ${variantQuote.label}`}
                   className="rounded-chip border border-accent-300 bg-accent-50 px-3 py-1.5 text-[11.5px] font-medium text-accent-700
                     transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50"

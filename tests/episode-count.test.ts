@@ -1,5 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import fs from "node:fs"
 
 import { buildEpisodePrompt } from "../lib/prompts.ts"
 import { normalizeEpisodes } from "../lib/normalize.ts"
@@ -114,4 +115,16 @@ test("EP10 长任务耗时估算随集数增长", () => {
   assert.equal(episodeTimeEstimate(10), "1-2 分钟")
   assert.equal(episodeTimeEstimate(30), "2-3 分钟")
   assert.equal(episodeTimeEstimate(60), "4-6 分钟")
+})
+
+test("EP11 新项目未确认集数时不默认采用 30 集", () => {
+  const picker = fs.readFileSync("components/EpisodeCountPicker.tsx", "utf8")
+  const page = fs.readFileSync("app/page.tsx", "utf8")
+
+  assert.match(picker, /value:\s*number\s*\|\s*null/)
+  assert.match(picker, /请选择本剧集数/)
+  assert.match(page, /episodeCountConfirmed/)
+  assert.match(page, /if \(!episodeCountConfirmed\)/)
+  assert.match(page, /episodeCountConfirmed \? episodeCount : null/)
+  assert.match(page, /setEpisodeCount\(nextEpisodes\.length\)/)
 })

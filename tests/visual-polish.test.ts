@@ -71,3 +71,13 @@ test("VP7 创作主输入框聚焦时不显示额外边框线", () => {
     /\.skill-page-embedded \.composer:focus-within\s*\{[^}]*border-color:\s*var\(--line\);[^}]*background:\s*var\(--panel\);/s,
   )
 })
+
+test("VP8 AI 运行状态使用石墨冷蓝，不再出现旧粉色流光", () => {
+  const statusBlock = globalsCss.match(/\.ai-status\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? ""
+
+  assert.match(statusBlock, /var\(--signal-blue\)/)
+  assert.match(statusBlock, /var\(--signal-raised\)/)
+  assert.doesNotMatch(statusBlock, /#c64a54|#f0a8ae|#fbe9e9|#f7d9da/i)
+  assert.doesNotMatch(statusBlock, /rgba\(198,\s*74,\s*84/i)
+  assert.match(globalsCss, /\.ai-status button\s*\{[^}]*var\(--signal-text-2\)/s)
+})

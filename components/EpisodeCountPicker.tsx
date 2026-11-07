@@ -12,7 +12,7 @@ import {
 } from '@/lib/episodes'
 
 interface Props {
-  value: number
+  value: number | null
   onChange: (value: number) => void
   /** 当前项目已有的集数；与 value 不同时提示会被替换 */
   existing?: number
@@ -20,10 +20,11 @@ interface Props {
 }
 
 export default function EpisodeCountPicker({ value, onChange, existing = 0, disabled = false }: Props) {
-  const [draft, setDraft] = useState(String(value))
-  useEffect(() => setDraft(String(value)), [value])
+  const [draft, setDraft] = useState(value === null ? '' : String(value))
+  useEffect(() => setDraft(value === null ? '' : String(value)), [value])
 
   const commit = () => {
+    if (!draft.trim()) return
     const next = clampEpisodeCount(Number(draft))
     setDraft(String(next))
     if (next !== value) onChange(next)
@@ -51,6 +52,7 @@ export default function EpisodeCountPicker({ value, onChange, existing = 0, disa
           min={MIN_EPISODE_COUNT}
           max={MAX_EPISODE_COUNT}
           value={draft}
+          placeholder="请选择"
           disabled={disabled}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
@@ -64,8 +66,11 @@ export default function EpisodeCountPicker({ value, onChange, existing = 0, disa
         />
       </label>
       <span className="ep-hint">
-        本剧约 {projectQuotaUnits(value)} 单位 · 每 10 集分批生成 · 当前 {value} 集
-        {existing > 0 && existing !== value ? ` · 重新生成会替换现有 ${existing} 集` : ''}
+        {value === null
+          ? `请选择本剧集数；选择前不会默认生成。${existing > 0 ? `当前项目已有 ${existing} 集。` : ''}`
+          : `本剧约 ${projectQuotaUnits(value)} 单位 · 每 10 集分批生成 · 当前 ${value} 集${
+            existing > 0 && existing !== value ? ` · 重新生成会替换现有 ${existing} 集` : ''
+          }`}
       </span>
     </div>
   )

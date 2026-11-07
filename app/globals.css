@@ -785,9 +785,9 @@
   color: var(--signal-blue);
 }
 .signal-desk .h-work .ai-status {
-  border-color: rgba(113, 167, 255, 0.25);
-  background: rgba(113, 167, 255, 0.07);
-  color: var(--signal-blue);
+  border-color: color-mix(in srgb, var(--signal-blue) 22%, var(--signal-line));
+  background: color-mix(in srgb, var(--signal-blue) 7%, var(--signal-raised));
+  color: var(--signal-text-2);
 }
 .signal-desk section {
   animation: signal-content-in 210ms cubic-bezier(.23,1,.32,1) both;
@@ -5020,8 +5020,11 @@
 }
 .scene-card-setting {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 124px;
+  grid-template-columns: minmax(240px, 1fr) minmax(120px, 160px);
+  align-items: start;
   gap: 12px;
+  width: 100%;
+  max-width: 720px;
   padding: 10px 0 7px;
 }
 .scene-card-label {
@@ -5899,15 +5902,35 @@
     box-shadow: 0 2px 6px -2px rgba(150, 25, 30, 0.45);
   }
 
-  /** AI 生成中：半透明浅红流光状态条 */
+  /** AI 生成中：石墨表面上的冷蓝运行状态。 */
   .ai-status {
-    @apply flex items-center gap-2 rounded-pill px-4 py-2 text-xs font-medium text-accent-700;
+    @apply flex items-center gap-2 rounded-pill px-4 py-2 text-xs font-medium;
+    color: var(--signal-text-2);
     background-image:
-      linear-gradient(100deg, rgba(198, 74, 84, 0.34), rgba(240, 168, 174, 0.5) 46%, rgba(252, 214, 216, 0.42) 62%, rgba(198, 74, 84, 0.3)),
-      linear-gradient(180deg, #fbe9e9, #f7d9da);
+      linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--signal-blue) 7%, transparent),
+        color-mix(in srgb, var(--signal-blue) 14%, transparent) 46%,
+        color-mix(in srgb, var(--signal-blue) 5%, transparent) 62%,
+        color-mix(in srgb, var(--signal-blue) 11%, transparent)
+      ),
+      linear-gradient(180deg, var(--signal-raised), var(--signal-raised));
     background-size: 200% 100%, auto;
-    box-shadow: 0 8px 22px -14px rgba(190, 60, 70, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--signal-blue) 15%, transparent),
+      0 8px 22px -16px rgba(0, 0, 0, .9);
     animation: sweep 3s linear infinite;
+  }
+
+  .ai-status button {
+    border-color: var(--signal-line);
+    background: color-mix(in srgb, var(--signal-raised) 88%, transparent);
+    color: var(--signal-text-2);
+  }
+
+  .ai-status button:hover {
+    border-color: color-mix(in srgb, var(--signal-blue) 38%, var(--signal-line));
+    color: var(--signal-blue);
   }
 
   /*
@@ -6043,14 +6066,14 @@
   box-shadow: var(--ai-shadow), inset 0 1px 0 rgba(255, 245, 232, 0.06);
 }
 
-/* 生成中状态：深底上一道朱砂流光 */
+/* 生成中状态：深底上一道冷蓝流光 */
 [data-theme="paper-light-dark-ai"] .ai-status {
   background-color: transparent;
   background-image:
-    linear-gradient(100deg, var(--ai-hot-wash), rgba(234, 124, 130, 0.32) 50%, var(--ai-hot-wash)),
+    linear-gradient(100deg, rgba(141, 200, 220, 0.06), rgba(141, 200, 220, 0.14) 50%, rgba(141, 200, 220, 0.06)),
     linear-gradient(180deg, rgb(var(--ai-raised)), rgb(var(--ai-base)));
   color: rgb(var(--ai-fg));
-  box-shadow: inset 0 0 0 1px rgba(234, 124, 130, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(141, 200, 220, 0.2);
 }
 
 /* 放映厅里的小字标注：暗底本来就吃亏，跟着墨面的第三档字色走 */
