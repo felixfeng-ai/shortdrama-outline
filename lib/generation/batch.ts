@@ -1,5 +1,6 @@
 import type { ImageAspect } from "./model.ts"
 import type { GeneratedAsset, GenerationTargetType } from "./types.ts"
+import { ApiRequestError } from "../api.ts"
 
 export interface BatchGenerationTarget {
   key: string
@@ -22,6 +23,7 @@ export interface BatchGenerationOutcome {
   status: Exclude<BatchGenerationStatus, "waiting" | "running">
   asset?: GeneratedAsset
   error?: string
+  retryAfterSeconds?: number
 }
 
 export interface BatchDurationEstimate {
@@ -71,13 +73,14 @@ export async function runBatchGeneration(
     onProgress?: (
       target: BatchGenerationTarget,
       status: BatchGenerationStatus,
-      detail?: { asset?: GeneratedAsset; error?: string },
+      detail?: { asset?: GeneratedAsset; error?: string; retryAfterSeconds?: number },
     ) => void
   },
 ): Promise<BatchGenerationOutcome[]> {
   const concurrency = Math.min(targets.length || 1, Math.max(1, Math.floor(options.concurrency ?? 2)))
   const outcomes: BatchGenerationOutcome[] = new Array(targets.length)
   let cursor = 0
+  let throttledUntil: number | null = null
 
   async function worker() {
     while (true) {
@@ -85,6 +88,14 @@ export async function runBatchGeneration(
       cursor += 1
       if (index >= targets.length) return
       const target = targets[index]
+
+      if (throttledUntil && throttledUntil > Date.now()) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((throttledUntil - Date.now()) / 1_000))
+        const error = `本轮生成额度已用完，约 ${retryAfterSeconds} 秒后恢复。`
+        outcomes[index] = { key: target.key, status: "canceled", error, retryAfterSeconds }
+        options.onProgress?.(target, "canceled", { error, retryAfterSeconds })
+        continue
+      }
 
       if (options.signal?.aborted) {
         outcomes[index] = { key: target.key, status: "canceled", error: "已停止排队" }
@@ -101,10 +112,16 @@ export async function runBatchGeneration(
         const canceled = Boolean(options.signal?.aborted) ||
           (cause instanceof Error && cause.name === "AbortError")
         const error = cause instanceof Error ? cause.message : "生成失败，请重试"
+        const retryAfterSeconds = cause instanceof ApiRequestError
+          && cause.status === 429
+          && cause.retryAfterSeconds
+          ? cause.retryAfterSeconds
+          : undefined
+        if (retryAfterSeconds) throttledUntil = Date.now() + retryAfterSeconds * 1_000
         outcomes[index] = canceled
           ? { key: target.key, status: "canceled", error: "已停止等待" }
-          : { key: target.key, status: "failed", error }
-        options.onProgress?.(target, outcomes[index].status, { error })
+          : { key: target.key, status: "failed", error, retryAfterSeconds }
+        options.onProgress?.(target, outcomes[index].status, { error, retryAfterSeconds })
       }
     }
   }

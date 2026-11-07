@@ -9,9 +9,11 @@ const CRITICAL_MODULES = [
   "components/ShotVideoPanel.tsx",
   "components/BatchVideoPanel.tsx",
   "components/ProductionActionCenter.tsx",
+  "components/ImpactPreviewDialog.tsx",
   "lib/video/catalog.ts",
   "lib/video/use-video-capabilities.ts",
   "lib/production-actions.ts",
+  "lib/rework/preview.ts",
   "app/api/video/capabilities/route.ts",
 ]
 

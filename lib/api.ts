@@ -25,6 +25,26 @@ export function isAbortError(error: unknown): boolean {
   return error instanceof Error && (error.name === 'AbortError' || /abort/i.test(error.message))
 }
 
+export class ApiRequestError extends Error {
+  readonly status: number
+  readonly retryAfterSeconds: number | null
+
+  constructor(message: string, status: number, retryAfterSeconds: number | null = null) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+function retryDelayLabel(seconds: number): string {
+  const total = Math.max(1, Math.ceil(seconds))
+  const minutes = Math.floor(total / 60)
+  const rest = total % 60
+  if (minutes <= 0) return `${rest} 秒`
+  return rest > 0 ? `${minutes} 分 ${rest} 秒` : `${minutes} 分钟`
+}
+
 /**
  * 客户端：POST 一个 JSON 请求。
  * 失败时抛出带中文 message 的 Error，界面直接展示即可。
@@ -70,7 +90,15 @@ async function sendJson<T>(
   }
 
   if (!res.ok || !payload.success || payload.data === null) {
-    throw new Error(payload?.error || '生成失败，请重试')
+    const rawRetry = Number(res.headers.get('Retry-After'))
+    const retryAfterSeconds = Number.isFinite(rawRetry) && rawRetry > 0
+      ? Math.ceil(rawRetry)
+      : null
+    const base = payload?.error || '生成失败，请重试'
+    const message = res.status === 429 && retryAfterSeconds
+      ? `${base}（约 ${retryDelayLabel(retryAfterSeconds)} 后恢复）`
+      : base
+    throw new ApiRequestError(message, res.status, retryAfterSeconds)
   }
   return payload.data
 }

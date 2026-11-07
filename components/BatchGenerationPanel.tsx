@@ -11,6 +11,10 @@ import {
   type BatchGenerationTarget,
 } from '@/lib/generation/batch'
 import { batchRunStore, EMPTY_BATCH_RUN_STATE } from '@/lib/generation/batch-store'
+import {
+  fetchImageGenerationRateLimit,
+  type ImageGenerationRateLimit,
+} from '@/lib/generation/client'
 import type { LookBook } from '@/lib/look'
 
 interface Props {
@@ -29,6 +33,14 @@ const STATUS_LABEL: Record<BatchGenerationStatus, string> = {
   succeeded: '候选已保存',
   failed: '生成失败',
   canceled: '已停止',
+}
+
+function rateLimitCountdown(seconds: number): string {
+  const total = Math.max(0, Math.ceil(seconds))
+  const minutes = Math.floor(total / 60)
+  const rest = total % 60
+  if (minutes <= 0) return `${rest} 秒`
+  return rest > 0 ? `${minutes} 分 ${rest} 秒` : `${minutes} 分钟`
 }
 
 export default function BatchGenerationPanel({
@@ -52,6 +64,9 @@ export default function BatchGenerationPanel({
   )
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
+  const [rateLimit, setRateLimit] = useState<ImageGenerationRateLimit | null>(null)
+  const [rateLimitLoading, setRateLimitLoading] = useState(false)
+  const [rateLimitNow, setRateLimitNow] = useState(Date.now())
   const [runKeyOverride, setRunKeyOverride] = useState<string | null>(null)
   const activeProjectId = useRef(projectId)
   const batchKey = projectId
@@ -74,10 +89,48 @@ export default function BatchGenerationPanel({
   const error = runState.error ?? startError
   const notice = runState.notice
   const runSelectionSignature = runState.selectedKeys.join('|')
+  const activeRateLimitResetAt = runState.rateLimitResetAt && runState.rateLimitResetAt > rateLimitNow
+    ? runState.rateLimitResetAt
+    : rateLimit?.resetAt ?? null
+  const liveRateLimitRemaining = activeRateLimitResetAt !== null
+    ? activeRateLimitResetAt <= rateLimitNow
+      ? rateLimit?.limit ?? 0
+      : runState.rateLimitResetAt && runState.rateLimitResetAt > rateLimitNow
+        ? 0
+        : rateLimit?.remaining ?? 0
+    : null
+  const rateLimitBlocked = liveRateLimitRemaining === 0
+  const rateLimitSecondsRemaining = activeRateLimitResetAt === null
+    ? 0
+    : Math.max(0, (activeRateLimitResetAt - rateLimitNow) / 1_000)
+
+  const refreshRateLimit = useCallback(async (): Promise<ImageGenerationRateLimit | null> => {
+    setRateLimitLoading(true)
+    try {
+      const next = await fetchImageGenerationRateLimit()
+      setRateLimit(next)
+      setRateLimitNow(Date.now())
+      return next
+    } catch {
+      return null
+    } finally {
+      setRateLimitLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     activeProjectId.current = projectId
   }, [projectId])
+
+  useEffect(() => {
+    void refreshRateLimit()
+  }, [projectId, scope, refreshRateLimit])
+
+  useEffect(() => {
+    if (!rateLimit) return
+    const timer = window.setInterval(() => setRateLimitNow(Date.now()), 1_000)
+    return () => window.clearInterval(timer)
+  }, [rateLimit])
 
   useEffect(() => {
     if (running) return
@@ -95,6 +148,8 @@ export default function BatchGenerationPanel({
     : selected
 
   const selectedTargets = targets.filter((item) => effectiveSelected.has(item.key) && isBatchTargetReady(item))
+  const selectedOverLimit = liveRateLimitRemaining !== null
+    && selectedTargets.length > liveRateLimitRemaining
   const blockedCount = targets.length - eligible.length
   const warningCount = targets.filter((item) => item.warning?.trim()).length
   const estimate = estimateBatchDuration(selectedTargets.length, 2)
@@ -131,6 +186,22 @@ export default function BatchGenerationPanel({
     if (items.length === 0 || running || starting) return
     setStarting(true)
     setStartError(null)
+    const latestRateLimit = await refreshRateLimit()
+    const available = latestRateLimit
+      ? latestRateLimit.resetAt <= Date.now()
+        ? latestRateLimit.limit
+        : latestRateLimit.remaining
+      : null
+    if (available !== null && items.length > available) {
+      setStartError(
+        available > 0
+          ? `本轮还可提交 ${available} 项，请减少选择；约 ${rateLimitCountdown(latestRateLimit!.retryAfterSeconds)}后恢复。`
+          : `本轮生图额度已用完，约 ${rateLimitCountdown(latestRateLimit!.retryAfterSeconds)}后恢复。`,
+      )
+      setOpen(true)
+      setStarting(false)
+      return
+    }
     let pid: string | null = null
     try {
       pid = await projectForBatch()
@@ -145,6 +216,7 @@ export default function BatchGenerationPanel({
     setRunKeyOverride(key)
     setStarting(false)
     await batchRunStore.start(key, { projectId: pid, targets: items, look })
+    void refreshRateLimit()
   }
 
   function handleStop() {
@@ -206,11 +278,26 @@ export default function BatchGenerationPanel({
         <span>每项独立任务</span>
         <span>不会自动采用</span>
         <span>本地参考图不上传</span>
+        <span className={rateLimitBlocked ? 'is-limited' : 'is-available'}>
+          {rateLimitLoading
+            ? '正在读取本轮额度'
+            : liveRateLimitRemaining === null
+              ? '本轮额度未知'
+              : rateLimitBlocked
+                ? `本轮额度已用完 · ${rateLimitCountdown(rateLimitSecondsRemaining)}后恢复`
+                : `本轮还可生成 ${liveRateLimitRemaining} 张`}
+        </span>
       </div>
 
       {warningCount > 0 && (
         <p className="batch-generation-warning">
           {warningCount} 项缺少可用参考，仍可生成，但一致性可能漂移。
+        </p>
+      )}
+      {selectedOverLimit && (
+        <p className="batch-generation-limit" role="status">
+          已选 {selectedTargets.length} 项，但本轮还可提交 {liveRateLimitRemaining} 项。
+          请减少选择，或等待约 {rateLimitCountdown(rateLimitSecondsRemaining)}后继续。
         </p>
       )}
 
@@ -283,7 +370,7 @@ export default function BatchGenerationPanel({
                       <button
                         type="button"
                         onClick={() => void execute([item])}
-                        disabled={running}
+                        disabled={running || rateLimitBlocked}
                       >
                         重试
                       </button>
@@ -304,6 +391,13 @@ export default function BatchGenerationPanel({
                 已选 <b>{selectedTargets.length}</b> 项 · {estimate.label}
               </p>
               <p>先保存候选，再由你逐张决定是否采用。</p>
+              <p>
+                {liveRateLimitRemaining === null
+                  ? '本轮可提交数量暂不可用'
+                  : rateLimitBlocked
+                    ? <>本轮额度已用完，约 <b>{rateLimitCountdown(rateLimitSecondsRemaining)}</b> 后恢复</>
+                    : <>本轮还可提交 <b>{liveRateLimitRemaining}</b> 项</>}
+              </p>
             </div>
             {running ? (
               <button type="button" className="batch-generation-run is-stop" onClick={handleStop} disabled={stopping}>
@@ -314,9 +408,13 @@ export default function BatchGenerationPanel({
                 type="button"
                 className="batch-generation-run"
                 onClick={() => void execute(selectedTargets)}
-                disabled={selectedTargets.length === 0 || starting}
+                disabled={selectedTargets.length === 0 || starting || selectedOverLimit || rateLimitBlocked}
               >
-                {starting ? '准备项目…' : `开始生成 ${selectedTargets.length} 项`}
+                {starting
+                  ? '准备项目…'
+                  : selectedOverLimit || rateLimitBlocked
+                    ? '超出本轮可生成数量'
+                    : `开始生成 ${selectedTargets.length} 项`}
               </button>
             )}
           </div>

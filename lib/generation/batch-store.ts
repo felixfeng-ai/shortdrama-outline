@@ -19,6 +19,7 @@ export interface BatchRunState {
   adoptingAll: boolean
   error: string | null
   notice: string | null
+  rateLimitResetAt: number | null
 }
 
 export type BatchRunner = (
@@ -43,6 +44,7 @@ export const EMPTY_BATCH_RUN_STATE: BatchRunState = Object.freeze({
   adoptingAll: false,
   error: null,
   notice: null,
+  rateLimitResetAt: null,
 })
 
 function notifyTarget(item: BatchGenerationTarget) {
@@ -107,6 +109,7 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
       adoptingAll: false,
       error: null,
       notice: null,
+      rateLimitResetAt: null,
     }))
 
     const runner = input.runner ?? ((item, signal) => generateKeyframe({
@@ -138,17 +141,26 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
             assets: detail?.asset
               ? { ...state.assets, [item.key]: detail.asset }
               : state.assets,
+            rateLimitResetAt: detail?.retryAfterSeconds
+              ? Date.now() + detail.retryAfterSeconds * 1_000
+              : state.rateLimitResetAt,
           }))
         },
       })
       const succeeded = outcomes.filter((item) => item.status === "succeeded").length
       const failed = outcomes.filter((item) => item.status === "failed").length
       const canceled = outcomes.filter((item) => item.status === "canceled").length
+      const rateLimited = outcomes.find((item) => item.retryAfterSeconds)
       update(key, (state) => ({
         ...state,
-        notice: canceled > 0
+        notice: rateLimited
+          ? `本轮生图额度已用完，剩余队列已暂停。已完成 ${succeeded} 项，约 ${rateLimited.retryAfterSeconds} 秒后恢复。`
+          : canceled > 0
           ? `已停止等待。已完成 ${succeeded} 项，另有 ${canceled} 项停止排队；已提交任务可能仍会完成。`
           : `本批完成 ${succeeded} 项${failed > 0 ? `，${failed} 项失败可单独重试` : ""}。结果只保存为候选。`,
+        rateLimitResetAt: rateLimited?.retryAfterSeconds
+          ? Date.now() + rateLimited.retryAfterSeconds * 1_000
+          : state.rateLimitResetAt,
       }))
     } catch (cause) {
       update(key, (state) => ({

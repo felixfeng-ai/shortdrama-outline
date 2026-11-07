@@ -46,6 +46,7 @@ import WorkspaceSidebar from '@/components/WorkspaceSidebar'
 import WorkspaceTopbar from '@/components/WorkspaceTopbar'
 import WorkspaceHome from '@/components/WorkspaceHome'
 import QuickTrialProgress, { type QuickTrialPhase } from '@/components/QuickTrialProgress'
+import ImpactPreviewDialog from '@/components/ImpactPreviewDialog'
 import '@/app/skills/skills.css'
 import '@/app/workspace-shell.css'
 import { buildTodoList, type TodoItem } from '@/lib/todo'
@@ -84,6 +85,10 @@ import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
 import PlacePanel from '@/components/PlacePanel'
 import { applyProjectRework } from '@/lib/rework/client'
+import {
+  buildRepairAnchorsPreview,
+  type RepairAnchorsPreview,
+} from '@/lib/rework/preview'
 import VaultPanel from '@/components/VaultPanel'
 import VersionBar from '@/components/VersionBar'
 import CopyButton from '@/components/CopyButton'
@@ -593,6 +598,8 @@ export default function Home() {
     phase: QuickTrialPhase
     error: string | null
   } | null>(null)
+  const [reworkPreview, setReworkPreview] = useState<RepairAnchorsPreview | null>(null)
+  const [reworkPreviewBusy, setReworkPreviewBusy] = useState(false)
   const episodeProjectRef = useRef<string | null>(null)
   useEffect(() => {
     try {
@@ -1549,28 +1556,23 @@ export default function Home() {
   }
 
   /**
-   * 总览阻断动作：只有掉锚点是确定性修复，其他问题先定位到能处理的位置。
-   * 修复成功必须先写快照再替换内存状态，避免刷新后丢失。
+   * 总览阻断动作：掉锚点先计算影响并等待确认，其他问题定位到能处理的位置。
+   * 预览阶段不写库，避免一次点击直接产生用户没看过的版本。
    */
   async function handleProductionAction(item: TodoItem) {
     if (item.id === "expired-shots" && projectId && shots.length > 0) {
-      try {
-        const result = await applyProjectRework(projectId, {
-          action: "repair-anchors",
-          shotIds: shots.map((shot) => shot.entityId),
-        })
-        if (result.changedIds.length === 0) {
-          setNotice("当前镜头没有可自动修复的锚点，请到分镜页检查具体问题。")
-          goToStep("shots")
-          return
-        }
-        setShots(result.shots)
-        void refreshImpact(projectId)
+      const preview = buildRepairAnchorsPreview({
+        shots,
+        visuals,
+        places,
+        assets: productionAssets,
+      })
+      if (preview.shotCount === 0) {
+        setNotice("当前镜头没有可自动修复的锚点，请到分镜页检查具体问题。")
         goToStep("shots")
-        setNotice(`已修复 ${result.changedIds.length} 个镜头的提示词，并保存新的分镜版本。`)
-      } catch (error) {
-        setNotice(error instanceof Error ? error.message : "修复保存失败，请重试。")
+        return
       }
+      setReworkPreview(preview)
       return
     }
 
@@ -1593,6 +1595,31 @@ export default function Home() {
           ? "已打开对应处理位置。"
           : "已进入下一步。",
     )
+  }
+
+  /** 用户确认预览后才调用批量返修接口并写入新快照。 */
+  async function handleConfirmReworkPreview() {
+    if (!projectId || !reworkPreview || reworkPreviewBusy) return
+    setReworkPreviewBusy(true)
+    try {
+      const result = await applyProjectRework(projectId, {
+        action: reworkPreview.kind,
+        shotIds: reworkPreview.shotIds,
+      })
+      setReworkPreview(null)
+      if (result.changedIds.length === 0) {
+        setNotice("锚点已经完整，没有生成新的分镜版本。")
+        return
+      }
+      setShots(result.shots)
+      void refreshImpact(projectId)
+      goToStep("shots")
+      setNotice(`已修复 ${result.changedIds.length} 个镜头并保存新的分镜版本。`)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "修复保存失败，请重试。")
+    } finally {
+      setReworkPreviewBusy(false)
+    }
   }
 
   function openCanvasItem(node: CanvasNodeId, itemId: string) {
@@ -2593,6 +2620,8 @@ export default function Home() {
     setEpisodesBuiltFrom(`${sig}|${JSON.stringify(nextActs)}`)
     setVisualsBuiltFrom(sig)
     setShotsBuiltFrom(`${sig}|${JSON.stringify(nextScenes)}`)
+    // 页面刷新后也要恢复锚点过期判断，否则总览会漏掉已有的掉锚点修复项。
+    void refreshImpact(pid)
     return true
   }
 
@@ -3382,6 +3411,8 @@ export default function Home() {
     setProductionPromoting(false)
     setProductionError(null)
     setQuickTrial(null)
+    setReworkPreview(null)
+    setReworkPreviewBusy(false)
     setNotice(null)
   }
 
@@ -4075,6 +4106,17 @@ export default function Home() {
               error={quickTrial.error}
               onOpenEpisodes={() => goToStep("episodes")}
               onDismiss={() => setQuickTrial(null)}
+            />
+          )}
+
+          {reworkPreview && (
+            <ImpactPreviewDialog
+              preview={reworkPreview}
+              busy={reworkPreviewBusy}
+              onCancel={() => {
+                if (!reworkPreviewBusy) setReworkPreview(null)
+              }}
+              onConfirm={() => { void handleConfirmReworkPreview() }}
             />
           )}
 

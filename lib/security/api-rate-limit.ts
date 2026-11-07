@@ -120,6 +120,17 @@ interface RateRule {
   scope: "ip" | "identity" | "global"
 }
 
+export interface ApiRateLimitAvailability {
+  group: ApiRateLimitGroup
+  label: string
+  scope: RateRule["scope"]
+  limit: number
+  used: number
+  remaining: number
+  resetAt: number
+  retryAfterSeconds: number
+}
+
 function envLimit(
   env: Record<string, string | undefined>,
   name: string,
@@ -144,6 +155,83 @@ function alertLimitHit(group: ApiRateLimitGroup, rule: RateRule): void {
     windowMs: rule.windowMs,
     at: Date.now(),
   }))
+}
+
+/**
+ * 只读查询当前请求最严格的限流余额，不创建计数窗口。
+ * 批量入口先用它决定能提交多少项，避免把必然被拒绝的任务发给服务端。
+ */
+export function getApiRateLimitAvailability(
+  db: DatabaseSync,
+  req: Request,
+  group: ApiRateLimitGroup,
+  options: {
+    identity: string
+    now?: number
+    env?: Record<string, string | undefined>
+  },
+): ApiRateLimitAvailability {
+  const policy = API_RATE_LIMIT_POLICIES[group]
+  const now = options.now ?? Date.now()
+  const env = options.env ?? process.env
+  const ip = clientIpFromRequest(req)
+  const identity = options.identity.trim() || "unknown"
+  const rules: RateRule[] = [
+    {
+      bucket: `api:${group}:ip:10m`,
+      subject: ip,
+      limit: envLimit(env, policy.ipLimit.env, policy.ipLimit.fallback),
+      windowMs: policy.ipLimit.windowMs,
+      scope: "ip",
+    },
+    {
+      bucket: `api:${group}:identity:10m`,
+      subject: identity,
+      limit: envLimit(env, policy.identityLimit.env, policy.identityLimit.fallback),
+      windowMs: policy.identityLimit.windowMs,
+      scope: "identity",
+    },
+    {
+      bucket: `api:${group}:global:day`,
+      subject: "all",
+      limit: envLimit(env, policy.globalLimit.env, policy.globalLimit.fallback),
+      windowMs: policy.globalLimit.windowMs,
+      scope: "global",
+    },
+  ]
+
+  let strictest: ApiRateLimitAvailability | null = null
+  for (const rule of rules) {
+    const row = db.prepare(
+      `SELECT window_started_at, count
+       FROM auth_rate_limits
+       WHERE bucket = ? AND subject = ?`,
+    ).get(rule.bucket, rule.subject) as {
+      window_started_at: number
+      count: number
+    } | undefined
+    const fresh = !row || now - Number(row.window_started_at) >= rule.windowMs
+    const used = fresh ? 0 : Math.max(0, Number(row!.count))
+    const resetAt = fresh ? now + rule.windowMs : Number(row!.window_started_at) + rule.windowMs
+    const candidate: ApiRateLimitAvailability = {
+      group,
+      label: policy.label,
+      scope: rule.scope,
+      limit: rule.limit,
+      used,
+      remaining: Math.max(0, rule.limit - used),
+      resetAt,
+      retryAfterSeconds: Math.max(0, Math.ceil((resetAt - now) / 1_000)),
+    }
+    if (
+      !strictest
+      || candidate.remaining < strictest.remaining
+      || (candidate.remaining === strictest.remaining && candidate.resetAt < strictest.resetAt)
+    ) {
+      strictest = candidate
+    }
+  }
+  return strictest!
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   API_RATE_LIMIT_POLICIES,
   RequestRateLimitError,
   enforceApiRateLimit,
+  getApiRateLimitAvailability,
 } from "../lib/security/api-rate-limit.ts"
 
 const baseEnv = {
@@ -223,5 +224,53 @@ test("RG6 真实模型路由在调用模型前返回 429 与 Retry-After", async
       else process.env[key] = previous[key]
     }
     __resetDbForTests(":memory:")
+  }
+})
+
+test("RG7 image rate limit availability is read-only and returns the strictest rule", () => {
+  const db = openDb(":memory:")
+  const now = 1_700_000_000_000
+  const env = {
+    API_IMAGE_IP_10M_LIMIT: "10",
+    API_IMAGE_IDENTITY_10M_LIMIT: "3",
+    API_IMAGE_GLOBAL_DAILY_LIMIT: "20",
+  }
+  const request = new Request("http://localhost/api/generations/rate-limit", {
+    headers: {
+      "x-real-ip": "203.0.113.80",
+      cookie: `chengju_sid=anon_${"g".repeat(48)}`,
+    },
+  })
+  try {
+    const before = getApiRateLimitAvailability(db, request, "image", {
+      identity: "user_image_status",
+      env,
+      now,
+    })
+    assert.equal(before.remaining, 3)
+    assert.equal(before.limit, 3)
+    assert.equal(before.scope, "identity")
+
+    enforceApiRateLimit(db, request, "image", {
+      identity: "user_image_status",
+      env,
+      now: now + 1,
+    })
+    const after = getApiRateLimitAvailability(db, request, "image", {
+      identity: "user_image_status",
+      env,
+      now: now + 2,
+    })
+    assert.equal(after.remaining, 2)
+    assert.equal(after.resetAt, now + 1 + 600_000)
+
+    const repeat = getApiRateLimitAvailability(db, request, "image", {
+      identity: "user_image_status",
+      env,
+      now: now + 3,
+    })
+    assert.equal(repeat.remaining, 2)
+  } finally {
+    db.close()
   }
 })

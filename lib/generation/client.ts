@@ -3,6 +3,26 @@ import type { ImageAspect } from "./model.ts"
 import type { LookBook } from "../look.ts"
 import type { GeneratedAsset, GenerationTask, GenerationTargetType } from "./types.ts"
 
+export interface ImageGenerationRateLimit {
+  group: "image"
+  label: string
+  scope: "ip" | "identity" | "global"
+  limit: number
+  used: number
+  remaining: number
+  resetAt: number
+  retryAfterSeconds: number
+}
+
+export async function fetchImageGenerationRateLimit(): Promise<ImageGenerationRateLimit> {
+  const response = await fetch("/api/generations/rate-limit", { cache: "no-store" })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "图像生成额度读取失败")
+  }
+  return payload.data as ImageGenerationRateLimit
+}
+
 export interface KeyframeGenerationResult {
   task: GenerationTask
   asset: GeneratedAsset

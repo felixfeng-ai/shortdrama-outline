@@ -2696,10 +2696,29 @@
   font-size: 9px;
   line-height: 1.55;
 }
+.batch-generation-policy span.is-available {
+  border-color: color-mix(in srgb, var(--signal-blue) 24%, var(--signal-line-soft));
+  color: color-mix(in srgb, var(--signal-blue) 72%, var(--signal-text));
+}
+.batch-generation-policy span.is-limited {
+  border-color: color-mix(in srgb, var(--signal-warning) 34%, var(--signal-line-soft));
+  background: color-mix(in srgb, var(--signal-warning) 8%, var(--signal-bg));
+  color: color-mix(in srgb, var(--signal-warning) 82%, var(--signal-text));
+}
 .batch-generation-warning {
   margin-top: 8px;
   color: color-mix(in srgb, var(--signal-warning) 80%, var(--signal-text));
   font-size: 10.5px;
+  line-height: 1.6;
+}
+.batch-generation-limit {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--signal-warning) 28%, var(--signal-line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--signal-warning) 7%, var(--signal-panel));
+  color: color-mix(in srgb, var(--signal-warning) 82%, var(--signal-text));
+  font-size: 10px;
   line-height: 1.6;
 }
 .batch-generation-selector {
