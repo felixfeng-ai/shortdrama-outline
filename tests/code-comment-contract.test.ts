@@ -5,6 +5,7 @@ import fs from "node:fs"
 const CRITICAL_MODULES = [
   "components/WorkspaceOnboarding.tsx",
   "components/QuickTrialProgress.tsx",
+  "components/QuickTrialVisualGate.tsx",
   "components/VideoGenerationSettings.tsx",
   "components/ShotVideoPanel.tsx",
   "components/BatchVideoPanel.tsx",
@@ -13,6 +14,7 @@ const CRITICAL_MODULES = [
   "lib/video/catalog.ts",
   "lib/video/use-video-capabilities.ts",
   "lib/production-actions.ts",
+  "lib/production/quick-trial.ts",
   "lib/rework/preview.ts",
   "app/api/video/capabilities/route.ts",
 ]

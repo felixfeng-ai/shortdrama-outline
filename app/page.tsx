@@ -47,6 +47,7 @@ import WorkspaceTopbar from '@/components/WorkspaceTopbar'
 import WorkspaceHome from '@/components/WorkspaceHome'
 import QuickTrialProgress, { type QuickTrialPhase } from '@/components/QuickTrialProgress'
 import ImpactPreviewDialog from '@/components/ImpactPreviewDialog'
+import QuickTrialVisualGate from '@/components/QuickTrialVisualGate'
 import '@/app/skills/skills.css'
 import '@/app/workspace-shell.css'
 import { buildTodoList, type TodoItem } from '@/lib/todo'
@@ -194,7 +195,7 @@ import {
   type WorkspaceMode,
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
-import { fetchProjectGenerationAssets } from '@/lib/generation/client'
+import { fetchProjectGenerationAssets, generateKeyframe } from '@/lib/generation/client'
 import { fetchVoiceProfiles } from '@/lib/audio/client'
 import { buildMobileVideoView } from '@/lib/mobile-video'
 import {
@@ -212,6 +213,7 @@ import {
   updateProductionPlan as updateProjectProductionPlan,
   type ProductionPlanDto,
 } from '@/lib/production/client'
+import { QUICK_TRIAL_VISUAL_UNITS } from '@/lib/production/quick-trial'
 import {
   PRODUCTION_MODE_PRESETS,
   type ProductionPlanSuggestion,
@@ -598,6 +600,7 @@ export default function Home() {
     phase: QuickTrialPhase
     error: string | null
   } | null>(null)
+  const [quickTrialVisualGateOpen, setQuickTrialVisualGateOpen] = useState(false)
   const [reworkPreview, setReworkPreview] = useState<RepairAnchorsPreview | null>(null)
   const [reworkPreviewBusy, setReworkPreviewBusy] = useState(false)
   const episodeProjectRef = useRef<string | null>(null)
@@ -1118,6 +1121,7 @@ export default function Home() {
     projectsLeft: number
     episodeCount: number
     projectCost: number
+    unlimited: boolean
   } | null>(null)
   /** 上一次扫描的挂接明细：角色名 -> 命中记录（带置信度），界面据此标注「靠什么认出来的」 */
   const [matchDetail, setMatchDetail] = useState<Record<string, MatchHit[]>>({})
@@ -1954,6 +1958,157 @@ export default function Home() {
     }
   }
 
+  /** 用户未确认成本前，快速试片不会进入定妆、分镜或图片生成。 */
+  function requestQuickTrialVisuals() {
+    if (!projectId || characters.length === 0 || acts.length === 0 || episodes.length === 0) {
+      setNotice("请先完成第一集故事骨架，再生成视觉样片。")
+      return
+    }
+    if (quotaRemaining !== null && quotaRemaining < QUICK_TRIAL_VISUAL_UNITS) {
+      setNotice(`当前剩余 ${quotaRemaining} 额度，不足以完成视觉试片。`)
+      return
+    }
+    setQuickTrialVisualGateOpen(true)
+  }
+
+  /**
+   * 快速试片视觉阶段复用正式定妆、场次、分镜和首帧接口。
+   * 只自动生成第 1 镜首帧，视频仍由用户在镜头视频页单独确认。
+   */
+  async function continueQuickTrialVisuals() {
+    if (!projectId || characters.length === 0 || acts.length === 0 || episodes.length === 0) {
+      setNotice("快速试片缺少上游内容，无法继续生成首帧。")
+      return
+    }
+    setQuickTrialVisualGateOpen(false)
+    const epoch = resetEpoch.current
+    const controller = new AbortController()
+    abortRef.current = controller
+    let activePhase: QuickTrialPhase = "visuals"
+    try {
+      setQuickTrial({ phase: "visuals", error: null })
+      setStatus((state) => ({ ...state, visuals: "loading" }))
+      setErrors((state) => ({ ...state, visuals: null }))
+      const visualData = await generateVisuals(
+        projectId,
+        idea.trim(),
+        characters,
+        genre.id,
+        controller.signal,
+      )
+      if (isCleared(epoch)) return
+      setVisuals(visualData.visualCharacters)
+      setImagePrompts(visualData.imagePrompts as { name: string; zh: string; en: string }[])
+      setVisualsBuiltFrom(charactersSig)
+      setStatus((state) => ({ ...state, visuals: "done" }))
+
+      activePhase = "scenes"
+      setQuickTrial({ phase: "scenes", error: null })
+      setStatus((state) => ({ ...state, scenes: "loading" }))
+      setErrors((state) => ({ ...state, scenes: null }))
+      const sceneData = await generateScenes(
+        projectId,
+        idea.trim(),
+        characters,
+        episodes,
+        genre.id,
+        brief,
+        controller.signal,
+      )
+      if (isCleared(epoch)) return
+      setScenes(sceneData.scenes)
+      setPlaces(sceneData.places ?? [])
+      setStatus((state) => ({ ...state, scenes: "done" }))
+
+      activePhase = "shots"
+      setQuickTrial({ phase: "shots", error: null })
+      setStatus((state) => ({ ...state, shots: "streaming" }))
+      setErrors((state) => ({ ...state, shots: null }))
+      setShotProgress("正在生成快速试片分镜")
+      let finalShots: Shot[] = []
+      let shotDone = false
+      await postSse(
+        "/api/shots",
+        {
+          projectId,
+          idea: idea.trim(),
+          genre: genre.id,
+          characters,
+          scenes: sceneData.scenes,
+          places: sceneData.places ?? [],
+          visualCharacters: visualData.visualCharacters,
+          acts,
+          brief,
+          look,
+          resume: false,
+        },
+        (event, data) => {
+          const payload = data as { shots?: Shot[]; label?: string }
+          if (event === "progress" && payload.label) setShotProgress(payload.label)
+          if ((event === "shots" || event === "done") && payload.shots) {
+            finalShots = payload.shots
+            setShots(payload.shots)
+          }
+          if (event === "done") shotDone = true
+        },
+        controller.signal,
+      )
+      if (isCleared(epoch)) return
+      if (!shotDone || finalShots.length === 0) throw new Error("快速试片没有生成出有效分镜。")
+      setShotsBuiltFrom(`${charactersSig}|${JSON.stringify(sceneData.scenes)}|${briefSig}|${lookSig}`)
+      setStatus((state) => ({ ...state, shots: "done" }))
+      setShotProgress(null)
+
+      activePhase = "keyframe"
+      setQuickTrial({ phase: "keyframe", error: null })
+      const firstShot = finalShots[0]
+      const frame = await generateKeyframe({
+        projectId,
+        targetType: "shot",
+        targetId: firstShot.entityId,
+        prompt: firstShot.prompt || firstShot.action || firstShot.scene,
+        aspect: firstShot.params.ratio === "16:9" ? "landscape" : "vertical",
+        look,
+        autoSelect: true,
+      }, controller.signal)
+      if (isCleared(epoch)) return
+      setProductionAssets((current) => [
+        frame.asset,
+        ...current.filter((asset) => asset.id !== frame.asset.id),
+      ])
+      setActiveShotId(firstShot.id)
+      setInspectorOpen(true)
+      setQuickTrial({ phase: "visual-ready", error: null })
+      setQuotaRefreshKey((value) => value + 1)
+      window.dispatchEvent(new CustomEvent("chengju:generation-updated"))
+      try {
+        const plan = await updateProjectProductionPlan(projectId, { currentStage: "shots" })
+        setProductionPlan(plan)
+      } catch {
+        // 视觉结果已经生成，生产阶段同步失败不能反向把成功改写成失败。
+      }
+      goToStep("shots")
+      setNotice("快速试片首帧已生成并自动采用，镜头视频仍需你单独确认。")
+    } catch (error) {
+      if (isCleared(epoch)) return
+      const message = isAbortError(error)
+        ? "已停止视觉试片，已经完成的阶段会保留。"
+        : error instanceof Error
+          ? error.message
+          : "视觉试片生成失败，请重试。"
+      setQuickTrial({ phase: activePhase, error: message })
+      setStatus((state) => ({
+        ...state,
+        [activePhase]: isAbortError(error) ? "idle" : "error",
+      }))
+      setErrors((state) => ({ ...state, [activePhase]: message }))
+      setNotice(message)
+    } finally {
+      setShotProgress(null)
+      if (abortRef.current === controller) abortRef.current = null
+    }
+  }
+
   /** 分步制作只带入想法，不提前建计划，也不调用模型。 */
   function startGuidedCreation(rawIdea: string): void {
     const guidedIdea = rawIdea.trim()
@@ -2508,6 +2663,7 @@ export default function Home() {
             projectsLeft: q.projectsLeft,
             episodeCount: q.episodeCount,
             projectCost: q.projectCost,
+            unlimited: q.unlimited === true,
           })
         })
         .catch(() => {})
@@ -3411,6 +3567,7 @@ export default function Home() {
     setProductionPromoting(false)
     setProductionError(null)
     setQuickTrial(null)
+    setQuickTrialVisualGateOpen(false)
     setReworkPreview(null)
     setReworkPreviewBusy(false)
     setNotice(null)
@@ -4104,8 +4261,19 @@ export default function Home() {
             <QuickTrialProgress
               phase={quickTrial.phase}
               error={quickTrial.error}
+              visualUnits={QUICK_TRIAL_VISUAL_UNITS}
               onOpenEpisodes={() => goToStep("episodes")}
+              onContinueVisual={requestQuickTrialVisuals}
+              onOpenFirstFrame={() => goToStep("shots")}
               onDismiss={() => setQuickTrial(null)}
+            />
+          )}
+
+          {quickTrialVisualGateOpen && (
+            <QuickTrialVisualGate
+              busy={false}
+              onCancel={() => setQuickTrialVisualGateOpen(false)}
+              onConfirm={() => { void continueQuickTrialVisuals() }}
             />
           )}
 
