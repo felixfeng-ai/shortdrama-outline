@@ -3,11 +3,25 @@ import { NextResponse } from "next/server"
 import { errorResponse, InputError, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
 import { AUTH_COOKIE, currentAuthUser } from "@/lib/auth/request"
-import { AuthError } from "@/lib/auth/service"
+import { AuthError, setAuthUsername } from "@/lib/auth/service"
 import { deleteAccountData } from "@/lib/account/service"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json().catch(() => null)
+    const db = getDbForRequest()
+    const user = currentAuthUser(db, req)
+    if (!user) throw new AuthError("请先登录", 401)
+    const updated = setAuthUsername(db, user.id, body?.username)
+    return NextResponse.json(ok({ user: updated }))
+  } catch (error) {
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
+  }
+}
 
 export async function DELETE(req: Request) {
   try {

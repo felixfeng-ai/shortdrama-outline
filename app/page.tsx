@@ -202,6 +202,7 @@ import {
   createProductionPlan as createProjectProductionPlan,
   extendProductionPlan as extendProjectProductionPlan,
   fetchProductionPlan,
+  updateProductionPlan as updateProjectProductionPlan,
   type ProductionPlanDto,
 } from '@/lib/production/client'
 import {
@@ -1611,7 +1612,7 @@ export default function Home() {
   const workspaceProjectTitle = workspaceProject?.title ?? (idea.trim() || '未命名项目')
   const workspaceSavedLabel = anyRunning
     ? '正在生成'
-    : projectId ? '全部更改已保存' : '尚未保存'
+    : projectId ? '' : '尚未保存'
   const canvasStepLabel = STEPS.find((step) => step.key === view)?.nav ?? '核心人物'
 
   /**
@@ -1717,6 +1718,78 @@ export default function Home() {
       },
       ({ characters: list }) => setCharacters(list),
     )
+
+  /**
+   * 首次价值入口：快速试片不是另一套 Demo。
+   * 它先建立 1 集样片计划，再用同一套核心人物接口开始生产。
+   */
+  async function startQuickTrial(rawIdea: string): Promise<void> {
+    const quickIdea = rawIdea.trim()
+    if (quickIdea.length < MIN_IDEA_LENGTH) {
+      setNotice(`请至少写 ${MIN_IDEA_LENGTH} 个字，让系统能判断人物和冲突。`)
+      return
+    }
+
+    setIdea(quickIdea)
+    try {
+      const pid = await ensureProject(quickIdea.slice(0, 20))
+      if (!pid) throw new Error("项目创建失败，请稍后重试。")
+
+      const plan = productionPlan?.projectType === "drama"
+        ? await updateProjectProductionPlan(pid, {
+            mode: "sample",
+            targetEpisodes: 1,
+            currentStage: "characters",
+          })
+        : productionPlan
+          ? (() => { throw new Error("当前项目不是短剧项目，请新建项目后再试。") })()
+          : await createProjectProductionPlan(pid, {
+              projectType: "drama",
+              mode: "sample",
+              targetEpisodes: 1,
+              currentStage: "characters",
+            })
+
+      setProductionPlan(plan)
+      setProductionProjectType(plan.projectType)
+      setProductionMode(plan.mode)
+      setProductionTargetEpisodes(plan.targetEpisodes)
+      setEpisodeCount(plan.targetEpisodes)
+      setEpisodeCountConfirmed(true)
+      await refreshProjects()
+
+      goToStep("characters")
+      setNotice("已建立 1 集样片，正在生成核心人物。后续步骤仍由你逐项确认。")
+      await runStep(
+        "characters",
+        () => postJson<{ characters: Character[] }>(
+          "/api/characters",
+          {
+            idea: quickIdea,
+            genre: genre.id,
+            projectId: pid,
+            brief,
+          },
+          abortRef.current?.signal,
+        ),
+        ({ characters: list }) => setCharacters(list),
+      )
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "样片启动失败，请重试。")
+    }
+  }
+
+  /** 分步制作只带入想法，不提前建计划，也不调用模型。 */
+  function startGuidedCreation(rawIdea: string): void {
+    const guidedIdea = rawIdea.trim()
+    if (guidedIdea.length < MIN_IDEA_LENGTH) {
+      setNotice(`请至少写 ${MIN_IDEA_LENGTH} 个字，让系统能判断人物和冲突。`)
+      return
+    }
+    setIdea(guidedIdea)
+    goToStep("characters")
+    setNotice("想法已带入。先从核心人物开始，需要时会再建立生产方式。")
+  }
 
   /** 只换掉某一个角色 */
   const regenerateCharacter = async (id: string) => {
@@ -3809,7 +3882,6 @@ export default function Home() {
         projectId={projectId}
         projectTitle={workspaceProjectTitle}
         todoCount={todoItems.length}
-        savedLabel={workspaceSavedLabel}
         quotaRefreshKey={quotaRefreshKey}
         episodeCount={episodeCount}
         mobileOpen={workspaceMobileOpen}
@@ -3871,6 +3943,8 @@ export default function Home() {
                 setAgentOpen(true)
                 setInspectorOpen(false)
               }}
+              onStartQuickTrial={startQuickTrial}
+              onStartGuided={startGuidedCreation}
               onOpenSource={openWorkspaceSource}
               onLoadSample={() => { void handleLoadSample() }}
               productionPlan={productionPlan}
@@ -4223,6 +4297,7 @@ export default function Home() {
             >
               <EpisodeCountPicker
                 value={episodeCountConfirmed ? episodeCount : null}
+                sampleMode={productionMode === "sample"}
                 onChange={(value) => {
                   setEpisodeCount(value)
                   setEpisodeCountConfirmed(true)

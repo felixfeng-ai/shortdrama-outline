@@ -2,6 +2,7 @@ export interface AuthUserDto {
   id: string
   phone: string | null
   email: string | null
+  username: string
   displayName: string
 }
 
@@ -92,6 +93,14 @@ export async function verifyEmailAuthCode(email: string, code: string): Promise<
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email, code }),
+  }))
+}
+
+export async function updateAccountUsername(username: string): Promise<{ user: AuthUserDto }> {
+  return payload(await fetch("/api/account", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username }),
   }))
 }
 

@@ -60,10 +60,12 @@ export default function WorkspaceTopbar({
       </div>
 
         <div className="wfx-topbar-actions">
-        <span className={`wfx-save-state ${running ? 'is-running' : ''}`}>
-          <i />
-          {running ? "正在生成…" : savedLabel}
-        </span>
+        {savedLabel && (
+          <span className={`wfx-save-state ${running ? 'is-running' : ''}`}>
+            <i />
+            {running ? "正在生成…" : savedLabel}
+          </span>
+        )}
         <button className="wfx-button is-secondary" type="button" onClick={onExport}>
           导出交付包
         </button>

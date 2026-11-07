@@ -41,7 +41,8 @@ test("独立登录页包含返回、表单、倒计时和错误恢复", () => {
 
 test("顶栏账号入口不假定用户一定有手机号", () => {
   const button = fs.readFileSync("components/AuthButton.tsx", "utf8")
-  assert.ok(button.includes("user.displayName"))
+  assert.ok(button.includes("user?.username"))
+  assert.ok(button.includes("user?.displayName"))
   assert.ok(!button.includes("user.phone.slice"))
 })
 
@@ -50,4 +51,19 @@ test("登录后返回路径只允许站内地址", () => {
   assert.ok(helper.includes("startsWith(\"/\")"))
   assert.ok(helper.includes("startsWith(\"//\")"))
   assert.ok(helper.includes("return \"/\""))
+})
+
+test("USR5 工作区优先展示可编辑用户名，长名称在侧栏省略", () => {
+  const button = fs.readFileSync("components/AuthButton.tsx", "utf8")
+  const panel = fs.readFileSync("components/LoginPanel.tsx", "utf8")
+  const client = fs.readFileSync("lib/auth/client.ts", "utf8")
+  const shell = fs.readFileSync("app/workspace-shell.css", "utf8")
+
+  assert.ok(button.includes("user?.username"))
+  assert.ok(button.includes("wfx-user-label"))
+  assert.ok(!button.includes("user?.email || user?.phone ||"))
+  assert.ok(panel.includes("updateAccountUsername"))
+  assert.ok(panel.includes("保存用户名"))
+  assert.ok(client.includes("/api/account"))
+  assert.match(shell, /\.wfx-user-label\s*\{[^}]*text-overflow:\s*ellipsis;/s)
 })

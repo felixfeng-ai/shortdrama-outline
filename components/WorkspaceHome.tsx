@@ -39,6 +39,8 @@ interface Props {
   onOpenStep: (step: StepKey) => void
   onOpenArtifacts: () => void
   onOpenAgent: () => void
+  onStartQuickTrial: (idea: string) => Promise<void>
+  onStartGuided: (idea: string) => void
   onOpenSource: () => void
   onLoadSample: () => void
   productionPlan: ProductionPlanDto | null
@@ -78,6 +80,8 @@ export default function WorkspaceHome({
   onOpenStep,
   onOpenArtifacts,
   onOpenAgent,
+  onStartQuickTrial,
+  onStartGuided,
   onOpenSource,
   onLoadSample,
   productionPlan,
@@ -142,7 +146,8 @@ export default function WorkspaceHome({
   if (!hasExistingContent) {
     return (
       <WorkspaceOnboarding
-        onCreateIdea={() => onOpenStep("characters")}
+        onStartQuickTrial={onStartQuickTrial}
+        onStartGuided={onStartGuided}
         onOpenSource={onOpenSource}
         onLoadSample={onLoadSample}
       />

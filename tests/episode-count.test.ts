@@ -128,3 +128,13 @@ test("EP11 新项目未确认集数时不默认采用 30 集", () => {
   assert.match(page, /episodeCountConfirmed \? episodeCount : null/)
   assert.match(page, /setEpisodeCount\(nextEpisodes\.length\)/)
 })
+
+test("EP12 样片模式允许 1-3 集，不与整季最少 6 集冲突", () => {
+  const picker = fs.readFileSync("components/EpisodeCountPicker.tsx", "utf8")
+  const page = fs.readFileSync("app/page.tsx", "utf8")
+
+  assert.match(picker, /sampleMode/)
+  assert.match(picker, /sampleMode \? 1 : MIN_EPISODE_COUNT/)
+  assert.match(picker, /sampleMode \? 3 : MAX_EPISODE_COUNT/)
+  assert.match(page, /sampleMode=\{productionMode === ["']sample["']\}/)
+})

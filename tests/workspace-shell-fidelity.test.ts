@@ -40,7 +40,7 @@ test("WFS2 顶栏、公告和模式条使用确认稿顺序", () => {
   assert.match(topbar, /导出交付包/)
   assert.match(topbar, /savedLabel/)
   assert.match(page, /savedLabel=\{workspaceSavedLabel\}/)
-  assert.match(page, /'全部更改已保存'/)
+  assert.doesNotMatch(page, /'全部更改已保存'/)
 
   const topbarIndex = page.indexOf("<WorkspaceTopbar")
   const releaseIndex = page.indexOf("<InlineReleaseNotice")
@@ -111,4 +111,16 @@ test("WFS7 当前步骤优先排序、项目脉搏和当前镜头选择使用真
     ] }),
     { episodes: 3, scenes: 4, shots: 8, blockers: 2 },
   )
+})
+
+test("WFS8 侧栏不重复展示保存状态，导航滚动区与账户区分离", () => {
+  const sidebar = fs.readFileSync(sidebarPath, "utf8")
+  assert.doesNotMatch(sidebar, /savedLabel|wfx-side-save/)
+  assert.match(css, /\.wfx-side-scroll\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s)
+  assert.match(css, /\.wfx-side-user\s*\{[^}]*flex:\s*0 0 auto;[^}]*border-top:/s)
+})
+
+test("WFS9 development indicator does not cover the sidebar account area", () => {
+  const nextConfig = fs.readFileSync("next.config.mjs", "utf8")
+  assert.match(nextConfig, /devIndicators:\s*false/)
 })

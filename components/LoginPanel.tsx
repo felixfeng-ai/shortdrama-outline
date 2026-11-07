@@ -8,11 +8,13 @@ import {
   logoutAuth,
   revokeAuthSession,
   requestEmailAuthCode,
+  updateAccountUsername,
   verifyEmailAuthCode,
   type AuthSessionDto,
   type AuthUserDto,
 } from '@/lib/auth/client'
 import { safeReturnPath } from '@/lib/auth/return-to'
+import { normalizeUsername } from '@/lib/auth/username'
 import VeyaBrandMark from './VeyaBrandMark'
 
 type LoginStep = 'email' | 'code'
@@ -44,12 +46,18 @@ export default function LoginPanel() {
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionBusyId, setSessionBusyId] = useState('')
   const [sessionMessage, setSessionMessage] = useState('')
+  const [usernameDraft, setUsernameDraft] = useState('')
+  const [usernameBusy, setUsernameBusy] = useState(false)
+  const [usernameMessage, setUsernameMessage] = useState('')
 
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get('next')
     setReturnTo(safeReturnPath(next))
     fetchAuthSession()
-      .then((data) => setUser(data.user))
+      .then((data) => {
+        setUser(data.user)
+        setUsernameDraft(data.user?.username || '')
+      })
       .catch(() => {})
   }, [])
 
@@ -114,6 +122,7 @@ export default function LoginPanel() {
     try {
       const result = await verifyEmailAuthCode(email.trim(), code)
       setUser(result.user)
+      setUsernameDraft(result.user.username || '')
       window.location.assign(returnTo)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '登录失败，请检查验证码。')
@@ -164,6 +173,32 @@ export default function LoginPanel() {
       setError(cause instanceof Error ? cause.message : '退出设备失败，请稍后再试。')
     } finally {
       setSessionBusyId('')
+    }
+  }
+
+  async function saveUsername(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (usernameBusy || !user) return
+    let username = ''
+    try {
+      username = normalizeUsername(usernameDraft)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '用户名格式不正确。')
+      setUsernameMessage('')
+      return
+    }
+    setUsernameBusy(true)
+    setError('')
+    setUsernameMessage('')
+    try {
+      const result = await updateAccountUsername(username)
+      setUser(result.user)
+      setUsernameDraft(result.user.username)
+      setUsernameMessage('用户名已更新。')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '用户名保存失败，请稍后重试。')
+    } finally {
+      setUsernameBusy(false)
     }
   }
 
@@ -224,14 +259,53 @@ export default function LoginPanel() {
               </p>
               <dl className="auth-account-meta">
                 <div>
+                  <dt>用户名</dt>
+                  <dd>{user.username || user.displayName}</dd>
+                </div>
+                <div>
                   <dt>{user.email ? '邮箱' : '手机号'}</dt>
-                  <dd>{user.email || user.phone || user.displayName}</dd>
+                  <dd>{user.email || user.phone || '未绑定'}</dd>
                 </div>
                 <div>
                   <dt>会话状态</dt>
                   <dd>已登录</dd>
                 </div>
               </dl>
+              <form className="auth-username-form" onSubmit={saveUsername} aria-busy={usernameBusy}>
+                <header>
+                  <b>工作区用户名</b>
+                  <span>只展示名称，不公开邮箱或手机号</span>
+                </header>
+                <div className="auth-username-row">
+                  <label className="auth-field" htmlFor="auth-username">
+                    <span>用户名</span>
+                    <input
+                      id="auth-username"
+                      name="username"
+                      type="text"
+                      autoComplete="username"
+                      maxLength={16}
+                      value={usernameDraft}
+                      onChange={(event) => {
+                        setUsernameDraft(event.target.value)
+                        setUsernameMessage('')
+                        if (error) setError('')
+                      }}
+                      aria-describedby="auth-username-hint"
+                      aria-invalid={Boolean(error)}
+                    />
+                  </label>
+                  <button
+                    className="auth-secondary auth-username-save"
+                    type="submit"
+                    disabled={usernameBusy || usernameDraft.trim() === user.username}
+                  >
+                    {usernameBusy ? '保存中…' : '保存用户名'}
+                  </button>
+                </div>
+                <small id="auth-username-hint">2–16 个中英文、数字、下划线或短横线。</small>
+                <p className="auth-username-status" aria-live="polite">{usernameMessage}</p>
+              </form>
               <div className="auth-sessions">
                 <div className="auth-sessions-head">
                   <span>活跃设备</span>

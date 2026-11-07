@@ -7,11 +7,17 @@ import {
   randomUUID,
   timingSafeEqual,
 } from "node:crypto"
+import {
+  generateUsernameCandidate,
+  isLegacyAutoUsername,
+  normalizeUsername,
+} from "./username.ts"
 
 export interface AuthUser {
   id: string
   phone: string | null
   email: string | null
+  username: string
   displayName: string
   createdAt: number
 }
@@ -156,12 +162,82 @@ export function createAccessToken(
 }
 
 function userRow(row: Record<string, unknown>): AuthUser {
+  const username = String(row.display_name)
   return {
     id: String(row.id),
     phone: typeof row.phone === "string" ? row.phone : null,
     email: typeof row.email === "string" ? row.email : null,
-    displayName: String(row.display_name),
+    username,
+    displayName: username,
     createdAt: Number(row.created_at),
+  }
+}
+
+function allocateUsername(
+  db: DatabaseSync,
+  seed: string,
+  excludeUserId: string | null = null,
+): string {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const candidate = generateUsernameCandidate(seed, attempt)
+    const existing = db.prepare(
+      `SELECT id FROM users
+       WHERE lower(display_name) = lower(?)
+         AND (? IS NULL OR id <> ?)
+       LIMIT 1`,
+    ).get(candidate, excludeUserId, excludeUserId)
+    if (!existing) return candidate
+  }
+  throw new AuthError("暂时无法生成用户名，请稍后重试。", 503)
+}
+
+function ensureUserUsername(
+  db: DatabaseSync,
+  row: Record<string, unknown>,
+): AuthUser {
+  const user = userRow(row)
+  if (!isLegacyAutoUsername(user.displayName)) return user
+  const username = allocateUsername(db, user.id, user.id)
+  db.prepare(
+    "UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?",
+  ).run(username, Date.now(), user.id)
+  return { ...user, username, displayName: username }
+}
+
+export function setAuthUsername(
+  db: DatabaseSync,
+  userId: string,
+  rawUsername: unknown,
+): AuthUser {
+  let username: string
+  try {
+    username = normalizeUsername(rawUsername)
+  } catch (error) {
+    throw new AuthError(error instanceof Error ? error.message : "用户名格式不正确。")
+  }
+
+  db.exec("BEGIN IMMEDIATE")
+  try {
+    const current = db.prepare(
+      "SELECT id FROM users WHERE id = ?",
+    ).get(userId)
+    if (!current) throw new AuthError("账户不存在。", 404)
+    const conflict = db.prepare(
+      `SELECT id FROM users
+       WHERE lower(display_name) = lower(?) AND id <> ?
+       LIMIT 1`,
+    ).get(username, userId)
+    if (conflict) throw new AuthError("该用户名已被占用，请换一个。", 409)
+
+    db.prepare(
+      "UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?",
+    ).run(username, Date.now(), userId)
+    const row = db.prepare("SELECT * FROM users WHERE id = ?").get(userId) as Record<string, unknown>
+    db.exec("COMMIT")
+    return userRow(row)
+  } catch (error) {
+    db.exec("ROLLBACK")
+    throw error
   }
 }
 
@@ -302,14 +378,15 @@ export function verifyLoginCode(
   if (!user) {
     const id = `user_${randomUUID()}`
     const createdAt = now
+    const username = allocateUsername(db, id)
     db.prepare(
       "INSERT INTO users (id, phone, display_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-    ).run(id, normalized, `用户${normalized.slice(-4)}`, createdAt, createdAt)
+    ).run(id, normalized, username, createdAt, createdAt)
     user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as Record<string, unknown>
   }
 
   db.prepare("UPDATE login_codes SET consumed_at = ? WHERE id = ?").run(now, row.id)
-  return createSession(db, userRow(user), { ...options, now })
+  return createSession(db, ensureUserUsername(db, user), { ...options, now })
 }
 
 export function verifyEmailLoginCode(
@@ -348,16 +425,16 @@ export function verifyEmailLoginCode(
   if (!user) {
     const id = `user_${randomUUID()}`
     const createdAt = now
-    const local = email.split("@")[0].slice(0, 12)
+    const username = allocateUsername(db, id)
     db.prepare(
       `INSERT INTO users (id, phone, email, display_name, created_at, updated_at)
        VALUES (?, NULL, ?, ?, ?, ?)`,
-    ).run(id, email, `用户${local}`, createdAt, createdAt)
+    ).run(id, email, username, createdAt, createdAt)
     user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as Record<string, unknown>
   }
 
   db.prepare("UPDATE email_login_codes SET consumed_at = ? WHERE id = ?").run(now, row.id)
-  return createSession(db, userRow(user), { ...options, now })
+  return createSession(db, ensureUserUsername(db, user), { ...options, now })
 }
 
 export function userFromSessionToken(
@@ -373,7 +450,7 @@ export function userFromSessionToken(
   ).get(hash(token.trim()), now) as Record<string, unknown> | undefined
   if (!row) return null
   db.prepare("UPDATE auth_sessions SET last_seen_at = ? WHERE id = ?").run(now, hash(token.trim()))
-  return userRow(row)
+  return ensureUserUsername(db, row)
 }
 
 export function userFromAccessToken(
@@ -393,7 +470,7 @@ export function userFromAccessToken(
   ).get(claims.sessionId, claims.userId, now) as Record<string, unknown> | undefined
   if (!row) return null
   db.prepare("UPDATE auth_sessions SET last_seen_at = ? WHERE id = ?").run(now, claims.sessionId)
-  return userRow(row)
+  return ensureUserUsername(db, row)
 }
 
 export function refreshAccessToken(
@@ -431,7 +508,7 @@ export function refreshAccessToken(
     db.exec("ROLLBACK")
     throw error
   }
-  const user = userRow(row)
+  const user = ensureUserUsername(db, row)
   return {
     user,
     access: createAccessToken(nextToken, user, { now, secret }),

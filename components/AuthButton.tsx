@@ -23,7 +23,7 @@ export default function AuthButton({ variant = 'default' }: Props) {
     window.location.assign(`/login?next=${encodeURIComponent(next)}`)
   }
 
-  const accountLabel = user?.displayName || user?.email || user?.phone || "登录"
+  const accountLabel = user?.username || user?.displayName || "登录"
   const initial = user ? accountLabel.trim().slice(0, 1).toUpperCase() : '登'
 
   return (
@@ -31,14 +31,16 @@ export default function AuthButton({ variant = 'default' }: Props) {
       href="/login"
       className={`h-install ${variant === 'default' ? '' : `is-${variant}`}`}
       onClick={openLogin}
-      title={user ? `已登录 ${user.email || user.phone || user.displayName}` : '登录后跨设备找回项目'}
+      title={user
+        ? `已登录 ${accountLabel}${user.email ? ` · ${user.email}` : user.phone ? ` · ${user.phone}` : ''}`
+        : '登录后跨设备找回项目'}
     >
       <svg viewBox="0 0 20 20" aria-hidden="true">
         <circle cx="10" cy="6.5" r="3" />
         <path d="M4.5 16c.7-3 2.5-4.5 5.5-4.5s4.8 1.5 5.5 4.5" />
       </svg>
       <span className="wfx-user-initial" aria-hidden="true">{initial}</span>
-      <span>{accountLabel}</span>
+      <span className="wfx-user-label">{accountLabel}</span>
     </a>
   )
 }

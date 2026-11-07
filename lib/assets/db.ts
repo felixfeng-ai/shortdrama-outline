@@ -9,6 +9,7 @@ import fs from "node:fs"
 import path from "node:path"
 // 额度控制的表结构独立在 lib/quota.ts（那一层不属于「资产链」，是运营侧的限流）
 import { ensureQuotaSchema } from "../quota.ts"
+import { generateUsernameCandidate, isLegacyAutoUsername } from "../auth/username.ts"
 
 /**
  * 数据目录：默认项目外的 data/，可用 CHENGJU_DATA_DIR 覆盖（部署时指向 /opt/chengju/data）。
@@ -1174,6 +1175,36 @@ function applyMigrations(db: DatabaseSync): void {
 }
 
 /**
+ * 旧版用“用户 + 邮箱/手机尾号”作为显示名。这里只迁移自动生成名，
+ * 让历史账户在打开数据库时就有一个短用户名，同时保持用户数据不变。
+ */
+function backfillLegacyUsernames(db: DatabaseSync): void {
+  const rows = db.prepare(
+    "SELECT id, display_name FROM users",
+  ).all() as { id: string; display_name: string }[]
+  if (!rows.some((row) => isLegacyAutoUsername(row.display_name))) return
+
+  const used = new Set(rows.map((row) => row.display_name.trim().toLowerCase()))
+  for (const row of rows) {
+    if (!isLegacyAutoUsername(row.display_name)) continue
+    used.delete(row.display_name.trim().toLowerCase())
+    let username = ""
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const candidate = generateUsernameCandidate(row.id, attempt)
+      if (!used.has(candidate.toLowerCase())) {
+        username = candidate
+        break
+      }
+    }
+    if (!username) username = `编剧${String(row.id).slice(-6)}`
+    used.add(username.toLowerCase())
+    db.prepare(
+      "UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?",
+    ).run(username, Date.now(), row.id)
+  }
+}
+
+/**
  * 打开（并在需要时初始化）数据库。
  * - 目录不存在会自动创建
  * - 传入 ":memory:" 时可用于测试
@@ -1229,6 +1260,7 @@ export function openDb(dbPath: string = defaultDbPath()): DatabaseSync {
       db.exec("PRAGMA foreign_keys = ON")
     }
   }
+  backfillLegacyUsernames(db)
   const authSessionColumns = db.prepare("PRAGMA table_info(auth_sessions)").all() as { name: string }[]
   if (!authSessionColumns.some((column) => column.name === "client_type")) {
     db.exec("ALTER TABLE auth_sessions ADD COLUMN client_type TEXT NOT NULL DEFAULT 'web'")

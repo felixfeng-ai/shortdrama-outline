@@ -20,10 +20,10 @@ test("ONB1 空项目引导用六步真实产出解释工作流", () => {
 test("ONB2 空项目首屏只提供三个真实起点", () => {
   const source = fs.readFileSync("components/WorkspaceOnboarding.tsx", "utf8")
 
-  assert.match(source, /开始第一部短剧/)
-  assert.match(source, /从一句想法开始/)
+  assert.match(source, /先做一个能判断的样片/)
+  assert.match(source, /真实故事想法/)
   assert.match(source, /导入小说或剧本/)
-  assert.match(source, /先看示例项目/)
+  assert.match(source, /查看示例项目/)
   assert.match(source, /ONBOARDING_STEPS/)
   assert.doesNotMatch(source, /第一次使用/)
   assert.doesNotMatch(source, /当前工作/)
@@ -44,6 +44,39 @@ test("ONB3 WorkspaceHome 只在空项目进入首次使用态", () => {
 test("ONB4 设计规范记录空项目与返回项目使用不同首页", () => {
   const design = fs.readFileSync("DESIGN.md", "utf8")
   assert.match(design, /空项目首次使用态/)
-  assert.match(design, /三个起点/)
+  assert.match(design, /三个内容起点/)
   assert.match(design, /已有内容后恢复「继续创作」/)
+})
+
+test("ONB5 空项目以一句想法为主入口，并明确两种制作方式", () => {
+  const source = fs.readFileSync("components/WorkspaceOnboarding.tsx", "utf8")
+
+  assert.match(source, /一句话故事/)
+  assert.match(source, /快速试片/)
+  assert.match(source, /分步制作/)
+  assert.match(source, /1 集样片/)
+  assert.match(source, /projectQuotaUnits/)
+  assert.match(source, /textarea/)
+})
+
+test("ONB6 快速试片建立 1 集生产计划并立即生成核心人物", () => {
+  const page = fs.readFileSync("app/page.tsx", "utf8")
+  const home = fs.readFileSync("components/WorkspaceHome.tsx", "utf8")
+
+  assert.match(page, /async function startQuickTrial/)
+  assert.match(page, /mode:\s*"sample"/)
+  assert.match(page, /targetEpisodes:\s*1/)
+  assert.match(page, /currentStage:\s*"characters"/)
+  assert.match(page, /runStep\(\s*["']characters["']/)
+  assert.match(home, /onStartQuickTrial/)
+})
+
+test("ONB7 分步制作只带入想法，不提前建计划或消耗额度", () => {
+  const page = fs.readFileSync("app/page.tsx", "utf8")
+  const home = fs.readFileSync("components/WorkspaceHome.tsx", "utf8")
+
+  assert.match(page, /function startGuidedCreation/)
+  assert.match(page, /setIdea\(guidedIdea\)/)
+  assert.match(page, /goToStep\(["']characters["']\)/)
+  assert.match(home, /onStartGuided/)
 })

@@ -19,7 +19,6 @@ interface Props {
   projectId: string | null
   projectTitle: string
   todoCount: number
-  savedLabel: string
   quotaRefreshKey: number
   episodeCount: number
   mobileOpen: boolean
@@ -63,7 +62,6 @@ export default function WorkspaceSidebar({
   projectId,
   projectTitle,
   todoCount,
-  savedLabel,
   quotaRefreshKey,
   episodeCount,
   mobileOpen,
@@ -352,7 +350,6 @@ export default function WorkspaceSidebar({
 
         <div className="wfx-side-user">
           <AuthButton variant="workspace-user" />
-          <span className="wfx-side-save">{savedLabel}</span>
           <QuotaBar refreshKey={quotaRefreshKey} episodeCount={episodeCount} inline />
         </div>
       </aside>
