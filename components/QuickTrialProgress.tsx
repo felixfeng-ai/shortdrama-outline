@@ -1,20 +1,11 @@
 "use client"
 
+import type { QuickTrialPhase } from "@/lib/production/quick-trial"
+
 /**
  * 快速试片运行条只表达真实完成阶段。
  * ready 允许继续生成视觉样片；visual-ready 才代表首帧可用。
  */
-export type QuickTrialPhase =
-  | "characters"
-  | "acts"
-  | "episodes"
-  | "ready"
-  | "visuals"
-  | "scenes"
-  | "shots"
-  | "keyframe"
-  | "visual-ready"
-
 interface Props {
   phase: QuickTrialPhase
   error: string | null
@@ -22,6 +13,7 @@ interface Props {
   onOpenEpisodes: () => void
   onContinueVisual: () => void
   onOpenFirstFrame: () => void
+  onRetry: () => void
   onDismiss: () => void
 }
 
@@ -49,6 +41,7 @@ export default function QuickTrialProgress({
   onOpenEpisodes,
   onContinueVisual,
   onOpenFirstFrame,
+  onRetry,
   onDismiss,
 }: Props) {
   const activeIndex = phaseIndex(phase)
@@ -67,7 +60,7 @@ export default function QuickTrialProgress({
       ? "已完成定妆、场次、第一集分镜和第 1 镜首帧。镜头视频仍需你单独确认。"
       : storyReady
         ? `第一集已完成。继续生成首帧约需 ${visualUnits} 创作额度，不会自动生成视频。`
-        : "页面会按顺序继续生成；切换当前步骤不会打断这次快速试片。")
+        : "阶段会保存到项目；刷新后可从这里继续，不会自动生成镜头视频。")
 
   return (
     <section className="wfx-quick-trial-progress" aria-live="polite">
@@ -107,6 +100,11 @@ export default function QuickTrialProgress({
         {visualReady && (
           <button className="wfx-button" type="button" onClick={onOpenFirstFrame}>
             查看首帧
+          </button>
+        )}
+        {error && !storyReady && !visualReady && (
+          <button className="wfx-button" type="button" onClick={onRetry}>
+            从当前阶段重试
           </button>
         )}
         {(storyReady || visualReady || error) && (

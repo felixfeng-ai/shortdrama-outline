@@ -1144,6 +1144,35 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON production_extensions(plan_id, created_at DESC);
     `,
   },
+  {
+    version: 26,
+    name: "quick-trial-runs",
+    sql: `
+      -- 首次价值流程需要在页面刷新后知道最后完成的阶段。
+      -- 这里只保存流程状态，角色、分集、分镜和首帧仍以正式快照/任务为准。
+      CREATE TABLE IF NOT EXISTS project_quick_trial_runs (
+        project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        idea       TEXT NOT NULL,
+        phase      TEXT NOT NULL,
+        status     TEXT NOT NULL,
+        error      TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_quick_trial_runs_status
+        ON project_quick_trial_runs(status, updated_at DESC);
+    `,
+  },
+  {
+    version: 27,
+    name: "quick-trial-visual-approval",
+    sql: `
+      -- 视觉阶段可能产生图片费用，必须持久化用户是否已经看过费用确认。
+      ALTER TABLE project_quick_trial_runs
+        ADD COLUMN visual_approved INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

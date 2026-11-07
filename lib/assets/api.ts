@@ -523,6 +523,7 @@ export interface QuotaDto {
   globalUsed: number
   globalLimit: number
   remaining: number
+  unlimited: boolean
   episodeCount: number
   projectCost: number
   projectEstimate: ProjectQuotaEstimateDto
