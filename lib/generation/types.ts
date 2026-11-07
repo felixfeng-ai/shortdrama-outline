@@ -65,10 +65,14 @@ export interface GenerationBatch {
   projectId: string
   episode: number
   scope: Record<string, unknown>
+  mediaKind: MediaKind
   status: "draft" | "confirmed" | "running" | "completed" | "stopped" | "failed"
   budgetLimitMicros: number
   reservedCostMicros: number
   actualCostMicros: number
+  priority: number
+  concurrency: number
+  pausedAt: number | null
   idempotencyKey: string | null
   createdAt: number
   confirmedAt: number | null

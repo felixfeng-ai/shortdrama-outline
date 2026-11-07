@@ -108,6 +108,14 @@ export default function ShotList({
       : scopedShots,
     [qcByShotId, qcFilter, scopedShots],
   )
+  const visibleVideoAssets = useMemo(() => {
+    const shotIds = new Set(visibleShots.map((shot) => shot.entityId))
+    return videoAssets.filter((asset) =>
+      (asset.mediaKind ?? 'image') === 'video'
+      && asset.targetType === 'shot'
+      && shotIds.has(asset.targetId)
+    )
+  }, [videoAssets, visibleShots])
   const groups = useMemo(() => groupShotsByEpisode(visibleShots), [visibleShots])
   const qcIssueShots = useMemo(
     () => qcResults.filter((result) => result.needsRepair),
@@ -157,6 +165,27 @@ export default function ShotList({
   useEffect(() => {
     onSelectRef.current = onSelect
   }, [onSelect])
+
+  useEffect(() => {
+    if (workspaceMode !== 'storyboard') setTreeOpen(false)
+  }, [workspaceMode])
+
+  useEffect(() => {
+    const onOpenWorkspace = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode?: 'storyboard' | 'video' | 'timeline' }>)
+        .detail?.mode
+      if (!mode) return
+      setWorkspaceMode(mode)
+      requestAnimationFrame(() => {
+        document.getElementById('shot-workspace-tabs')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+    }
+    window.addEventListener('chengju:shot-workspace', onOpenWorkspace)
+    return () => window.removeEventListener('chengju:shot-workspace', onOpenWorkspace)
+  }, [])
 
   useEffect(() => {
     onActiveQcChange?.(activeShotId ? qcByShotId.get(activeShotId) ?? null : null)
@@ -323,6 +352,7 @@ export default function ShotList({
 
   return (
     <div className={`shot-workbench ${treeOpen ? 'has-tree' : 'tree-collapsed'}`}>
+      {treeOpen && (
       <aside className="shot-tree" aria-label="集场镜树">
         <div className="shot-tree-head">
           <div>
@@ -397,6 +427,7 @@ export default function ShotList({
           })}
         </div>
       </aside>
+      )}
 
       <section className="shot-board" aria-label="分镜卡流">
         <div className="shot-board-toolbar">
@@ -433,7 +464,7 @@ export default function ShotList({
           </p>
         </div>
 
-        <nav className="shot-workspace-tabs" aria-label="分镜工作区">
+        <nav id="shot-workspace-tabs" className="shot-workspace-tabs" aria-label="分镜工作区">
           <button
             type="button"
             aria-pressed={workspaceMode === 'storyboard'}
@@ -444,13 +475,14 @@ export default function ShotList({
             <small>质检、首帧与镜头卡</small>
           </button>
           <button
+            id="shot-workspace-video"
             type="button"
             aria-pressed={workspaceMode === 'video'}
             onClick={() => setWorkspaceMode('video')}
           >
             <span>02</span>
             <b>镜头视频</b>
-            <small>{videoAssets.length} 条候选</small>
+            <small>{visibleVideoAssets.length} 条本集候选</small>
           </button>
           <button
             type="button"
@@ -570,6 +602,7 @@ export default function ShotList({
           preferredEpisode={episodeFilter}
           videos={videoAssets}
           shots={visibleShots}
+          onOpenVideo={() => setWorkspaceMode('video')}
         />
 
         <VoiceProfilePanel

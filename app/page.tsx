@@ -134,7 +134,7 @@ import type { ProjectMaterial } from '@/lib/assets/materials'
 import { ARTIFACT_KINDS, type ArtifactKind } from '@/lib/assets/types'
 import type { SnapshotDto } from '@/lib/assets/api'
 import { auditShots, type ShotAudit } from '@/lib/assets/impact'
-import { auditShotProduction } from '@/lib/assets/qc'
+import { auditShotProduction, reconcileShotReferenceGaps } from '@/lib/assets/qc'
 import {
   detectVaultMode,
   loadDirectoryHandle,
@@ -196,6 +196,7 @@ import {
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
 import { fetchProjectGenerationAssets, generateKeyframe } from '@/lib/generation/client'
+import { fetchProjectVideoState } from '@/lib/video/client'
 import { fetchVoiceProfiles } from '@/lib/audio/client'
 import { buildMobileVideoView } from '@/lib/mobile-video'
 import {
@@ -828,6 +829,28 @@ export default function Home() {
   }, [projectId])
 
   useEffect(() => {
+    if (!projectId) return
+    let active = true
+    const refreshProductionState = () => {
+      void Promise.all([
+        fetchProjectGenerationAssets(projectId),
+        fetchProjectVideoState(projectId),
+      ]).then(([imageState, videoState]) => {
+        if (!active) return
+        setProductionAssets([...imageState.assets, ...videoState.assets])
+        setProductionTasks([...imageState.tasks, ...videoState.tasks])
+      }).catch(() => {
+        // 生成状态刷新失败不覆盖当前页面已加载的事实。
+      })
+    }
+    window.addEventListener('chengju:generation-updated', refreshProductionState)
+    return () => {
+      active = false
+      window.removeEventListener('chengju:generation-updated', refreshProductionState)
+    }
+  }, [projectId])
+
+  useEffect(() => {
     if (!projectId || briefLoadedFor.current !== projectId) return
     try {
       window.localStorage.setItem(`chengju:brief:${projectId}`, JSON.stringify(brief))
@@ -1176,20 +1199,25 @@ export default function Home() {
   const hasEpisodes = episodes.length > 0
   const hasResult = hasCharacters || hasActs || hasEpisodes || visuals.length > 0 || shots.length > 0
   const quotaRemaining = agentQuota?.remaining ?? null
-  const charactersQuote = forecastQuota(STEP_COST.characters, quotaRemaining)
-  const actsQuote = forecastQuota(STEP_COST.acts, quotaRemaining)
-  const episodesQuote = forecastQuota(episodeQuotaUnits(episodeCount), quotaRemaining)
-  const visualsQuote = forecastQuota(STEP_COST.visual, quotaRemaining)
-  const scenesQuote = forecastQuota(STEP_COST.scenes, quotaRemaining)
-  const shotsQuote = forecastQuota(STEP_COST.shots, quotaRemaining)
-  const variantQuote = forecastQuota(2, quotaRemaining)
+  const quotaUnlimited = agentQuota?.unlimited === true
+  const charactersQuote = forecastQuota(STEP_COST.characters, quotaRemaining, quotaUnlimited)
+  const actsQuote = forecastQuota(STEP_COST.acts, quotaRemaining, quotaUnlimited)
+  const episodesQuote = forecastQuota(episodeQuotaUnits(episodeCount), quotaRemaining, quotaUnlimited)
+  const visualsQuote = forecastQuota(STEP_COST.visual, quotaRemaining, quotaUnlimited)
+  const scenesQuote = forecastQuota(STEP_COST.scenes, quotaRemaining, quotaUnlimited)
+  const shotsQuote = forecastQuota(STEP_COST.shots, quotaRemaining, quotaUnlimited)
+  const variantQuote = forecastQuota(2, quotaRemaining, quotaUnlimited)
+  const effectiveShots = useMemo(
+    () => reconcileShotReferenceGaps({ shots, visuals, assets: productionAssets }),
+    [productionAssets, shots, visuals],
+  )
   const exportPreflight = useMemo(
-    () => preflightPlatformExport(shots, {
+    () => preflightPlatformExport(effectiveShots, {
       target: exportTarget,
       visuals,
       places,
     }),
-    [exportTarget, places, shots, visuals],
+    [effectiveShots, exportTarget, places, visuals],
   )
 
   // 步骤条高亮到「第一个还没产出内容的步骤」；六步全部有内容时停在最后一步
@@ -1213,10 +1241,10 @@ export default function Home() {
     visuals,
     scenes,
     places,
-    shots,
+    shots: effectiveShots,
     expiredShots: impact?.expired ?? 0,
     visualsStale: visualsBuiltFrom !== charactersSig,
-  }), [characters, acts, episodes, visuals, scenes, places, shots, impact?.expired, visualsBuiltFrom, charactersSig])
+  }), [characters, acts, episodes, visuals, scenes, places, effectiveShots, impact?.expired, visualsBuiltFrom, charactersSig])
   const canvasCounts = projectStatus.counts
   const canvasIssues = projectStatus.issues
   const missingPlaces = projectStatus.placeGaps
@@ -1422,13 +1450,13 @@ export default function Home() {
 
   const firstRun = !hasResult && idea.trim().length === 0
   const shotMissingRefs = useMemo(
-    () => Array.from(new Set(shots.flatMap((shot) => shot.missingRefFor))).filter(Boolean),
-    [shots],
+    () => Array.from(new Set(effectiveShots.flatMap((shot) => shot.missingRefFor))).filter(Boolean),
+    [effectiveShots],
   )
 
   const todoItems = buildTodoList({
     completed: stepCompleted,
-    shots,
+    shots: effectiveShots,
     expiredShots: impact?.expired ?? 0,
     hasIdea: idea.trim().length > 0,
   })
@@ -1554,6 +1582,12 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const openShotWorkspace = (mode: 'storyboard' | 'video' | 'timeline') => {
+    window.dispatchEvent(new CustomEvent('chengju:shot-workspace', {
+      detail: { mode },
+    }))
+  }
+
   const openWorkspaceTodo = () => {
     goToStep(currentStepKey)
     setMetaPanel('todo')
@@ -1584,7 +1618,7 @@ export default function Home() {
   async function handleProductionAction(item: TodoItem) {
     if (item.id === "expired-shots" && projectId && shots.length > 0) {
       const preview = buildRepairAnchorsPreview({
-        shots,
+        shots: effectiveShots,
         visuals,
         places,
         assets: productionAssets,
@@ -1744,8 +1778,8 @@ export default function Home() {
 
   /** 放映厅盯着的那一镜：用户点过就用点过的，否则默认第一镜 */
   const activeShot = useMemo(
-    () => shots.find((s) => s.id === activeShotId) ?? shots[0] ?? null,
-    [shots, activeShotId],
+    () => effectiveShots.find((s) => s.id === activeShotId) ?? effectiveShots[0] ?? null,
+    [effectiveShots, activeShotId],
   )
 
   // 上游改过之后，下游结果就是基于旧版本生成的
@@ -2186,7 +2220,7 @@ export default function Home() {
       setNotice("请先完成第一集故事骨架，再生成视觉样片。")
       return
     }
-    if (quotaRemaining !== null && quotaRemaining < QUICK_TRIAL_VISUAL_UNITS) {
+    if (!quotaUnlimited && quotaRemaining !== null && quotaRemaining < QUICK_TRIAL_VISUAL_UNITS) {
       setNotice(`当前剩余 ${quotaRemaining} 额度，不足以完成视觉试片。`)
       return
     }
@@ -3531,16 +3565,16 @@ export default function Home() {
         }))
       addText(
         "storyboard/index.html",
-        buildStoryboardHtml({ title, visuals, places, look, scenes, shots, images: storyboardImages }),
+        buildStoryboardHtml({ title, visuals, places, look, scenes, shots: effectiveShots, images: storyboardImages }),
         "html",
       )
 
       const exportLedger = buildProductionLedger({
         projectTitle: title,
         generatedAt: exportedAt,
-        shots,
+        shots: effectiveShots,
         qc: auditShotProduction({
-          shots,
+          shots: effectiveShots,
           visuals,
           places,
           assets: keyframeState.assets,
@@ -3556,7 +3590,7 @@ export default function Home() {
         const platformKit = buildPlatformExportKit({
           title,
           target: exportTarget,
-          shots,
+          shots: effectiveShots,
           visuals,
           places,
           exportedAt,
@@ -4039,32 +4073,32 @@ export default function Home() {
   )
   const productionQc = useMemo(
     () => auditShotProduction({
-      shots,
+      shots: effectiveShots,
       visuals,
       places,
       assets: productionAssets,
     }),
-    [places, productionAssets, shots, visuals],
+    [effectiveShots, places, productionAssets, visuals],
   )
   const productionLedger = useMemo(
     () => buildProductionLedger({
       projectTitle: projects.find((item) => item.id === projectId)?.title ?? idea.trim().slice(0, 40),
       generatedAt: Date.now(),
-      shots,
+      shots: effectiveShots,
       qc: productionQc,
       comments: entityComments,
       tasks: productionTasks,
       assets: productionAssets,
     }),
-    [entityComments, idea, projectId, productionAssets, productionQc, productionTasks, projects, shots],
+    [effectiveShots, entityComments, idea, projectId, productionAssets, productionQc, productionTasks, projects],
   )
   const agentVideoView = useMemo(
     () => buildMobileVideoView({
-      shots,
+      shots: effectiveShots,
       assets: productionAssets,
       tasks: productionTasks,
     }),
-    [productionAssets, productionTasks, shots],
+    [effectiveShots, productionAssets, productionTasks],
   )
 
   const agentState: AgentState = {
@@ -4145,7 +4179,7 @@ export default function Home() {
       intensity: e.intensity,
     })),
     completed: stepCompleted,
-    shots: shots.map((s) => ({
+    shots: effectiveShots.map((s) => ({
       targetId: s.entityId || s.id,
       episode: s.episode,
       shot: s.shot,
@@ -4563,7 +4597,7 @@ export default function Home() {
 
       <WorkspaceSidebar
         mode={workspaceMode}
-        currentStep={currentStepKey}
+        activeStep={view}
         completed={stepCompleted}
         homeActive={workspaceMode === 'overview' && !workspaceStepDetail}
         projects={projects}
@@ -4650,7 +4684,7 @@ export default function Home() {
               episodes={episodes}
               visuals={visuals}
               scenes={scenes}
-              shots={shots}
+              shots={effectiveShots}
               todoItems={todoItems}
               currentStep={currentStep}
               completed={stepCompleted}
@@ -4703,9 +4737,20 @@ export default function Home() {
                 <span>{workspaceProjectTitle}</span>
                 <h1>{STEPS.find((step) => step.key === view)?.nav ?? '项目编辑'}</h1>
               </div>
-              <button className="wfx-button is-secondary" type="button" onClick={goWorkspaceHome}>
-                返回继续创作
-              </button>
+              <div className="wfx-page-actions">
+                {view === 'shots' && shots.length > 0 && (
+                  <button
+                    className="wfx-button"
+                    type="button"
+                    onClick={() => openShotWorkspace('video')}
+                  >
+                    镜头视频
+                  </button>
+                )}
+                <button className="wfx-button is-secondary" type="button" onClick={goWorkspaceHome}>
+                  返回继续创作
+                </button>
+              </div>
             </header>
           )}
           {variantSession && (
@@ -4813,7 +4858,7 @@ export default function Home() {
                     projectId={projectId}
                     visuals={visuals}
                 places={places}
-                    shots={shots}
+                    shots={effectiveShots}
                     look={look}
                   />
                 </div>
@@ -5154,6 +5199,16 @@ export default function Home() {
               skeletonVariant="episodes"
               actionHint={shotsQuote.label}
               quotaBlocked={!shotsQuote.affordable}
+              extraAction={(
+                <button
+                  type="button"
+                  onClick={() => openShotWorkspace('video')}
+                  className="rounded-chip border border-info-300 bg-info-50 px-3 py-2 text-xs font-medium text-info-900
+                    transition-colors hover:bg-info-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info-300"
+                >
+                  镜头视频
+                </button>
+              )}
             >
               {shots.length > 0 && (
                 <VersionBar
@@ -5192,7 +5247,7 @@ export default function Home() {
                 </div>
               )}
               <ShotList
-                shots={shots}
+                shots={effectiveShots}
                 progress={shotProgress}
                 onChange={setShots}
                 activeShotId={activeShot?.id ?? null}
@@ -5348,7 +5403,7 @@ export default function Home() {
                   characterCount={characters.length}
                   episodes={episodes}
                   scenes={scenes}
-                  shots={shots}
+                  shots={effectiveShots}
                   assets={productionAssets}
                   onOpenShot={(shotId) => openCanvasItem("shots", shotId)}
                   onShowFlow={() => goToStep("shots")}

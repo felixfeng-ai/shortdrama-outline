@@ -129,6 +129,7 @@ export async function POST(req: Request) {
       projectId,
       episode: integer(shot.episode, 0),
       scope: { shotIds: [targetId] },
+      mediaKind: "video",
       budgetLimitMicros: maxBudgetMicros,
       status: "confirmed",
       idempotencyKey: idempotencyKey ? `batch:${idempotencyKey}` : null,

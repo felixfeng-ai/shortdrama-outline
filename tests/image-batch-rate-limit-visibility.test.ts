@@ -25,7 +25,8 @@ test("BATCH11 image batch exposes rate limit balance and reset countdown", () =>
 
   assert.match(panel, /fetchImageGenerationRateLimit/)
   assert.match(panel, /本轮还可提交/)
-  assert.match(panel, /selectedOverLimit/)
+  assert.match(panel, /rateLimitBlocked/)
+  assert.doesNotMatch(panel, /selectedOverLimit/)
   assert.match(client, /generations\/rate-limit/)
   assert.match(route, /getApiRateLimitAvailability/)
   assert.match(api, /Retry-After/)

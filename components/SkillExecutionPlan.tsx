@@ -9,6 +9,7 @@ interface Props {
   plan: SkillExecutionPlan
   readiness: SkillReadiness
   quotaRemaining: number | null
+  quotaUnlimited?: boolean
   agentOpen: boolean
   hasPrompt: boolean
   onClose: () => void
@@ -20,13 +21,14 @@ export default function SkillExecutionPlan({
   plan,
   readiness,
   quotaRemaining,
+  quotaUnlimited = false,
   agentOpen,
   hasPrompt,
   onClose,
   onStart,
 }: Props) {
-  const quotaBlocked = quotaRemaining !== null && plan.units.min > quotaRemaining
-  const quotaTight = quotaRemaining !== null
+  const quotaBlocked = !quotaUnlimited && quotaRemaining !== null && plan.units.min > quotaRemaining
+  const quotaTight = !quotaUnlimited && quotaRemaining !== null
     && plan.units.max > quotaRemaining
     && !quotaBlocked
   const blockedReason = !hasPrompt
@@ -65,6 +67,11 @@ export default function SkillExecutionPlan({
           {quotaTight && (
             <p className="execution-plan-warning" role="status">
               当前剩余 {quotaRemaining} 创作额度；本轮最多使用 {plan.units.max}，到顶会自动停止。
+            </p>
+          )}
+          {quotaUnlimited && (
+            <p className="execution-plan-ready" role="status">
+              管理账号 · 无限额度；真实消耗仍记录在台账。
             </p>
           )}
           <small>打开 Agent 不等于写入；所有修改仍逐项确认。</small>

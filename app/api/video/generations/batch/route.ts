@@ -120,6 +120,7 @@ export async function POST(req: Request) {
       projectId,
       episode: integer(findProjectShot(db, projectId, ready[0].targetId)?.episode, 0),
       scope: { shotIds: ready.map((item) => item.targetId) },
+      mediaKind: "video",
       budgetLimitMicros,
       status: "confirmed",
       idempotencyKey: idempotencyKey ? `batch:${idempotencyKey}` : null,

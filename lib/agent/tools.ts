@@ -178,6 +178,7 @@ export interface AgentState {
     projectsLeft: number
     episodeCount?: number
     projectCost?: number
+    unlimited?: boolean
   } | null
   sourceMaterials?: SourceMaterialInput[]
 }
@@ -966,6 +967,12 @@ export function createToolExecutors(
 
     get_quota: () => {
       if (!state.quota) return { ok: false, content: '创作额度信息暂时读不到（接口没返回）。' }
+      if (state.quota.unlimited) {
+        return {
+          ok: true,
+          content: '当前是内部管理账号，平台无限额度；图片、视频、TTS 和 Agent 仍按真实消耗记账，上游供应商限流继续生效。',
+        }
+      }
       const episodeCount = state.quota.episodeCount ?? DEFAULT_EPISODE_COUNT
       const projectCost = state.quota.projectCost ?? projectQuotaUnits(episodeCount)
       return {

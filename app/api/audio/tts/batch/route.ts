@@ -105,6 +105,7 @@ export async function POST(req: Request) {
       projectId,
       episode,
       scope: { shotIds: ready.map((item) => item.shotId), mediaKind: "audio" },
+      mediaKind: "audio",
       budgetLimitMicros: maxBudgetMicros,
       status: "confirmed",
       idempotencyKey: idempotencyKey ? `batch:${idempotencyKey}` : null,

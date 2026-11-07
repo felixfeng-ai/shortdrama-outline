@@ -1173,6 +1173,36 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ADD COLUMN visual_approved INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 28,
+    name: "image-production-queue",
+    sql: `
+      -- 图像批次需要独立媒体类型、优先级、并发和暂停状态，供服务端 Worker 持久化调度。
+      ALTER TABLE generation_batches ADD COLUMN media_kind TEXT NOT NULL DEFAULT 'video';
+      ALTER TABLE generation_batches ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE generation_batches ADD COLUMN concurrency INTEGER NOT NULL DEFAULT 2;
+      ALTER TABLE generation_batches ADD COLUMN paused_at INTEGER;
+
+      CREATE INDEX IF NOT EXISTS idx_generation_batches_queue
+        ON generation_batches(media_kind, status, paused_at, priority DESC, created_at);
+    `,
+  },
+  {
+    version: 29,
+    name: "system-bgm-favorites",
+    sql: `
+      -- 系统曲库是全平台共享内容，收藏只记录 owner 与曲目 id，不复制音频文件。
+      CREATE TABLE IF NOT EXISTS bgm_favorites (
+        owner_id   TEXT NOT NULL,
+        track_id   TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (owner_id, track_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_bgm_favorites_owner
+        ON bgm_favorites(owner_id, created_at DESC);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

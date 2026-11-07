@@ -4,6 +4,7 @@ import fs from "node:fs"
 
 import {
   auditShotProduction,
+  reconcileShotReferenceGaps,
   repairShotAnchors,
 } from "../lib/assets/qc.ts"
 import { placeGenerationTargetId } from "../lib/assets/anchors.ts"
@@ -159,4 +160,52 @@ test("QC4 制作工作台显示问题标签、问题筛选与批量返修入口"
   assert.ok(inspector.includes("镜头质检"))
   assert.ok(page.includes("visuals={visuals}"))
   assert.ok(page.includes("places={places}"))
+})
+
+test("QC5 当前采用定妆图会清除历史缺失参考，缺图状态不再依赖旧快照字段", () => {
+  const shots = [
+    shot({ id: "shot-row-1", entityId: "shot-entity-1", missingRefFor: ["林远"] }),
+    shot({ id: "shot-row-2", entityId: "shot-entity-2", shot: 2, missingRefFor: [] }),
+  ]
+  const reconciled = reconcileShotReferenceGaps({
+    shots,
+    visuals: [visual],
+    assets: [asset("character", "character-linyuan", 100)],
+  })
+
+  assert.deepEqual(reconciled[0].missingRefFor, [])
+  assert.deepEqual(reconciled[1].missingRefFor, [])
+  assert.deepEqual(shots[0].missingRefFor, ["林远"], "派生状态不能改写历史快照对象")
+
+  const qc = auditShotProduction({
+    shots,
+    visuals: [visual],
+    places: [place],
+    assets: [asset("character", "character-linyuan", 100)],
+  })
+  assert.equal(qc[0].issues.some((issue) => issue.code === "missing-reference"), false)
+})
+
+test("QC6 没有当前采用定妆图时，即使旧字段为空也要动态报告缺图", () => {
+  const reconciled = reconcileShotReferenceGaps({
+    shots: [shot({ missingRefFor: [] })],
+    visuals: [visual],
+    assets: [],
+  })
+
+  assert.deepEqual(reconciled[0].missingRefFor, ["林远"])
+})
+
+test("QC7 页面主阻塞、待办和分镜工作区统一使用动态参考图状态", () => {
+  const page = fs.readFileSync("app/page.tsx", "utf8")
+  const shotList = fs.readFileSync("components/ShotList.tsx", "utf8")
+
+  assert.match(page, /reconcileShotReferenceGaps/)
+  assert.match(page, /shots:\s*effectiveShots/)
+  assert.match(page, /<ShotList[\s\S]*shots=\{effectiveShots\}/)
+  assert.ok((page.match(/shots=\{effectiveShots\}/g) ?? []).length >= 4)
+  assert.doesNotMatch(page, /shots=\{shots\}/)
+  assert.match(page, /shots:\s*effectiveShots\.map/)
+  assert.match(page, /addEventListener\('chengju:generation-updated'/)
+  assert.match(shotList, /id="shot-workspace-tabs"/)
 })

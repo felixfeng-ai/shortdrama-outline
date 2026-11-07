@@ -5,6 +5,7 @@ export interface QuotaForecast {
   affordable: boolean
   shortBy: number
   label: string
+  unlimited?: boolean
 }
 
 /**
@@ -14,8 +15,20 @@ export interface QuotaForecast {
 export function forecastQuota(
   units: number,
   remaining: number | null | undefined,
+  unlimited = false,
 ): QuotaForecast {
   const safeUnits = Math.max(1, Math.ceil(Number(units) || 1))
+  if (unlimited) {
+    return {
+      units: safeUnits,
+      remaining: null,
+      known: true,
+      affordable: true,
+      shortBy: 0,
+      label: `本步 ${safeUnits} 单位 · 管理账号无限额度`,
+      unlimited: true,
+    }
+  }
   const known = remaining !== null
     && remaining !== undefined
     && Number.isFinite(Number(remaining))

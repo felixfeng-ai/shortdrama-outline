@@ -312,6 +312,7 @@ export default function SkillAgentDrawer({
             remaining: quota.remaining,
             limit: quota.limit,
             projectsLeft: quota.projectsLeft,
+            unlimited: quota.unlimited === true,
           }
           : null,
       })

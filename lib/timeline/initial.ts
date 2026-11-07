@@ -3,6 +3,63 @@ import type { TimelineClip, TimelinePayload } from "./types.ts"
 
 export const TIMELINE_DURATION_TOLERANCE_MS = 250
 
+/** 把后来采用的视频同步到已有草稿；只替换素材，不重置排序、静音或已保存的其它编辑。 */
+export function syncTimelineSelectedVideoSources(
+  timeline: TimelinePayload,
+  videos: GeneratedAsset[],
+): TimelinePayload {
+  const selectedByShot = new Map<string, GeneratedAsset>()
+  for (const video of [...videos]
+    .filter((asset) =>
+      (asset.mediaKind ?? "image") === "video"
+      && asset.targetType === "shot"
+      && asset.selectedAt !== null
+    )
+    .sort((left, right) => (right.selectedAt ?? 0) - (left.selectedAt ?? 0))) {
+    if (!selectedByShot.has(video.targetId)) selectedByShot.set(video.targetId, video)
+  }
+
+  let changed = false
+  const clips = timeline.clips.map((clip) => {
+    const video = selectedByShot.get(clip.shotId)
+    if (!video || clip.sourceAssetId === video.id) return clip
+    changed = true
+    const sourceDurationMs = video.durationMs && video.durationMs > 0
+      ? Math.round(video.durationMs)
+      : null
+    const status: TimelineClip["status"] = sourceDurationMs === null
+      ? "missing-duration"
+      : clip.expectedDurationMs > 0
+        && Math.abs(sourceDurationMs - clip.expectedDurationMs) > TIMELINE_DURATION_TOLERANCE_MS
+        ? "duration-mismatch"
+        : "ready"
+    const durationMs = sourceDurationMs ?? clip.expectedDurationMs
+    return {
+      ...clip,
+      sourceAssetId: video.id,
+      sourceDurationMs,
+      durationMs,
+      inMs: 0,
+      outMs: durationMs,
+      status,
+      reason: status === "missing-duration"
+        ? "视频缺少可读取的时长"
+        : status === "duration-mismatch"
+          ? `视频 ${(sourceDurationMs! / 1000).toFixed(2)}s 与分镜 ${(clip.expectedDurationMs / 1000).toFixed(2)}s 不一致`
+          : null,
+    }
+  })
+  if (!changed) return timeline
+  const readyCount = clips.filter((clip) => clip.status === "ready").length
+  return {
+    ...timeline,
+    clips,
+    readyCount,
+    blockedCount: clips.length - readyCount,
+    totalDurationMs: clips.reduce((sum, clip) => sum + Math.max(0, clip.durationMs), 0),
+  }
+}
+
 function integer(value: unknown, fallback = 0): number {
   const number = Math.floor(Number(value))
   return Number.isFinite(number) ? number : fallback
@@ -125,7 +182,9 @@ export function buildInitialTimeline(input: {
       audio: {
         dialogueVolume: 1,
         bgmAssetId: null,
-        bgmVolume: 0.2,
+        bgmVolume: 0.3,
+        bgmFadeInMs: 600,
+        bgmFadeOutMs: 1_000,
       },
     },
     inputHashes,

@@ -1,4 +1,5 @@
 import fs from "node:fs"
+import path from "node:path"
 
 import type { DatabaseSync } from "node:sqlite"
 
@@ -70,6 +71,12 @@ function fileExists(storageKey: string): boolean {
   } catch {
     return false
   }
+}
+
+function bgmFilePath(bgm: { sourceType?: "upload" | "system"; storageKey: string }): string {
+  return bgm.sourceType === "system"
+    ? path.join(process.cwd(), "public", bgm.storageKey)
+    : resolveGeneratedStoragePath(bgm.storageKey)
 }
 
 function publicRenderError(error: unknown): string {
@@ -190,7 +197,7 @@ function inspectVersion(db: DatabaseSync, projectId: string, versionId: string):
         shotNumber: null,
         message: "本集 BGM 已删除或缺少授权声明",
       })
-    } else if (!fileExists(bgm.storageKey)) {
+    } else if (!fs.existsSync(bgmFilePath(bgm))) {
       issues.push({
         code: "missing-audio-asset",
         clipId: null,
@@ -337,6 +344,8 @@ function manifestFor(input: {
     audio: {
       dialogueVolume: input.timeline.audio.dialogueVolume,
       bgmVolume: input.timeline.audio.bgmVolume,
+      bgmFadeInMs: input.timeline.audio.bgmFadeInMs ?? 600,
+      bgmFadeOutMs: input.timeline.audio.bgmFadeOutMs ?? 1_000,
       bgm: input.bgm
         ? {
             id: input.bgm.id,
@@ -430,13 +439,20 @@ export async function renderClaimedVideo(
     const bgm = prepared.timeline.audio.bgmAssetId
       ? getBgmTrack(db, render.projectId, prepared.timeline.audio.bgmAssetId)
       : null
-    let bgmInput: { inputIndex: number; volume: number } | null = null
+    let bgmInput: {
+      inputIndex: number
+      volume: number
+      fadeInMs: number
+      fadeOutMs: number
+    } | null = null
     if (bgm) {
       bgmInput = {
         inputIndex: inputPaths.length,
         volume: prepared.timeline.audio.bgmVolume,
+        fadeInMs: prepared.timeline.audio.bgmFadeInMs ?? 600,
+        fadeOutMs: prepared.timeline.audio.bgmFadeOutMs ?? 1_000,
       }
-      inputPaths.push(resolveGeneratedStoragePath(bgm.storageKey))
+      inputPaths.push(bgmFilePath(bgm))
     }
 
     const outputStorageKey = `generated/${render.projectId}/renders/${render.id}/output.mp4`

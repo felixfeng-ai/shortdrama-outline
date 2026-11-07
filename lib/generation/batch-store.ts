@@ -1,4 +1,11 @@
-import { generateKeyframe, selectKeyframe } from "./client.ts"
+import {
+  createImageGenerationBatch,
+  fetchImageGenerationBatch,
+  generateKeyframe,
+  selectKeyframe,
+  updateImageGenerationBatch,
+  type ImageBatchState,
+} from "./client.ts"
 import {
   runBatchGeneration,
   type BatchGenerationStatus,
@@ -10,6 +17,10 @@ import type { LookBook } from "../look.ts"
 export interface BatchRunState {
   running: boolean
   stopping: boolean
+  paused: boolean
+  batchId: string | null
+  queuePosition: number
+  estimatedSeconds: number
   selectedKeys: string[]
   statuses: Record<string, BatchGenerationStatus>
   errors: Record<string, string>
@@ -30,11 +41,18 @@ export type BatchRunner = (
 interface BatchStoreDeps {
   selectAsset?: (projectId: string, assetId: string) => Promise<GeneratedAsset>
   notify?: (item: BatchGenerationTarget) => void
+  createBatch?: typeof createImageGenerationBatch
+  fetchBatch?: typeof fetchImageGenerationBatch
+  updateBatch?: typeof updateImageGenerationBatch
 }
 
 export const EMPTY_BATCH_RUN_STATE: BatchRunState = Object.freeze({
   running: false,
   stopping: false,
+  paused: false,
+  batchId: null,
+  queuePosition: 0,
+  estimatedSeconds: 0,
   selectedKeys: [],
   statuses: {},
   errors: {},
@@ -55,12 +73,85 @@ function notifyTarget(item: BatchGenerationTarget) {
   }
 }
 
+const BATCH_STORAGE_PREFIX = "chengju:image-batch:"
+
+function storedBatchKey(key: string): string {
+  return `${BATCH_STORAGE_PREFIX}${key}`
+}
+
+function rememberBatchId(key: string, batchId: string): void {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(storedBatchKey(key), batchId)
+  } catch {
+    // 隐私模式无法持久化时，本页仍可继续轮询当前批次。
+  }
+}
+
+function recallBatchId(key: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    return window.localStorage.getItem(storedBatchKey(key))
+  } catch {
+    return null
+  }
+}
+
+function statusFromServer(status: ImageBatchState["items"][number]["status"]): BatchGenerationStatus {
+  if (status === "queued") return "waiting"
+  if (status === "running") return "running"
+  if (status === "succeeded") return "succeeded"
+  if (status === "failed") return "failed"
+  return "canceled"
+}
+
+function isBatchTerminal(state: ImageBatchState): boolean {
+  return state.batch.status === "completed"
+    || state.batch.status === "stopped"
+    || state.batch.status === "failed"
+}
+
+function mergeServerBatch(state: BatchRunState, remote: ImageBatchState): BatchRunState {
+  const statuses: Record<string, BatchGenerationStatus> = {}
+  const errors: Record<string, string> = {}
+  const assets: Record<string, GeneratedAsset> = {}
+  for (const item of remote.items) {
+    statuses[item.key] = statusFromServer(item.status)
+    if (item.error) errors[item.key] = item.error
+    if (item.asset) assets[item.key] = item.asset
+  }
+
+  const active = remote.counts.queued + remote.counts.running > 0
+  const finished = isBatchTerminal(remote)
+  return {
+    ...state,
+    running: active && remote.batch.pausedAt === null,
+    stopping: false,
+    paused: remote.batch.pausedAt !== null,
+    batchId: remote.batch.id,
+    queuePosition: remote.queuePosition,
+    estimatedSeconds: remote.estimatedSeconds,
+    selectedKeys: remote.items.map((item) => item.key),
+    statuses,
+    errors,
+    assets,
+    notice: finished
+      ? `本批完成 ${remote.counts.succeeded} 项${remote.counts.failed > 0 ? `，${remote.counts.failed} 项失败可重试` : ""}。结果只保存为候选。`
+      : remote.batch.pausedAt !== null
+        ? "批次已暂停，已完成结果不会丢失。"
+        : state.notice,
+  }
+}
+
 export function createBatchRunStore(deps: BatchStoreDeps = {}) {
   const states = new Map<string, BatchRunState>()
   const listeners = new Map<string, Set<() => void>>()
   const controllers = new Map<string, AbortController>()
   const selectAsset = deps.selectAsset ?? selectKeyframe
   const notify = deps.notify ?? notifyTarget
+  const createBatch = deps.createBatch ?? createImageGenerationBatch
+  const fetchBatch = deps.fetchBatch ?? fetchImageGenerationBatch
+  const updateBatch = deps.updateBatch ?? updateImageGenerationBatch
 
   const getSnapshot = (key: string): BatchRunState => states.get(key) ?? EMPTY_BATCH_RUN_STATE
 
@@ -84,6 +175,23 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
     }
   }
 
+  /** 轮询服务端批次是跨页面恢复的唯一进度来源。 */
+  async function pollImageBatch(
+    key: string,
+    projectId: string,
+    batchId: string,
+    controller: AbortController,
+  ): Promise<void> {
+    while (!controller.signal.aborted) {
+      const remote = await fetchBatch(projectId, batchId)
+      update(key, (state) => mergeServerBatch(state, remote))
+      if (isBatchTerminal(remote) || remote.batch.pausedAt !== null) return
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 1_500)
+      })
+    }
+  }
+
   async function start(
     key: string,
     input: {
@@ -91,6 +199,7 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
       targets: BatchGenerationTarget[]
       look: LookBook
       runner?: BatchRunner
+      priority?: number
     },
   ): Promise<void> {
     const current = getSnapshot(key)
@@ -100,6 +209,10 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
     update(key, () => ({
       running: true,
       stopping: false,
+      paused: false,
+      batchId: null,
+      queuePosition: 0,
+      estimatedSeconds: 0,
       selectedKeys: input.targets.map((item) => item.key),
       statuses: Object.fromEntries(input.targets.map((item) => [item.key, "waiting"])) as Record<string, BatchGenerationStatus>,
       errors: {},
@@ -111,6 +224,46 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
       notice: null,
       rateLimitResetAt: null,
     }))
+
+    // 未注入 runner 时走持久化服务端队列；runner 仅保留给旧测试和离线预览。
+    if (!input.runner) {
+      try {
+        const remote = await createBatch({
+          projectId: input.projectId,
+          targets: input.targets.map((item) => ({
+            key: item.key,
+            name: item.name,
+            targetType: item.targetType,
+            targetId: item.targetId,
+            prompt: item.prompt,
+            aspect: item.aspect,
+          })),
+          look: input.look,
+          idempotencyKey: `${key}:${Date.now()}`,
+          priority: input.priority ?? 0,
+          concurrency: 2,
+        })
+        rememberBatchId(key, remote.batch.id)
+        update(key, (state) => mergeServerBatch(state, remote))
+        await pollImageBatch(key, input.projectId, remote.batch.id, controller)
+      } catch (cause) {
+        if (controller.signal.aborted) {
+          update(key, (state) => ({
+            ...state,
+            notice: "已取消批次，已提交任务可能仍会完成。",
+          }))
+        } else {
+          update(key, (state) => ({
+            ...state,
+            error: cause instanceof Error ? cause.message : "批量生成失败，请重试",
+          }))
+        }
+      } finally {
+        if (controllers.get(key) === controller) controllers.delete(key)
+        update(key, (state) => ({ ...state, running: false, stopping: false }))
+      }
+      return
+    }
 
     const runner = input.runner ?? ((item, signal) => generateKeyframe({
       projectId: input.projectId,
@@ -173,11 +326,141 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
     }
   }
 
-  function stop(key: string) {
+  async function stop(key: string): Promise<void> {
+    const state = getSnapshot(key)
+    if (!state.running || state.stopping) return
+    update(key, (current) => ({ ...current, stopping: true }))
+
     const controller = controllers.get(key)
-    if (!controller || controller.signal.aborted) return
-    update(key, (state) => ({ ...state, stopping: true }))
-    controller.abort()
+    if (controller) {
+      controller.abort()
+      return
+    }
+    if (!state.batchId) return
+    try {
+      const projectId = key.split(":")[0]
+      const remote = await updateBatch(projectId, state.batchId, "cancel")
+      update(key, (current) => mergeServerBatch(current, remote))
+    } catch (cause) {
+      update(key, (current) => ({
+        ...current,
+        stopping: false,
+        error: cause instanceof Error ? cause.message : "取消批次失败，请重试",
+      }))
+    }
+  }
+
+  async function pause(key: string, projectId: string): Promise<void> {
+    const state = getSnapshot(key)
+    if (!state.batchId || state.paused) return
+    try {
+      const remote = await updateBatch(projectId, state.batchId, "pause")
+      update(key, (current) => mergeServerBatch(current, remote))
+    } catch (cause) {
+      update(key, (current) => ({
+        ...current,
+        error: cause instanceof Error ? cause.message : "暂停批次失败，请重试",
+      }))
+    }
+  }
+
+  async function resume(key: string, projectId: string): Promise<void> {
+    const state = getSnapshot(key)
+    if (!state.batchId || !state.paused) return
+    const controller = new AbortController()
+    controllers.set(key, controller)
+    update(key, (current) => ({
+      ...current,
+      running: true,
+      paused: false,
+      stopping: false,
+      error: null,
+    }))
+    try {
+      const remote = await updateBatch(projectId, state.batchId, "resume")
+      update(key, (current) => mergeServerBatch(current, remote))
+      await pollImageBatch(key, projectId, state.batchId, controller)
+    } catch (cause) {
+      update(key, (current) => ({
+        ...current,
+        running: false,
+        error: cause instanceof Error ? cause.message : "恢复批次失败，请重试",
+      }))
+    } finally {
+      if (controllers.get(key) === controller) controllers.delete(key)
+      update(key, (current) => ({ ...current, running: false, stopping: false }))
+    }
+  }
+
+  async function retryFailed(key: string, projectId: string): Promise<void> {
+    const state = getSnapshot(key)
+    if (!state.batchId || state.running) return
+    try {
+      const remote = await updateBatch(projectId, state.batchId, "retry-failed")
+      update(key, (current) => mergeServerBatch(current, remote))
+      const controller = new AbortController()
+      controllers.set(key, controller)
+      await pollImageBatch(key, projectId, state.batchId, controller)
+    } catch (cause) {
+      update(key, (current) => ({
+        ...current,
+        error: cause instanceof Error ? cause.message : "重试失败项失败，请重试",
+      }))
+    } finally {
+      const controller = controllers.get(key)
+      if (controller && !controller.signal.aborted) controller.abort()
+      controllers.delete(key)
+      update(key, (current) => ({ ...current, running: false, stopping: false }))
+    }
+  }
+
+  async function retryTask(
+    key: string,
+    projectId: string,
+    targetKey: string,
+  ): Promise<void> {
+    const state = getSnapshot(key)
+    if (!state.batchId || state.running) return
+    try {
+      const remote = await updateBatch(projectId, state.batchId, "retry-task", { targetKey })
+      update(key, (current) => mergeServerBatch(current, remote))
+      const controller = new AbortController()
+      controllers.set(key, controller)
+      update(key, (current) => ({ ...current, running: true, error: null }))
+      await pollImageBatch(key, projectId, state.batchId, controller)
+    } catch (cause) {
+      update(key, (current) => ({
+        ...current,
+        running: false,
+        error: cause instanceof Error ? cause.message : "重试失败项失败，请重试",
+      }))
+    } finally {
+      const controller = controllers.get(key)
+      if (controller && !controller.signal.aborted) controller.abort()
+      controllers.delete(key)
+    }
+  }
+
+  /** 页面重新挂载时读取本地批次 id，再向服务端恢复真实进度。 */
+  async function hydrate(key: string, projectId: string): Promise<void> {
+    const current = getSnapshot(key)
+    if (current.running || current.batchId) return
+    const batchId = recallBatchId(key)
+    if (!batchId) return
+    try {
+      const remote = await fetchBatch(projectId, batchId)
+      update(key, (state) => mergeServerBatch(state, remote))
+      if (!isBatchTerminal(remote) && remote.batch.pausedAt === null) {
+        const controller = new AbortController()
+        controllers.set(key, controller)
+        void pollImageBatch(key, projectId, batchId, controller).finally(() => {
+          if (controllers.get(key) === controller) controllers.delete(key)
+          update(key, (state) => ({ ...state, running: false, stopping: false }))
+        })
+      }
+    } catch {
+      // 批次被清理或不属于当前项目时，静默回到空状态。
+    }
   }
 
   async function adoptCandidate(
@@ -246,6 +529,11 @@ export function createBatchRunStore(deps: BatchStoreDeps = {}) {
     subscribe,
     start,
     stop,
+    pause,
+    resume,
+    retryFailed,
+    retryTask,
+    hydrate,
     adoptCandidate,
     adoptAll,
   }

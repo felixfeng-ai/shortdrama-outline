@@ -40,6 +40,8 @@ export interface TimelinePayload {
     dialogueVolume: 1
     bgmAssetId: string | null
     bgmVolume: number
+    bgmFadeInMs?: number
+    bgmFadeOutMs?: number
   }
 }
 

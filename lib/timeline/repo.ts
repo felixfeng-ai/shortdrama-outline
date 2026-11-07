@@ -196,6 +196,8 @@ function validatePayload(
   const readyCount = clips.filter((clip) => clip.status === "ready").length
   const audio = object(payload.audio)
   const bgmAssetId = text(audio.bgmAssetId) || null
+  const bgmFadeInMs = Math.max(0, Math.min(5_000, Number(audio.bgmFadeInMs) || 600))
+  const bgmFadeOutMs = Math.max(0, Math.min(5_000, Number(audio.bgmFadeOutMs) || 1_000))
   // BGM 必须来自当前项目曲库，时间线不能引用其他项目或任意路径。
   if (bgmAssetId && !getBgmTrack(db, projectId, bgmAssetId)) {
     throw new InputError("时间线引用了无效的 BGM")
@@ -213,7 +215,9 @@ function validatePayload(
     audio: {
       dialogueVolume: 1,
       bgmAssetId,
-      bgmVolume: Math.max(0, Math.min(1, Number(audio.bgmVolume) || 0.2)),
+      bgmVolume: Math.max(0, Math.min(1, Number(audio.bgmVolume) || 0.3)),
+      bgmFadeInMs,
+      bgmFadeOutMs,
     },
   }
 }

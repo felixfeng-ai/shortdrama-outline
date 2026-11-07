@@ -5,14 +5,18 @@ import { useState } from 'react'
 import type { ProjectBulkDeleteScope, ProjectDto } from '@/lib/assets/api'
 import type { WorkspaceMode } from '@/lib/app-nav'
 import type { StepKey } from '@/lib/types'
-import { orderWorkspaceSteps, workspaceStepLabel } from '@/lib/workspace-view'
+import {
+  orderWorkspaceSteps,
+  WORKSPACE_STEP_ORDER,
+  workspaceStepLabel,
+} from '@/lib/workspace-view'
 import AuthButton from './AuthButton'
 import QuotaBar from './QuotaBar'
 import VeyaBrandMark from './VeyaBrandMark'
 
 interface Props {
   mode: WorkspaceMode
-  currentStep: StepKey
+  activeStep: StepKey
   completed: Record<StepKey, boolean>
   homeActive: boolean
   projects: ProjectDto[]
@@ -55,7 +59,7 @@ function NavIcon({ children }: { children: React.ReactNode }) {
 
 export default function WorkspaceSidebar({
   mode,
-  currentStep,
+  activeStep,
   completed,
   homeActive,
   projects,
@@ -84,10 +88,10 @@ export default function WorkspaceSidebar({
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
   const [bulkConfirm, setBulkConfirm] = useState<ProjectBulkDeleteScope | null>(null)
   const [bulkDeleting, setBulkDeleting] = useState(false)
-  const orderedSteps = orderWorkspaceSteps(
-    ['characters', 'acts', 'episodes', 'visuals', 'scenes', 'shots'],
-    currentStep,
-  )
+  const stepNavigationActive = mode === 'overview' && !homeActive
+  const orderedSteps = stepNavigationActive
+    ? orderWorkspaceSteps(WORKSPACE_STEP_ORDER, activeStep)
+    : [...WORKSPACE_STEP_ORDER]
   const sampleCount = projects.filter((project) => project.title.startsWith('示例 · ')).length
 
   function closeAnd(action: () => void) {
@@ -311,7 +315,7 @@ export default function WorkspaceSidebar({
             <div className="wfx-nav-group">
               <span className="wfx-nav-label">{projectTitle}</span>
               {orderedSteps.map((step) => {
-                const isCurrent = step === currentStep
+                const isCurrent = stepNavigationActive && step === activeStep
                 return (
                   <button
                     key={step}

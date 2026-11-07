@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process"
 import { createRequire } from "node:module"
+import path from "node:path"
 
 interface BinaryInstaller {
   path: string
@@ -25,13 +26,15 @@ export interface RenderCommandInput {
   bgm: {
     inputIndex: number
     volume: number
+    fadeInMs: number
+    fadeOutMs: number
   } | null
 }
 
-const require = createRequire(import.meta.url)
-
 function bundledBinary(packageName: string): string | null {
   try {
+    // 生产构建后模块位于 .next 内，必须从项目根目录解析随包安装的媒体二进制。
+    const require = createRequire(path.join(process.cwd(), "package.json"))
     const installer = require(packageName) as BinaryInstaller
     return installer.path || null
   } catch {
@@ -96,9 +99,14 @@ export function buildFfmpegRenderArgs(input: RenderCommandInput): string[] {
   })
 
   if (input.bgm) {
+    const fadeIn = Math.min(Math.max(0, input.bgm.fadeInMs), input.totalDurationMs)
+    const fadeOut = Math.min(Math.max(0, input.bgm.fadeOutMs), input.totalDurationMs)
+    const fadeOutStart = Math.max(0, input.totalDurationMs - fadeOut)
     filters.push(
       `[${input.bgm.inputIndex}:a]aresample=48000,asetpts=PTS-STARTPTS,`
       + `volume=${Math.max(0, input.bgm.volume).toFixed(3)},`
+      + (fadeIn > 0 ? `afade=t=in:st=0:d=${seconds(fadeIn)},` : "")
+      + (fadeOut > 0 ? `afade=t=out:st=${seconds(fadeOutStart)}:d=${seconds(fadeOut)},` : "")
       + `apad,atrim=0:${total}[bgm]`,
     )
     audioLabels.push("[bgm]")

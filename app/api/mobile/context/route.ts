@@ -71,6 +71,7 @@ export async function GET(req: Request) {
             projectsLeft: estimate.projectsLeft,
             episodeCount: estimate.episodeCount,
             projectCost: estimate.units,
+            unlimited: quota.unlimited,
             pricingVersion: QUOTA_PRICING_VERSION,
             estimates,
           },

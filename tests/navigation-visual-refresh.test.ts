@@ -62,3 +62,10 @@ test("N10 工作区提示不被侧栏覆盖，删除后明确显示剩余项目�
   assert.match(css, /\.wfx-workspace \.work-toast\s*\{[^}]*left:\s*256px/s)
   assert.match(page, /还剩 \$\{remaining\.length\} 个项目/)
 })
+
+test("N11 项目步骤只高亮右侧正在查看的步骤", () => {
+  assert.match(page, /<WorkspaceSidebar[\s\S]*activeStep=\{view\}/)
+  assert.match(sidebar, /const stepNavigationActive = mode === 'overview' && !homeActive/)
+  assert.match(sidebar, /const isCurrent = stepNavigationActive && step === activeStep/)
+  assert.match(sidebar, /stepNavigationActive\s*\? orderWorkspaceSteps/)
+})

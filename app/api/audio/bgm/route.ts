@@ -7,9 +7,16 @@ import { getDbForRequest } from "@/lib/assets/store"
 import {
   deleteBgmTrack,
   getBgmTrack,
+  listBgmFavoriteIds,
   listBgmTracks,
   saveBgmTrack,
+  setBgmFavorite,
 } from "@/lib/audio/bgm-repo"
+import {
+  recommendSystemBgmTracks,
+  SYSTEM_BGM_TRACKS,
+  systemBgmCategories,
+} from "@/lib/audio/system-bgm"
 import { resolveProjectOwner, resolveRequestIdentity } from "@/lib/auth/request"
 import {
   removeGeneratedAsset,
@@ -47,10 +54,44 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const projectId = requiredString(url.searchParams.get("projectId"), "缺少 projectId")
     const db = getDbForRequest()
-    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
+    const ownerId = resolveProjectOwner(db, req)
+    assertProjectAccess(db, projectId, ownerId)
+    const projectContext = (db.prepare(
+      `SELECT kind, payload
+       FROM snapshots s
+       WHERE project_id = ?
+         AND version = (
+           SELECT MAX(version) FROM snapshots latest
+           WHERE latest.project_id = s.project_id AND latest.kind = s.kind
+         )
+       ORDER BY kind`,
+    ).all(projectId) as { kind: string; payload: string }[])
+      .map((row) => `${row.kind}:${row.payload.slice(0, 12_000)}`)
+      .join("\n")
     return NextResponse.json(ok({
       tracks: listBgmTracks(db, projectId),
+      systemTracks: SYSTEM_BGM_TRACKS,
+      recommendations: recommendSystemBgmTracks(projectContext),
+      favoriteIds: listBgmFavoriteIds(db, ownerId),
+      categories: systemBgmCategories(),
     }), { headers: { "cache-control": "no-store" } })
+  } catch (error) {
+    const { body, status, headers } = errorResponse(error)
+    return NextResponse.json(body, { status, headers })
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json().catch(() => null)
+    const projectId = requiredString(body?.projectId, "缺少 projectId")
+    const trackId = requiredString(body?.trackId, "缺少曲目 id")
+    const db = getDbForRequest()
+    const ownerId = resolveProjectOwner(db, req)
+    assertProjectAccess(db, projectId, ownerId)
+    return NextResponse.json(ok({
+      favoriteIds: setBgmFavorite(db, ownerId, trackId, body?.favorite === true),
+    }))
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
     return NextResponse.json(body, { status, headers })

@@ -64,6 +64,7 @@ export default function BatchGenerationPanel({
   )
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
+  const [priority, setPriority] = useState(0)
   const [rateLimit, setRateLimit] = useState<ImageGenerationRateLimit | null>(null)
   const [rateLimitLoading, setRateLimitLoading] = useState(false)
   const [rateLimitNow, setRateLimitNow] = useState(Date.now())
@@ -88,17 +89,26 @@ export default function BatchGenerationPanel({
   const adoptingAll = runState.adoptingAll
   const error = runState.error ?? startError
   const notice = runState.notice
+  const paused = runState.paused
+  const batchId = runState.batchId
+  const queuePosition = runState.queuePosition
+  const estimatedSeconds = runState.estimatedSeconds
   const runSelectionSignature = runState.selectedKeys.join('|')
-  const activeRateLimitResetAt = runState.rateLimitResetAt && runState.rateLimitResetAt > rateLimitNow
-    ? runState.rateLimitResetAt
-    : rateLimit?.resetAt ?? null
-  const liveRateLimitRemaining = activeRateLimitResetAt !== null
-    ? activeRateLimitResetAt <= rateLimitNow
-      ? rateLimit?.limit ?? 0
-      : runState.rateLimitResetAt && runState.rateLimitResetAt > rateLimitNow
-        ? 0
-        : rateLimit?.remaining ?? 0
-    : null
+  const unlimitedRateLimit = rateLimit?.unlimited === true
+  const activeRateLimitResetAt = unlimitedRateLimit
+    ? null
+    : runState.rateLimitResetAt && runState.rateLimitResetAt > rateLimitNow
+      ? runState.rateLimitResetAt
+      : rateLimit?.resetAt ?? null
+  const liveRateLimitRemaining = unlimitedRateLimit
+    ? Number.MAX_SAFE_INTEGER
+    : activeRateLimitResetAt !== null
+      ? activeRateLimitResetAt <= rateLimitNow
+        ? rateLimit?.limit ?? 0
+        : runState.rateLimitResetAt && runState.rateLimitResetAt > rateLimitNow
+          ? 0
+          : rateLimit?.remaining ?? 0
+      : null
   const rateLimitBlocked = liveRateLimitRemaining === 0
   const rateLimitSecondsRemaining = activeRateLimitResetAt === null
     ? 0
@@ -121,6 +131,11 @@ export default function BatchGenerationPanel({
   useEffect(() => {
     activeProjectId.current = projectId
   }, [projectId])
+
+  useEffect(() => {
+    if (!projectId) return
+    void batchRunStore.hydrate(`${projectId}:${scope}`, projectId)
+  }, [projectId, scope])
 
   useEffect(() => {
     void refreshRateLimit()
@@ -148,8 +163,6 @@ export default function BatchGenerationPanel({
     : selected
 
   const selectedTargets = targets.filter((item) => effectiveSelected.has(item.key) && isBatchTargetReady(item))
-  const selectedOverLimit = liveRateLimitRemaining !== null
-    && selectedTargets.length > liveRateLimitRemaining
   const blockedCount = targets.length - eligible.length
   const warningCount = targets.filter((item) => item.warning?.trim()).length
   const estimate = estimateBatchDuration(selectedTargets.length, 2)
@@ -161,6 +174,7 @@ export default function BatchGenerationPanel({
   const progressPercent = selectedTargets.length > 0
     ? Math.round((finishedCount / selectedTargets.length) * 100)
     : 0
+  const failedCount = selectedTargets.filter((item) => statuses[item.key] === 'failed').length
 
   function toggleTarget(key: string) {
     if (running) return
@@ -187,16 +201,16 @@ export default function BatchGenerationPanel({
     setStarting(true)
     setStartError(null)
     const latestRateLimit = await refreshRateLimit()
-    const available = latestRateLimit
+    const available = latestRateLimit?.unlimited
+      ? Number.MAX_SAFE_INTEGER
+      : latestRateLimit
       ? latestRateLimit.resetAt <= Date.now()
         ? latestRateLimit.limit
         : latestRateLimit.remaining
       : null
-    if (available !== null && items.length > available) {
+    if (available === 0) {
       setStartError(
-        available > 0
-          ? `本轮还可提交 ${available} 项，请减少选择；约 ${rateLimitCountdown(latestRateLimit!.retryAfterSeconds)}后恢复。`
-          : `本轮生图额度已用完，约 ${rateLimitCountdown(latestRateLimit!.retryAfterSeconds)}后恢复。`,
+        `本轮批次提交额度已用完，约 ${rateLimitCountdown(latestRateLimit!.retryAfterSeconds)}后恢复。`,
       )
       setOpen(true)
       setStarting(false)
@@ -215,13 +229,37 @@ export default function BatchGenerationPanel({
     const key = `${pid}:${scope}`
     setRunKeyOverride(key)
     setStarting(false)
-    await batchRunStore.start(key, { projectId: pid, targets: items, look })
+    await batchRunStore.start(key, { projectId: pid, targets: items, look, priority })
     void refreshRateLimit()
   }
 
   function handleStop() {
-    if (!running || stopping) return
-    batchRunStore.stop(batchKey)
+    if ((!running && !paused) || stopping) return
+    void batchRunStore.stop(batchKey)
+  }
+
+  function handlePause() {
+    const pid = activeProjectId.current ?? projectId
+    if (!pid || paused) return
+    void batchRunStore.pause(batchKey, pid)
+  }
+
+  function handleResume() {
+    const pid = activeProjectId.current ?? projectId
+    if (!pid || !paused) return
+    void batchRunStore.resume(batchKey, pid)
+  }
+
+  function handleRetryFailed() {
+    const pid = activeProjectId.current ?? projectId
+    if (!pid || running) return
+    void batchRunStore.retryFailed(batchKey, pid)
+  }
+
+  function handleRetryTask(itemKey: string) {
+    const pid = activeProjectId.current ?? projectId
+    if (!pid || !batchId || running) return
+    void batchRunStore.retryTask(batchKey, pid, itemKey)
   }
 
   async function adoptCandidate(item: BatchGenerationTarget) {
@@ -278,14 +316,25 @@ export default function BatchGenerationPanel({
         <span>每项独立任务</span>
         <span>不会自动采用</span>
         <span>本地参考图不上传</span>
+        <label className="batch-generation-priority">
+          <input
+            type="checkbox"
+            checked={priority > 0}
+            disabled={running}
+            onChange={(event) => setPriority(event.target.checked ? 10 : 0)}
+          />
+          优先处理
+        </label>
         <span className={rateLimitBlocked ? 'is-limited' : 'is-available'}>
-          {rateLimitLoading
-            ? '正在读取本轮额度'
+          {unlimitedRateLimit
+            ? '管理账号 · 无限额度'
+            : rateLimitLoading
+            ? '正在读取批次提交额度'
             : liveRateLimitRemaining === null
-              ? '本轮额度未知'
+              ? '批次提交额度未知'
               : rateLimitBlocked
-                ? `本轮额度已用完 · ${rateLimitCountdown(rateLimitSecondsRemaining)}后恢复`
-                : `本轮还可生成 ${liveRateLimitRemaining} 张`}
+                ? `本轮批次提交额度已用完 · ${rateLimitCountdown(rateLimitSecondsRemaining)}后恢复`
+                : `本轮还可提交 ${liveRateLimitRemaining} 个批次`}
         </span>
       </div>
 
@@ -294,13 +343,6 @@ export default function BatchGenerationPanel({
           {warningCount} 项缺少可用参考，仍可生成，但一致性可能漂移。
         </p>
       )}
-      {selectedOverLimit && (
-        <p className="batch-generation-limit" role="status">
-          已选 {selectedTargets.length} 项，但本轮还可提交 {liveRateLimitRemaining} 项。
-          请减少选择，或等待约 {rateLimitCountdown(rateLimitSecondsRemaining)}后继续。
-        </p>
-      )}
-
       <SmoothCollapse open={open} id={listId}>
         <div className="batch-generation-selector">
           <div className="batch-generation-selector-head">
@@ -369,10 +411,10 @@ export default function BatchGenerationPanel({
                     {status === 'failed' && (
                       <button
                         type="button"
-                        onClick={() => void execute([item])}
-                        disabled={running || rateLimitBlocked}
+                        onClick={() => handleRetryTask(item.key)}
+                        disabled={running || rateLimitBlocked || !batchId}
                       >
-                        重试
+                        重试此项
                       </button>
                     )}
                   </div>
@@ -392,28 +434,42 @@ export default function BatchGenerationPanel({
               </p>
               <p>先保存候选，再由你逐张决定是否采用。</p>
               <p>
-                {liveRateLimitRemaining === null
-                  ? '本轮可提交数量暂不可用'
+                {unlimitedRateLimit
+                  ? '管理账号 · 无限额度'
+                  : liveRateLimitRemaining === null
+                  ? '批次提交额度暂不可用'
                   : rateLimitBlocked
-                    ? <>本轮额度已用完，约 <b>{rateLimitCountdown(rateLimitSecondsRemaining)}</b> 后恢复</>
-                    : <>本轮还可提交 <b>{liveRateLimitRemaining}</b> 项</>}
+                    ? <>本轮批次提交额度已用完，约 <b>{rateLimitCountdown(rateLimitSecondsRemaining)}</b> 后恢复</>
+                    : <>本轮还可提交 <b>{liveRateLimitRemaining}</b> 个批次</>}
               </p>
             </div>
-            {running ? (
-              <button type="button" className="batch-generation-run is-stop" onClick={handleStop} disabled={stopping}>
-                {stopping ? '停止中…' : '停止排队'}
-              </button>
+            {running || paused ? (
+              <div className="batch-generation-footer-actions">
+                {running && !paused && (
+                  <button type="button" className="batch-generation-run" onClick={handlePause}>
+                    暂停批次
+                  </button>
+                )}
+                {paused && (
+                  <button type="button" className="batch-generation-run" onClick={handleResume}>
+                    恢复批次
+                  </button>
+                )}
+                <button type="button" className="batch-generation-run is-stop" onClick={handleStop} disabled={stopping}>
+                  {stopping ? '取消中…' : '取消批次'}
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
                 className="batch-generation-run"
                 onClick={() => void execute(selectedTargets)}
-                disabled={selectedTargets.length === 0 || starting || selectedOverLimit || rateLimitBlocked}
+                disabled={selectedTargets.length === 0 || starting || rateLimitBlocked}
               >
                 {starting
                   ? '准备项目…'
-                  : selectedOverLimit || rateLimitBlocked
-                    ? '超出本轮可生成数量'
+                  : rateLimitBlocked
+                    ? '本轮批次额度已用完'
                     : `开始生成 ${selectedTargets.length} 项`}
               </button>
             )}
@@ -425,29 +481,46 @@ export default function BatchGenerationPanel({
         <div className="batch-generation-progress" role="status" aria-live="polite">
           <div className="batch-generation-progress-line">
             <span>
-              {running
-                ? `生成中 · ${finishedCount}/${selectedTargets.length}`
-                : `已结束 · ${successTargets.length} 项候选`}
+              {paused
+                ? `已暂停 · ${finishedCount}/${selectedTargets.length}`
+                : running
+                      ? `服务端排队中 · ${finishedCount}/${selectedTargets.length}`
+                  : `已结束 · ${successTargets.length} 项候选`}
             </span>
-            <span>{progressPercent}%</span>
+            <span>
+              {running && !paused && queuePosition > 0 && `前方 ${queuePosition} 项 · `}
+              预计剩余 {rateLimitCountdown(estimatedSeconds)} · {progressPercent}%
+            </span>
           </div>
           <div className="batch-generation-track" aria-hidden="true">
             <span style={{ transform: `scaleX(${progressPercent / 100})` }} />
           </div>
-          {!running && successTargets.length > 0 && (
-            <button
-              type="button"
-              className="batch-generation-adopt-all"
-              onClick={() => void adoptAll()}
-              disabled={adoptingAll || successTargets.every((item) => adopted.has(item.key))}
-            >
-              {adoptingAll
-                ? '正在采用…'
-                : successTargets.every((item) => adopted.has(item.key))
-                  ? '已采用全部成功项'
-                  : `采用全部 ${successTargets.filter((item) => !adopted.has(item.key)).length} 项`}
-            </button>
-          )}
+          <div className="batch-generation-progress-actions">
+            {paused && (
+              <button type="button" className="batch-generation-adopt-all" onClick={handleResume}>
+                恢复批次
+              </button>
+            )}
+            {!running && failedCount > 0 && batchId && (
+              <button type="button" className="batch-generation-adopt-all" onClick={handleRetryFailed}>
+                重试失败 {failedCount} 项
+              </button>
+            )}
+            {!running && successTargets.length > 0 && (
+              <button
+                type="button"
+                className="batch-generation-adopt-all"
+                onClick={() => void adoptAll()}
+                disabled={adoptingAll || successTargets.every((item) => adopted.has(item.key))}
+              >
+                {adoptingAll
+                  ? '正在采用…'
+                  : successTargets.every((item) => adopted.has(item.key))
+                    ? '已采用全部成功项'
+                    : `采用全部 ${successTargets.filter((item) => !adopted.has(item.key)).length} 项`}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

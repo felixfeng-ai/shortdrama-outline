@@ -13,6 +13,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { randomUUID } from "node:crypto"
 import { ownerFromRequest } from "./session.ts"
 import { FULL_PROJECT_COST, QUOTA_PRICING_VERSION, STEP_COST } from "./model-pricing.ts"
+import { isUnlimitedQuotaIdentity } from "./auth/unlimited.ts"
 
 // 兼容既有调用方：价格表已抽到纯模块，服务端继续从这里取同一口径。
 export { FULL_PROJECT_COST, STEP_COST }
@@ -24,16 +25,19 @@ function envInt(name: string, fallback: number): number {
 }
 
 /**
- * 单个匿名身份每天可用额度：默认 5 个 10 集基准项目（65 单位）。
+ * 单个身份每天可用额度：默认 300 单位。
  *
- * 为什么是 5 而不是 2：一条完整流程 13 单位，2 个项目意味着重跑两次分镜就见底，
- * 用户还没走完一轮试错就被告知「明天再来」——那不是成本控制，是把人劝走。
- * 5 个留出「试两遍 + 改一版」的空间，同时仍是敞口的硬上限。
+ * 文本六步只占 13 单位，但一集真实样片还要生成角色定妆、场景图和首帧。
+ * 65 单位会在媒体生产阶段过早耗尽，连一次完整快速试片都无法稳定跑完。
+ * 300 单位覆盖一集图文样片、失败重跑和一轮局部返修，同时仍有每日硬上限。
  */
-export const DAILY_UNITS_PER_IDENTITY = envInt("CHENGJU_DAILY_UNITS", FULL_PROJECT_COST * 5)
+export const DAILY_UNITS_PER_IDENTITY = envInt("CHENGJU_DAILY_UNITS", 300)
 
 /** 全站每天总熔断阈值（按 300 个 10 集基准项目估算成本硬顶） */
 export const DAILY_UNITS_GLOBAL = envInt("CHENGJU_DAILY_UNITS_GLOBAL", FULL_PROJECT_COST * 300)
+
+/** 管理账号只用于展示和计算上限；实际预扣与账本记录仍继续写入。 */
+export const UNLIMITED_QUOTA_UNITS = Number.MAX_SAFE_INTEGER
 
 /** 建表：幂等，重复调用不报错 */
 export function ensureQuotaSchema(db: DatabaseSync): void {
@@ -127,6 +131,8 @@ export interface QuotaSnapshot {
   globalLimit: number
   /** 该身份剩余 */
   remaining: number
+  /** 内部管理账号：跳过额度与熔断校验 */
+  unlimited: boolean
 }
 
 /** 查当前用量（不改动任何状态） */
@@ -135,6 +141,7 @@ export function getQuota(
   identity: string,
   now = Date.now(),
 ): QuotaSnapshot {
+  const unlimited = isUnlimitedQuotaIdentity(db, identity)
   const day = todayKey(now)
   const mine = db.prepare(
     "SELECT COALESCE(SUM(units), 0) AS u FROM usage_log WHERE identity = ? AND day = ?",
@@ -157,14 +164,19 @@ export function getQuota(
      FROM billing_entitlements
      WHERE owner_id = ? AND starts_at <= ? AND expires_at > ?`,
   ).get(identity, now, now) as { u: number }
-  const limit = DAILY_UNITS_PER_IDENTITY + Number(grants.u || 0)
+  const limit = unlimited
+    ? UNLIMITED_QUOTA_UNITS
+    : DAILY_UNITS_PER_IDENTITY + Number(grants.u || 0)
 
   return {
     used: mine.u + held.u,
     limit,
     globalUsed: all.u + heldAll.u,
     globalLimit: DAILY_UNITS_GLOBAL,
-    remaining: Math.max(0, limit - mine.u - held.u),
+    remaining: unlimited
+      ? UNLIMITED_QUOTA_UNITS
+      : Math.max(0, limit - mine.u - held.u),
+    unlimited,
   }
 }
 
@@ -276,18 +288,20 @@ export function reserveQuota(
   db.exec("BEGIN IMMEDIATE")
   try {
     const snap = getQuota(db, identity, now)
-    if (snap.globalUsed + units > snap.globalLimit) {
-      throw new QuotaError("今日全站创作额度已用完，请明天再来")
-    }
-    if (snap.used + units > snap.limit) {
-      throw new QuotaError(
-        `今日创作额度已用完（已用 ${snap.used}/${snap.limit}）。请明天再来`,
-      )
-    }
-    if (groupId && options.groupLimit) {
-      const used = groupUsed(db, groupId, day, now)
-      if (used + units > Math.max(1, Math.floor(options.groupLimit))) {
-        throw new QuotaError(`本轮创作额度最多 ${options.groupLimit} 单位，已达到上限`)
+    if (!snap.unlimited) {
+      if (snap.globalUsed + units > snap.globalLimit) {
+        throw new QuotaError("今日全站创作额度已用完，请明天再来")
+      }
+      if (snap.used + units > snap.limit) {
+        throw new QuotaError(
+          `今日创作额度已用完（已用 ${snap.used}/${snap.limit}）。请明天再来`,
+        )
+      }
+      if (groupId && options.groupLimit) {
+        const used = groupUsed(db, groupId, day, now)
+        if (used + units > Math.max(1, Math.floor(options.groupLimit))) {
+          throw new QuotaError(`本轮创作额度最多 ${options.groupLimit} 单位，已达到上限`)
+        }
       }
     }
 

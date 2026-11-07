@@ -137,7 +137,7 @@ test("CT1 连续性报告复用 QC 并给出按集镜定位的返修队列", () 
   assert.equal(report.summary.totalShots, 3)
   assert.equal(report.summary.issueShots, 2)
   assert.equal(report.summary.cleanShots, 1)
-  assert.ok(report.summary.issueCount >= 7)
+  assert.ok(report.summary.issueCount >= 6)
 
   const codes = new Set(report.issues.map((issue) => issue.code))
   assert.ok(codes.has("missing-anchor"))
@@ -156,7 +156,7 @@ test("CT1 连续性报告复用 QC 并给出按集镜定位的返修队列", () 
   assert.ok(first.actions.includes("补齐角色 / 地点锚点"))
 
   const third = report.repairQueue[1]
-  assert.ok(third.actions.includes("补齐缺失参考图"))
+  assert.equal(third.actions.includes("补齐缺失参考图"), false)
   assert.ok(third.actions.includes("重选参考并重做镜头"))
   assert.ok(third.actions.includes("改为 5 秒或 10 秒"))
   assert.match(third.reasons.join(" "), /苏婉/)

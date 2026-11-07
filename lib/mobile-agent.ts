@@ -37,6 +37,7 @@ const COMMENT_TARGETS = new Set<AgentEntityComment['targetType']>([
 export interface MobileAgentQuota {
   remaining: number
   limit: number
+  unlimited?: boolean
   projectsLeft: number
   episodeCount?: number
   projectCost?: number

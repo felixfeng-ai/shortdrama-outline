@@ -52,7 +52,7 @@ test("CG6 六步主按钮与双版本入口接入统一成本提示", () => {
   const step = fs.readFileSync("components/StepSection.tsx", "utf8")
   assert.ok((page.match(/actionHint=/g) ?? []).length >= 6)
   assert.ok((page.match(/quotaBlocked=/g) ?? []).length >= 6)
-  assert.match(page, /forecastQuota\(2, quotaRemaining\)/)
+  assert.match(page, /forecastQuota\(2, quotaRemaining, quotaUnlimited\)/)
   assert.match(step, /quotaBlocked/)
   assert.match(step, /disabled=\{disabled\}/)
 })

@@ -38,6 +38,7 @@ export interface MobileContextQuota {
   remaining: number
   limit: number
   used: number
+  unlimited?: boolean
   projectsLeft: number
   episodeCount?: number
   projectCost?: number

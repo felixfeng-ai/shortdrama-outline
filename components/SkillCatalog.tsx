@@ -413,6 +413,7 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
       plan={executionPlan}
       readiness={readiness ?? { ready: true, missing: [] }}
       quotaRemaining={quota?.remaining ?? null}
+      quotaUnlimited={quota?.unlimited === true}
       agentOpen={agentOpen}
       hasPrompt={Boolean(prompt.trim())}
       onClose={() => setSelectedId(null)}
@@ -434,7 +435,7 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
         <div className="top-meta">
           <span className="top-project">{project?.title || (loadingProject ? '读取项目中…' : '还没有项目')}</span>
           <span>{returnStepLabel ? `步骤 · ${returnStepLabel}` : '项目总览'}</span>
-          <span>{quota ? `创作额度 ${quota.remaining} / ${quota.limit}` : '创作额度读取中'}</span>
+          <span>{quota?.unlimited ? '管理账号 · 无限额度' : quota ? `创作额度 ${quota.remaining} / ${quota.limit}` : '创作额度读取中'}</span>
           <span>{projects.length} 个项目</span>
         </div>
         <div className="top-actions">

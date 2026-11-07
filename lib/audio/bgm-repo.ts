@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 
 import { InputError } from "../api.ts"
 import type { BgmTrack } from "./bgm-types.ts"
+import { getSystemBgmTrack } from "./system-bgm.ts"
 
 interface BgmRow {
   id: string
@@ -30,6 +31,15 @@ function toTrack(row: BgmRow): BgmTrack {
     licenseConfirmed: row.license_confirmed === 1,
     licenseNote: row.license_note,
     createdAt: row.created_at,
+    sourceType: "upload",
+    previewUrl: `/api/audio/bgm/${encodeURIComponent(row.id)}/file?projectId=${encodeURIComponent(row.project_id)}`,
+    bpm: null,
+    tags: [],
+    mood: "",
+    genre: "",
+    licenseName: "用户确认授权",
+    licenseUrl: null,
+    attribution: "",
   }
 }
 
@@ -48,7 +58,39 @@ export function getBgmTrack(
   const row = db.prepare(
     "SELECT * FROM project_bgm_tracks WHERE project_id = ? AND id = ?",
   ).get(projectId, id) as BgmRow | undefined
-  return row ? toTrack(row) : null
+  return row ? toTrack(row) : getSystemBgmTrack(id)
+}
+
+export function listBgmFavoriteIds(
+  db: DatabaseSync,
+  ownerId: string,
+): string[] {
+  return (db.prepare(
+    "SELECT track_id FROM bgm_favorites WHERE owner_id = ? ORDER BY created_at DESC",
+  ).all(ownerId) as { track_id: string }[]).map((row) => row.track_id)
+}
+
+export function setBgmFavorite(
+  db: DatabaseSync,
+  ownerId: string,
+  trackId: string,
+  favorite: boolean,
+): string[] {
+  if (!getSystemBgmTrack(trackId)) {
+    throw new InputError("只能收藏系统曲库中的配乐")
+  }
+  if (favorite) {
+    db.prepare(
+      `INSERT INTO bgm_favorites (owner_id, track_id, created_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(owner_id, track_id) DO UPDATE SET created_at = excluded.created_at`,
+    ).run(ownerId, trackId, Date.now())
+  } else {
+    db.prepare(
+      "DELETE FROM bgm_favorites WHERE owner_id = ? AND track_id = ?",
+    ).run(ownerId, trackId)
+  }
+  return listBgmFavoriteIds(db, ownerId)
 }
 
 export function saveBgmTrack(

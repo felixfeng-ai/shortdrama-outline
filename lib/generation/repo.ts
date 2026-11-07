@@ -82,10 +82,14 @@ interface BatchRow {
   project_id: string
   episode: number
   scope_json: string
+  media_kind: string
   status: string
   budget_limit_micros: number
   reserved_cost_micros: number
   actual_cost_micros: number
+  priority: number
+  concurrency: number
+  paused_at: number | null
   idempotency_key: string | null
   created_at: number
   confirmed_at: number | null
@@ -184,10 +188,14 @@ function toBatch(row: BatchRow): GenerationBatch {
     projectId: row.project_id,
     episode: row.episode,
     scope: readObject(row.scope_json),
+    mediaKind: row.media_kind as MediaKind,
     status: row.status as GenerationBatch["status"],
     budgetLimitMicros: row.budget_limit_micros,
     reservedCostMicros: row.reserved_cost_micros,
     actualCostMicros: row.actual_cost_micros,
+    priority: Number(row.priority ?? 0),
+    concurrency: Math.max(1, Number(row.concurrency ?? 2)),
+    pausedAt: row.paused_at === null ? null : Number(row.paused_at),
     idempotencyKey: row.idempotency_key,
     createdAt: row.created_at,
     confirmedAt: row.confirmed_at,
@@ -330,6 +338,9 @@ export function createGenerationBatch(
     budgetLimitMicros?: number
     status?: GenerationBatch["status"]
     idempotencyKey?: string | null
+    mediaKind?: MediaKind
+    priority?: number
+    concurrency?: number
   },
 ): GenerationBatch {
   const idempotencyKey = input.idempotencyKey?.trim() || null
@@ -344,17 +355,20 @@ export function createGenerationBatch(
   const status = input.status ?? "confirmed"
   db.prepare(
     `INSERT INTO generation_batches
-      (id, project_id, episode, scope_json, status, budget_limit_micros,
-       reserved_cost_micros, actual_cost_micros, idempotency_key,
-       created_at, confirmed_at)
-     VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)`,
+      (id, project_id, episode, scope_json, media_kind, status, budget_limit_micros,
+       reserved_cost_micros, actual_cost_micros, priority, concurrency, paused_at,
+       idempotency_key, created_at, confirmed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, NULL, ?, ?, ?)`,
   ).run(
     id,
     input.projectId,
     Math.max(0, Math.floor(input.episode ?? 0)),
     JSON.stringify(input.scope),
+    input.mediaKind ?? "video",
     status,
     Math.max(0, Math.floor(input.budgetLimitMicros ?? 0)),
+    Math.floor(input.priority ?? 0),
+    Math.max(1, Math.floor(input.concurrency ?? 2)),
     idempotencyKey,
     now,
     status === "draft" ? null : now,
@@ -395,6 +409,95 @@ export function markGenerationTaskRunning(db: DatabaseSync, id: string): Generat
     settleQuota(db, task.quotaReservationId, task.quotaUnits)
   }
   return task
+}
+
+/**
+ * 图像队列领取任务时只切状态，不提前结算额度。
+ * 成功完成后才 settle，最终失败或取消时 release，避免供应商失败仍扣用户额度。
+ */
+export function claimGenerationTask(db: DatabaseSync, id: string): GenerationTask {
+  const now = Date.now()
+  const result = db.prepare(
+    `UPDATE generation_tasks
+     SET status = 'running', started_at = ?, error = NULL
+     WHERE id = ? AND status = 'queued'`,
+  ).run(now, id)
+  if (Number(result.changes) !== 1) throw new Error("任务已被其他 Worker 领取")
+  const task = getGenerationTask(db, id)
+  if (!task) throw new Error("生成任务不存在")
+  return task
+}
+
+export function requeueGenerationTask(
+  db: DatabaseSync,
+  id: string,
+  input: { error: string; nextAttemptAt: number; attempt: number },
+): GenerationTask {
+  db.prepare(
+    `UPDATE generation_tasks
+     SET status = 'queued',
+         error = ?,
+         next_poll_at = ?,
+         attempt = ?,
+         started_at = NULL
+     WHERE id = ? AND status = 'running'`,
+  ).run(
+    input.error.trim().slice(0, 300),
+    Math.max(Date.now(), Math.floor(input.nextAttemptAt)),
+    Math.max(1, Math.floor(input.attempt)),
+    id,
+  )
+  const task = getGenerationTask(db, id)
+  if (!task) throw new Error("生成任务不存在")
+  return task
+}
+
+export function listQueuedImageTasks(
+  db: DatabaseSync,
+  options: { now?: number; limit?: number } = {},
+): GenerationTask[] {
+  const now = options.now ?? Date.now()
+  const limit = Math.max(1, Math.min(100, Math.floor(options.limit ?? 20)))
+  const rows = db.prepare(
+    `SELECT t.*
+     FROM generation_tasks t
+     JOIN generation_batches b ON b.id = t.batch_id
+     WHERE t.media_kind = 'image'
+       AND t.status = 'queued'
+       AND t.batch_id IS NOT NULL
+       AND b.media_kind = 'image'
+       AND b.paused_at IS NULL
+       AND b.status IN ('confirmed', 'running')
+       AND COALESCE(t.next_poll_at, 0) <= ?
+     ORDER BY b.priority DESC, t.created_at ASC
+     LIMIT ?`,
+  ).all(now, limit) as TaskRow[]
+  return rows.map(toTask)
+}
+
+export function countQueuedImageTasks(
+  db: DatabaseSync,
+  options: { batchId?: string; now?: number } = {},
+): number {
+  const now = options.now ?? Date.now()
+  if (options.batchId) {
+    const row = db.prepare(
+      `SELECT COUNT(*) AS n FROM generation_tasks
+       WHERE batch_id = ? AND media_kind = 'image' AND status = 'queued'
+         AND COALESCE(next_poll_at, 0) <= ?`,
+    ).get(options.batchId, now) as { n: number }
+    return Number(row.n)
+  }
+  const row = db.prepare(
+    `SELECT COUNT(*) AS n
+     FROM generation_tasks t
+     JOIN generation_batches b ON b.id = t.batch_id
+     WHERE t.media_kind = 'image' AND t.status = 'queued'
+       AND b.media_kind = 'image' AND b.paused_at IS NULL
+       AND b.status IN ('confirmed', 'running')
+       AND COALESCE(t.next_poll_at, 0) <= ?`,
+  ).get(now) as { n: number }
+  return Number(row.n)
 }
 
 export function updateGenerationProviderTask(
@@ -539,6 +642,16 @@ export function listGenerationTasks(
     `SELECT * FROM generation_tasks WHERE ${clauses.join(" AND ")} ORDER BY created_at DESC`,
   ).all(...params)
   return (rows as TaskRow[]).map(toTask)
+}
+
+export function listGenerationTasksByBatch(
+  db: DatabaseSync,
+  batchId: string,
+): GenerationTask[] {
+  const rows = db.prepare(
+    "SELECT * FROM generation_tasks WHERE batch_id = ? ORDER BY created_at ASC",
+  ).all(batchId) as TaskRow[]
+  return rows.map(toTask)
 }
 
 export function reconcileStaleGenerationTasks(

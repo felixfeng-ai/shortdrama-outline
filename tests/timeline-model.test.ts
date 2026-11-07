@@ -2,7 +2,10 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import type { GeneratedAsset } from "../lib/generation/types.ts"
-import { buildInitialTimeline } from "../lib/timeline/initial.ts"
+import {
+  buildInitialTimeline,
+  syncTimelineSelectedVideoSources,
+} from "../lib/timeline/initial.ts"
 
 function video(
   id: string,
@@ -111,4 +114,37 @@ test("P1-V5 空集或没有有效镜头时返回可解释的阻断时间线", ()
   assert.equal(result.payload.blockedCount, 0)
   assert.equal(result.payload.totalDurationMs, 0)
   assert.equal(result.payload.episode, 3)
+})
+
+test("TIMELINE-SYNC 已采用视频可同步到旧时间线草稿，不重建镜头编辑", () => {
+  const initial = buildInitialTimeline({
+    projectId: "project-timeline",
+    episode: 1,
+    shots: [
+      { entityId: "shot-1", episode: 1, shot: 1, scene: "门口", params: { duration: 5 } },
+      { entityId: "shot-2", episode: 1, shot: 2, scene: "走廊", params: { duration: 6 } },
+    ],
+    videos: [],
+  }).payload
+  initial.clips[1] = {
+    ...initial.clips[1],
+    muted: true,
+    inMs: 500,
+    outMs: 4_500,
+  }
+
+  const synced = syncTimelineSelectedVideoSources(initial, [
+    video("new-1", "shot-1", 5_000, "hash-new-1", 100),
+  ])
+
+  assert.equal(synced.clips[0].status, "ready")
+  assert.equal(synced.clips[0].sourceAssetId, "new-1")
+  assert.equal(synced.clips[0].outMs, 5_000)
+  assert.equal(synced.clips[1].status, "missing-video")
+  assert.equal(synced.clips[1].muted, true)
+  assert.equal(synced.clips[1].inMs, 500)
+  assert.equal(synced.clips[1].outMs, 4_500)
+  assert.equal(synced.readyCount, 1)
+  assert.equal(synced.blockedCount, 1)
+  assert.equal(initial.clips[0].sourceAssetId, null)
 })

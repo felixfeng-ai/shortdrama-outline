@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { GeneratedAsset } from '@/lib/generation/types'
 import type { TimelineClip, TimelineDraft, TimelinePayload, TimelineVersion } from '@/lib/timeline/types'
-import { fetchBgmTracks, uploadBgmTrack } from '@/lib/audio/bgm-client'
+import {
+  fetchBgmLibrary,
+  setBgmFavorite,
+  uploadBgmTrack,
+} from '@/lib/audio/bgm-client'
 import type { BgmTrack } from '@/lib/audio/bgm-types'
 import { fetchAudioState } from '@/lib/audio/client'
 import type { TimelineDialogueLine, VideoRenderDto } from '@/lib/video/render-types'
@@ -24,6 +28,7 @@ import {
   initializeTimeline,
   saveTimelineDraft,
 } from '@/lib/timeline/client'
+import { syncTimelineSelectedVideoSources } from '@/lib/timeline/initial'
 
 interface Props {
   projectId: string | null
@@ -32,6 +37,7 @@ interface Props {
   preferredEpisode: number | null
   videos: GeneratedAsset[]
   shots: TimelineShotInput[]
+  onOpenVideo?: () => void
 }
 
 function episodeLabel(episode: number): string {
@@ -96,6 +102,79 @@ function AdjustIcon() {
       <circle cx="6" cy="5" r="1.7" />
       <circle cx="10.5" cy="11" r="1.7" />
     </svg>
+  )
+}
+
+function BgmWaveform({ values }: { values?: number[] }) {
+  const bars = values?.length ? values : [0.25, 0.4, 0.3, 0.55, 0.42, 0.7, 0.5, 0.34]
+  return (
+    <span className="episode-bgm-waveform" aria-hidden="true">
+      {bars.map((value, index) => (
+        <i key={index} style={{ height: `${Math.max(12, Math.round(value * 100))}%` }} />
+      ))}
+    </span>
+  )
+}
+
+function BgmTrackCard({
+  track,
+  selected,
+  favorite,
+  previewing,
+  onSelect,
+  onPreview,
+  onFavorite,
+}: {
+  track: BgmTrack
+  selected: boolean
+  favorite: boolean
+  previewing: boolean
+  onSelect: () => void
+  onPreview: () => void
+  onFavorite: () => void
+}) {
+  return (
+    <article className={`episode-bgm-card ${selected ? 'is-selected' : ''}`}>
+      <div className="episode-bgm-card-head">
+        <div>
+          <b>{track.name}</b>
+          <span>{track.genre || '配乐'} · {track.bpm || '--'} BPM</span>
+        </div>
+        <button
+          type="button"
+          className={favorite ? 'is-favorite' : ''}
+          aria-pressed={favorite}
+          onClick={onFavorite}
+        >
+          {favorite ? '已收藏' : '收藏'}
+        </button>
+      </div>
+      <BgmWaveform values={track.waveform} />
+      <div className="episode-bgm-tags">
+        {(track.tags ?? []).slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}
+      </div>
+      <div className="episode-bgm-card-meta">
+        <span>{track.durationMs ? durationLabel(track.durationMs) : '--:--'}</span>
+        <span>{track.licenseName || '授权信息'}</span>
+      </div>
+      <div className="episode-bgm-card-actions">
+        <button type="button" onClick={onPreview}>
+          {previewing ? '收起试听' : '试听'}
+        </button>
+        <button type="button" disabled={selected} onClick={onSelect}>
+          {selected ? '已选中' : '选择'}
+        </button>
+      </div>
+      {previewing && track.previewUrl && (
+        <audio
+          controls
+          autoPlay
+          preload="metadata"
+          src={track.previewUrl}
+          aria-label={`试听 ${track.name}`}
+        />
+      )}
+    </article>
   )
 }
 
@@ -246,6 +325,7 @@ export default function EpisodeTimelinePanel({
   preferredEpisode,
   videos,
   shots,
+  onOpenVideo,
 }: Props) {
   const options = useMemo(
     () => [...new Set(episodes)].sort((left, right) => left - right),
@@ -256,11 +336,26 @@ export default function EpisodeTimelinePanel({
   const [draft, setDraft] = useState<TimelineDraft | null>(null)
   const [versions, setVersions] = useState<TimelineVersion[]>([])
   const [bgmTracks, setBgmTracks] = useState<BgmTrack[]>([])
+  const [systemBgmTracks, setSystemBgmTracks] = useState<BgmTrack[]>([])
+  const [recommendedBgmTracks, setRecommendedBgmTracks] = useState<BgmTrack[]>([])
+  const [bgmFavoriteIds, setBgmFavoriteIds] = useState<string[]>([])
+  const [bgmCategories, setBgmCategories] = useState<string[]>([])
+  const [bgmMode, setBgmMode] = useState<'recommend' | 'library' | 'upload'>('recommend')
+  const [bgmQuery, setBgmQuery] = useState('')
+  const [bgmCategory, setBgmCategory] = useState('全部')
+  const [bgmPreviewId, setBgmPreviewId] = useState('')
   const [bgmAssetId, setBgmAssetId] = useState('')
-  const [bgmVolume, setBgmVolume] = useState(0.2)
+  const [bgmVolume, setBgmVolume] = useState(0.3)
+  const [bgmFadeInSeconds, setBgmFadeInSeconds] = useState(0.6)
+  const [bgmFadeOutSeconds, setBgmFadeOutSeconds] = useState(1)
   const [bgmFile, setBgmFile] = useState<File | null>(null)
   const [bgmLicensed, setBgmLicensed] = useState(false)
+  const [bgmUploadOpen, setBgmUploadOpen] = useState(false)
   const [uploadingBgm, setUploadingBgm] = useState(false)
+  const [bgmStatus, setBgmStatus] = useState<{
+    kind: 'idle' | 'working' | 'success' | 'error'
+    message: string
+  }>({ kind: 'idle', message: '' })
   const [audioTasks, setAudioTasks] = useState<Awaited<ReturnType<typeof fetchAudioState>>['tasks']>([])
   const [audioAssets, setAudioAssets] = useState<Awaited<ReturnType<typeof fetchAudioState>>['assets']>([])
   const [renders, setRenders] = useState<VideoRenderDto[]>([])
@@ -272,6 +367,8 @@ export default function EpisodeTimelinePanel({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [editingClipId, setEditingClipId] = useState<string | null>(null)
+  const [timelineSection, setTimelineSection] = useState<'clips' | 'audio' | 'render'>('render')
+  const [renderPreviewStarted, setRenderPreviewStarted] = useState(false)
   const currentProjectId = projectId ?? resolvedProjectId
 
   useEffect(() => {
@@ -302,7 +399,13 @@ export default function EpisodeTimelinePanel({
     try {
       const [state, tracks, audioState, renderState] = await Promise.all([
         fetchTimeline(targetProjectId, targetEpisode),
-        fetchBgmTracks(targetProjectId).catch(() => []),
+        fetchBgmLibrary(targetProjectId).catch(() => ({
+          tracks: [],
+          systemTracks: [],
+          recommendations: [],
+          favoriteIds: [],
+          categories: [],
+        })),
         fetchAudioState(targetProjectId).catch(() => ({
           tasks: [],
           assets: [],
@@ -312,7 +415,12 @@ export default function EpisodeTimelinePanel({
       ])
       setDraft(state.draft)
       setVersions(state.versions)
-      setBgmTracks(tracks)
+      setBgmTracks(tracks.tracks)
+      setSystemBgmTracks(tracks.systemTracks)
+      setRecommendedBgmTracks(tracks.recommendations)
+      setBgmFavoriteIds(tracks.favoriteIds)
+      setBgmCategories(tracks.categories)
+      setBgmUploadOpen(tracks.tracks.length === 0 && tracks.systemTracks.length === 0)
       setAudioTasks(audioState.tasks)
       setAudioAssets(audioState.assets)
       setRenders(renderState)
@@ -322,7 +430,10 @@ export default function EpisodeTimelinePanel({
           : state.versions[0]?.id ?? ''
       )
       setBgmAssetId(state.draft?.payload.audio.bgmAssetId ?? '')
-      setBgmVolume(state.draft?.payload.audio.bgmVolume ?? 0.2)
+      setBgmVolume(state.draft?.payload.audio.bgmVolume ?? 0.3)
+      setBgmFadeInSeconds((state.draft?.payload.audio.bgmFadeInMs ?? 600) / 1000)
+      setBgmFadeOutSeconds((state.draft?.payload.audio.bgmFadeOutMs ?? 1_000) / 1000)
+      setBgmStatus({ kind: 'idle', message: '' })
     } catch (cause) {
       setDraft(null)
       setVersions([])
@@ -419,6 +530,12 @@ export default function EpisodeTimelinePanel({
     }
   }
 
+  function syncAdoptedVideos() {
+    if (!draft || working) return
+    const synced = syncTimelineSelectedVideoSources(draft.payload, videos)
+    void saveClips(synced.clips, '已把当前采用的视频同步到时间线草稿。')
+  }
+
   function moveClip(index: number, direction: -1 | 1) {
     if (!draft) return
     const target = index + direction
@@ -440,9 +557,14 @@ export default function EpisodeTimelinePanel({
 
   async function saveBgm() {
     if (!currentProjectId || !draft || working) return
+    if (bgmAssetId && !allBgmTracks.some((track) => track.id === bgmAssetId)) {
+      setBgmStatus({ kind: 'error', message: '所选配乐已失效，请重新选择。' })
+      return
+    }
     setWorking(true)
     setError(null)
     setNotice(null)
+    setBgmStatus({ kind: 'working', message: '正在保存本集配乐…' })
     try {
       const result = await saveTimelineDraft({
         projectId: currentProjectId,
@@ -454,13 +576,23 @@ export default function EpisodeTimelinePanel({
             ...draft.payload.audio,
             bgmAssetId: bgmAssetId || null,
             bgmVolume,
+            bgmFadeInMs: Math.round(bgmFadeInSeconds * 1000),
+            bgmFadeOutMs: Math.round(bgmFadeOutSeconds * 1000),
           },
         },
       })
       setDraft(result.draft)
-      setNotice('已更新本集配乐和音量。')
+      setBgmStatus({
+        kind: 'success',
+        message: bgmAssetId
+          ? `已应用到${episodeLabel(episode)}，音量 ${Math.round(bgmVolume * 100)}%。`
+          : `已移除${episodeLabel(episode)}配乐。`,
+      })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '配乐保存失败')
+      setBgmStatus({
+        kind: 'error',
+        message: cause instanceof Error ? cause.message : '配乐保存失败',
+      })
     } finally {
       setWorking(false)
     }
@@ -479,12 +611,40 @@ export default function EpisodeTimelinePanel({
       setBgmTracks((current) => [track, ...current])
       setBgmAssetId(track.id)
       setBgmFile(null)
-      setNotice('BGM 已上传，点击“应用配乐”保存到本集。')
+      setBgmUploadOpen(false)
+      setBgmStatus({ kind: 'success', message: 'BGM 已上传，点击“应用配乐”保存到本集。' })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'BGM 上传失败')
+      setBgmStatus({
+        kind: 'error',
+        message: cause instanceof Error ? cause.message : 'BGM 上传失败',
+      })
     } finally {
       setUploadingBgm(false)
     }
+  }
+
+  async function toggleBgmFavorite(track: BgmTrack) {
+    if (!currentProjectId) return
+    const favorite = !bgmFavoriteIds.includes(track.id)
+    try {
+      const next = await setBgmFavorite({
+        projectId: currentProjectId,
+        trackId: track.id,
+        favorite,
+      })
+      setBgmFavoriteIds(next)
+    } catch (cause) {
+      setBgmStatus({
+        kind: 'error',
+        message: cause instanceof Error ? cause.message : 'BGM 收藏失败',
+      })
+    }
+  }
+
+  function selectBgmTrack(track: BgmTrack) {
+    setBgmAssetId(track.id)
+    if (!currentBgm && bgmVolume <= 0.2) setBgmVolume(0.3)
+    setBgmStatus({ kind: 'idle', message: '' })
   }
 
   function trimClip(index: number, inMs: number, outMs: number) {
@@ -537,6 +697,127 @@ export default function EpisodeTimelinePanel({
   )
   const overflowCount = dialogueInspection.issues
     .filter((issue) => issue.code === 'dialogue-overflow').length
+  const missingClipsWithUnselectedCandidates = draft
+    ? draft.payload.clips.filter((clip) =>
+        clip.status === 'missing-video'
+        && videoCandidatesFor(clip, videos).some((video) => video.selectedAt === null)
+      )
+    : []
+  const staleAdoptedClips = draft
+    ? draft.payload.clips.filter((clip) =>
+        clip.status === 'missing-video'
+        && videoCandidatesFor(clip, videos).some((video) => video.selectedAt !== null)
+      )
+    : []
+  const selectedVersionStaleAdoptedClips = selectedVersion
+    ? selectedVersion.payload.clips.filter((clip) =>
+        clip.status === 'missing-video'
+        && videoCandidatesFor(clip, videos).some((video) => video.selectedAt !== null)
+      )
+    : []
+  const selectedVersionBlockedCount = selectedVersion?.payload.blockedCount ?? 0
+  const allBgmTracks = useMemo(
+    () => [...systemBgmTracks, ...bgmTracks],
+    [bgmTracks, systemBgmTracks],
+  )
+  const selectedBgm = allBgmTracks.find((track) => track.id === bgmAssetId) ?? null
+  const filteredSystemBgmTracks = useMemo(() => {
+    const query = bgmQuery.trim().toLowerCase()
+    return systemBgmTracks.filter((track) => {
+      const categoryMatches = bgmCategory === '全部' || track.mood === bgmCategory
+      const text = [track.name, track.mood, track.genre, ...(track.tags ?? [])]
+        .join(' ')
+        .toLowerCase()
+      return categoryMatches && (!query || text.includes(query))
+    })
+  }, [bgmCategory, bgmQuery, systemBgmTracks])
+  const currentBgm = draft?.payload.audio.bgmAssetId ?? ''
+  const selectedBgmName = selectedBgm?.name ?? '无配乐'
+  const bgmHasChanges = Boolean(draft && (
+    bgmAssetId !== currentBgm
+    || Math.abs(bgmVolume - draft.payload.audio.bgmVolume) > 0.001
+    || Math.abs(bgmFadeInSeconds * 1000 - (draft.payload.audio.bgmFadeInMs ?? 600)) > 1
+    || Math.abs(bgmFadeOutSeconds * 1000 - (draft.payload.audio.bgmFadeOutMs ?? 1_000)) > 1
+  ))
+  const bgmCanApply = Boolean(
+    draft
+    && !working
+    && bgmHasChanges
+    && (bgmAssetId || currentBgm),
+  )
+  const orderedRenders = [...renders].sort((left, right) => right.createdAt - left.createdAt)
+  const latestSuccessfulRender = orderedRenders.find((render) =>
+    render.status === 'succeeded' && Boolean(render.videoUrl)
+  ) ?? null
+  const activeRender = orderedRenders.find((render) =>
+    render.status === 'queued' || render.status === 'running'
+  ) ?? null
+  const latestRender = orderedRenders[0] ?? null
+  useEffect(() => {
+    setRenderPreviewStarted(false)
+  }, [episode, latestSuccessfulRender?.id])
+  const renderSectionStatus = activeRender
+    ? '渲染中'
+    : latestSuccessfulRender
+      ? '可下载'
+      : versions.length > 0
+        ? '待生成'
+        : '未固化'
+  const blockedClipCount = draft?.payload.blockedCount ?? 0
+  const outputBlocked = blockedClipCount > 0 || dialogueInspection.issues.length > 0
+  const staleAdoptedCount = staleAdoptedClips.length
+  const selectedVersionStaleCount = selectedVersionStaleAdoptedClips.length
+  const renderStateLabel = latestSuccessfulRender
+    ? '成片成功'
+    : activeRender
+      ? activeRender.status === 'queued'
+        ? '排队中'
+        : '渲染中'
+      : latestRender?.status === 'failed'
+        ? '渲染失败'
+        : selectedVersionStaleCount > 0
+          ? '版本待重固化'
+        : staleAdoptedCount > 0
+          ? '待同步'
+        : outputBlocked
+          ? '被阻断'
+          : versions.length > 0
+            ? '待渲染'
+            : '未创建'
+  const outputTitle = latestSuccessfulRender
+    ? `${episodeLabel(episode)}成片已就绪`
+    : activeRender
+      ? `${episodeLabel(episode)}正在生成成片`
+      : latestRender?.status === 'failed'
+        ? '最近一次渲染失败'
+        : selectedVersionStaleCount > 0
+          ? '当前固化版本还未包含已采用视频'
+        : staleAdoptedCount > 0
+          ? `${staleAdoptedCount} 个已采用视频尚未同步`
+        : blockedClipCount > 0
+          ? `还有 ${blockedClipCount} 个镜头未就绪`
+          : versions.length === 0
+            ? '先固化一个可渲染版本'
+            : '版本已锁定，可以开始生成成片'
+  const outputDescription = latestSuccessfulRender
+    ? outputBlocked
+      ? `当前可下载的是 v${latestSuccessfulRender.timelineRevision}；当前草稿仍有 ${blockedClipCount || dialogueInspection.issues.length} 项未就绪，修改后需重新固化并渲染。`
+      : '可直接播放、下载 MP4，或继续保留同版本的 SRT 字幕与交付清单。'
+    : activeRender
+      ? `渲染进度 ${activeRender.progress}% ，完成后会自动显示在这里。`
+      : latestRender?.status === 'failed'
+        ? latestRender.error || '渲染失败，请检查阻断项后重新加入渲染队列。'
+        : selectedVersionStaleCount > 0
+          ? '视频已经采用，但固化版本不会自动变化；需要同步当前视频并创建一个新版本。'
+        : staleAdoptedCount > 0
+          ? '视频候选已经采用，只需同步到当前时间线草稿，不需要重新生成或重新采用。'
+        : blockedClipCount > 0
+          ? '先回到镜头视频采用可用版本，或在时间线同步已采用视频。'
+          : dialogueInspection.issues.length > 0
+            ? `还有 ${dialogueInspection.issues.length} 个对白或音频问题需要处理。`
+            : versions.length === 0
+              ? '固化会把当前镜头顺序、裁剪、静音和配乐保存为不可变版本。'
+              : '生成后会在顶部直接出现可播放的竖屏成片。'
 
   async function enqueueRender() {
     if (!currentProjectId || !selectedVersion || enqueueingRender) return
@@ -559,6 +840,52 @@ export default function EpisodeTimelinePanel({
     } finally {
       setEnqueueingRender(false)
     }
+  }
+
+  async function syncAndFreezeLatestVideos() {
+    if (!currentProjectId || !draft || working) return
+    setWorking(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const synced = syncTimelineSelectedVideoSources(draft.payload, videos)
+      const saved = await saveTimelineDraft({
+        projectId: currentProjectId,
+        episode,
+        expectedRevision: draft.revision,
+        payload: synced,
+      })
+      setDraft(saved.draft)
+      const frozen = await freezeTimelineVersion({
+        projectId: currentProjectId,
+        episode,
+        expectedRevision: saved.draft.revision,
+      })
+      setVersions((current) => [
+        frozen.version,
+        ...current.filter((version) => version.id !== frozen.version.id),
+      ])
+      setSelectedVersionId(frozen.version.id)
+      setNotice(`已同步当前采用视频并固化 v${frozen.version.revision}，现在可以使用新版本渲染。`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '同步并固化新版本失败')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  function openTimelineSection(
+    section: 'clips' | 'audio' | 'render',
+    scroll = false,
+  ) {
+    setTimelineSection(section)
+    if (!scroll) return
+    requestAnimationFrame(() => {
+      document.getElementById('episode-timeline-sections')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
   }
 
   async function enqueueAllFrozenEpisodes() {
@@ -592,7 +919,6 @@ export default function EpisodeTimelinePanel({
 
   if (options.length === 0) return null
 
-  const actionLabel = draft ? '固化当前版本' : '生成这一集时间线'
   return (
     <section className="episode-timeline-panel" aria-label={`${episodeLabel(episode)}时间线`}>
       <header className="episode-timeline-head">
@@ -624,15 +950,150 @@ export default function EpisodeTimelinePanel({
               ))}
             </select>
           </label>
-          <button
-            type="button"
-            disabled={working || loading}
-            onClick={() => void (draft ? freeze() : initialize())}
-          >
-            {working ? '处理中…' : actionLabel}
-          </button>
         </div>
       </header>
+
+      <section
+        className={`episode-timeline-output ${latestSuccessfulRender ? 'has-output' : latestRender?.status === 'failed' ? 'is-failed' : outputBlocked ? 'is-blocked' : 'is-pending'}`}
+        aria-label="成片输出"
+      >
+        <div className="episode-timeline-output-stage">
+          {latestSuccessfulRender?.videoUrl ? (
+            <>
+              <video
+                controls
+                playsInline
+                preload="auto"
+                src={latestSuccessfulRender.videoUrl}
+                aria-label={`${episodeLabel(episode)}成片预览`}
+                onLoadedMetadata={(event) => {
+                  if (event.currentTarget.currentTime === 0) {
+                    event.currentTarget.currentTime = 0.05
+                  }
+                }}
+                onPlay={() => setRenderPreviewStarted(true)}
+              />
+              {!renderPreviewStarted && (
+                <div className="episode-timeline-video-hint" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="m10 8 6 4-6 4V8Z" />
+                  </svg>
+                  <span>点击播放成片</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="episode-timeline-output-empty">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <rect x="4" y="7" width="24" height="18" rx="3" />
+                <path d="m13 12 7 4-7 4v-8Z" />
+              </svg>
+              <b>{activeRender ? `正在渲染 ${activeRender.progress}%` : '尚无可播放成片'}</b>
+              <span>{activeRender ? '完成后会自动出现在这里。' : '先完成下面的阻断项，再生成成片。'}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="episode-timeline-output-summary">
+          <div className="episode-timeline-output-kicker">
+            <span>成片交付</span>
+            <em>{renderStateLabel}</em>
+          </div>
+          <h4>{loading ? '正在读取时间线…' : outputTitle}</h4>
+          <p>{loading ? '读取完成后会显示当前版本与成片状态。' : outputDescription}</p>
+
+          <ol className="episode-timeline-output-steps" aria-label="成片生成步骤">
+            <li className={draft && blockedClipCount === 0 ? 'is-done' : draft ? 'is-blocked' : ''}>
+              <span aria-hidden="true" />
+              镜头 {draft ? `${draft.payload.readyCount}/${draft.payload.clips.length}` : '未建立'}
+            </li>
+            <li className={versions.length > 0 ? 'is-done' : ''}>
+              <span aria-hidden="true" />
+              {versions.length > 0 ? `已固化 v${versions[0].revision}` : '待固化版本'}
+            </li>
+            <li className={latestSuccessfulRender ? 'is-done' : activeRender ? 'is-running' : ''}>
+              <span aria-hidden="true" />
+              {latestSuccessfulRender ? '成片完成' : activeRender ? '渲染中' : '待渲染'}
+            </li>
+          </ol>
+
+          <div className="episode-timeline-output-attempts" aria-label="最近渲染记录">
+            <span>最近渲染</span>
+            {orderedRenders.length === 0 ? (
+              <em>尚无渲染记录</em>
+            ) : orderedRenders.slice(0, 3).map((render) => (
+              <b key={render.id} className={`is-${render.status}`}>
+                v{render.timelineRevision} · {
+                  render.status === 'succeeded'
+                    ? '成功'
+                    : render.status === 'running'
+                      ? `${render.progress}%`
+                      : render.status === 'queued'
+                        ? '排队'
+                        : '失败'
+                }
+              </b>
+            ))}
+          </div>
+
+          <div className="episode-timeline-output-actions">
+            {latestSuccessfulRender ? (
+              <>
+                <a href={latestSuccessfulRender.videoUrl ?? '#'} download>下载 MP4</a>
+                {latestSuccessfulRender.subtitleUrl && (
+                  <a href={latestSuccessfulRender.subtitleUrl} download>下载 SRT</a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openTimelineSection('render', true)}
+                >
+                  查看版本与交付历史
+                </button>
+              </>
+            ) : activeRender ? (
+              <button type="button" disabled>
+                渲染中 · {activeRender.progress}%
+              </button>
+            ) : !draft ? (
+              <button type="button" disabled={working || loading} onClick={() => void initialize()}>
+                {working ? '处理中…' : '生成这一集时间线'}
+              </button>
+            ) : selectedVersionStaleCount > 0 ? (
+              <button type="button" disabled={working} onClick={() => void syncAndFreezeLatestVideos()}>
+                {working ? '处理中…' : '同步并固化新版本'}
+              </button>
+            ) : staleAdoptedCount > 0 ? (
+              <button type="button" disabled={working} onClick={syncAdoptedVideos}>
+                {working ? '同步中…' : `同步 ${staleAdoptedClips.length} 个已采用视频`}
+              </button>
+            ) : blockedClipCount > 0 ? (
+              <button type="button" disabled={!onOpenVideo || working} onClick={onOpenVideo}>
+                {onOpenVideo ? '去处理镜头视频' : '先处理缺视频镜头'}
+              </button>
+            ) : dialogueInspection.issues.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => openTimelineSection('render', true)}
+              >
+                查看 {dialogueInspection.issues.length} 个音频问题
+              </button>
+            ) : versions.length === 0 ? (
+              <button type="button" disabled={working} onClick={() => void freeze()}>
+                {working ? '处理中…' : '固化当前版本'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!selectedVersion || enqueueingRender}
+                onClick={() => void enqueueRender()}
+              >
+                {enqueueingRender ? '提交中…' : '生成成片'}
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
 
       {draft && (
         <div className="episode-timeline-summary" role="status">
@@ -640,6 +1101,28 @@ export default function EpisodeTimelinePanel({
           <span>{draft.payload.blockedCount > 0 ? `${draft.payload.blockedCount} 镜阻断` : '没有阻断项'}</span>
           <span>{durationLabel(draft.payload.totalDurationMs)} 总时长</span>
           <span>{versions.length > 0 ? `已固化 ${versions.length} 版` : '尚未固化版本'}</span>
+        </div>
+      )}
+
+      {draft && staleAdoptedClips.length > 0 && (
+        <div className="episode-timeline-candidate-hint" role="status">
+          <span>
+            <b>{staleAdoptedClips.length} 个镜头已采用视频，但当前草稿仍是旧素材</b>
+            <small>同步只替换这些镜头的视频源，不重置镜头顺序和静音设置。</small>
+          </span>
+          <button type="button" disabled={working} onClick={syncAdoptedVideos}>
+            {working ? '同步中…' : '同步已采用视频'}
+          </button>
+        </div>
+      )}
+
+      {draft && missingClipsWithUnselectedCandidates.length > 0 && onOpenVideo && (
+        <div className="episode-timeline-candidate-hint" role="status">
+          <span>
+            <b>{missingClipsWithUnselectedCandidates.length} 个镜头已有候选视频，但尚未采用</b>
+            <small>候选不会自动进入时间线；采用后会替换这一镜的素材。</small>
+          </span>
+          <button type="button" onClick={onOpenVideo}>去采用视频</button>
         </div>
       )}
 
@@ -652,6 +1135,34 @@ export default function EpisodeTimelinePanel({
         </div>
       ) : (
         <>
+          <nav id="episode-timeline-sections" className="episode-timeline-sections" aria-label="时间线工具">
+            <button
+              type="button"
+              aria-pressed={timelineSection === 'render'}
+              onClick={() => openTimelineSection('render')}
+            >
+              <span>成片状态</span>
+              <small>{renderSectionStatus}</small>
+            </button>
+            <button
+              type="button"
+              aria-pressed={timelineSection === 'clips'}
+              onClick={() => openTimelineSection('clips')}
+            >
+              <span>镜头轨道</span>
+              <small>{draft.payload.readyCount}/{draft.payload.clips.length}</small>
+            </button>
+            <button
+              type="button"
+              aria-pressed={timelineSection === 'audio'}
+              onClick={() => openTimelineSection('audio')}
+            >
+              <span>声音配乐</span>
+              <small>{selectedBgmName}</small>
+            </button>
+          </nav>
+
+          {timelineSection === 'clips' && (
           <div className="episode-timeline-clips" aria-label="镜头顺序">
             {draft.payload.clips.map((clip, index) => (
               <article
@@ -664,8 +1175,26 @@ export default function EpisodeTimelinePanel({
                 </div>
                 <div className="episode-timeline-copy">
                   <b>{clip.scene}</b>
-                  <span>{clipStatus(clip)}</span>
-                  {clip.reason && <p>{clip.reason}</p>}
+                  <span>
+                    {clip.status === 'missing-video'
+                      && videoCandidatesFor(clip, videos).some((video) => video.selectedAt !== null)
+                      ? '已采用视频，待同步草稿'
+                      : clip.status === 'missing-video'
+                        && videoCandidatesFor(clip, videos).length > 0
+                        ? `有 ${videoCandidatesFor(clip, videos).length} 条候选，尚未采用`
+                      : clipStatus(clip)}
+                  </span>
+                  {clip.reason && (
+                    <p>
+                      {clip.status === 'missing-video'
+                        && videoCandidatesFor(clip, videos).some((video) => video.selectedAt !== null)
+                        ? '点击上方“同步已采用视频”更新当前草稿。'
+                        : clip.status === 'missing-video'
+                          && videoCandidatesFor(clip, videos).length > 0
+                          ? '前往“镜头视频”采用一个版本后再渲染。'
+                        : clip.reason}
+                    </p>
+                  )}
                 </div>
                 <div className="episode-timeline-time">
                   {durationLabel(Math.max(0, clip.outMs - clip.inMs))}
@@ -722,66 +1251,260 @@ export default function EpisodeTimelinePanel({
               </article>
             ))}
           </div>
-          <div className="episode-timeline-audio">
-            <div className="episode-timeline-audio-controls">
-              <b>本集配乐</b>
-              <label>
-                <span>曲目</span>
-                <select
-                  aria-label="配乐曲目"
-                  value={bgmAssetId}
-                  onChange={(event) => setBgmAssetId(event.target.value)}
-                >
-                  <option value="">无配乐</option>
-                  {bgmTracks.map((track) => (
-                    <option key={track.id} value={track.id}>{track.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>音量</span>
-                <input
-                  type="range"
-                  aria-label="配乐音量"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={bgmVolume}
-                  onChange={(event) => setBgmVolume(Number(event.target.value))}
-                />
-                <em>{Math.round(bgmVolume * 100)}%</em>
-              </label>
-              <button type="button" disabled={working} onClick={() => void saveBgm()}>
-                应用配乐
-              </button>
-            </div>
-            <details className="episode-timeline-bgm-upload">
-              <summary>上传授权 BGM</summary>
+          )}
+
+          {timelineSection === 'audio' && (
+          <div className="episode-bgm-workbench">
+            <header className="episode-bgm-workbench-head">
               <div>
-                <input
-                  type="file"
-                  accept="audio/mpeg,audio/wav"
-                  onChange={(event) => setBgmFile(event.target.files?.[0] ?? null)}
-                />
-                <label>
+                <b>本集配乐</b>
+                <span>{selectedBgm ? `${selectedBgm.name} · ${selectedBgm.mood || '项目配乐'}` : '尚未选择曲目'}</span>
+              </div>
+              {selectedBgm && <BgmWaveform values={selectedBgm.waveform} />}
+            </header>
+
+            <nav className="episode-bgm-tabs" aria-label="配乐来源">
+              <button
+                type="button"
+                aria-pressed={bgmMode === 'recommend'}
+                onClick={() => setBgmMode('recommend')}
+              >
+                智能推荐
+              </button>
+              <button
+                type="button"
+                aria-pressed={bgmMode === 'library'}
+                onClick={() => setBgmMode('library')}
+              >
+                系统曲库
+              </button>
+              <button
+                type="button"
+                aria-pressed={bgmMode === 'upload'}
+                onClick={() => {
+                  setBgmMode('upload')
+                  setBgmUploadOpen(true)
+                }}
+              >
+                我的上传
+              </button>
+            </nav>
+
+            {bgmMode === 'recommend' && (
+              <section className="episode-bgm-panel">
+                <p>根据当前项目的人物、场景、冲突和情绪自动匹配。</p>
+                <div className="episode-bgm-grid">
+                  {recommendedBgmTracks.map((track) => (
+                    <BgmTrackCard
+                      key={track.id}
+                      track={track}
+                      selected={bgmAssetId === track.id}
+                      favorite={bgmFavoriteIds.includes(track.id)}
+                      previewing={bgmPreviewId === track.id}
+                      onSelect={() => selectBgmTrack(track)}
+                      onPreview={() => setBgmPreviewId((current) => current === track.id ? '' : track.id)}
+                      onFavorite={() => void toggleBgmFavorite(track)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {bgmMode === 'library' && (
+              <section className="episode-bgm-panel">
+                <div className="episode-bgm-filters">
                   <input
-                    type="checkbox"
-                    checked={bgmLicensed}
-                    onChange={(event) => setBgmLicensed(event.target.checked)}
+                    type="search"
+                    aria-label="搜索配乐"
+                    placeholder="搜索曲名、情绪或标签"
+                    value={bgmQuery}
+                    onChange={(event) => setBgmQuery(event.target.value)}
                   />
-                  我确认拥有该配乐的使用授权
-                </label>
-                <button
-                  type="button"
-                  disabled={!bgmFile || !bgmLicensed || uploadingBgm}
-                  onClick={() => void uploadBgm()}
+                  <select
+                    aria-label="配乐分类"
+                    value={bgmCategory}
+                    onChange={(event) => setBgmCategory(event.target.value)}
+                  >
+                    <option value="全部">全部情绪</option>
+                    {bgmCategories.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="episode-bgm-grid">
+                  {filteredSystemBgmTracks.map((track) => (
+                    <BgmTrackCard
+                      key={track.id}
+                      track={track}
+                      selected={bgmAssetId === track.id}
+                      favorite={bgmFavoriteIds.includes(track.id)}
+                      previewing={bgmPreviewId === track.id}
+                      onSelect={() => selectBgmTrack(track)}
+                      onPreview={() => setBgmPreviewId((current) => current === track.id ? '' : track.id)}
+                      onFavorite={() => void toggleBgmFavorite(track)}
+                    />
+                  ))}
+                </div>
+                {filteredSystemBgmTracks.length === 0 && (
+                  <div className="episode-bgm-empty-result">没有匹配的曲目，请更换关键词或分类。</div>
+                )}
+              </section>
+            )}
+
+            {bgmMode === 'upload' && (
+              <section className="episode-bgm-panel">
+                <div className="episode-bgm-upload-list">
+                  {bgmTracks.map((track) => (
+                    <article key={track.id} className={bgmAssetId === track.id ? 'is-selected' : ''}>
+                      <div>
+                        <b>{track.name}</b>
+                        <span>{track.durationMs ? durationLabel(track.durationMs) : '时长未知'} · 用户上传</span>
+                      </div>
+                      <div>
+                        <button type="button" onClick={() => setBgmPreviewId((current) => current === track.id ? '' : track.id)}>
+                          {bgmPreviewId === track.id ? '收起' : '试听'}
+                        </button>
+                        <button type="button" onClick={() => selectBgmTrack(track)}>选择</button>
+                      </div>
+                      {bgmPreviewId === track.id && track.previewUrl && (
+                        <audio controls autoPlay preload="metadata" src={track.previewUrl} />
+                      )}
+                    </article>
+                  ))}
+                  {bgmTracks.length === 0 && (
+                    <div className="episode-bgm-empty-result">还没有项目上传曲目。</div>
+                  )}
+                </div>
+                <details
+                  className="episode-timeline-bgm-upload"
+                  open={bgmUploadOpen}
+                  onToggle={(event) => setBgmUploadOpen(event.currentTarget.open)}
                 >
-                  {uploadingBgm ? '上传中…' : '上传 BGM'}
+                  <summary>上传授权 BGM</summary>
+                  <div>
+                    <p>支持 MP3 / WAV，单文件不超过 30MB。平台曲库优先，上传用于项目定制音乐。</p>
+                    <input
+                      type="file"
+                      accept="audio/mpeg,audio/wav"
+                      onChange={(event) => setBgmFile(event.target.files?.[0] ?? null)}
+                    />
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={bgmLicensed}
+                        onChange={(event) => setBgmLicensed(event.target.checked)}
+                      />
+                      我确认拥有该配乐的使用授权
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!bgmFile || !bgmLicensed || uploadingBgm}
+                      onClick={() => void uploadBgm()}
+                    >
+                      {uploadingBgm ? '上传中…' : '上传 BGM'}
+                    </button>
+                  </div>
+                </details>
+              </section>
+            )}
+
+            <section className="episode-bgm-selection">
+              <div className="episode-bgm-selection-title">
+                <div>
+                  <b>{selectedBgm?.name ?? '未选择曲目'}</b>
+                  <span>
+                    {selectedBgm
+                      ? [
+                          selectedBgm.genre,
+                          selectedBgm.bpm ? `${selectedBgm.bpm} BPM` : null,
+                          selectedBgm.durationMs ? durationLabel(selectedBgm.durationMs) : null,
+                          selectedBgm.licenseName,
+                        ].filter(Boolean).join(' · ')
+                      : '可以从智能推荐、系统曲库或项目上传中选择。'}
+                  </span>
+                </div>
+                {selectedBgm && (
+                  <button
+                    type="button"
+                    className="is-quiet"
+                    onClick={() => {
+                      setBgmAssetId('')
+                      setBgmPreviewId('')
+                      setBgmStatus({ kind: 'idle', message: '' })
+                    }}
+                  >
+                    清除选择
+                  </button>
+                )}
+              </div>
+              <div className="episode-bgm-mix-controls">
+                <label>
+                  <span>音量</span>
+                  <input
+                    type="range"
+                    aria-label="配乐音量"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={bgmVolume}
+                    onChange={(event) => {
+                      setBgmVolume(Number(event.target.value))
+                      setBgmStatus({ kind: 'idle', message: '' })
+                    }}
+                  />
+                  <em>{Math.round(bgmVolume * 100)}%</em>
+                </label>
+                <label>
+                  <span>淡入</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={bgmFadeInSeconds}
+                    onChange={(event) => setBgmFadeInSeconds(Number(event.target.value))}
+                  />
+                  <em>秒</em>
+                </label>
+                <label>
+                  <span>淡出</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={bgmFadeOutSeconds}
+                    onChange={(event) => setBgmFadeOutSeconds(Number(event.target.value))}
+                  />
+                  <em>秒</em>
+                </label>
+                <button type="button" disabled={!bgmCanApply} onClick={() => void saveBgm()}>
+                  {bgmStatus.kind === 'working'
+                    ? '保存中…'
+                    : !bgmAssetId && !currentBgm
+                      ? '未选择曲目'
+                      : !bgmHasChanges
+                        ? '已应用'
+                        : bgmAssetId
+                          ? '应用到本集'
+                          : '移除配乐'}
                 </button>
               </div>
-            </details>
+              <p
+                className={`episode-timeline-bgm-status is-${bgmStatus.kind}`}
+                role={bgmStatus.kind === 'error' ? 'alert' : 'status'}
+              >
+                {bgmStatus.message
+                  || (selectedBgm
+                    ? `${selectedBgm.licenseNote} 应用后才会进入时间线混音。`
+                    : '系统曲库为平台自制原创内测曲目，用户上传需自行确认授权。')}
+              </p>
+            </section>
           </div>
-          <section className="episode-render-workbench" aria-label="成片渲染">
+          )}
+
+          {timelineSection === 'render' && (
+          <section id="episode-render-workbench" className="episode-render-workbench" aria-label="成片渲染">
             <header>
               <div>
                 <b>成片渲染</b>
@@ -795,6 +1518,26 @@ export default function EpisodeTimelinePanel({
                     : '队列空闲'}
               </span>
             </header>
+            {selectedVersionBlockedCount > 0 && (
+              <div className="episode-render-version-warning" role="status">
+                <div>
+                  <b>当前所选版本仍有 {selectedVersionBlockedCount} 个镜头不可渲染</b>
+                  <p>
+                    视频页“已采用”只更新当前素材；已固化的时间线版本不会自动变化。
+                    {selectedVersionStaleCount > 0 ? ` 当前有 ${selectedVersionStaleCount} 个已采用视频可以同步。` : ''}
+                  </p>
+                </div>
+                {selectedVersionStaleCount > 0 && (
+                  <button
+                    type="button"
+                    disabled={working}
+                    onClick={() => void syncAndFreezeLatestVideos()}
+                  >
+                    {working ? '处理中…' : '同步并固化新版本'}
+                  </button>
+                )}
+              </div>
+            )}
             <div className="episode-render-controls">
               <label>
                 <span>时间线版本</span>
@@ -813,12 +1556,28 @@ export default function EpisodeTimelinePanel({
               </label>
               <button
                 type="button"
+                className="is-secondary"
+                disabled={!draft || working}
+                onClick={() => void freeze()}
+              >
+                {working ? '处理中…' : '固化当前草稿'}
+              </button>
+              <button
+                type="button"
                 disabled={
                   !selectedVersion
                   || enqueueingRender
+                  || selectedVersionBlockedCount > 0
+                  || blockedClipCount > 0
                   || dialogueInspection.issues.length > 0
                 }
-                title={dialogueInspection.issues[0]?.message}
+                title={
+                  selectedVersionBlockedCount > 0
+                    ? '所选时间线版本仍有不可渲染镜头，请同步并固化新版本'
+                    : blockedClipCount > 0
+                    ? '仍有缺视频镜头，先同步或采用视频'
+                    : dialogueInspection.issues[0]?.message
+                }
                 onClick={() => void enqueueRender()}
               >
                 {enqueueingRender ? '提交中…' : '加入渲染队列'}
@@ -866,9 +1625,9 @@ export default function EpisodeTimelinePanel({
                     </div>
                     {render.status === 'succeeded' && (
                       <div className="episode-render-downloads">
-                        <a href={render.videoUrl ?? '#'}>下载 MP4</a>
-                        <a href={render.subtitleUrl ?? '#'}>下载 SRT</a>
-                        <a href={render.manifestUrl ?? '#'}>下载 manifest</a>
+                        <a href={render.videoUrl ?? '#'} download>下载 MP4</a>
+                        <a href={render.subtitleUrl ?? '#'} download>下载 SRT</a>
+                        <a href={render.manifestUrl ?? '#'} download>下载 manifest</a>
                       </div>
                     )}
                   </article>
@@ -876,6 +1635,8 @@ export default function EpisodeTimelinePanel({
               </div>
             )}
           </section>
+          )}
+
           <footer className="episode-timeline-footer">
             <p>时间线基于创建时采用的视频，不在每次打开时静默换源。</p>
             <div>

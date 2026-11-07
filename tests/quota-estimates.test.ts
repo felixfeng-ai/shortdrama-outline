@@ -72,7 +72,7 @@ test("QV2-1d 额度接口按 episodeCount 返回统一估算", async () => {
   assert.deepEqual(payload.data.estimates.selected, {
     episodeCount: 30,
     units: 19,
-    projectsLeft: 3,
+    projectsLeft: 15,
   })
   assert.equal(payload.data.fullProjectCost, 19)
   assert.equal(payload.data.tenEpisodeProjectCost, 13)

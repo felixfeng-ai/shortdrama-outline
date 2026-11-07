@@ -1,4 +1,4 @@
-import type { BgmTrack } from "./bgm-types.ts"
+import type { BgmLibrary, BgmTrack } from "./bgm-types.ts"
 
 export async function fetchBgmTracks(projectId: string): Promise<BgmTrack[]> {
   const params = new URLSearchParams({ projectId })
@@ -8,6 +8,35 @@ export async function fetchBgmTracks(projectId: string): Promise<BgmTrack[]> {
     throw new Error(payload?.error || "BGM 曲库读取失败")
   }
   return payload.data.tracks as BgmTrack[]
+}
+
+export async function fetchBgmLibrary(projectId: string): Promise<BgmLibrary> {
+  const params = new URLSearchParams({ projectId })
+  const response = await fetch(`/api/audio/bgm?${params.toString()}`, {
+    cache: "no-store",
+  })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "BGM 曲库读取失败")
+  }
+  return payload.data as BgmLibrary
+}
+
+export async function setBgmFavorite(input: {
+  projectId: string
+  trackId: string
+  favorite: boolean
+}): Promise<string[]> {
+  const response = await fetch("/api/audio/bgm", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "BGM 收藏失败")
+  }
+  return payload.data.favoriteIds as string[]
 }
 
 export async function uploadBgmTrack(input: {

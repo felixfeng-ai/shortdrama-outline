@@ -9,6 +9,7 @@ import {
   fetchProjectVideoState,
   generateShotVideoBatch,
   retryVideoTask,
+  selectVideo,
 } from '@/lib/video/client'
 import { supportsVideoDuration } from '@/lib/video/catalog'
 import { useVideoCapabilities } from '@/lib/video/use-video-capabilities'
@@ -62,10 +63,12 @@ export default function BatchVideoPanel({
 }: Props) {
   const [tasks, setTasks] = useState<GenerationTask[]>([])
   const [batches, setBatches] = useState<GenerationBatch[]>([])
+  const [videoAssets, setVideoAssets] = useState<GeneratedAsset[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [open, setOpen] = useState(false)
   const [starting, setStarting] = useState(false)
   const [retryingId, setRetryingId] = useState<string | null>(null)
+  const [selectingId, setSelectingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const videoSettings = useVideoCapabilities()
@@ -142,17 +145,52 @@ export default function BatchVideoPanel({
     relevantTasks.flatMap((task) => task.batchId ? [task.batchId] : []),
   )
   const relevantBatch = batches.find((batch) => relevantBatchIds.has(batch.id)) ?? null
+  const candidatesByTarget = useMemo(() => {
+    const targetIds = new Set(targets.map((target) => target.targetId))
+    const grouped = new Map<string, GeneratedAsset[]>()
+    for (const asset of videoAssets) {
+      if (
+        asset.mediaKind !== 'video'
+        || asset.targetType !== 'shot'
+        || !targetIds.has(asset.targetId)
+      ) continue
+      const current = grouped.get(asset.targetId) ?? []
+      current.push(asset)
+      grouped.set(asset.targetId, current)
+    }
+    for (const assets of grouped.values()) {
+      assets.sort((left, right) => right.createdAt - left.createdAt)
+    }
+    return grouped
+  }, [targets, videoAssets])
+  const candidateCount = [...candidatesByTarget.values()]
+    .reduce((sum, assets) => sum + assets.length, 0)
+  const selectedCandidateCount = [...candidatesByTarget.values()]
+    .flat()
+    .filter((asset) => asset.selectedAt !== null).length
+  const candidateScopeLabel = useMemo(() => {
+    const episodes = new Set(shots.map((shot) => shot.episode))
+    if (episodes.size !== 1) return '全剧'
+    const episode = [...episodes][0] ?? 0
+    return episode > 0 ? `第 ${episode} 集` : '未标注镜头'
+  }, [shots])
 
   const refresh = useCallback(async () => {
     if (!projectId) {
       setTasks([])
       setBatches([])
+      setVideoAssets([])
       return
     }
     const state = await fetchProjectVideoState(projectId)
     const targetIds = new Set(shots.map((shot) => shot.entityId))
     setTasks(state.tasks.filter((task) => targetIds.has(task.targetId)))
     setBatches(state.batches)
+    setVideoAssets(state.assets.filter((asset) =>
+      asset.mediaKind === 'video'
+      && asset.targetType === 'shot'
+      && targetIds.has(asset.targetId)
+    ))
   }, [projectId, shots])
 
   useEffect(() => {
@@ -260,6 +298,29 @@ export default function BatchVideoPanel({
     }
   }
 
+  async function adopt(asset: GeneratedAsset) {
+    if (selectingId || !projectId) return
+    setSelectingId(asset.id)
+    setError(null)
+    try {
+      const selectedAsset = await selectVideo(projectId, asset.id)
+      setVideoAssets((current) => current.map((candidate) =>
+        candidate.targetId === selectedAsset.targetId
+          ? {
+              ...candidate,
+              selectedAt: candidate.id === selectedAsset.id ? selectedAsset.selectedAt : null,
+            }
+          : candidate
+      ))
+      setNotice(`已采用第 ${shots.find((shot) => shot.entityId === asset.targetId)?.shot ?? ''} 镜视频；旧时间线草稿可一键同步更新。`)
+      window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '采用视频失败')
+    } finally {
+      setSelectingId(null)
+    }
+  }
+
   if (shots.length === 0) return null
 
   return (
@@ -275,13 +336,17 @@ export default function BatchVideoPanel({
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
-              <span className="font-mono text-[10.5px] text-ink-400">{readyTargets.length} 镜可生成</span>
+              <span className="font-mono text-[10.5px] text-ink-400">
+                {candidateCount > 0
+                  ? `${candidateCount} 条候选 · ${selectedCandidateCount} 条已采用`
+                  : `${readyTargets.length} 镜可生成`}
+              </span>
               {targets.length > readyTargets.length && (
                 <span className="text-[10.5px] text-accent-700">{targets.length - readyTargets.length} 镜未就绪</span>
               )}
             </div>
             <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500">
-              只使用分镜中已采用的首帧；每镜独立提交，结果先保存为候选。
+              先查看本集候选视频；采用后成为时间线素材，旧草稿可一键同步。
             </p>
           </div>
         </div>
@@ -291,7 +356,7 @@ export default function BatchVideoPanel({
           onClick={() => setOpen((value) => !value)}
           className="batch-generation-toggle"
         >
-          {open ? '收起选择' : '选择视频镜头'}
+          {open ? '收起选择' : candidateCount > 0 ? '生成更多视频' : '选择视频镜头'}
         </button>
       </div>
 
@@ -302,19 +367,132 @@ export default function BatchVideoPanel({
         <span>仅服务端首帧</span>
       </div>
 
-      <VideoGenerationSettings
-        capabilities={videoSettings.capabilities}
-        model={videoSettings.model}
-        resolution={videoSettings.resolution}
-        loading={videoSettings.loading}
-        error={videoSettings.error}
-        disabled={starting}
-        onModelChange={videoSettings.setModel}
-        onResolutionChange={videoSettings.setResolution}
-      />
+      {relevantTasks.length > 0 && (
+        <div className="batch-generation-progress" role="status" aria-live="polite">
+          <div className="batch-generation-progress-line">
+            <span>{pendingCount > 0 ? `视频任务进行中 · ${finishedCount}/${relevantTasks.length}` : `已结束 · ${finishedCount}/${relevantTasks.length}`}</span>
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {relevantBatch && (
+                <span className="font-mono text-[10.5px] text-ink-400">
+                  预留 ¥{yuan(relevantBatch.reservedCostMicros)} · 实付 ¥{yuan(relevantBatch.actualCostMicros)}
+                </span>
+              )}
+              <span>{progress}%</span>
+            </span>
+          </div>
+          <div className="batch-generation-track" aria-hidden="true">
+            <span style={{ transform: `scaleX(${progress / 100})` }} />
+          </div>
+        </div>
+      )}
+
+      {notice && <p className="batch-generation-notice" role="status">{notice}</p>}
+      {error && <p className="batch-generation-error-global" role="alert">{error}</p>}
+
+      <section className="batch-video-candidates" aria-label="视频候选">
+        <header>
+          <div>
+            <b>{candidateScopeLabel}候选</b>
+            <span>{candidateCount > 0 ? `${candidateCount} 条，采用后成为时间线素材` : '生成完成后在这里逐条预览和采用'}</span>
+          </div>
+          {candidateCount > 0 && (
+            <small>{selectedCandidateCount}/{candidateCount} 已采用</small>
+          )}
+        </header>
+        {candidateCount === 0 ? (
+          <div className="batch-video-candidates-empty">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="m10 9 5 3-5 3V9Z" />
+            </svg>
+            <p>当前筛选范围还没有视频候选。选择镜头生成后，视频会直接出现在这里。</p>
+            <button type="button" onClick={() => setOpen(true)}>选择视频镜头</button>
+          </div>
+        ) : (
+          <div className="batch-video-candidate-groups">
+            {targets.map((target) => {
+              const assets = candidatesByTarget.get(target.targetId) ?? []
+              if (assets.length === 0) return null
+              const shot = shots.find((item) => item.entityId === target.targetId)
+              return (
+                <article key={target.targetId} className="batch-video-candidate-group">
+                  <header>
+                    <div>
+                      <b>第 {shot?.shot ?? '-'} 镜</b>
+                      <span>{shot?.scene || '场景未标注'} · {assets.length} 个版本</span>
+                    </div>
+                    <small>{assets.some((asset) => asset.selectedAt !== null) ? '已有采用版本' : '尚未采用'}</small>
+                  </header>
+                  <div className="batch-video-candidate-grid">
+                    {assets.map((asset, index) => {
+                      const isSelected = asset.selectedAt !== null
+                      const durationSeconds = asset.durationMs
+                        ? asset.durationMs / 1000
+                        : shot?.params.duration ?? 0
+                      const aspectClass = shot?.params.ratio === '16:9'
+                        ? 'is-landscape'
+                        : shot?.params.ratio === '1:1'
+                          ? 'is-square'
+                          : 'is-portrait'
+                      return (
+                        <div
+                          key={asset.id}
+                          className={`batch-video-candidate ${aspectClass} ${isSelected ? 'is-selected' : ''}`}
+                        >
+                          <div className="batch-video-candidate-media">
+                            <video
+                              controls
+                              playsInline
+                              preload="metadata"
+                              src={asset.downloadUrl}
+                              aria-label={`第 ${shot?.shot ?? '-'} 镜视频候选 ${index + 1}`}
+                            />
+                            <span>{isSelected ? '已采用' : '候选'}</span>
+                          </div>
+                          <div className="batch-video-candidate-meta">
+                            <div>
+                              <b>版本 {assets.length - index}</b>
+                              <span>{asset.model || 'MiniMax'} · {durationSeconds.toFixed(1)}s</span>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={isSelected || selectingId !== null}
+                              onClick={() => void adopt(asset)}
+                            >
+                              {isSelected ? '已采用' : selectingId === asset.id ? '采用中…' : '采用并加入时间线'}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       <SmoothCollapse open={open}>
-        <div className="batch-generation-selector">
+        <div>
+          <section className="batch-video-generation-settings" aria-label="视频生成设置">
+            <header>
+              <b>生成设置</b>
+              <span>模型变更只影响下一次提交</span>
+            </header>
+            <VideoGenerationSettings
+              capabilities={videoSettings.capabilities}
+              model={videoSettings.model}
+              resolution={videoSettings.resolution}
+              loading={videoSettings.loading}
+              error={videoSettings.error}
+              disabled={starting}
+              onModelChange={videoSettings.setModel}
+              onResolutionChange={videoSettings.setResolution}
+            />
+          </section>
+
+          <div className="batch-generation-selector">
           <div className="batch-generation-selector-head">
             <span>准备状态 · {targets.length} 镜</span>
             <span className="flex items-center gap-2">
@@ -403,29 +581,8 @@ export default function BatchVideoPanel({
             </button>
           </div>
         </div>
-      </SmoothCollapse>
-
-      {relevantTasks.length > 0 && (
-        <div className="batch-generation-progress" role="status" aria-live="polite">
-          <div className="batch-generation-progress-line">
-            <span>{pendingCount > 0 ? `视频任务进行中 · ${finishedCount}/${relevantTasks.length}` : `已结束 · ${finishedCount}/${relevantTasks.length}`}</span>
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              {relevantBatch && (
-                <span className="font-mono text-[10.5px] text-ink-400">
-                  预留 ¥{yuan(relevantBatch.reservedCostMicros)} · 实付 ¥{yuan(relevantBatch.actualCostMicros)}
-                </span>
-              )}
-              <span>{progress}%</span>
-            </span>
-          </div>
-          <div className="batch-generation-track" aria-hidden="true">
-            <span style={{ transform: `scaleX(${progress / 100})` }} />
-          </div>
         </div>
-      )}
-
-      {notice && <p className="batch-generation-notice" role="status">{notice}</p>}
-      {error && <p className="batch-generation-error-global" role="alert">{error}</p>}
+      </SmoothCollapse>
     </section>
   )
 }

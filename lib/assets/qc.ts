@@ -54,6 +54,33 @@ function referenceChangedAfterShot(
     reference.selectedAt! > (shotAsset.selectedAt ?? 0)
 }
 
+/**
+ * 当前缺图必须以现在的已采用图片为准。
+ *
+ * 分镜快照里的 missingRefFor 只代表“生成分镜当时”的状态；用户后来补了定妆图后，
+ * 不能继续拿旧字段拦截生成。这里派生一份只读 Shot[]，不改写历史快照。
+ */
+export function reconcileShotReferenceGaps(input: {
+  shots: Shot[]
+  visuals: VisualCharacter[]
+  assets: GeneratedAsset[]
+}): Shot[] {
+  const visualsByName = new Map(input.visuals.map((visual) => [visual.name, visual]))
+  const selected = latestSelectedAssets(input.assets)
+  return input.shots.map((shot) => {
+    const historicalMissing = new Set(shot.missingRefFor ?? [])
+    const missingRefFor = [...new Set((shot.characters ?? []).filter((name) => {
+      const visual = visualsByName.get(name)
+      if (!visual) return historicalMissing.has(name)
+      const targetId = visual.entityId ?? visual.id
+      return !selected.has(`character:${targetId}`)
+    }))]
+    const unchanged = missingRefFor.length === (shot.missingRefFor ?? []).length
+      && missingRefFor.every((name, index) => name === (shot.missingRefFor ?? [])[index])
+    return unchanged ? shot : { ...shot, missingRefFor }
+  })
+}
+
 export function auditShotProduction(input: {
   shots: Shot[]
   visuals: VisualCharacter[]
@@ -63,8 +90,9 @@ export function auditShotProduction(input: {
   const visualsByName = new Map(input.visuals.map((visual) => [visual.name, visual]))
   const placesByName = new Map((input.places ?? []).map((place) => [place.name, place]))
   const selected = latestSelectedAssets(input.assets)
+  const currentShots = reconcileShotReferenceGaps(input)
 
-  return input.shots.map((shot) => {
+  return currentShots.map((shot) => {
     const issues: ShotQcIssue[] = []
     const staleReferences: string[] = []
     const shotAsset = selected.get(`shot:${shot.entityId}`)

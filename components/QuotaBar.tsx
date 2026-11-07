@@ -65,8 +65,9 @@ export default function QuotaBar({
     )
   }
 
-  const ratio = quota.limit > 0 ? quota.remaining / quota.limit : 0
-  const exhausted = quota.remaining <= 0
+  const unlimited = quota.unlimited === true
+  const ratio = unlimited ? 1 : quota.limit > 0 ? quota.remaining / quota.limit : 0
+  const exhausted = !unlimited && quota.remaining <= 0
   const low = !exhausted && ratio <= 0.5
 
   // 三档都用「纸」表达，只靠朱砂的深浅区分严重程度，不再引第二个色相
@@ -76,21 +77,36 @@ export default function QuotaBar({
       ? { box: 'border-accent-200 bg-accent-50', text: 'text-accent-700', bar: 'bg-accent-400' }
       : { box: 'border-surface-line bg-surface-soft', text: 'text-ink-600', bar: 'bg-ink-300' }
 
-  const label = exhausted ? '今日创作额度已用完' : '今日剩余创作额度'
+  const label = unlimited
+    ? '管理账号 · 无限额度'
+    : exhausted
+      ? '今日创作额度已用完'
+      : '今日剩余创作额度'
   const estimate = quota.estimates.selected
   const projectsText = estimate.projectsLeft >= 1
     ? `约 ${estimate.projectsLeft} 部 ${estimate.episodeCount} 集短剧`
     : '不够一部完整短剧'
-  const value = exhausted
-    ? '明天恢复'
-    : projectsText
+  const value = unlimited
+    ? '不限次数'
+    : exhausted
+      ? '明天恢复'
+      : projectsText
   const presetText = quota.projectEstimates
     .map((item) => `${item.episodeCount} 集约 ${item.projectsLeft} 部`)
     .join(' · ')
-  const detail = `本日创作额度 ${quota.remaining}/${quota.limit} 单位。当前 ${estimate.episodeCount} 集项目约 ${estimate.units} 单位；${presetText}。图片生成 ${quota.mediaCosts.imageGenerate} 单位、编辑 ${quota.mediaCosts.imageEdit} 单位、成片 ${quota.mediaCosts.render} 单位；视频、TTS 与 Agent 重试共用本额度。`
+  const detail = unlimited
+    ? '内部管理账号不扣减平台额度，真实模型调用仍会记录用量；上游供应商自身限流和余额限制继续生效。'
+    : `本日创作额度 ${quota.remaining}/${quota.limit} 单位。当前 ${estimate.episodeCount} 集项目约 ${estimate.units} 单位；${presetText}。图片生成 ${quota.mediaCosts.imageGenerate} 单位、编辑 ${quota.mediaCosts.imageEdit} 单位、成片 ${quota.mediaCosts.render} 单位；视频、TTS 与 Agent 重试共用本额度。`
 
   // 顶栏内联版：只留数字，明细进 title
   if (inline) {
+    if (unlimited) {
+      return (
+        <span className="h-quota" title={detail}>
+          管理账号 · 无限额度
+        </span>
+      )
+    }
     const inlineTitle = exhausted
       ? `${label}（本日 ${quota.remaining}/${quota.limit} 单位），明天按北京时间恢复。`
       : `${label}：${detail}`
@@ -143,6 +159,11 @@ export default function QuotaBar({
       {exhausted && (
         <p className={`mt-1.5 text-[11px] leading-relaxed ${tone.text}`}>
           今日创作额度将在北京时间零点恢复。
+        </p>
+      )}
+      {unlimited && (
+        <p className={`mt-1.5 text-[11px] leading-relaxed ${tone.text}`}>
+          内部管理账号 · 不扣减平台额度，实际消耗仍记录在台账。
         </p>
       )}
     </div>

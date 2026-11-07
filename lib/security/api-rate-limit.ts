@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import type { DatabaseSync } from "node:sqlite"
 
 import { clientIpFromRequest } from "../auth/rate-limit.ts"
+import { isUnlimitedQuotaIdentity } from "../auth/unlimited.ts"
 
 const TEN_MINUTES = 10 * 60_000
 const ONE_DAY = 24 * 60 * 60_000
@@ -47,9 +48,10 @@ export const API_RATE_LIMIT_POLICIES: Record<ApiRateLimitGroup, ApiRateLimitPoli
     group: "image",
     label: "图像生成",
     message: "图像生成请求过于频繁，请稍后再试",
-    ipLimit: { env: "API_IMAGE_IP_10M_LIMIT", fallback: 20, windowMs: TEN_MINUTES },
-    identityLimit: { env: "API_IMAGE_IDENTITY_10M_LIMIT", fallback: 10, windowMs: TEN_MINUTES },
-    globalLimit: { env: "API_IMAGE_GLOBAL_DAILY_LIMIT", fallback: 500, windowMs: ONE_DAY },
+    // 批量图像由持久化队列控制真实并发；短时限流只防脚本滥刷批次提交。
+    ipLimit: { env: "API_IMAGE_IP_10M_LIMIT", fallback: 120, windowMs: TEN_MINUTES },
+    identityLimit: { env: "API_IMAGE_IDENTITY_10M_LIMIT", fallback: 60, windowMs: TEN_MINUTES },
+    globalLimit: { env: "API_IMAGE_GLOBAL_DAILY_LIMIT", fallback: 2_000, windowMs: ONE_DAY },
   },
   video: {
     group: "video",
@@ -129,6 +131,7 @@ export interface ApiRateLimitAvailability {
   remaining: number
   resetAt: number
   retryAfterSeconds: number
+  unlimited: boolean
 }
 
 function envLimit(
@@ -176,6 +179,19 @@ export function getApiRateLimitAvailability(
   const env = options.env ?? process.env
   const ip = clientIpFromRequest(req)
   const identity = options.identity.trim() || "unknown"
+  if (isUnlimitedQuotaIdentity(db, identity, env)) {
+    return {
+      group,
+      label: policy.label,
+      scope: "identity",
+      limit: Number.MAX_SAFE_INTEGER,
+      used: 0,
+      remaining: Number.MAX_SAFE_INTEGER,
+      resetAt: now,
+      retryAfterSeconds: 0,
+      unlimited: true,
+    }
+  }
   const rules: RateRule[] = [
     {
       bucket: `api:${group}:ip:10m`,
@@ -222,6 +238,7 @@ export function getApiRateLimitAvailability(
       remaining: Math.max(0, rule.limit - used),
       resetAt,
       retryAfterSeconds: Math.max(0, Math.ceil((resetAt - now) / 1_000)),
+      unlimited: false,
     }
     if (
       !strictest
@@ -253,6 +270,7 @@ export function enforceApiRateLimit(
   const env = options.env ?? process.env
   const ip = clientIpFromRequest(req)
   const identity = options.identity.trim() || "unknown"
+  if (isUnlimitedQuotaIdentity(db, identity, env)) return
   const rules: RateRule[] = [
     {
       bucket: `api:${group}:ip:10m`,

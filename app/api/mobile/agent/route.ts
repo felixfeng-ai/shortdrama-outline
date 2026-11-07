@@ -85,6 +85,7 @@ export async function POST(req: Request) {
         projectsLeft: estimate.projectsLeft,
         episodeCount: estimate.episodeCount,
         projectCost: estimate.units,
+        unlimited: quota.unlimited,
       },
     })
 
