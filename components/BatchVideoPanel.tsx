@@ -15,6 +15,10 @@ import { useVideoCapabilities } from '@/lib/video/use-video-capabilities'
 import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
 import VideoGenerationSettings from './VideoGenerationSettings'
 
+/**
+ * 批量视频只提交准备完成、时长兼容且预算明确的独立镜头任务。
+ * 模型能力失败或单镜不兼容时只阻断对应镜头，不能把整批静默改成默认模型。
+ */
 interface Props {
   projectId: string | null
   onEnsureProject: () => Promise<string | null>
@@ -66,6 +70,7 @@ export default function BatchVideoPanel({
   const [notice, setNotice] = useState<string | null>(null)
   const videoSettings = useVideoCapabilities()
 
+  // 能力未就绪时所有镜头都视为未就绪，避免用户提交后才收到统一 4xx。
   const capabilityReason = videoSettings.loading
     ? '视频能力读取中'
     : videoSettings.error

@@ -21,6 +21,7 @@ export interface VideoBatchResult {
   failures: Array<{ targetId: string; reason: string }>
 }
 
+/** Web 视频能力入口；客户端不能用环境变量或组件常量自行推断可用模型。 */
 export async function fetchVideoCapabilities(): Promise<PublicVideoCapabilities> {
   const response = await fetch("/api/video/capabilities", { cache: "no-store" })
   const payload = await response.json().catch(() => null)

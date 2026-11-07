@@ -48,7 +48,7 @@ import WorkspaceHome from '@/components/WorkspaceHome'
 import QuickTrialProgress, { type QuickTrialPhase } from '@/components/QuickTrialProgress'
 import '@/app/skills/skills.css'
 import '@/app/workspace-shell.css'
-import { buildTodoList } from '@/lib/todo'
+import { buildTodoList, type TodoItem } from '@/lib/todo'
 import {
   DEFAULT_EPISODE_COUNT,
   clampEpisodeCount,
@@ -83,6 +83,7 @@ import ShotInspector from '@/components/ShotInspector'
 import SceneList from '@/components/SceneList'
 import VisualAnchorPanel from '@/components/VisualAnchorPanel'
 import PlacePanel from '@/components/PlacePanel'
+import { applyProjectRework } from '@/lib/rework/client'
 import VaultPanel from '@/components/VaultPanel'
 import VersionBar from '@/components/VersionBar'
 import CopyButton from '@/components/CopyButton'
@@ -1547,6 +1548,53 @@ export default function Home() {
     setMetaPanel('ledger')
   }
 
+  /**
+   * 总览阻断动作：只有掉锚点是确定性修复，其他问题先定位到能处理的位置。
+   * 修复成功必须先写快照再替换内存状态，避免刷新后丢失。
+   */
+  async function handleProductionAction(item: TodoItem) {
+    if (item.id === "expired-shots" && projectId && shots.length > 0) {
+      try {
+        const result = await applyProjectRework(projectId, {
+          action: "repair-anchors",
+          shotIds: shots.map((shot) => shot.entityId),
+        })
+        if (result.changedIds.length === 0) {
+          setNotice("当前镜头没有可自动修复的锚点，请到分镜页检查具体问题。")
+          goToStep("shots")
+          return
+        }
+        setShots(result.shots)
+        void refreshImpact(projectId)
+        goToStep("shots")
+        setNotice(`已修复 ${result.changedIds.length} 个镜头的提示词，并保存新的分镜版本。`)
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : "修复保存失败，请重试。")
+      }
+      return
+    }
+
+    if (item.id === "rework-shots") {
+      const params = new URLSearchParams(window.location.search)
+      params.set("step", "shots")
+      params.set("qc", "issues")
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}?${params.toString()}${window.location.hash}`,
+      )
+    }
+
+    goToStep(item.step)
+    setNotice(
+      item.id === "missing-refs"
+        ? "已打开定妆步骤，请为缺失角色挂上本地参考图。"
+        : item.kind === "fix"
+          ? "已打开对应处理位置。"
+          : "已进入下一步。",
+    )
+  }
+
   function openCanvasItem(node: CanvasNodeId, itemId: string) {
     const step: StepKey = node === 'places' ? 'scenes' : node
     if (node === 'shots') {
@@ -1743,6 +1791,7 @@ export default function Home() {
     abortRef.current = controller
     let activePhase: QuickTrialPhase = "characters"
     try {
+      // 先落生产计划再生成内容；失败时用户仍能看到真实项目归属，而不是孤立草稿。
       const pid = await ensureProject(quickIdea.slice(0, 20))
       if (!pid) throw new Error("项目创建失败，请稍后重试。")
 
@@ -1774,6 +1823,7 @@ export default function Home() {
       setErrors((state) => ({ ...state, characters: null }))
       setNotice("已建立 1 集样片，正在生成核心人物、三幕和第一集。")
 
+      // 三个阶段顺序执行并把结果写回各自快照，下一页阶段只使用已经落库的上游。
       const characterData = await postJson<{ characters: Character[] }>(
         "/api/characters",
         {
@@ -1789,6 +1839,7 @@ export default function Home() {
       setCharacters(quickCharacters)
       setStatus((state) => ({ ...state, characters: "done" }))
 
+      // 使用本次返回的角色数组，不读取尚未刷新的 React 状态，避免快速连续生成拿到旧人物。
       activePhase = "acts"
       setQuickTrial({ phase: "acts", error: null })
       setStatus((state) => ({ ...state, acts: "loading" }))
@@ -1810,6 +1861,7 @@ export default function Home() {
       setActsBuiltFrom(`${JSON.stringify(quickCharacters)}|${briefSig}`)
       setStatus((state) => ({ ...state, acts: "done" }))
 
+      // 快速试片只生成第一集；视觉、首帧和视频保留人工付费确认，防止一次点击扩大成本。
       activePhase = "episodes"
       setQuickTrial({ phase: "episodes", error: null })
       setStatus((state) => ({ ...state, episodes: "streaming" }))
@@ -1855,6 +1907,7 @@ export default function Home() {
       goToStep("episodes")
       setNotice("第一集故事骨架已生成，可以检查人物、钩子和分集内容。")
     } catch (error) {
+      // 失败按当前阶段落状态；已完成快照保留，用户可修正后继续，不假装整套流程成功。
       if (isCleared(epoch)) return
       const message = isAbortError(error)
         ? "快速试片已停止，已经完成的内容会保留。"
@@ -4048,6 +4101,7 @@ export default function Home() {
                 setAgentOpen(true)
                 setInspectorOpen(false)
               }}
+              onTodoAction={(item) => { void handleProductionAction(item) }}
               onStartQuickTrial={startQuickTrial}
               onStartGuided={startGuidedCreation}
               onOpenSource={openWorkspaceSource}

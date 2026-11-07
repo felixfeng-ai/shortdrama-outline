@@ -6,6 +6,10 @@ import { projectQuotaUnits } from "@/lib/episodes"
 import { MIN_IDEA_LENGTH } from "@/lib/types"
 import { ONBOARDING_STEPS } from "@/lib/workspace-onboarding"
 
+/**
+ * 首次入口只负责收集真实起点并明确付费意图。
+ * 快速试片会建立样片计划；分步制作只带入想法，不提前建项目或扣额度。
+ */
 interface Props {
   onStartQuickTrial: (idea: string) => Promise<void>
   onStartGuided: (idea: string) => void
@@ -34,6 +38,7 @@ export default function WorkspaceOnboarding({
   const [idea, setIdea] = useState("")
   const [busy, setBusy] = useState<"quick" | "guided" | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // 展示口径来自统一额度计算，不在组件里手写样片成本。
   const sampleUnits = projectQuotaUnits(1)
 
   function readIdea(): string | null {
@@ -51,6 +56,7 @@ export default function WorkspaceOnboarding({
     if (!value || busy) return
     setBusy("quick")
     try {
+      // 页面负责实际生成；组件只在失败时保留错误，不伪造成功进度。
       await onStartQuickTrial(value)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "样片启动失败，请重试。")
@@ -64,6 +70,7 @@ export default function WorkspaceOnboarding({
     if (!value || busy) return
     setBusy("guided")
     try {
+      // 分步制作保持零副作用，生产计划由用户后续明确确认。
       onStartGuided(value)
     } finally {
       setBusy(null)

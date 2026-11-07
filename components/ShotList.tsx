@@ -12,6 +12,7 @@ import type { GeneratedAsset, GenerationStatus, GenerationTask } from '@/lib/gen
 import type { Shot, VisualCharacter, VisualPlace } from '@/lib/assets/types'
 import type { Character } from '@/lib/types'
 import { fetchProjectVideoState } from '@/lib/video/client'
+import { applyProjectRework } from '@/lib/rework/client'
 import {
   auditShotProduction,
   repairShotAnchors,
@@ -75,6 +76,7 @@ export default function ShotList({
   const [sceneFilter, setSceneFilter] = useState<string | null>(null)
   const [qcFilter, setQcFilter] = useState<'all' | 'issues'>('all')
   const [qcNotice, setQcNotice] = useState<string | null>(null)
+  const [repairingAnchors, setRepairingAnchors] = useState(false)
   const [treeOpen, setTreeOpen] = useState(true)
   const [workspaceMode, setWorkspaceMode] = useState<'storyboard' | 'video' | 'timeline'>('storyboard')
   const [generationAssets, setGenerationAssets] = useState<GeneratedAsset[]>([])
@@ -169,6 +171,8 @@ export default function ShotList({
         parsed !== null && Number.isInteger(parsed) && parsed >= 0 ? parsed : null,
       )
       setSceneFilter(params.get('scene') || null)
+      // 总览返修动作通过 qc=issues 直达问题镜头，不要求用户再次手动筛选。
+      setQcFilter(params.get('qc') === 'issues' ? 'issues' : 'all')
       const shotId = params.get('shot')
       if (shotId) onSelectRef.current?.(shotId)
     }
@@ -224,28 +228,47 @@ export default function ShotList({
     onChange(shots.map((shot) => (shot.id === id ? { ...shot, ...patch } : shot)))
   }
 
-  function repairVisibleAnchors() {
-    const targets = new Set(
-      visibleShots
-        .filter((shot) => {
-          const qc = qcByShotId.get(shot.id)
-          return qc?.issues.some((issue) =>
-            issue.code === 'missing-anchor' || issue.code === 'locked-trait')
-        })
-        .map((shot) => shot.id),
-    )
-    if (targets.size === 0) {
+  async function repairVisibleAnchors() {
+    if (repairingAnchors) return
+    const targets = visibleShots.filter((shot) => {
+      const qc = qcByShotId.get(shot.id)
+      return qc?.issues.some((issue) =>
+        issue.code === 'missing-anchor' || issue.code === 'locked-trait')
+    })
+    if (targets.length === 0) {
       setQcNotice('当前范围没有需要补齐的锚点。')
       return
     }
-    let changed = 0
-    onChange(shots.map((shot) => {
-      if (!targets.has(shot.id)) return shot
-      const repaired = repairShotAnchors(shot, visuals, places)
-      if (repaired.prompt !== shot.prompt) changed += 1
-      return repaired
-    }))
-    setQcNotice(`已修复 ${changed} 个镜头的 Prompt；已出图镜头已转为需返修。`)
+    setRepairingAnchors(true)
+    try {
+      if (projectId) {
+        // 服务端读取最新锚点并保存新快照，避免页面内存成为修复事实源。
+        const result = await applyProjectRework(projectId, {
+          action: 'repair-anchors',
+          shotIds: targets.map((shot) => shot.entityId),
+        })
+        onChange(result.shots)
+        setQcNotice(
+          result.changedIds.length > 0
+            ? `已修复 ${result.changedIds.length} 个镜头的 Prompt；已出图镜头已转为需返修。`
+            : '当前锚点已经是完整状态，没有产生新版本。',
+        )
+        return
+      }
+      const ids = new Set(targets.map((shot) => shot.id))
+      let changed = 0
+      onChange(shots.map((shot) => {
+        if (!ids.has(shot.id)) return shot
+        const repaired = repairShotAnchors(shot, visuals, places)
+        if (repaired.prompt !== shot.prompt) changed += 1
+        return repaired
+      }))
+      setQcNotice(`已修复 ${changed} 个镜头的 Prompt；未保存项目，因此只保留在当前页面。`)
+    } catch (cause) {
+      setQcNotice(cause instanceof Error ? cause.message : '批量返修失败，请重试。')
+    } finally {
+      setRepairingAnchors(false)
+    }
   }
 
   function markStaleReferencesForRework() {
@@ -469,10 +492,10 @@ export default function ShotList({
           <div className="shot-qc-actions">
             <button
               type="button"
-              disabled={qcCounts.missingAnchors === 0}
-              onClick={repairVisibleAnchors}
+              disabled={qcCounts.missingAnchors === 0 || repairingAnchors}
+              onClick={() => { void repairVisibleAnchors() }}
             >
-              修复提示词
+              {repairingAnchors ? '修复中…' : '修复提示词'}
             </button>
             <button
               type="button"

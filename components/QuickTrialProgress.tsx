@@ -1,5 +1,9 @@
 "use client"
 
+/**
+ * 快速试片运行条只表达真实完成阶段。
+ * ready 和 error 是终止态：前者允许查看第一集，后者保留已完成内容并说明失败。
+ */
 export type QuickTrialPhase = "characters" | "acts" | "episodes" | "ready"
 
 interface Props {
@@ -16,6 +20,7 @@ const STEPS: Array<{ phase: Exclude<QuickTrialPhase, "ready">; label: string }> 
 ]
 
 function phaseIndex(phase: QuickTrialPhase): number {
+  // ready 视为三步全部完成，避免最后一个阶段一直显示为进行中。
   if (phase === "ready") return STEPS.length
   return STEPS.findIndex((step) => step.phase === phase)
 }

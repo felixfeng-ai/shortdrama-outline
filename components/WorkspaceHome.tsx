@@ -20,7 +20,12 @@ import {
 } from '@/lib/workspace-view'
 import ProductionStageHeader from './ProductionStageHeader'
 import WorkspaceOnboarding from './WorkspaceOnboarding'
+import ProductionActionCenter from './ProductionActionCenter'
 
+/**
+ * 项目总览只负责汇总真实状态和提供下一步入口。
+ * 修复动作仍回到各步骤的现有写入链路，总览不复制生成或版本逻辑。
+ */
 interface Props {
   projectTitle: string
   genreLabel: string
@@ -39,6 +44,7 @@ interface Props {
   onOpenStep: (step: StepKey) => void
   onOpenArtifacts: () => void
   onOpenAgent: () => void
+  onTodoAction: (item: TodoItem) => void
   onStartQuickTrial: (idea: string) => Promise<void>
   onStartGuided: (idea: string) => void
   onOpenSource: () => void
@@ -80,6 +86,7 @@ export default function WorkspaceHome({
   onOpenStep,
   onOpenArtifacts,
   onOpenAgent,
+  onTodoAction,
   onStartQuickTrial,
   onStartGuided,
   onOpenSource,
@@ -229,6 +236,8 @@ export default function WorkspaceHome({
           })}
         </div>
       </section>
+
+      <ProductionActionCenter items={todoItems} onAction={onTodoAction} />
 
       <div className="wfx-home-grid">
         <section className="wfx-panel wfx-current-panel" aria-labelledby="wfx-current-title">

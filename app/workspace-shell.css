@@ -1455,6 +1455,23 @@
     flex: 1;
     min-height: 40px;
   }
+
+  .wfx-production-actions > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wfx-production-actions button {
+    min-height: 66px;
+  }
+
+  .wfx-production-actions button + button {
+    border-top: 1px solid var(--wfx-line);
+    border-left: 0;
+  }
+
+  .wfx-production-actions button small {
+    white-space: normal;
+  }
 }
 
 .wfx-page-head {
@@ -2499,6 +2516,92 @@
 
 .wfx-command {
   position: relative;
+}
+
+.wfx-production-actions {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--wfx-danger) 25%, var(--wfx-line));
+  border-radius: var(--wfx-radius);
+  background: var(--wfx-surface);
+}
+
+.wfx-production-actions > header {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--wfx-line);
+}
+
+.wfx-production-actions > header span {
+  color: var(--wfx-danger);
+  font-size: 10.5px;
+}
+
+.wfx-production-actions > header b {
+  color: var(--wfx-muted);
+  font-size: 11px;
+  font-weight: 560;
+}
+
+.wfx-production-actions > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wfx-production-actions button {
+  display: grid;
+  min-width: 0;
+  min-height: 72px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--wfx-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.wfx-production-actions button + button {
+  border-left: 1px solid var(--wfx-line);
+}
+
+.wfx-production-actions button:hover,
+.wfx-production-actions button:focus-visible {
+  background: var(--wfx-surface-2);
+}
+
+.wfx-production-actions button > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.wfx-production-actions button b {
+  color: var(--wfx-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wfx-production-actions button small {
+  overflow: hidden;
+  color: var(--wfx-faint);
+  font-size: 10.5px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wfx-production-actions button em {
+  color: var(--wfx-danger);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
 }
 
 .wfx-step-track {

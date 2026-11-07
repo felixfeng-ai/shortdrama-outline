@@ -30,6 +30,7 @@ export default function EpisodeCountPicker({
 }: Props) {
   const [draft, setDraft] = useState(value === null ? '' : String(value))
   useEffect(() => setDraft(value === null ? '' : String(value)), [value])
+  // 样片允许 1-3 集；正式项目仍沿用 6-120 集的批次和额度口径。
   const min = sampleMode ? 1 : MIN_EPISODE_COUNT
   const max = sampleMode ? 3 : MAX_EPISODE_COUNT
   const presets = sampleMode ? [1, 3] : EPISODE_PRESETS

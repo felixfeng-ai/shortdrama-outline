@@ -7,6 +7,10 @@ import {
 } from "@/lib/video/catalog"
 import type { PublicVideoCapabilities } from "@/lib/video/model"
 
+/**
+ * 视频模型设置唯一读取服务端公开能力。
+ * 单镜传入 duration 时校验模型时长；批量只显示每秒价格，由父组件汇总总预算。
+ */
 interface Props {
   capabilities: PublicVideoCapabilities | null
   model: string

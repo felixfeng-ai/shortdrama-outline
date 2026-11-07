@@ -4,6 +4,10 @@ import type {
   PublicVideoModelCapability,
 } from "./model.ts"
 
+/**
+ * 视频能力的客户端纯函数层。
+ * 默认模型、分辨率、价格和时长兼容性都来自服务端能力，禁止在这里复制供应商常量。
+ */
 export interface VideoSelection {
   model: string
   resolution: string
@@ -22,6 +26,7 @@ export function resolveVideoSelection(
   requestedModel?: string,
   requestedResolution?: string,
 ): VideoSelection {
+  // 切换模型时优先保留当前分辨率；不兼容才回落到服务端默认或首个支持项。
   const model = findVideoModel(capabilities, requestedModel ?? capabilities.defaultModel)
     ?? findVideoModel(capabilities, capabilities.defaultModel)
     ?? capabilities.models[0]

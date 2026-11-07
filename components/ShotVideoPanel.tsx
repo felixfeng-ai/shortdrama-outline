@@ -19,6 +19,10 @@ import { useVideoCapabilities } from '@/lib/video/use-video-capabilities'
 import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
 import VideoGenerationSettings from './VideoGenerationSettings'
 
+/**
+ * 单镜视频面板把首帧、模型选择、预算、候选和重试放在同一处。
+ * 能力读取或时长校验失败时必须阻断提交，避免前端默认值绕过服务端规则。
+ */
 interface Props {
   projectId: string | null
   onEnsureProject: () => Promise<string | null>
@@ -118,6 +122,7 @@ export default function ShotVideoPanel({
     || !videoSettings.resolution
     || !durationSupported
     || estimatedCostMicros === null
+  // 图生视频和模型能力是两道独立门禁：首帧存在不代表模型/时长可用。
   const frameBlocked = mode === 'image-to-video' && !frame
   const blocked = capabilityBlocked || frameBlocked
   const retryable = latestTask?.status === 'failed' || latestTask?.status === 'canceled'
@@ -200,6 +205,7 @@ export default function ShotVideoPanel({
     setError(null)
     setNotice(null)
     try {
+      // 重试由服务端复制失败任务，旧候选和采用版本保持不变。
       const result = await retryVideoTask(projectId, latestTask.id)
       setTasks((current) => [result.task, ...current])
       setNotice(result.reused ? '已恢复现有重试任务。' : '失败任务已重新提交。')

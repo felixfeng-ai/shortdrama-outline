@@ -10,6 +10,10 @@ import {
 } from "./catalog.ts"
 import type { PublicVideoCapabilities } from "./model.ts"
 
+/**
+ * Web 视频能力状态钩子。
+ * 加载失败时不回退到硬编码模型，而是把错误交给面板阻断提交，避免价格和模型漂移。
+ */
 export function useVideoCapabilities() {
   const [capabilities, setCapabilities] = useState<PublicVideoCapabilities | null>(null)
   const [model, setModelValue] = useState("")
@@ -52,6 +56,7 @@ export function useVideoCapabilities() {
 
   const setModel = useCallback((nextModel: string) => {
     if (!capabilities) return
+    // 模型和分辨率必须成对合法，不能先把模型切过去再留下不支持的分辨率。
     const selected = resolveVideoSelection(capabilities, nextModel, resolution)
     setModelValue(selected.model)
     setResolutionValue(selected.resolution)
