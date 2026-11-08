@@ -11,11 +11,18 @@ import {
 } from '@/lib/audio/bgm-client'
 import type { BgmTrack } from '@/lib/audio/bgm-types'
 import { fetchAudioState } from '@/lib/audio/client'
-import type { TimelineDialogueLine, VideoRenderDto } from '@/lib/video/render-types'
+import type {
+  RenderExportPreset,
+  RenderQualityProfile,
+  TimelineDialogueLine,
+  VideoRenderDto,
+} from '@/lib/video/render-types'
 import {
   enqueueFrozenEpisodeQueue,
   enqueueVideoRender,
   fetchVideoRenders,
+  smartRenderEpisode,
+  updateRenderApproval,
 } from '@/lib/video/render-client'
 import { RENDER_UNITS } from '@/lib/model-pricing'
 import {
@@ -360,8 +367,16 @@ export default function EpisodeTimelinePanel({
   const [audioAssets, setAudioAssets] = useState<Awaited<ReturnType<typeof fetchAudioState>>['assets']>([])
   const [renders, setRenders] = useState<VideoRenderDto[]>([])
   const [selectedVersionId, setSelectedVersionId] = useState('')
+  const [renderQuality, setRenderQuality] = useState<RenderQualityProfile>('preview')
+  const [exportPreset, setExportPreset] = useState<RenderExportPreset>('vertical')
+  const [transitionType, setTransitionType] = useState<'cut' | 'fade'>('fade')
+  const [transitionDuration, setTransitionDuration] = useState(0.2)
+  const [subtitleStyle, setSubtitleStyle] = useState<'clean' | 'cinematic' | 'bold'>('clean')
+  const [bgmDucking, setBgmDucking] = useState(true)
   const [enqueueingRender, setEnqueueingRender] = useState(false)
+  const [smartRendering, setSmartRendering] = useState(false)
   const [queueingAllEpisodes, setQueueingAllEpisodes] = useState(false)
+  const [approvalWorkingId, setApprovalWorkingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -433,6 +448,10 @@ export default function EpisodeTimelinePanel({
       setBgmVolume(state.draft?.payload.audio.bgmVolume ?? 0.3)
       setBgmFadeInSeconds((state.draft?.payload.audio.bgmFadeInMs ?? 600) / 1000)
       setBgmFadeOutSeconds((state.draft?.payload.audio.bgmFadeOutMs ?? 1_000) / 1000)
+      setTransitionType(state.draft?.payload.video?.transition === 'cut' ? 'cut' : 'fade')
+      setTransitionDuration((state.draft?.payload.video?.transitionDurationMs ?? 200) / 1000)
+      setSubtitleStyle(state.draft?.payload.subtitle.style ?? 'clean')
+      setBgmDucking(state.draft?.payload.audio.bgmDucking !== false)
       setBgmStatus({ kind: 'idle', message: '' })
     } catch (cause) {
       setDraft(null)
@@ -598,6 +617,38 @@ export default function EpisodeTimelinePanel({
     }
   }
 
+  async function savePostSettings() {
+    if (!currentProjectId || !draft || working) return
+    setWorking(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await saveTimelineDraft({
+        projectId: currentProjectId,
+        episode,
+        expectedRevision: draft.revision,
+        payload: {
+          ...draft.payload,
+          subtitle: { enabled: true, style: subtitleStyle },
+          video: {
+            transition: transitionType,
+            transitionDurationMs: Math.round(transitionDuration * 1000),
+          },
+          audio: {
+            ...draft.payload.audio,
+            bgmDucking,
+          },
+        },
+      })
+      setDraft(result.draft)
+      setNotice('后期设置已保存。请固化当前草稿后再渲染新版本。')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '后期设置保存失败')
+    } finally {
+      setWorking(false)
+    }
+  }
+
   async function uploadBgm() {
     if (!currentProjectId || !bgmFile || !bgmLicensed || uploadingBgm) return
     setUploadingBgm(true)
@@ -739,6 +790,12 @@ export default function EpisodeTimelinePanel({
     || Math.abs(bgmFadeInSeconds * 1000 - (draft.payload.audio.bgmFadeInMs ?? 600)) > 1
     || Math.abs(bgmFadeOutSeconds * 1000 - (draft.payload.audio.bgmFadeOutMs ?? 1_000)) > 1
   ))
+  const postSettingsDirty = Boolean(draft && (
+    transitionType !== (draft.payload.video?.transition ?? 'fade')
+    || Math.abs(transitionDuration * 1000 - (draft.payload.video?.transitionDurationMs ?? 200)) > 1
+    || subtitleStyle !== (draft.payload.subtitle.style ?? 'clean')
+    || bgmDucking !== (draft.payload.audio.bgmDucking !== false)
+  ))
   const bgmCanApply = Boolean(
     draft
     && !working
@@ -829,6 +886,8 @@ export default function EpisodeTimelinePanel({
         projectId: currentProjectId,
         episode,
         timelineVersionId: selectedVersion.id,
+        qualityProfile: renderQuality,
+        exportPreset,
       })
       setRenders((current) => [
         result.render,
@@ -839,6 +898,43 @@ export default function EpisodeTimelinePanel({
       setError(cause instanceof Error ? cause.message : '加入渲染队列失败')
     } finally {
       setEnqueueingRender(false)
+    }
+  }
+
+  async function runSmartFilm() {
+    if (!currentProjectId || smartRendering) return
+    setSmartRendering(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await smartRenderEpisode({
+        projectId: currentProjectId,
+        episode,
+        qualityProfile: renderQuality,
+        exportPreset,
+      })
+      setRenders((current) => [
+        result.render,
+        ...current.filter((render) => render.id !== result.render.id),
+      ])
+      setVersions((current) => [
+        result.version,
+        ...current.filter((version) => version.id !== result.version.id),
+      ])
+      setSelectedVersionId(result.version.id)
+      await load(episode, currentProjectId)
+      const summary = [
+        `已自动采用 ${result.adoptedVideoCount} 条视频`,
+        result.generatedTtsCount > 0 ? `补齐 ${result.generatedTtsCount} 条配音` : null,
+        result.bgmTrackId ? '已匹配系统配乐' : null,
+        `已固化 v${result.version.revision} 并加入${result.qualityProfile === 'delivery' ? '交付版' : '预览版'}渲染`,
+        ...result.warnings,
+      ].filter(Boolean)
+      setNotice(summary.join('；'))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '智能成片失败')
+    } finally {
+      setSmartRendering(false)
     }
   }
 
@@ -914,6 +1010,44 @@ export default function EpisodeTimelinePanel({
       setError(cause instanceof Error ? cause.message : '批量排队失败')
     } finally {
       setQueueingAllEpisodes(false)
+    }
+  }
+
+  async function changeRenderApproval(
+    render: VideoRenderDto,
+    action: 'request' | 'approve' | 'request_changes',
+  ) {
+    if (!currentProjectId || approvalWorkingId) return
+    setApprovalWorkingId(render.id)
+    setError(null)
+    try {
+      const approval = await updateRenderApproval({
+        projectId: currentProjectId,
+        renderId: render.id,
+        action,
+        note: action === 'request_changes' ? '请根据交付审核意见修改。' : '',
+      })
+      setRenders((current) => current.map((item) =>
+        item.id === render.id
+          ? {
+              ...item,
+              approvalStatus: approval.status,
+              approvalNote: approval.note,
+              approvalReviewedAt: approval.reviewedAt,
+            }
+          : item
+      ))
+      setNotice(
+        approval.status === 'approved'
+          ? '交付审核已通过。'
+          : approval.status === 'changes_requested'
+            ? '已退回修改。'
+            : '已提交交付审核。',
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '交付审核操作失败')
+    } finally {
+      setApprovalWorkingId(null)
     }
   }
 
@@ -1038,6 +1172,15 @@ export default function EpisodeTimelinePanel({
           </div>
 
           <div className="episode-timeline-output-actions">
+            {draft && !latestSuccessfulRender && !activeRender && (
+              <button
+                type="button"
+                disabled={smartRendering || working || loading}
+                onClick={() => void runSmartFilm()}
+              >
+                {smartRendering ? '智能处理中…' : '一键智能成片'}
+              </button>
+            )}
             {latestSuccessfulRender ? (
               <>
                 <a href={latestSuccessfulRender.videoUrl ?? '#'} download>下载 MP4</a>
@@ -1089,6 +1232,15 @@ export default function EpisodeTimelinePanel({
                 onClick={() => void enqueueRender()}
               >
                 {enqueueingRender ? '提交中…' : '生成成片'}
+              </button>
+            )}
+            {latestSuccessfulRender && draft && !activeRender && (
+              <button
+                type="button"
+                disabled={smartRendering || working || loading}
+                onClick={() => void runSmartFilm()}
+              >
+                {smartRendering ? '智能处理中…' : '重新智能成片'}
               </button>
             )}
           </div>
@@ -1538,7 +1690,82 @@ export default function EpisodeTimelinePanel({
                 )}
               </div>
             )}
+            <div className="episode-post-settings">
+              <label>
+                <span>镜头转场</span>
+                <select
+                  value={transitionType}
+                  onChange={(event) => setTransitionType(event.target.value as 'cut' | 'fade')}
+                >
+                  <option value="cut">硬切</option>
+                  <option value="fade">淡入淡出</option>
+                </select>
+              </label>
+              <label>
+                <span>转场时长</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={transitionDuration}
+                  onChange={(event) => setTransitionDuration(Number(event.target.value))}
+                />
+                <em>秒</em>
+              </label>
+              <label>
+                <span>字幕风格</span>
+                <select
+                  value={subtitleStyle}
+                  onChange={(event) => setSubtitleStyle(event.target.value as 'clean' | 'cinematic' | 'bold')}
+                >
+                  <option value="clean">简洁</option>
+                  <option value="cinematic">电影感</option>
+                  <option value="bold">高对比</option>
+                </select>
+              </label>
+              <label className="episode-post-toggle">
+                <input
+                  type="checkbox"
+                  checked={bgmDucking}
+                  onChange={(event) => setBgmDucking(event.target.checked)}
+                />
+                <span>对白时自动压低配乐</span>
+              </label>
+              <button
+                type="button"
+                disabled={!postSettingsDirty || working}
+                onClick={() => void savePostSettings()}
+              >
+                {working ? '保存中…' : postSettingsDirty ? '保存后期设置' : '设置已保存'}
+              </button>
+            </div>
             <div className="episode-render-controls">
+              <label>
+                <span>平台画幅</span>
+                <select
+                  aria-label="平台画幅"
+                  value={exportPreset}
+                  disabled={working || enqueueingRender}
+                  onChange={(event) => setExportPreset(event.target.value as RenderExportPreset)}
+                >
+                  <option value="vertical">抖音 / 快手 / 视频号 / Reels / Shorts · 竖屏</option>
+                  <option value="landscape">B站 / YouTube · 横屏</option>
+                  <option value="square">通用 · 方形</option>
+                </select>
+              </label>
+              <label>
+                <span>输出档位</span>
+                <select
+                  aria-label="输出档位"
+                  value={renderQuality}
+                  disabled={working || enqueueingRender}
+                  onChange={(event) => setRenderQuality(event.target.value as RenderQualityProfile)}
+                >
+                  <option value="preview">预览版 · 480P 快速验证</option>
+                  <option value="delivery">交付版 · 1080P 正式成片</option>
+                </select>
+              </label>
               <label>
                 <span>时间线版本</span>
                 <select
@@ -1612,6 +1839,11 @@ export default function EpisodeTimelinePanel({
                   <article key={render.id} className={`is-${render.status}`}>
                     <div>
                       <b>v{render.timelineRevision}</b>
+                      <small>
+                        {render.qualityProfile === 'delivery' ? '交付版' : '预览版'}
+                        {' · '}
+                        {render.exportPreset === 'landscape' ? '横屏' : render.exportPreset === 'square' ? '方形' : '竖屏'}
+                      </small>
                       <span>
                         {render.status === 'queued'
                           ? '排队中'
@@ -1628,6 +1860,46 @@ export default function EpisodeTimelinePanel({
                         <a href={render.videoUrl ?? '#'} download>下载 MP4</a>
                         <a href={render.subtitleUrl ?? '#'} download>下载 SRT</a>
                         <a href={render.manifestUrl ?? '#'} download>下载 manifest</a>
+                      </div>
+                    )}
+                    {render.status === 'succeeded' && (
+                      <div className="episode-render-approval">
+                        <span className={`is-${render.approvalStatus ?? 'draft'}`}>
+                          {render.approvalStatus === 'approved'
+                            ? '审核通过'
+                            : render.approvalStatus === 'changes_requested'
+                              ? '退回修改'
+                              : render.approvalStatus === 'pending'
+                                ? '待审核'
+                                : '未提交审核'}
+                        </span>
+                        {(!render.approvalStatus || render.approvalStatus === 'changes_requested') && (
+                          <button
+                            type="button"
+                            disabled={approvalWorkingId !== null}
+                            onClick={() => void changeRenderApproval(render, 'request')}
+                          >
+                            提交审核
+                          </button>
+                        )}
+                        {render.approvalStatus === 'pending' && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={approvalWorkingId !== null}
+                              onClick={() => void changeRenderApproval(render, 'approve')}
+                            >
+                              审核通过
+                            </button>
+                            <button
+                              type="button"
+                              disabled={approvalWorkingId !== null}
+                              onClick={() => void changeRenderApproval(render, 'request_changes')}
+                            >
+                              退回修改
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </article>

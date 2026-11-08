@@ -1,4 +1,37 @@
-import { IMAGE_GENERATION_UNITS, STEP_COST } from "../model-pricing.ts"
+import {
+  IMAGE_GENERATION_UNITS,
+  QUOTA_UNIT_MICROS,
+  STEP_COST,
+  quotaUnitsForCostMicros,
+} from "../model-pricing.ts"
+import { episodeQuotaUnits } from "../episodes.ts"
+
+export const QUICK_CREATION_TARGETS = ["story", "keyframe", "video"] as const
+export type QuickCreationTarget = (typeof QUICK_CREATION_TARGETS)[number]
+
+export interface QuickCreationVideoPrice {
+  enabled: boolean
+  model: string
+  resolution: string
+  durationSeconds: number
+  costMicros: number
+}
+
+export interface QuickCreationQuote {
+  target: QuickCreationTarget
+  label: string
+  description: string
+  units: number
+  totalMicros: number
+  videoCostMicros: number
+  estimatedSeconds: number
+  steps: string[]
+  available: boolean
+  unavailableReason: string | null
+  video: QuickCreationVideoPrice | null
+}
+
+export type QuickCreationQuotes = Record<QuickCreationTarget, QuickCreationQuote>
 
 export const QUICK_TRIAL_PHASES = [
   "start",
@@ -11,6 +44,8 @@ export const QUICK_TRIAL_PHASES = [
   "shots",
   "keyframe",
   "visual-ready",
+  "video",
+  "video-ready",
 ] as const
 
 export type QuickTrialPhase = (typeof QUICK_TRIAL_PHASES)[number]
@@ -22,7 +57,15 @@ export interface QuickTrialRunDto {
   phase: QuickTrialPhase
   status: QuickTrialRunStatus
   error: string | null
+  target: QuickCreationTarget
+  budgetUnits: number
+  budgetMicros: number
   visualApproved: boolean
+  videoApproved: boolean
+  videoBudgetMicros: number
+  videoModel: string | null
+  videoResolution: string | null
+  videoDurationSeconds: number
   createdAt: number
   updatedAt: number
 }
@@ -36,6 +79,97 @@ export const QUICK_TRIAL_VISUAL_UNITS =
   + STEP_COST.scenes
   + STEP_COST.shots
   + IMAGE_GENERATION_UNITS
+
+export const QUICK_TRIAL_STORY_UNITS =
+  STEP_COST.characters
+  + STEP_COST.acts
+  + episodeQuotaUnits(1)
+
+export function isQuickCreationTarget(value: unknown): value is QuickCreationTarget {
+  return typeof value === "string"
+    && QUICK_CREATION_TARGETS.includes(value as QuickCreationTarget)
+}
+
+/**
+ * 快速创作的价格只在服务端读取真实视频配置后生成。
+ * 三类范围共用同一额度口径，视频费用再换算为平台额度并计入总预算。
+ */
+export function buildQuickCreationQuotes(
+  videoInput?: QuickCreationVideoPrice,
+): QuickCreationQuotes {
+  const video = videoInput ?? {
+    enabled: false,
+    model: "",
+    resolution: "",
+    durationSeconds: 5,
+    costMicros: 0,
+  }
+  const videoUnits = video.costMicros > 0
+    ? quotaUnitsForCostMicros(video.costMicros)
+    : 0
+  const storyUnits = QUICK_TRIAL_STORY_UNITS
+  const keyframeUnits = storyUnits + QUICK_TRIAL_VISUAL_UNITS
+  const videoTotalUnits = keyframeUnits + videoUnits
+  const missingVideoReason = video.enabled
+    ? null
+    : "视频生成尚未启用或视频服务未配置，暂时不能选择单镜头视频。"
+
+  const make = (
+    target: QuickCreationTarget,
+    label: string,
+    description: string,
+    units: number,
+    estimatedSeconds: number,
+    steps: string[],
+    available = true,
+    unavailableReason: string | null = null,
+    videoCostMicros = 0,
+    includeVideo = false,
+  ): QuickCreationQuote => ({
+    target,
+    label,
+    description,
+    units,
+    totalMicros: units * QUOTA_UNIT_MICROS,
+    videoCostMicros,
+    estimatedSeconds,
+    steps,
+    available,
+    unavailableReason,
+    video: includeVideo ? video : null,
+  })
+
+  return {
+    story: make(
+      "story",
+      "故事样片",
+      "到第一集分集完成，先判断人物、钩子和冲突。",
+      storyUnits,
+      120,
+      ["人物", "三幕", "第一集"],
+    ),
+    keyframe: make(
+      "keyframe",
+      "首帧样片",
+      "继续完成定妆、场次、分镜和第 1 镜首帧。",
+      keyframeUnits,
+      360,
+      ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "首帧"],
+    ),
+    video: make(
+      "video",
+      "单镜头视频",
+      `在第 1 镜首帧后生成一条 ${video.durationSeconds} 秒视频。`,
+      videoTotalUnits,
+      600,
+      ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "首帧", "镜头视频"],
+      video.enabled,
+      missingVideoReason,
+      video.costMicros,
+      true,
+    ),
+  }
+}
 
 export function isQuickTrialPhase(value: unknown): value is QuickTrialPhase {
   return typeof value === "string"
@@ -56,6 +190,8 @@ const QUICK_TRIAL_RESUME_ORDER: QuickTrialPhase[] = [
   "shots",
   "keyframe",
   "visual-ready",
+  "video",
+  "video-ready",
 ]
 
 /**
@@ -63,9 +199,13 @@ const QUICK_TRIAL_RESUME_ORDER: QuickTrialPhase[] = [
  * 首集完成且尚未确认费用时显示 ready；完成后显示 visual-ready。
  */
 export function quickTrialDisplayPhase(run: QuickTrialRunDto): QuickTrialPhase {
-  if (run.status === "completed" || run.phase === "visual-ready") {
+  if (run.status === "completed") {
+    if (run.target === "story") return "ready"
+    if (run.target === "video") return "video-ready"
     return "visual-ready"
   }
+  if (run.phase === "video-ready") return "video-ready"
+  if (run.phase === "visual-ready") return run.target === "video" ? "video" : "visual-ready"
   if (run.phase === "episodes" && !run.visualApproved) return "ready"
   return nextQuickTrialPhase(run.phase)
 }
@@ -80,6 +220,14 @@ export function nextQuickTrialPhase(phase: QuickTrialPhase): QuickTrialPhase {
 
 export function isQuickTrialStoryPhase(phase: QuickTrialPhase): boolean {
   return phase === "start" || phase === "characters" || phase === "acts"
+}
+
+export function quickCreationTargetIncludesVisuals(target: QuickCreationTarget): boolean {
+  return target === "keyframe" || target === "video"
+}
+
+export function quickCreationTargetIncludesVideo(target: QuickCreationTarget): boolean {
+  return target === "video"
 }
 
 export function quickTrialCompletedAtLeast(

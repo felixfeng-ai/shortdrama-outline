@@ -4,8 +4,9 @@ import fs from "node:fs"
 
 import { PRODUCTION_MODE_PRESETS } from "../lib/production/presets.ts"
 
-test("PRODUI1 项目类型选择覆盖快速视频、短剧和后续营销", () => {
+test("PRODUI1 项目类型选择只新增短剧，旧快速出片转为兼容提示", () => {
   const source = fs.readFileSync("components/ProjectTypePicker.tsx", "utf8")
+  assert.doesNotMatch(source, /value:\s*["']quick_video["']/)
   assert.match(source, /快速出片/)
   assert.match(source, /短剧生产/)
   assert.match(source, /营销视频/)

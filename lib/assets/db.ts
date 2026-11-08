@@ -1203,6 +1203,41 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON bgm_favorites(owner_id, created_at DESC);
     `,
   },
+  {
+    version: 30,
+    name: "video-render-quality-profile",
+    sql: `
+      -- 预览版用于快速试片，交付版固定输出 1080P；同一时间线可分别渲染两档。
+      ALTER TABLE video_renders ADD COLUMN quality_profile TEXT NOT NULL DEFAULT 'preview';
+    `,
+  },
+  {
+    version: 31,
+    name: "video-render-export-preset",
+    sql: `
+      -- 同一版本可导出抖音/快手/视频号竖屏、Reels/Shorts 竖屏或 B 站横屏。
+      ALTER TABLE video_renders ADD COLUMN export_preset TEXT NOT NULL DEFAULT 'vertical';
+    `,
+  },
+  {
+    version: 32,
+    name: "video-render-approvals",
+    sql: `
+      -- 成片交付前保留一次明确的审核结论；退回修改不会删除成片。
+      CREATE TABLE IF NOT EXISTS video_render_approvals (
+        render_id       TEXT PRIMARY KEY REFERENCES video_renders(id) ON DELETE CASCADE,
+        project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        status          TEXT NOT NULL DEFAULT 'pending',
+        note            TEXT NOT NULL DEFAULT '',
+        requested_at    INTEGER NOT NULL,
+        reviewed_at     INTEGER,
+        reviewer_label  TEXT NOT NULL DEFAULT ''
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_video_render_approvals_project
+        ON video_render_approvals(project_id, status, requested_at DESC);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {
@@ -1231,6 +1266,27 @@ function applyMigrations(db: DatabaseSync): void {
       throw error
     }
   }
+}
+
+/**
+ * 快速创作是快速试片状态的向后兼容扩展。
+ * 使用列级幂等检查，避免和其它尚未合并的迁移争用版本号。
+ */
+function ensureQuickTrialCreationSchema(db: DatabaseSync): void {
+  const columns = db.prepare("PRAGMA table_info(project_quick_trial_runs)").all() as {
+    name: string
+  }[]
+  const add = (name: string, sql: string) => {
+    if (!columns.some((column) => column.name === name)) db.exec(sql)
+  }
+  add("target", "ALTER TABLE project_quick_trial_runs ADD COLUMN target TEXT NOT NULL DEFAULT 'keyframe'")
+  add("budget_units", "ALTER TABLE project_quick_trial_runs ADD COLUMN budget_units INTEGER NOT NULL DEFAULT 0")
+  add("budget_micros", "ALTER TABLE project_quick_trial_runs ADD COLUMN budget_micros INTEGER NOT NULL DEFAULT 0")
+  add("video_approved", "ALTER TABLE project_quick_trial_runs ADD COLUMN video_approved INTEGER NOT NULL DEFAULT 0")
+  add("video_budget_micros", "ALTER TABLE project_quick_trial_runs ADD COLUMN video_budget_micros INTEGER NOT NULL DEFAULT 0")
+  add("video_model", "ALTER TABLE project_quick_trial_runs ADD COLUMN video_model TEXT")
+  add("video_resolution", "ALTER TABLE project_quick_trial_runs ADD COLUMN video_resolution TEXT")
+  add("video_duration_seconds", "ALTER TABLE project_quick_trial_runs ADD COLUMN video_duration_seconds INTEGER NOT NULL DEFAULT 5")
 }
 
 /**
@@ -1275,6 +1331,7 @@ export function openDb(dbPath: string = defaultDbPath()): DatabaseSync {
   const db = new DatabaseSync(dbPath)
   db.exec(SCHEMA)
   applyMigrations(db)
+  ensureQuickTrialCreationSchema(db)
   const projectColumns = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[]
   if (!projectColumns.some((column) => column.name === "owner_id")) {
     db.exec("ALTER TABLE projects ADD COLUMN owner_id TEXT")

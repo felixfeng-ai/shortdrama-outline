@@ -4413,6 +4413,70 @@
   font-size: 9px;
   font-weight: 650;
 }
+.episode-post-settings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr)) minmax(190px, auto) auto;
+  align-items: end;
+  gap: 7px;
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid var(--signal-line-soft);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--signal-bg) 52%, var(--signal-panel));
+}
+.episode-post-settings label {
+  display: flex;
+  min-width: 0;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  color: var(--signal-text-3);
+  font-size: 8.5px;
+}
+.episode-post-settings label > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.episode-post-settings select,
+.episode-post-settings input[type="number"] {
+  min-width: 0;
+  min-height: 29px;
+  flex: 1;
+  padding: 0 7px;
+  border: 1px solid var(--signal-line);
+  border-radius: 4px;
+  background: var(--signal-bg);
+  color: var(--signal-text-2);
+  font-size: 8.5px;
+}
+.episode-post-settings input[type="number"] {
+  width: 48px;
+  flex: 0 0 48px;
+  text-align: right;
+}
+.episode-post-settings em {
+  font-style: normal;
+}
+.episode-post-settings .episode-post-toggle {
+  flex-direction: row;
+}
+.episode-post-settings .episode-post-toggle input {
+  accent-color: var(--signal-blue);
+}
+.episode-post-settings > button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--signal-blue) 30%, var(--signal-line));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--signal-blue) 7%, var(--signal-raised));
+  color: var(--signal-blue);
+  font-size: 8.5px;
+  font-weight: 650;
+}
+.episode-post-settings > button:disabled {
+  cursor: default;
+  opacity: .45;
+}
 .episode-render-controls label {
   display: flex;
   min-width: 180px;
@@ -4533,6 +4597,41 @@
   color: color-mix(in srgb, var(--signal-blue) 74%, var(--signal-text));
   font-size: 8.5px;
   text-decoration: none;
+}
+.episode-render-approval {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+.episode-render-approval > span {
+  padding: 3px 6px;
+  border: 1px solid var(--signal-line);
+  border-radius: 999px;
+  color: var(--signal-text-3);
+  font-size: 8.5px;
+  white-space: nowrap;
+}
+.episode-render-approval > span.is-pending {
+  border-color: color-mix(in srgb, var(--signal-blue) 26%, var(--signal-line));
+  color: var(--signal-blue);
+}
+.episode-render-approval > span.is-approved {
+  border-color: color-mix(in srgb, var(--signal-blue) 38%, var(--signal-line));
+  color: color-mix(in srgb, var(--signal-blue) 84%, var(--signal-text));
+}
+.episode-render-approval > span.is-changes_requested {
+  border-color: color-mix(in srgb, var(--signal-warning) 32%, var(--signal-line));
+  color: color-mix(in srgb, var(--signal-warning) 82%, var(--signal-text));
+}
+.episode-render-approval button {
+  min-height: 27px;
+  padding: 0 7px;
+  border: 1px solid var(--signal-line);
+  border-radius: 4px;
+  background: var(--signal-raised);
+  color: var(--signal-text-3);
+  font-size: 8.5px;
 }
 .episode-timeline-footer {
   display: flex;
@@ -5135,6 +5234,18 @@
   }
   .episode-render-version-warning button {
     width: 100%;
+    min-height: 38px;
+  }
+  .episode-post-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .episode-post-settings label {
+    justify-content: space-between;
+  }
+  .episode-post-settings select {
+    max-width: 62%;
+  }
+  .episode-post-settings > button {
     min-height: 38px;
   }
   .episode-render-controls label {

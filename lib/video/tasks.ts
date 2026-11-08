@@ -47,6 +47,26 @@ export function findSelectedFrame(
   return asset
 }
 
+/**
+ * 视频供应商只接收一张首帧，无法额外传多张角色参考图。
+ * 在提示词层明确禁止换脸，并把出场角色身份锁定写入请求，降低跨镜漂移。
+ */
+export function withVideoContinuityLock(
+  prompt: string,
+  shot: Record<string, unknown>,
+): string {
+  const characters = Array.isArray(shot.characters)
+    ? shot.characters.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : []
+  const cast = characters.length > 0 ? characters.join("、") : "画面中的主要人物"
+  return `${prompt.trim()}
+
+CONTINUITY LOCK:
+- 保持首帧中 ${cast} 的脸型、五官比例、发型、年龄感、肤色和固定服装完全一致。
+- 不换脸，不替换演员，不改变人物身份，不把角色生成成相似但不同的人。
+- 镜头运动、表情和环境可以变化，但人物身份必须连续。`
+}
+
 export async function createAndSubmitVideoTask(
   db: DatabaseSync,
   input: {
@@ -70,10 +90,13 @@ export async function createAndSubmitVideoTask(
     signal?: AbortSignal
   },
 ): Promise<{ task: GenerationTask; reused: boolean }> {
-  const prompt = input.prompt.trim()
+  let prompt = input.prompt.trim()
   if (!prompt) throw new InputError("缺少视频提示词")
   const shot = findProjectShot(db, input.projectId, input.targetId)
   if (!shot) throw new InputError("当前镜头还没有保存到项目")
+  if (input.mode === "image-to-video") {
+    prompt = withVideoContinuityLock(prompt, shot)
+  }
 
   const estimatedCostMicros = estimateVideoCostMicros({
     model: input.model,
@@ -115,6 +138,7 @@ export async function createAndSubmitVideoTask(
       ratio: input.ratio,
       sourceAssetId: input.sourceAssetId || null,
       autoSelect: input.autoSelect === true,
+      continuityLock: input.mode === "image-to-video",
     },
     pricingVersion: "minimax-video-2026-11-05",
     estimatedCostMicros,

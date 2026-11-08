@@ -37,6 +37,11 @@ function selectedFrameFor(shot: Shot, assets: GeneratedAsset[]): GeneratedAsset 
   ) ?? null
 }
 
+function frameHasCharacterIdentityGuide(frame: GeneratedAsset): boolean {
+  return frame.prompt.includes("已采用定妆图")
+    && frame.prompt.includes("身份参考")
+}
+
 function latestTasksByTarget(tasks: GenerationTask[]): Map<string, GenerationTask> {
   const result = new Map<string, GenerationTask>()
   for (const task of [...tasks].sort((a, b) => b.createdAt - a.createdAt)) {
@@ -106,6 +111,8 @@ export default function BatchVideoPanel({
           ? '缺镜头提示词'
           : !frame
             ? '先去分镜属性采用首帧'
+            : shot.characters.length > 0 && !frameHasCharacterIdentityGuide(frame)
+              ? '首帧缺少角色身份参考，请重新生成首帧'
             : null),
     }
   }), [
@@ -365,6 +372,7 @@ export default function BatchVideoPanel({
         <span>独立任务</span>
         <span>不会自动采用</span>
         <span>仅服务端首帧</span>
+        <span>角色身份锁定</span>
       </div>
 
       {relevantTasks.length > 0 && (

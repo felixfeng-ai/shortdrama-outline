@@ -1,6 +1,8 @@
 // 快速试片断点请求封装：流程状态始终由项目级 API 保存，页面刷新后可重新读取。
 import { patchJson, postJson } from "@/lib/api"
 import type {
+  QuickCreationQuotes,
+  QuickCreationTarget,
   QuickTrialPhase,
   QuickTrialRunDto,
   QuickTrialRunStatus,
@@ -23,11 +25,21 @@ export async function fetchQuickTrialRun(
   return payload.data.run as QuickTrialRunDto | null
 }
 
+export async function fetchQuickCreationQuotes(): Promise<QuickCreationQuotes> {
+  const response = await fetch("/api/quick-creation/quote", { cache: "no-store" })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "快速创作预算读取失败")
+  }
+  return payload.data.quotes as QuickCreationQuotes
+}
+
 export function startQuickTrialRun(
   projectId: string,
   idea: string,
+  target: QuickCreationTarget,
 ): Promise<QuickTrialRunDto> {
-  return postJson<{ run: QuickTrialRunDto }>(endpoint(projectId), { idea })
+  return postJson<{ run: QuickTrialRunDto }>(endpoint(projectId), { idea, target })
     .then((data) => data.run)
 }
 
@@ -37,7 +49,15 @@ export function updateQuickTrialRun(
     phase?: QuickTrialPhase
     status?: QuickTrialRunStatus
     error?: string | null
+    target?: QuickCreationTarget
+    budgetUnits?: number
+    budgetMicros?: number
     visualApproved?: boolean
+    videoApproved?: boolean
+    videoBudgetMicros?: number
+    videoModel?: string | null
+    videoResolution?: string | null
+    videoDurationSeconds?: number
   },
 ): Promise<QuickTrialRunDto> {
   return patchJson<{ run: QuickTrialRunDto }>(endpoint(projectId), input)

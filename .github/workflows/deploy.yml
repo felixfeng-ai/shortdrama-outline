@@ -50,7 +50,7 @@ jobs:
           MINIMAX_VIDEO_MODEL: "MiniMax-H3-Lite"
           MINIMAX_VIDEO_RESOLUTION: "768P"
           AUTH_ALLOW_DEV_CODE: "0"
-          UNLIMITED_QUOTA_ACCOUNTS: "felix@chenju.work"
+          UNLIMITED_QUOTA_ACCOUNTS: "siyuanfeng-yx@qq.com"
           CHENGJU_DAILY_UNITS: "300"
           API_IMAGE_IP_10M_LIMIT: "120"
           API_IMAGE_IDENTITY_10M_LIMIT: "60"

@@ -10,6 +10,8 @@ export function toVideoRenderDto(render: VideoRender): VideoRenderDto {
     episode: render.episode,
     timelineVersionId: render.timelineVersionId,
     timelineRevision: render.timelineRevision,
+    qualityProfile: render.qualityProfile,
+    exportPreset: render.exportPreset,
     status: render.status,
     progress: render.progress,
     quotaUnits: render.quotaUnits,

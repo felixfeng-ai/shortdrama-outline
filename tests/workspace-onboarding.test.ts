@@ -20,7 +20,7 @@ test("ONB1 空项目引导用六步真实产出解释工作流", () => {
 test("ONB2 空项目首屏只提供三个真实起点", () => {
   const source = fs.readFileSync("components/WorkspaceOnboarding.tsx", "utf8")
 
-  assert.match(source, /先做一个能判断的样片/)
+  assert.match(source, /一句话开始，自己决定做到哪里/)
   assert.match(source, /真实故事想法/)
   assert.match(source, /导入小说或剧本/)
   assert.match(source, /查看示例项目/)
@@ -48,14 +48,16 @@ test("ONB4 设计规范记录空项目与返回项目使用不同首页", () => 
   assert.match(design, /已有内容后恢复「继续创作」/)
 })
 
-test("ONB5 空项目以一句想法为主入口，并明确两种制作方式", () => {
+test("ONB5 空项目以一句想法为主入口，并明确快速创作和分步制作", () => {
   const source = fs.readFileSync("components/WorkspaceOnboarding.tsx", "utf8")
 
   assert.match(source, /一句话故事/)
-  assert.match(source, /快速试片/)
+  assert.match(source, /快速创作/)
   assert.match(source, /分步制作/)
-  assert.match(source, /1 集样片/)
-  assert.match(source, /projectQuotaUnits/)
+  assert.match(source, /TARGETS/)
+  assert.match(source, /fetchQuickCreationQuotes/)
+  assert.match(source, /总预算/)
+  assert.match(source, /开始快速创作/)
   assert.match(source, /textarea/)
 })
 

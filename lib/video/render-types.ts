@@ -1,4 +1,6 @@
 export type VideoRenderStatus = "queued" | "running" | "succeeded" | "failed"
+export type RenderQualityProfile = "preview" | "delivery"
+export type RenderExportPreset = "vertical" | "landscape" | "square"
 
 export interface VideoRender {
   id: string
@@ -6,6 +8,8 @@ export interface VideoRender {
   episode: number
   timelineVersionId: string
   timelineRevision: number
+  qualityProfile: RenderQualityProfile
+  exportPreset: RenderExportPreset
   status: VideoRenderStatus
   progress: number
   error: string | null
@@ -28,6 +32,19 @@ export interface VideoRenderDto extends Omit<
   videoUrl: string | null
   subtitleUrl: string | null
   manifestUrl: string | null
+  approvalStatus?: "pending" | "approved" | "changes_requested" | null
+  approvalNote?: string
+  approvalReviewedAt?: number | null
+}
+
+export interface VideoRenderApproval {
+  renderId: string
+  projectId: string
+  status: "pending" | "approved" | "changes_requested"
+  note: string
+  requestedAt: number
+  reviewedAt: number | null
+  reviewerLabel: string
 }
 
 export type RenderIssueCode =

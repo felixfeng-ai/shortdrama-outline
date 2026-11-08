@@ -19,7 +19,14 @@ export async function fetchBgmLibrary(projectId: string): Promise<BgmLibrary> {
   if (!response.ok || !payload?.success || !payload.data) {
     throw new Error(payload?.error || "BGM 曲库读取失败")
   }
-  return payload.data as BgmLibrary
+  const data = payload.data as Partial<BgmLibrary>
+  return {
+    tracks: Array.isArray(data.tracks) ? data.tracks : [],
+    systemTracks: Array.isArray(data.systemTracks) ? data.systemTracks : [],
+    recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+    favoriteIds: Array.isArray(data.favoriteIds) ? data.favoriteIds : [],
+    categories: Array.isArray(data.categories) ? data.categories : [],
+  }
 }
 
 export async function setBgmFavorite(input: {

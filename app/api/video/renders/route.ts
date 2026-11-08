@@ -9,8 +9,13 @@ import { toVideoRenderDto } from "@/lib/video/render-dto"
 import { scheduleVideoRenderQueue } from "@/lib/video/render-queue"
 import { listVideoRenders } from "@/lib/video/render-repo"
 import { enqueueEpisodeRender } from "@/lib/video/render-service"
+import { listRenderApprovals } from "@/lib/video/render-approvals"
 import { releaseQuota, reserveQuota } from "@/lib/quota"
 import { RENDER_UNITS } from "@/lib/model-pricing"
+import type {
+  RenderExportPreset,
+  RenderQualityProfile,
+} from "@/lib/video/render-types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -29,6 +34,14 @@ function requiredInteger(value: unknown, message: string): number {
   return number
 }
 
+function qualityProfile(value: unknown): RenderQualityProfile {
+  return value === "delivery" ? "delivery" : "preview"
+}
+
+function exportPreset(value: unknown): RenderExportPreset {
+  return value === "landscape" || value === "square" ? value : "vertical"
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
@@ -41,8 +54,18 @@ export async function GET(req: Request) {
     assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
     // 页面轮询也会续跑队列，服务重启后无需用户重新点击历史 queued 任务。
     scheduleVideoRenderQueue(db)
+    const stored = listVideoRenders(db, projectId, episode)
+    const approvals = listRenderApprovals(db, projectId, stored.map((render) => render.id))
     return NextResponse.json(ok({
-      renders: listVideoRenders(db, projectId, episode).map(toVideoRenderDto),
+      renders: stored.map((render) => {
+        const approval = approvals.get(render.id)
+        return {
+          ...toVideoRenderDto(render),
+          approvalStatus: approval?.status ?? null,
+          approvalNote: approval?.note ?? "",
+          approvalReviewedAt: approval?.reviewedAt ?? null,
+        }
+      }),
     }), { headers: { "cache-control": "no-store" } })
   } catch (error) {
     const { body, status, headers } = errorResponse(error)
@@ -63,6 +86,8 @@ export async function POST(req: Request) {
     const projectId = requiredString(body?.projectId, "缺少 projectId")
     const episode = requiredInteger(body?.episode, "缺少集号")
     const timelineVersionId = requiredString(body?.timelineVersionId, "缺少时间线版本")
+    const profile = qualityProfile(body?.qualityProfile)
+    const preset = exportPreset(body?.exportPreset)
     assertProjectAccess(db, projectId, ownerId)
     const hold = reserveQuota(db, identity, "render", {
       units: RENDER_UNITS,
@@ -73,6 +98,8 @@ export async function POST(req: Request) {
       projectId,
       episode,
       timelineVersionId,
+      qualityProfile: profile,
+      exportPreset: preset,
       quotaReservationId: hold.id,
       quotaUnits: RENDER_UNITS,
     })

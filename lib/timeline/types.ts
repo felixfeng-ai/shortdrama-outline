@@ -35,6 +35,11 @@ export interface TimelinePayload {
   totalDurationMs: number
   subtitle: {
     enabled: true
+    style?: "clean" | "cinematic" | "bold"
+  }
+  video?: {
+    transition?: "cut" | "fade"
+    transitionDurationMs?: number
   }
   audio: {
     dialogueVolume: 1
@@ -42,6 +47,7 @@ export interface TimelinePayload {
     bgmVolume: number
     bgmFadeInMs?: number
     bgmFadeOutMs?: number
+    bgmDucking?: boolean
   }
 }
 

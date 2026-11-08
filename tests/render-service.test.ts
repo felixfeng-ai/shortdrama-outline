@@ -18,6 +18,7 @@ test("P1-V5.15 FFmpeg 计划按镜头裁剪拼接，并把对白与 BGM 混到�
     height: 1920,
     fps: 30,
     totalDurationMs: 5_000,
+    transition: { type: "fade", durationMs: 200 },
     clips: [
       { inputIndex: 0, inMs: 0, outMs: 2_000 },
       { inputIndex: 1, inMs: 500, outMs: 3_500 },
@@ -26,7 +27,13 @@ test("P1-V5.15 FFmpeg 计划按镜头裁剪拼接，并把对白与 BGM 混到�
       { inputIndex: 2, startMs: 0, volume: 1 },
       { inputIndex: 3, startMs: 2_000, volume: 1 },
     ],
-    bgm: { inputIndex: 4, volume: 0.2, fadeInMs: 600, fadeOutMs: 1_000 },
+    bgm: {
+      inputIndex: 4,
+      volume: 0.2,
+      fadeInMs: 600,
+      fadeOutMs: 1_000,
+      ducking: true,
+    },
   }
   const args = buildFfmpegRenderArgs(input)
   const filter = args[args.indexOf("-filter_complex") + 1]
@@ -40,6 +47,9 @@ test("P1-V5.15 FFmpeg 计划按镜头裁剪拼接，并把对白与 BGM 混到�
   assert.match(filter, /volume=0\.2/)
   assert.match(filter, /afade=t=in:st=0:d=0\.6/)
   assert.match(filter, /afade=t=out:st=4:d=1/)
+  assert.match(filter, /fade=t=in:st=0:d=0\.2/)
+  assert.match(filter, /sidechaincompress=/)
+  assert.match(filter, /loudnorm=I=-16/)
   assert.equal(args.includes("-shortest"), false)
 })
 

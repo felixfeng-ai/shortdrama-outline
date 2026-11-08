@@ -15,12 +15,6 @@ const PROJECT_TYPE_OPTIONS: Array<{
   available: boolean
 }> = [
   {
-    value: "quick_video",
-    label: "快速出片",
-    description: "一句话或一组素材直接生成短视频，不强制进入六步。",
-    available: true,
-  },
-  {
     value: "drama",
     label: "短剧生产",
     description: "从来源、Canon 到分镜、视频和整季交付的连续生产。",
@@ -57,6 +51,11 @@ export default function ProjectTypePicker({ value, onChange, disabled = false }:
           </button>
         ))}
       </div>
+      {value === "quick_video" && (
+        <p className="production-type-future">
+          这是旧快速出片项目。新项目请从首页「快速创作」进入，数据仍可继续打开和导出。
+        </p>
+      )}
       <p className="production-type-future">营销视频 · 后续开放</p>
     </fieldset>
   )

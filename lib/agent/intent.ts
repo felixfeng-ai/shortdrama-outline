@@ -20,9 +20,8 @@ export interface AgentIntentResult {
 
 const INTENTS: Record<AgentIntent, Omit<AgentIntentResult, "intent">> = {
   quick_video: {
-    label: "快速出片",
-    recommendedAction: "直接收集画面、时长和画幅，不创建六步短剧项目。",
-    projectType: "quick_video",
+    label: "快速创作",
+    recommendedAction: "进入统一快速创作入口，先选择故事、首帧或单镜头视频范围，再确认一次预算。",
     requiresProject: false,
     confidence: 0.9,
   },

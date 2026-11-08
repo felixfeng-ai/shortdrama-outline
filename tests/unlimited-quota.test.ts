@@ -13,7 +13,7 @@ import {
   getApiRateLimitAvailability,
 } from "../lib/security/api-rate-limit.ts"
 
-const ADMIN_EMAIL = "felix@chenju.work"
+const ADMIN_EMAIL = "siyuanfeng-yx@qq.com"
 
 function adminRequest(): Request {
   return new Request("http://localhost/api/generations", {
@@ -122,7 +122,7 @@ test("UQ4 unlimited state is visible in quota UI, batch UI, deployment and agent
   assert.match(quotaBar, /管理账号 · 无限额度/)
   assert.match(batchPanel, /管理账号 · 无限额度/)
   assert.match(agentTools, /无限额度/)
-  assert.match(workflow, /UNLIMITED_QUOTA_ACCOUNTS:\s*"felix@chenju\.work"/)
+  assert.match(workflow, /UNLIMITED_QUOTA_ACCOUNTS:\s*"siyuanfeng-yx@qq\.com"/)
   assert.doesNotMatch(workflow, /support@chenju\.work/)
   assert.doesNotMatch(workflow, /secrets\.UNLIMITED_QUOTA_ACCOUNTS/)
   assert.match(deployEnv, /UNLIMITED_QUOTA_ACCOUNTS/)

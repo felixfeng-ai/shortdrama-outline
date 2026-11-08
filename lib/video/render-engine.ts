@@ -13,6 +13,10 @@ export interface RenderCommandInput {
   height: number
   fps: number
   totalDurationMs: number
+  transition?: {
+    type: "cut" | "fade"
+    durationMs: number
+  }
   clips: Array<{
     inputIndex: number
     inMs: number
@@ -28,6 +32,7 @@ export interface RenderCommandInput {
     volume: number
     fadeInMs: number
     fadeOutMs: number
+    ducking: boolean
   } | null
 }
 
@@ -68,6 +73,17 @@ export function buildFfmpegRenderArgs(input: RenderCommandInput): string[] {
 
   input.clips.forEach((clip, index) => {
     const label = `v${index}`
+    const durationMs = Math.max(1, clip.outMs - clip.inMs)
+    const transitionMs = input.transition?.type === "fade"
+      ? Math.min(
+          Math.max(0, input.transition.durationMs),
+          Math.max(0, durationMs / 2),
+        )
+      : 0
+    const fadeFilter = transitionMs > 0
+      ? `fade=t=in:st=0:d=${seconds(transitionMs)},`
+        + `fade=t=out:st=${seconds(Math.max(0, durationMs - transitionMs))}:d=${seconds(transitionMs)},`
+      : ""
     // 每镜先按时间线入出点裁剪，再统一画幅、帧率和像素格式，避免拼接时参数不一致。
     filters.push(
       `[${clip.inputIndex}:v]trim=start=${seconds(clip.inMs)}:end=${seconds(clip.outMs)},`
@@ -75,27 +91,35 @@ export function buildFfmpegRenderArgs(input: RenderCommandInput): string[] {
       + `scale=${width}:${height}:force_original_aspect_ratio=decrease,`
       + `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=yuv420p[${label}]`,
     )
+    if (fadeFilter) {
+      filters[filters.length - 1] = filters[filters.length - 1].replace(
+        "format=yuv420p",
+        `${fadeFilter}format=yuv420p`,
+      )
+    }
     videoLabels.push(`[${label}]`)
   })
   filters.push(
     `${videoLabels.join("")}concat=n=${videoLabels.length}:v=1:a=0[vout]`,
   )
 
-  const audioLabels: string[] = []
+  const dialogueLabels: string[] = []
   // 始终铺一条等长静音底轨，保证无对白、无 BGM 的集也能输出合法 AAC 音轨。
   filters.push(
     `anullsrc=r=48000:cl=stereo,atrim=0:${total},asetpts=PTS-STARTPTS[abed]`,
   )
-  audioLabels.push("[abed]")
+  dialogueLabels.push("[abed]")
 
   input.dialogue.forEach((line, index) => {
     const label = `d${index}`
     filters.push(
-      `[${line.inputIndex}:a]aresample=48000,asetpts=PTS-STARTPTS,`
+      `[${line.inputIndex}:a]aresample=48000,`
+      + "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+      + "asetpts=PTS-STARTPTS,"
       + `volume=${Math.max(0, line.volume).toFixed(3)},`
       + `adelay=${Math.max(0, Math.round(line.startMs))}|${Math.max(0, Math.round(line.startMs))}[${label}]`,
     )
-    audioLabels.push(`[${label}]`)
+    dialogueLabels.push(`[${label}]`)
   })
 
   if (input.bgm) {
@@ -103,19 +127,36 @@ export function buildFfmpegRenderArgs(input: RenderCommandInput): string[] {
     const fadeOut = Math.min(Math.max(0, input.bgm.fadeOutMs), input.totalDurationMs)
     const fadeOutStart = Math.max(0, input.totalDurationMs - fadeOut)
     filters.push(
-      `[${input.bgm.inputIndex}:a]aresample=48000,asetpts=PTS-STARTPTS,`
+      `[${input.bgm.inputIndex}:a]aresample=48000,`
+      // 对白与 BGM 的源文件可能是单声道；侧链压缩要求两路通道布局一致。
+      + "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+      + "asetpts=PTS-STARTPTS,"
       + `volume=${Math.max(0, input.bgm.volume).toFixed(3)},`
       + (fadeIn > 0 ? `afade=t=in:st=0:d=${seconds(fadeIn)},` : "")
       + (fadeOut > 0 ? `afade=t=out:st=${seconds(fadeOutStart)}:d=${seconds(fadeOut)},` : "")
       + `apad,atrim=0:${total}[bgm]`,
     )
-    audioLabels.push("[bgm]")
   }
 
-  filters.push(
-    `${audioLabels.join("")}amix=inputs=${audioLabels.length}:duration=longest:dropout_transition=0,`
-    + `alimiter=limit=0.95[aout]`,
-  )
+  if (input.bgm?.ducking) {
+    filters.push(
+      `${dialogueLabels.join("")}amix=inputs=${dialogueLabels.length}:duration=longest:dropout_transition=0[dialoguemix]`,
+    )
+    filters.push("[dialoguemix]asplit=2[dialoguetrack][dialogesc]")
+    filters.push(
+      "[bgm][dialogesc]sidechaincompress=threshold=0.04:ratio=8:attack=20:release=320[bgmducked]",
+    )
+    filters.push(
+      "[dialoguetrack][bgmducked]amix=inputs=2:duration=longest:dropout_transition=0,"
+      + "loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.95[aout]",
+    )
+  } else {
+    const mixLabels = input.bgm ? [...dialogueLabels, "[bgm]"] : dialogueLabels
+    filters.push(
+      `${mixLabels.join("")}amix=inputs=${mixLabels.length}:duration=longest:dropout_transition=0,`
+      + "loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.95[aout]",
+    )
+  }
 
   return [
     "-hide_banner",

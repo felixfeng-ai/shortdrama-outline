@@ -42,7 +42,7 @@ test("INTENT5 Agent 输入区显示当前意图，API 返回统一信封", async
   assert.match(dock, /AgentIntentBadge/)
   assert.match(badge, /detectAgentIntent/)
   assert.match(badge, /intent\.label/)
-  assert.equal(detectAgentIntent("快速出片").label, "快速出片")
+  assert.equal(detectAgentIntent("快速出片").label, "快速创作")
   assert.equal(detectAgentIntent("把剧本改编成短剧").label, "小说 / 剧本改编")
 
   const response = await detectIntentRoute(new Request("http://localhost/api/agent/intent", {

@@ -195,6 +195,8 @@ function validatePayload(
   })
   const readyCount = clips.filter((clip) => clip.status === "ready").length
   const audio = object(payload.audio)
+  const subtitle = object(payload.subtitle)
+  const video = object(payload.video)
   const bgmAssetId = text(audio.bgmAssetId) || null
   const bgmFadeInMs = Math.max(0, Math.min(5_000, Number(audio.bgmFadeInMs) || 600))
   const bgmFadeOutMs = Math.max(0, Math.min(5_000, Number(audio.bgmFadeOutMs) || 1_000))
@@ -211,13 +213,26 @@ function validatePayload(
     readyCount,
     blockedCount: clips.length - readyCount,
     totalDurationMs: clips.reduce((sum, clip) => sum + Math.max(0, clip.outMs - clip.inMs), 0),
-    subtitle: { enabled: true },
+    subtitle: {
+      enabled: true,
+      style: subtitle.style === "cinematic" || subtitle.style === "bold"
+        ? subtitle.style
+        : "clean",
+    },
+    video: {
+      transition: video.transition === "cut" ? "cut" : "fade",
+      transitionDurationMs: Math.max(
+        0,
+        Math.min(1_000, Number(video.transitionDurationMs) || 200),
+      ),
+    },
     audio: {
       dialogueVolume: 1,
       bgmAssetId,
       bgmVolume: Math.max(0, Math.min(1, Number(audio.bgmVolume) || 0.3)),
       bgmFadeInMs,
       bgmFadeOutMs,
+      bgmDucking: audio.bgmDucking !== false,
     },
   }
 }

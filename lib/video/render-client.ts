@@ -1,5 +1,11 @@
 import { postJson } from "../api.ts"
-import type { VideoRenderDto } from "./render-types.ts"
+import type {
+  RenderExportPreset,
+  RenderQualityProfile,
+  VideoRenderApproval,
+  VideoRenderDto,
+} from "./render-types.ts"
+import type { TimelineVersion } from "../timeline/types.ts"
 
 async function renderList(url: string): Promise<VideoRenderDto[]> {
   const response = await fetch(url, { cache: "no-store" })
@@ -25,6 +31,8 @@ export function enqueueVideoRender(input: {
   projectId: string
   episode: number
   timelineVersionId: string
+  qualityProfile?: RenderQualityProfile
+  exportPreset?: RenderExportPreset
 }): Promise<{ render: VideoRenderDto; created: boolean }> {
   return postJson("/api/video/renders", input)
 }
@@ -37,4 +45,35 @@ export function enqueueFrozenEpisodeQueue(input: {
   blocked: Array<{ episode: number; reason: string }>
 }> {
   return postJson("/api/video/renders/batch", input)
+}
+
+export function smartRenderEpisode(input: {
+  projectId: string
+  episode: number
+  qualityProfile: RenderQualityProfile
+  exportPreset: RenderExportPreset
+}): Promise<{
+  render: VideoRenderDto
+  version: TimelineVersion
+  qualityProfile: RenderQualityProfile
+  exportPreset: RenderExportPreset
+  adoptedVideoCount: number
+  generatedTtsCount: number
+  warnings: string[]
+  bgmTrackId: string | null
+  quotaUnits: number
+}> {
+  return postJson("/api/video/smart-render", input)
+}
+
+export function updateRenderApproval(input: {
+  projectId: string
+  renderId: string
+  action: "request" | "approve" | "request_changes"
+  note?: string
+}): Promise<VideoRenderApproval> {
+  return postJson<{ approval: VideoRenderApproval }>(
+    `/api/video/renders/${encodeURIComponent(input.renderId)}/approval`,
+    input,
+  ).then((result) => result.approval)
 }

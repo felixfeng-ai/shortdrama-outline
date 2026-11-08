@@ -72,6 +72,9 @@ test("RENDER-STATE 默认打开成片状态台，明确区分成功、失败、�
   assert.match(timeline, /preload="auto"/)
   assert.match(timeline, /episode-timeline-video-hint/)
   assert.match(timeline, /download>下载 MP4/)
+  assert.match(timeline, /transitionType/)
+  assert.match(timeline, /subtitleStyle/)
+  assert.match(timeline, /bgmDucking/)
   assert.doesNotMatch(timeline, /const actionLabel =/)
 })
 

@@ -11,6 +11,7 @@ import type {
 } from '@/lib/production/types'
 import type { ProductionPlanDto } from '@/lib/production/client'
 import type { ProductionPlanSuggestion } from '@/lib/production/presets'
+import type { QuickCreationTarget } from '@/lib/production/quick-trial'
 import { buildWorkbenchCommand } from '@/lib/workbench-command'
 import {
   buildProjectPulse,
@@ -45,7 +46,7 @@ interface Props {
   onOpenArtifacts: () => void
   onOpenAgent: () => void
   onTodoAction: (item: TodoItem) => void
-  onStartQuickTrial: (idea: string) => Promise<void>
+  onStartQuickTrial: (idea: string, target: QuickCreationTarget) => Promise<void>
   onStartGuided: (idea: string) => void
   onOpenSource: () => void
   onLoadSample: () => void

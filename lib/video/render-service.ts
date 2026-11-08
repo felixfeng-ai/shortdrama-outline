@@ -43,6 +43,8 @@ import {
 } from "./render-plan.ts"
 import type {
   RenderIssue,
+  RenderExportPreset,
+  RenderQualityProfile,
   TimelineDialogueInspection,
   VideoRender,
 } from "./render-types.ts"
@@ -77,6 +79,35 @@ function bgmFilePath(bgm: { sourceType?: "upload" | "system"; storageKey: string
   return bgm.sourceType === "system"
     ? path.join(process.cwd(), "public", bgm.storageKey)
     : resolveGeneratedStoragePath(bgm.storageKey)
+}
+
+export function renderDimensions(
+  profile: RenderQualityProfile,
+  source: { width: number | null; height: number | null },
+  exportPreset: RenderExportPreset = "vertical",
+): { width: number; height: number } {
+  const ratio = source.width && source.height
+    ? source.width / source.height
+    : 9 / 16
+  const orientation = exportPreset === "landscape"
+    ? "landscape"
+    : exportPreset === "square"
+      ? "square"
+      : exportPreset === "vertical"
+        ? "portrait"
+        : ratio > 1.15 ? "landscape" : ratio < 0.87 ? "portrait" : "square"
+  if (profile === "delivery") {
+    return orientation === "landscape"
+      ? { width: 1920, height: 1080 }
+      : orientation === "square"
+        ? { width: 1080, height: 1080 }
+        : { width: 1080, height: 1920 }
+  }
+  return orientation === "landscape"
+    ? { width: 854, height: 480 }
+    : orientation === "square"
+      ? { width: 480, height: 480 }
+      : { width: 480, height: 854 }
 }
 
 function publicRenderError(error: unknown): string {
@@ -241,6 +272,8 @@ export function enqueueEpisodeRender(
     projectId: string
     episode: number
     timelineVersionId: string
+    qualityProfile?: RenderQualityProfile
+    exportPreset?: RenderExportPreset
     quotaReservationId?: string | null
     quotaUnits?: number
   },
@@ -263,6 +296,8 @@ export function enqueueEpisodeRender(
     episode: input.episode,
     timelineVersionId: preflight.version.id,
     timelineRevision: preflight.version.revision,
+    qualityProfile: input.qualityProfile ?? "preview",
+    exportPreset: input.exportPreset ?? "vertical",
     quotaReservationId: input.quotaReservationId ?? null,
     quotaUnits: input.quotaUnits ?? 0,
   })
@@ -332,6 +367,8 @@ function manifestFor(input: {
     renderer: {
       provider: "platform",
       engine: "ffmpeg",
+      qualityProfile: input.render.qualityProfile,
+      exportPreset: input.render.exportPreset,
       width: input.width,
       height: input.height,
       fps: input.timeline.fps,
@@ -339,13 +376,19 @@ function manifestFor(input: {
     },
     subtitle: {
       enabled: input.timeline.subtitle.enabled,
+      style: input.timeline.subtitle.style ?? "clean",
       mode: "sidecar-srt",
+    },
+    edit: {
+      transition: input.timeline.video?.transition ?? "fade",
+      transitionDurationMs: input.timeline.video?.transitionDurationMs ?? 200,
     },
     audio: {
       dialogueVolume: input.timeline.audio.dialogueVolume,
       bgmVolume: input.timeline.audio.bgmVolume,
       bgmFadeInMs: input.timeline.audio.bgmFadeInMs ?? 600,
       bgmFadeOutMs: input.timeline.audio.bgmFadeOutMs ?? 1_000,
+      bgmDucking: input.timeline.audio.bgmDucking !== false,
       bgm: input.bgm
         ? {
             id: input.bgm.id,
@@ -404,12 +447,13 @@ export async function renderClaimedVideo(
     const firstProbe = await probeMedia(
       resolveGeneratedStoragePath(videoAssets[0]!.storageKey),
     )
-    const width = firstProbe.width && firstProbe.height
-      ? firstProbe.width
-      : 1080
-    const height = firstProbe.width && firstProbe.height
-      ? firstProbe.height
-      : 1920
+    const dimensions = renderDimensions(
+      render.qualityProfile,
+      firstProbe,
+      render.exportPreset,
+    )
+    const width = dimensions.width
+    const height = dimensions.height
     const totalDurationMs = prepared.timeline.clips.reduce(
       (sum, clip) => sum + Math.max(0, clip.outMs - clip.inMs),
       0,
@@ -444,6 +488,7 @@ export async function renderClaimedVideo(
       volume: number
       fadeInMs: number
       fadeOutMs: number
+      ducking: boolean
     } | null = null
     if (bgm) {
       bgmInput = {
@@ -451,6 +496,7 @@ export async function renderClaimedVideo(
         volume: prepared.timeline.audio.bgmVolume,
         fadeInMs: prepared.timeline.audio.bgmFadeInMs ?? 600,
         fadeOutMs: prepared.timeline.audio.bgmFadeOutMs ?? 1_000,
+        ducking: prepared.timeline.audio.bgmDucking !== false,
       }
       inputPaths.push(bgmFilePath(bgm))
     }
@@ -467,6 +513,10 @@ export async function renderClaimedVideo(
       height,
       fps: prepared.timeline.fps,
       totalDurationMs,
+      transition: {
+        type: prepared.timeline.video?.transition === "cut" ? "cut" : "fade",
+        durationMs: prepared.timeline.video?.transitionDurationMs ?? 200,
+      },
       clips: prepared.timeline.clips.map((clip, index) => ({
         inputIndex: index,
         inMs: clip.inMs,

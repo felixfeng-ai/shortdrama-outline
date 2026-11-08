@@ -1,7 +1,12 @@
 import type { DatabaseSync } from "node:sqlite"
 import { randomUUID } from "node:crypto"
 
-import type { VideoRender, VideoRenderStatus } from "./render-types.ts"
+import type {
+  RenderQualityProfile,
+  RenderExportPreset,
+  VideoRender,
+  VideoRenderStatus,
+} from "./render-types.ts"
 import { releaseQuota, settleQuota } from "../quota.ts"
 
 interface VideoRenderRow {
@@ -10,6 +15,8 @@ interface VideoRenderRow {
   episode: number
   timeline_version_id: string
   timeline_revision: number
+  quality_profile: string
+  export_preset: string
   status: string
   progress: number
   error: string | null
@@ -32,6 +39,10 @@ function toVideoRender(row: VideoRenderRow): VideoRender {
     episode: row.episode,
     timelineVersionId: row.timeline_version_id,
     timelineRevision: row.timeline_revision,
+    qualityProfile: row.quality_profile === "delivery" ? "delivery" : "preview",
+    exportPreset: row.export_preset === "landscape" || row.export_preset === "square"
+      ? row.export_preset
+      : "vertical",
     status: row.status as VideoRenderStatus,
     progress: row.progress,
     error: row.error,
@@ -55,6 +66,8 @@ export function createVideoRender(
     episode: number
     timelineVersionId: string
     timelineRevision: number
+    qualityProfile?: RenderQualityProfile
+    exportPreset?: RenderExportPreset
     quotaReservationId?: string | null
     quotaUnits?: number
   },
@@ -62,24 +75,38 @@ export function createVideoRender(
   // 同一版本已经排队或渲染中时复用现有任务，避免刷新页面重复占满队列。
   const active = db.prepare(
     `SELECT * FROM video_renders
-     WHERE project_id = ? AND timeline_version_id = ? AND status IN ('queued', 'running')
+     WHERE project_id = ? AND timeline_version_id = ? AND quality_profile = ?
+       AND export_preset = ?
+       AND status IN ('queued', 'running')
      ORDER BY created_at DESC LIMIT 1`,
-  ).get(input.projectId, input.timelineVersionId) as VideoRenderRow | undefined
+  ).get(
+    input.projectId,
+    input.timelineVersionId,
+    input.qualityProfile === "delivery" ? "delivery" : "preview",
+    input.exportPreset === "landscape" || input.exportPreset === "square"
+      ? input.exportPreset
+      : "vertical",
+  ) as VideoRenderRow | undefined
   if (active) return toVideoRender(active)
 
   const id = randomUUID()
   const now = Date.now()
   db.prepare(
     `INSERT INTO video_renders
-      (id, project_id, episode, timeline_version_id, timeline_revision, status,
-       progress, quota_reservation_id, quota_units, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'queued', 0, ?, ?, ?, ?)`,
+      (id, project_id, episode, timeline_version_id, timeline_revision, quality_profile,
+       export_preset,
+       status, progress, quota_reservation_id, quota_units, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, ?, ?, ?)`,
   ).run(
     id,
     input.projectId,
     Math.max(0, Math.floor(input.episode)),
     input.timelineVersionId,
     Math.max(0, Math.floor(input.timelineRevision)),
+    input.qualityProfile === "delivery" ? "delivery" : "preview",
+    input.exportPreset === "landscape" || input.exportPreset === "square"
+      ? input.exportPreset
+      : "vertical",
     input.quotaReservationId ?? null,
     Math.max(0, Math.floor(input.quotaUnits ?? 0)),
     now,
