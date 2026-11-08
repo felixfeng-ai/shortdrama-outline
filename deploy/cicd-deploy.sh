@@ -90,6 +90,13 @@ CHENGJU_APP_VERSION="$(git rev-parse --short HEAD)" \
 CHENGJU_BACKUP_KEEP="${CHENGJU_BACKUP_KEEP:-7}" \
 node scripts/backup-data.mjs
 
+echo "=== 3/6 域名与证书 ==="
+if [ "${CHENGJU_DOMAIN_MIGRATION_ENABLED:-0}" = "1" ] \
+    && [ ! -f /etc/letsencrypt/live/veyatv.com/fullchain.pem ]; then
+    echo "正在签发 veyatv.com 证书并安装 Nginx 配置"
+    sudo -n bash deploy/bootstrap-veyatv-domain.sh
+fi
+
 echo "=== 4/6 停服 ==="
 # 🔴 关键：npm run build 会覆盖 .next 目录。若进程还在跑，
 # 它会读到写了一半的构建产物，直接 500。必须「先停 → 再构建 → 再启动」。
@@ -136,5 +143,17 @@ sleep 5
 curl -s -o /dev/null -w "应用自检 http://127.0.0.1:$PORT/ → %{http_code}\n" \
     --max-time 20 "http://127.0.0.1:$PORT/" \
     || echo "⚠️  本地自检失败，执行 pm2 logs $APP 排查"
+
+if sudo -n test -f /etc/letsencrypt/live/veyatv.com/fullchain.pem 2>/dev/null; then
+    echo "=== 域名入口 ==="
+    sudo -n install -m 644 deploy/nginx-veyatv.com.conf /etc/nginx/sites-available/veyatv.com.conf
+    sudo -n ln -sf /etc/nginx/sites-available/veyatv.com.conf /etc/nginx/sites-enabled/veyatv.com.conf
+    sudo -n rm -f /etc/nginx/sites-enabled/chenju.work /etc/nginx/sites-enabled/veyatv.com.http-bootstrap.conf
+    sudo -n nginx -t
+    sudo -n systemctl reload nginx
+    echo "已同步 veyatv.com Nginx 配置"
+else
+    echo "⚠️  veyatv.com 证书尚未签发，保留现有 Nginx 配置"
+fi
 
 echo "✅ 部署完成"

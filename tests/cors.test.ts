@@ -13,8 +13,9 @@ test('development loopback origins can call the shared Web/App API', () => {
 test('production uses the explicit origin allowlist', () => {
   const env = {
     NODE_ENV: 'production',
-    CHENGJU_ALLOWED_ORIGINS: 'https://chenju.work,http://127.0.0.1:8103',
+    CHENGJU_ALLOWED_ORIGINS: 'https://veyatv.com,https://chenju.work,http://127.0.0.1:8103',
   }
+  assert.equal(isAllowedOrigin('https://veyatv.com', env), true)
   assert.equal(isAllowedOrigin('https://chenju.work', env), true)
   assert.equal(isAllowedOrigin('http://127.0.0.1:8103', env), true)
   assert.equal(isAllowedOrigin('http://127.0.0.1:9999', env), false)
@@ -27,5 +28,5 @@ test('CORS supports Bearer and app device headers', () => {
   assert.match(headers['Access-Control-Allow-Headers'], /X-Chengju-Device/)
   assert.match(headers['Access-Control-Allow-Headers'], /Range/)
   assert.match(headers['Access-Control-Expose-Headers'], /Content-Range/)
-  assert.equal(isLoopbackHost('chenju.work'), false)
+  assert.equal(isLoopbackHost('veyatv.com'), false)
 })

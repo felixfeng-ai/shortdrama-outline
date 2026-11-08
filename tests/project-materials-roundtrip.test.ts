@@ -122,7 +122,7 @@ test("ROUND2 项目包导入恢复原文和项目上下文", async () => {
 })
 
 test("ROUND3 Nginx 为项目导入提供独立的大请求体上限", () => {
-  const nginx = fs.readFileSync("deploy/nginx-chenju.work.conf", "utf8")
+  const nginx = fs.readFileSync("deploy/nginx-veyatv.com.conf", "utf8")
   assert.match(nginx, /location = \/api\/project-import[\s\S]*client_max_body_size 260m/)
   assert.match(nginx, /client_max_body_size 4m/)
 })

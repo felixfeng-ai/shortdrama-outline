@@ -21,7 +21,7 @@ export const PRODUCT_RELEASES = [
     highlights: [
       "母品牌统一为 Veya，平台主品牌为 VeyaTV，中文正式名继续使用成剧。",
       "品类定位更新为 AI 短剧与漫剧生产平台，覆盖创作、视觉资产、镜头视频、时间线与成片。",
-      "Veya Agent 与 Veya Canvas 继续作为平台内子品牌；当前官网仍使用 chenju.work。",
+      "Veya Agent 与 Veya Canvas 继续作为平台内子品牌；官网已切换为 veyatv.com。",
     ],
   },
 ] as const satisfies readonly ProductRelease[]

@@ -54,8 +54,8 @@ test("middleware：localhost 使用稳定开发会话，避免本地项目因浏
 test("middleware：反向代理到 localhost 时仍按生产域名生成独立会话", () => {
   const first = proxy(new NextRequest("http://localhost/", {
     headers: {
-      host: "chenju.work",
-      "x-forwarded-host": "chenju.work",
+      host: "veyatv.com",
+      "x-forwarded-host": "veyatv.com",
       "x-forwarded-proto": "https",
     },
   }))
@@ -68,7 +68,7 @@ test("middleware：反向代理到 localhost 时仍按生产域名生成独立�
 test("middleware：生产环境持有旧开发会话时自动替换，不能继续共享 owner", () => {
   const response = proxy(new NextRequest("http://localhost/", {
     headers: {
-      host: "chenju.work",
+      host: "veyatv.com",
       "x-forwarded-proto": "https",
       cookie: `${SESSION_COOKIE}=${LOCAL_SESSION_ID}`,
     },
@@ -82,7 +82,7 @@ test("middleware：生产环境已有的独立会话保持不变", () => {
   const id = makeSessionId()
   const response = proxy(new NextRequest("http://localhost/", {
     headers: {
-      host: "chenju.work",
+      host: "veyatv.com",
       "x-forwarded-proto": "https",
       cookie: `${SESSION_COOKIE}=${id}`,
     },

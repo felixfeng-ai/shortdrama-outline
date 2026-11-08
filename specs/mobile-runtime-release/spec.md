@@ -9,7 +9,7 @@ App 发布新版本时，只更新服务器运行时可读的发布清单，不�
 
 ### MRR-1 稳定二维码
 
-- 顶栏二维码固定指向 `https://chenju.work/app/download/android`。
+- 顶栏二维码固定指向 `https://veyatv.com/app/download/android`。
 - 扫码后直接重定向到最新 Android APK，不要求登录，也不先进入 Web 安装页。
 - App 版本、APK 地址或更新说明变化时，二维码图片保持不变。
 

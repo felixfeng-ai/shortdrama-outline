@@ -27,7 +27,7 @@ test("产品更新由版本、发布时间和条目组成", () => {
   assert.equal(LATEST_PRODUCT_RELEASE.status, "LIVE BETA")
   assert.match(LATEST_PRODUCT_RELEASE.summary, /生产平台/)
   assert.ok(LATEST_PRODUCT_RELEASE.highlights.some((item) => item.includes("Veya Agent")))
-  assert.ok(LATEST_PRODUCT_RELEASE.highlights.some((item) => item.includes("chenju.work")))
+  assert.ok(LATEST_PRODUCT_RELEASE.highlights.some((item) => item.includes("veyatv.com")))
 })
 
 test("公告组件展示最新版本、时间戳，并按版本保存已读状态", () => {

@@ -28,7 +28,7 @@
 - 品牌组合：`VeyaTV · 成剧`
 - AI 制片：`Veya Agent`
 - 画布：`Veya Canvas`
-- 官网：当前使用 `chenju.work`
+- 官网：`veyatv.com`
 
 不得使用：
 
@@ -46,4 +46,5 @@
 
 ## 域名状态
 
-`veya.ai` 尚待注册与验证。当前产品、邮件和部署仍使用 `chenju.work`；域名验证完成前不得在用户界面宣称新域名已经启用。
+`veyatv.com` 是正式官网；`chenju.work` 与 `www.chenju.work` 保留旧链接和登录态交接。
+邮件发件域暂时保留 `chenju.work`，待新域 Resend/MX/DKIM/SPF 验证完成后再切换。

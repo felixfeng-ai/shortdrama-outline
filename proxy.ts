@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { isSessionId, LOCAL_SESSION_ID, makeSessionId, SESSION_COOKIE } from "./lib/session"
 import { corsHeaders, isAllowedOrigin, isLoopbackHost } from "./lib/cors"
+import {
+  CANONICAL_ORIGIN,
+  isCanonicalWwwHost,
+  isLegacyHost,
+} from "./lib/domain"
 
 function firstHeader(value: string | null): string {
   return value?.split(",")[0]?.trim().toLowerCase() ?? ""
@@ -25,6 +30,16 @@ function withCors(response: NextResponse, origin: string | null): NextResponse {
   return response
 }
 
+function isDocumentNavigation(req: NextRequest): boolean {
+  if (req.method !== "GET") return false
+  return req.headers.get("sec-fetch-mode") === "navigate"
+    || req.headers.get("accept")?.includes("text/html") === true
+}
+
+function enabled(value: string | undefined): boolean {
+  return /^(1|true|yes|on)$/i.test(value ?? "")
+}
+
 export function proxy(req: NextRequest) {
   const isApi = req.nextUrl.pathname.startsWith("/api/")
   const requestOrigin = req.headers.get("origin")
@@ -37,10 +52,27 @@ export function proxy(req: NextRequest) {
     return withCors(new NextResponse(null, { status: 204 }), origin)
   }
 
-  const existing = req.cookies.get(SESSION_COOKIE)?.value
   const hostname = hostnameFromRequest(req)
+  const requestPath = `${req.nextUrl.pathname}${req.nextUrl.search}`
   const forwardedProto = firstHeader(req.headers.get("x-forwarded-proto"))
   const https = forwardedProto === "https" || req.nextUrl.protocol === "https:"
+  const currentOrigin = `${https ? "https" : "http"}://${hostname}`
+  const domainMigrationEnabled = enabled(process.env.CHENGJU_DOMAIN_MIGRATION_ENABLED)
+
+  if (domainMigrationEnabled && isCanonicalWwwHost(hostname)) {
+    return withCors(NextResponse.redirect(new URL(requestPath, CANONICAL_ORIGIN), 301), origin)
+  }
+
+  if (domainMigrationEnabled && isLegacyHost(hostname) && req.nextUrl.pathname !== "/api/domain-migration/start") {
+    if (isDocumentNavigation(req)) {
+      const handoff = new URL("/api/domain-migration/start", currentOrigin)
+      handoff.searchParams.set("returnTo", requestPath)
+      return withCors(NextResponse.redirect(handoff, 307), origin)
+    }
+    return withCors(NextResponse.redirect(new URL(requestPath, CANONICAL_ORIGIN), 308), origin)
+  }
+
+  const existing = req.cookies.get(SESSION_COOKIE)?.value
   const localHostname = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
   // 生产 Nginx 也可能把上游地址解析成 localhost；公网 HTTPS 必须优先于主机名。
   const local = localHostname && !https

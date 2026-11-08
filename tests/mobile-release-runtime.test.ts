@@ -58,19 +58,19 @@ test("MRR3 稳定下载地址公开 302 到最新 APK，不要求登录", async 
   const previous = process.env.CHENGJU_APP_RELEASE_FILE
   process.env.CHENGJU_APP_RELEASE_FILE = file
   try {
-    const response = await downloadAndroid(new Request("https://chenju.work/app/download/android"))
+    const response = await downloadAndroid(new Request("https://veyatv.com/app/download/android"))
     assert.equal(response.status, 302)
     assert.equal(response.headers.get("location"), "https://cdn.example.com/veyaframe-2.1.0.apk")
     assert.match(response.headers.get("cache-control") ?? "", /no-store/)
 
-    const middlewareResponse = proxy(new NextRequest("https://chenju.work/app/download/android"))
+    const middlewareResponse = proxy(new NextRequest("https://veyatv.com/app/download/android"))
     assert.equal(middlewareResponse.status, 200)
     assert.equal(middlewareResponse.headers.get("location"), null)
 
-    const apiResponse = await getReleaseApi(new Request("https://chenju.work/api/mobile/release"))
+    const apiResponse = await getReleaseApi(new Request("https://veyatv.com/api/mobile/release"))
     const payload = await apiResponse.json()
     assert.equal(payload.data.release.version, "2.1.0")
-    assert.equal(payload.data.stableUrl, "https://chenju.work/app/download/android")
+    assert.equal(payload.data.stableUrl, "https://veyatv.com/app/download/android")
   } finally {
     if (previous === undefined) delete process.env.CHENGJU_APP_RELEASE_FILE
     else process.env.CHENGJU_APP_RELEASE_FILE = previous

@@ -1,5 +1,5 @@
-# 成剧 · 短剧与漫剧的 AI 分镜台
+# VeyaTV · AI 短剧与漫剧生产平台
 User-agent: *
 Allow: /
 
-Sitemap: https://chenju.work/sitemap.xml
+Sitemap: https://veyatv.com/sitemap.xml

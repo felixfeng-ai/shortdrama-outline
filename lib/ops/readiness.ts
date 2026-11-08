@@ -32,6 +32,25 @@ export function checkProductionReadiness(
     errors.push("AUTH_EMAIL_FROM 格式不正确")
   }
 
+  const siteUrl = value(env, "CHENGJU_SITE_URL")
+  if (siteUrl) {
+    try {
+      const origin = new URL(siteUrl).origin
+      if (origin !== "https://veyatv.com") {
+        errors.push("CHENGJU_SITE_URL 必须使用 https://veyatv.com")
+      }
+    } catch {
+      errors.push("CHENGJU_SITE_URL 不是有效 URL")
+    }
+  }
+  const allowedOrigins = value(env, "CHENGJU_ALLOWED_ORIGINS")
+  if (siteUrl && !allowedOrigins.split(",").map((item) => item.trim()).includes("https://veyatv.com")) {
+    errors.push("CHENGJU_ALLOWED_ORIGINS 必须包含 https://veyatv.com")
+  }
+  if (siteUrl && !allowedOrigins.split(",").map((item) => item.trim()).includes("https://chenju.work")) {
+    warnings.push("CHENGJU_ALLOWED_ORIGINS 未保留旧域，迁移期 Web/App 跨域请求可能失败")
+  }
+
   const videoEnabled = /^(1|true|yes|on)$/i.test(value(env, "VIDEO_GENERATION_ENABLED"))
   if (videoEnabled && !value(env, "MINIMAX_API_KEY")) {
     errors.push("VIDEO_GENERATION_ENABLED 已开启，但缺少 MINIMAX_API_KEY")

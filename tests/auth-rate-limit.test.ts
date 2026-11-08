@@ -11,7 +11,7 @@ import {
 } from "../lib/auth/rate-limit.ts"
 
 function req(headers: Record<string, string> = {}): Request {
-  return new Request("https://chenju.work/api/auth/email/request-code", {
+  return new Request("https://veyatv.com/api/auth/email/request-code", {
     method: "POST",
     headers,
   })

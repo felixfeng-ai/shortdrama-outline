@@ -117,7 +117,7 @@ try {
           <div class="rule"></div>
           <div class="footer">
             <span>跨集一致性 · 版本可追踪 · 生产可控</span>
-            <b>chenju.work</b>
+            <b>veyatv.com</b>
           </div>
         </main>
       </body>

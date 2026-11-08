@@ -43,6 +43,7 @@ test("BRAND1 使用 VeyaTV · 成剧 与生产平台定位", () => {
   assert.match(layout, /AI 短剧与漫剧生产平台/)
   assert.match(guide, /Veya Agent/)
   assert.match(guide, /Veya Canvas/)
+  assert.match(guide, /veyatv\.com/)
   assert.match(guide, /chenju\.work/)
   assert.match(layout, /title:\s*'VeyaTV · AI 短剧与漫剧生产平台'/)
   assert.match(pwa, /name:\s*"VeyaTV · 成剧"/)

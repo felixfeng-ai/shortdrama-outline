@@ -163,7 +163,7 @@ test("E5 生产环境未配置邮件服务时明确拒绝，不返回验证码",
   delete process.env.AUTH_EMAIL_FROM
   try {
     const response = await requestEmailCode(new Request(
-      "https://chenju.work/api/auth/email/request-code",
+      "https://veyatv.com/api/auth/email/request-code",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -252,7 +252,7 @@ test("E7 已配置邮件服务时只发送验证码，不在 API 响应中泄露
   }) as typeof fetch
   try {
     const response = await requestEmailCode(new Request(
-      "https://chenju.work/api/auth/email/request-code",
+      "https://veyatv.com/api/auth/email/request-code",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -285,7 +285,7 @@ test("E8 邮件发送失败时清理验证码并返回 502", async () => {
   globalThis.fetch = (async () => new Response("rejected", { status: 500 })) as typeof fetch
   try {
     const response = await requestEmailCode(new Request(
-      "https://chenju.work/api/auth/email/request-code",
+      "https://veyatv.com/api/auth/email/request-code",
       {
         method: "POST",
         headers: { "content-type": "application/json" },

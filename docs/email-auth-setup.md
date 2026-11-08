@@ -4,6 +4,9 @@
 DNS 服务商：阿里云 HiChina  
 应用发件人：`VeyaTV · 成剧 <login@chenju.work>`
 
+> 官网 canonical 已切换为 `veyatv.com`。邮件域暂时保留 `chenju.work`，
+> 避免在 `veyatv.com` 的 Resend、SPF、DKIM 与 MX 记录验证完成前中断登录验证码。
+
 ## 1. AUTH_ALLOW_DEV_CODE
 
 这个值不需要申请。

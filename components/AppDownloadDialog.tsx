@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const ANDROID_DOWNLOAD_URL = 'https://chenju.work/app/download/android'
+const ANDROID_DOWNLOAD_URL = 'https://veyatv.com/app/download/android'
 
 interface Props {
   open: boolean

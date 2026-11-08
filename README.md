@@ -8,8 +8,8 @@
 
 面向独立短剧与漫剧创作者的 AI 创作、镜头资产与成片生产平台。**打开网页就用，不装任何东西。**
 
-[![线上体验](https://img.shields.io/badge/🌐_线上体验-chenju.work-2ea44f?style=for-the-badge)](https://chenju.work)
-[![使用教程](https://img.shields.io/badge/📘_使用教程-chenju.work%2Fdocs-C4D98A?style=for-the-badge)](https://chenju.work/docs)
+[![线上体验](https://img.shields.io/badge/🌐_线上体验-veyatv.com-2ea44f?style=for-the-badge)](https://veyatv.com)
+[![使用教程](https://img.shields.io/badge/📘_使用教程-veyatv.com%2Fdocs-C4D98A?style=for-the-badge)](https://veyatv.com/docs)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tests](https://img.shields.io/badge/tests-node%3Atest-2ea44f?style=for-the-badge)](#测试)
@@ -120,7 +120,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 - **成片交付与编辑**：时间线默认进入成片状态，先显示可播放、可下载的结果或当前唯一下一步，并明确区分成功、排队、渲染中、失败、待同步与阻断；成片状态、镜头轨道、声音配乐改为三个工具页签。支持“一键智能成片 / 重新智能成片”：自动采用每镜最新候选、补齐缺失 TTS、匹配系统 BGM、固化时间线并加入渲染队列。输出可选预览版 480P 或交付版 1080P，并支持竖屏、横屏、方形三种平台画幅；基础后期包含淡入淡出、字幕风格和对白触发 BGM ducking。成片记录可提交审核、通过或退回修改。配乐提供智能推荐、20 首平台自制原创系统曲库和用户上传三个入口，支持搜索、分类、试听、收藏、BPM、波形、音量与淡入淡出。
 - **交付中心**：从成功成片进入 `/delivery/[projectId]`，按单集或整季生成发布包。包内包含 clean MP4、烧录字幕 MP4、SRT、ASS、封面、metadata、manifest、AI 声明和 ZIP；平台预检覆盖抖音、快手、视频号、TikTok、Reels、Shorts、B站和 YouTube。审片使用一次性 Token 链接，小团队无需注册即可添加时间点批注并通过或退回；发布后回填作品链接和播放数据。
 - **小说工作台**：项目导出菜单进入 `/novels/[projectId]`，默认不生成、不导出；用户确认篇幅、章数、Token、额度和耗时后才按低优先级排队。小说不增加第七步，也不占主导航。
-- **教程入口**：工作台和创作技能页都提供“教程”，完整说明见 [`/docs`](https://chenju.work/docs)。
+- **教程入口**：工作台和创作技能页都提供“教程”，完整说明见 [`/docs`](https://veyatv.com/docs)。
 
 ![成剧工作台：完整目录、当前步骤与 AI 场记](public/docs/tutorial/01-quick-start.png)
 
@@ -130,7 +130,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 
 | | 指标 | 具体到什么程度 | 怎么验 |
 |---|---|---|---|
-| 🚀 | **零部署** | 从打开 [chenju.work](https://chenju.work) 到拿到第 1 个镜头，**不需要安装任何东西**——不要 Docker、不要本机跑服务；不登录也能开始，登录后项目可跨设备找回 | 打开即用，全程只需一个浏览器 |
+| 🚀 | **零部署** | 从打开 [veyatv.com](https://veyatv.com) 到拿到第 1 个镜头，**不需要安装任何东西**——不要 Docker、不要本机跑服务；不登录也能开始，登录后项目可跨设备找回 | 打开即用，全程只需一个浏览器 |
 | 🔒 | **参考图零上传** | 本地参考图**从不经过服务端**。服务端只存 `vaultKey`（图在你硬盘上的路径）+ `fileHash`（校验指纹），不存这些图的像素 | `/api/refs` 收到带 `data`/`base64`/`file`/`image` 字段的请求会**直接 400 拒绝** |
 | 📦 | **零锁定** | 全部资产可导出为自包含 zip；交付包适合下游执行，完整备份可重新导入继续编辑 | 交付包含采用图与执行文件；完整备份含全部快照、任务、候选图、本地参考图、意图、视觉宪法、判断日志与小说稿 |
 
@@ -156,8 +156,8 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 `VeyaTV` 是平台主品牌：`Veya` 承担长期技术品牌与产品家族，`TV` 指向视频、剧集和内容生产。
 中文正式名继续使用「成剧」，对外标准组合固定为 `VeyaTV · 成剧`。
 
-> 线上域名是 `chenju.work`，比品牌拼音少一个 g——`chengju.work` 已被他人注册，
-> 退而取了去掉 g 的拼写，读音不变。
+> 正式域名是 `veyatv.com`。旧域名 `chenju.work` 继续保留 HTTPS，访问时通过
+> 一次性会话交接迁移到新域，已有匿名项目和登录态不会因跨域 Cookie 丢失。
 
 </details>
 
@@ -352,8 +352,8 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 
 ### 方式一：直接用（推荐，零安装）
 
-打开 **<https://chenju.work>** 即可。不需要注册、不需要安装。
-第一次使用可先看 **[成剧教程](https://chenju.work/docs)**：从一句想法或已有原文开始，
+打开 **<https://veyatv.com>** 即可。不需要注册、不需要安装。
+第一次使用可先看 **[成剧教程](https://veyatv.com/docs)**：从一句想法或已有原文开始，
 依次完成人物、分集、定妆、场次、分镜、镜头视频、时间线成片和外部交付。
 
 ### 方式二：本地跑（要改代码 / 离线用）
@@ -398,6 +398,8 @@ npm run build
 | `AUTH_SECRET` | 登录功能必填 | — | 验证码散列所需的强随机服务端密钥 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只存在服务端 |
 | `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证发件域名下的发件人，例如 `VeyaTV · 成剧 <login@chenju.work>` |
+| `CHENGJU_SITE_URL` | 生产必填 | `https://veyatv.com` | canonical 站点地址，用于 metadata、sitemap 与分享链接 |
+| `CHENGJU_ALLOWED_ORIGINS` | 生产必填 | 见 `.env.example` | Web/App 跨域白名单；迁移期同时保留新旧域 |
 | `AUTH_CODE_IP_10M_LIMIT` | | `5` | 同一 IP 每 10 分钟最多请求验证码次数 |
 | `AUTH_CODE_IP_DAILY_LIMIT` | | `20` | 同一 IP 每连续 24 小时最多请求验证码次数 |
 | `AUTH_CODE_GLOBAL_DAILY_LIMIT` | | `200` | 全站每连续 24 小时验证码发送预算 |
@@ -656,7 +658,7 @@ chengju/
 ├── public/                         # sw.js、offline.html、图标等静态资源
 ├── proxy.ts                        # 匿名会话 Cookie 注入（Next.js 16 代理层）
 ├── deploy/
-│   ├── nginx-chenju.work.conf      # Nginx 站点配置（香港服务器，反代 3001）
+│   ├── nginx-veyatv.com.conf      # Nginx 站点配置（香港服务器，反代 3001）
 │   └── cicd-deploy.sh              # 服务器端部署脚本：停服 → 构建 → 启动
 ├── .github/workflows/deploy.yml    # push main 自动部署
 ├── ecosystem.config.cjs            # PM2 进程配置（应用跑在 3001）
@@ -1072,7 +1074,7 @@ npm run build
 pm2 start ecosystem.config.cjs      # 应用跑在 3001（与同机其他服务错开）
 ```
 
-Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
+Nginx 反代配置见 `deploy/nginx-veyatv.com.conf`。
 **自建到这一步最容易踩的两个坑**（我们都踩过，写在这里免得你再踩一遍）：
 
 1. **`proxy_read_timeout` 必须大于应用的模型超时**。单批模型超时是 240s，
@@ -1103,6 +1105,9 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `AUTH_SECRET` | 登录功能必填 | — | 生产环境必须设置强随机值；验证码与散列密钥分离保存 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只放服务端 |
 | `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `VeyaTV · 成剧 <login@chenju.work>` |
+| `CHENGJU_SITE_URL` | 生产必填 | `https://veyatv.com` | canonical 站点地址；旧域只负责迁移跳转 |
+| `CHENGJU_ALLOWED_ORIGINS` | 生产必填 | 见 `.env.example` | 迁移期同时允许 `veyatv.com` 与 `chenju.work` |
+| `CHENGJU_DOMAIN_MIGRATION_ENABLED` | | `0` | DNS 与证书完成前保持关闭；切换时改为 `1` |
 | `AUTH_CODE_IP_10M_LIMIT` | | `5` | 同一 IP 每 10 分钟验证码请求上限 |
 | `AUTH_CODE_IP_DAILY_LIMIT` | | `20` | 同一 IP 每连续 24 小时验证码请求上限 |
 | `AUTH_CODE_GLOBAL_DAILY_LIMIT` | | `200` | 全站每连续 24 小时验证码发送上限 |
@@ -1129,7 +1134,7 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 
 ### App 发版不重新部署 Web
 
-二维码永久指向 `https://chenju.work/app/download/android`。该地址每次请求读取运行时
+二维码永久指向 `https://veyatv.com/app/download/android`。该地址每次请求读取运行时
 `app-release.json`，并直接 `302` 到最新 APK；不需要登录，也不需要更换二维码。
 
 App 构建完成后，只需把 APK 上传到稳定对象存储，然后执行：
@@ -1158,14 +1163,18 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
                                                     │
                                         PM2: chengju @ 127.0.0.1:3001
                                                     │
-                                       Nginx: chenju.work ──443──▶ 公网
+                                       Nginx: veyatv.com ──443──▶ 公网
 ```
 
 代码推到 `main` 就自动部署，不需要手动操作服务器。
 
+`veyatv.com` 是唯一 canonical 站点。`chenju.work` 与 `www.chenju.work`
+继续保留旧证书和 HTTPS，通过一次性加密 handoff 迁移匿名项目与登录态；
+`www.veyatv.com` 永久跳转到 `veyatv.com`。
+
 ### 首次部署（一次性，共 7 步）
 
-1. **DNS**：在阿里云控制台给 `chenju.work` 和 `www.chenju.work` 各加一条 A 记录，指向服务器公网 IP
+1. **DNS**：给 `veyatv.com` 和 `www.veyatv.com` 各加一条 A 记录，指向服务器公网 IP；旧域 `chenju.work` / `www.chenju.work` 继续指向同一服务器
 2. **建目录并拉代码**（服务器上执行）
    ```bash
    sudo mkdir -p /opt/chengju && sudo chown "$USER:$USER" /opt/chengju
@@ -1178,6 +1187,9 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    DEEPSEEK_API_KEY=sk-你的模型密钥
    ALIYUN_DASHSCOPE_API_KEY=sk-你的通义密钥
    AUTH_SECRET=至少 32 字节的随机值
+   CHENGJU_SITE_URL=https://veyatv.com
+   CHENGJU_ALLOWED_ORIGINS=https://veyatv.com,https://www.veyatv.com,https://chenju.work,https://www.chenju.work
+   CHENGJU_DOMAIN_MIGRATION_ENABLED=0
    RESEND_API_KEY=re_你的邮件密钥
    AUTH_EMAIL_FROM=VeyaTV · 成剧 <login@chenju.work>
    AUTH_CODE_IP_10M_LIMIT=5
@@ -1188,16 +1200,17 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    ```
 4. **签 HTTPS 证书**（等 DNS 生效后）
    ```bash
-   sudo certbot --nginx -d chenju.work -d www.chenju.work
+   sudo bash deploy/bootstrap-veyatv-domain.sh
    ```
-5. **启用 Nginx 站点**
+5. **验证新域与旧域**
    ```bash
-   scp deploy/nginx-chenju.work.conf <用户名>@<服务器IP>:/tmp/
-   # 服务器上：
-   sudo cp /tmp/nginx-chenju.work.conf /etc/nginx/sites-enabled/chenju.work
-   sudo nginx -t && sudo nginx -s reload
+   curl -I https://veyatv.com
+   curl -I https://www.veyatv.com
+   curl -I https://chenju.work
    ```
-   > certbot 若已自动改写配置并生效，这一步可以跳过。
+   `www.veyatv.com` 应返回 301 到 apex；`chenju.work` 应由应用层完成会话交接后进入新域。
+   证书与新域验证完成前保持 `CHENGJU_DOMAIN_MIGRATION_ENABLED=0`；
+   完成后再改为 `1` 并重新部署，正式启用旧域会话交接。
 6. **首次启动**：服务器上执行 `bash /opt/chengju/deploy/cicd-deploy.sh`
 7. **配 CI 密钥**：GitHub 仓库 → Settings → Secrets and variables → Actions，新增两个 secret
    - `CHENGJU_HOST` = 服务器公网 IP
@@ -1207,13 +1220,13 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
 
 **🔴 禁止边构建边服务。** `npm run build` 会覆盖 `.next` 目录，如果 PM2 进程还在跑，它会读到写了一半的构建产物，直接 500。`cicd-deploy.sh` 已固定为「先 `pm2 stop` → 构建 → `pm2 start`」，手动操作时也必须照这个顺序。
 
-**🔴 Nginx 超时必须大于模型超时。** `lib/deepseek.ts` 里 `TIMEOUT_MS = 240s`，而 Nginx 的 `proxy_read_timeout` 默认只有 60s。不改的表现是：本地怎么跑都正常，一上线第三步生成分集就 504。长集数会分多批（最多 600s），`deploy/nginx-chenju.work.conf` 里已给到 660s。
+**🔴 Nginx 超时必须大于模型超时。** `lib/deepseek.ts` 里 `TIMEOUT_MS = 240s`，而 Nginx 的 `proxy_read_timeout` 默认只有 60s。不改的表现是：本地怎么跑都正常，一上线第三步生成分集就 504。长集数会分多批（最多 600s），`deploy/nginx-veyatv.com.conf` 里已给到 660s。
 
 > 第三步改流式之后这条的压力小了很多：`proxy_read_timeout` 计的是「两次读操作之间的**间隔**」，流式持续吐字会不断把它重置回去，不再是从头到尾累积。保留 660s 是为了兜住「模型迟迟不吐第一个字」和多批之间的空档。
 
 **🔴 流式响应必须关掉 nginx 缓冲。** 默认的 `proxy_buffering` 会把 SSE 攒够一批再下发，流式效果直接消失，退化成改之前「等十几秒然后全部出现」的样子。应用侧在响应头里带了 `X-Accel-Buffering: no`，nginx 认这个头，**所以 nginx 配置一个字都不用改**——这一点在生产环境实测确认过（`Server: nginx/1.24.0` + `Content-Encoding: none`，分集帧间距 600ms~1s）。
 
-> 同理，`gzip_types` 里**不能**加 `text/event-stream`：压缩同样要攒够数据才能开始。`deploy/nginx-chenju.work.conf` 里的 `gzip_types` 只列了 `text/plain text/css application/javascript application/json application/xml image/svg+xml`，没有 `text/event-stream`，正好安全。
+> 同理，`gzip_types` 里**不能**加 `text/event-stream`：压缩同样要攒够数据才能开始。`deploy/nginx-veyatv.com.conf` 里的 `gzip_types` 只列了 `text/plain text/css application/javascript application/json application/xml image/svg+xml`，没有 `text/event-stream`，正好安全。
 
 **端口是 3001。** 同一台服务器上还跑着另一个应用、占着 3000，两个不能混用；端口写在 `ecosystem.config.cjs` 的 `args` 里。
 

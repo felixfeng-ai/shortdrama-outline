@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   description:
     '从一句想法或已有剧本出发，完成人物、分集、场次、分镜、角色一致性、镜头视频、配音字幕与按集成片。外部导出和平台内成片并行，本地参考图默认不上传。',
   // 分享到微信/推特要有图，否则只是一行光秃秃的链接
-  metadataBase: new URL(process.env.CHENGJU_SITE_URL || 'https://chenju.work'),
+  metadataBase: new URL(process.env.CHENGJU_SITE_URL || 'https://veyatv.com'),
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
