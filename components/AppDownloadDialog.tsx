@@ -63,7 +63,7 @@ export default function AppDownloadDialog({ open, onClose }: Props) {
       >
         <header>
           <div>
-            <span>VEYAFRAME MOBILE</span>
+            <span>VeyaTV MOBILE</span>
             <h2 id="wfx-app-download-title">在手机上继续同一部短剧</h2>
           </div>
           <button ref={closeRef} type="button" aria-label="关闭下载二维码" onClick={onClose}>
@@ -74,7 +74,7 @@ export default function AppDownloadDialog({ open, onClose }: Props) {
         <div className="wfx-app-download-qr">
           <img
             src="/app-download-qr.png"
-            alt="VeyaFrame 手机 App 下载二维码"
+            alt="VeyaTV 手机 App 下载二维码"
             width="411"
             height="411"
           />

@@ -18,7 +18,7 @@ test("VP1 顶栏头像使用独立 30px 容器，内部层填满且无横向偏�
 })
 
 test("VP2 登录页切换冷蓝/反相白主题并明确短剧生产链", () => {
-  assert.match(login, /短剧创作工作台/)
+  assert.match(login, /AI 短剧与漫剧生产平台/)
   assert.match(login, /回来接着写/)
   assert.match(login, /把下一场做成/)
   assert.match(login, /人物、分集、场次、分镜和首帧/)
@@ -26,7 +26,7 @@ test("VP2 登录页切换冷蓝/反相白主题并明确短剧生产链", () => 
   assert.match(login, /人物跨镜不走样/)
   assert.match(login, /场次直接接分镜/)
   assert.match(login, /每次修改可回看/)
-  assert.match(loginPage, /短剧创作工作台/)
+  assert.match(loginPage, /AI 短剧与漫剧生产平台/)
   assert.match(shellCss, /\.auth-page\s*\{[^}]*--signal-acid:\s*#8dc8dc/s)
   assert.doesNotMatch(login, /把故事<span className="auth-title-accent">做对/)
 })

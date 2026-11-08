@@ -86,7 +86,7 @@ export const SYSTEM_BGM_TRACKS: BgmTrack[] = seeds.map((seed, index) => {
     durationMs: 45_000,
     sha256: exists ? createHash("sha256").update(fs.readFileSync(filePath)).digest("hex") : "",
     licenseConfirmed: true,
-    licenseNote: "VeyaFrame Studio 自制原创内测配乐；平台内嵌与用户成片发布可用。",
+    licenseNote: "VeyaTV 自制原创内测配乐；平台内嵌与用户成片发布可用。",
     createdAt: 1_788_000_000_000 + index,
     sourceType: "system",
     previewUrl: `/${publicStorageKey(seed.file)}`,
@@ -94,9 +94,9 @@ export const SYSTEM_BGM_TRACKS: BgmTrack[] = seeds.map((seed, index) => {
     tags: seed.tags,
     mood: seed.mood,
     genre: seed.genre,
-    licenseName: "VeyaFrame Original License",
+    licenseName: "VeyaTV Original License",
     licenseUrl: null,
-    attribution: "VeyaFrame Studio",
+    attribution: "VeyaTV",
     waveform: waveform(seed.id),
   }
 })

@@ -4,7 +4,7 @@ export default function SiteLegalFooter() {
       <div className="site-legal-footer-brand">
         <span aria-hidden="true">V</span>
         <p>
-          <b>VeyaFrame</b>
+          <b>VeyaTV</b>
           <small>内测版</small>
         </p>
       </div>
@@ -17,7 +17,7 @@ export default function SiteLegalFooter() {
         <a href="mailto:support@chenju.work">联系我们</a>
       </nav>
 
-      <small className="site-legal-footer-copy">© 2026 VeyaFrame</small>
+      <small className="site-legal-footer-copy">© 2026 VeyaTV</small>
     </footer>
   )
 }

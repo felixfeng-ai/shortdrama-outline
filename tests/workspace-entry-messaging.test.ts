@@ -32,7 +32,7 @@ test("C1/C2 登录页突出短剧生产链、跨镜一致性与版本连续性",
 
   assert.match(layout, /镜头视频/)
   assert.match(layout, /成片/)
-  assert.match(login, /短剧创作工作台/)
+  assert.match(login, /AI 短剧与漫剧生产平台/)
   assert.match(login, /回来接着写/)
   assert.match(login, /把下一场做成/)
   assert.match(login, /人物、分集、场次、分镜和首帧/)

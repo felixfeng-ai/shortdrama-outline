@@ -48,9 +48,9 @@ export default function WorkspaceTopbar({
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" /></svg>
       </button>
 
-      <a className="wfx-mobile-brand" href="#" aria-label="VeyaFrame 首页">
+      <a className="wfx-mobile-brand" href="#" aria-label="VeyaTV 首页">
           <VeyaBrandMark />
-        <span>VeyaFrame</span>
+        <span>VeyaTV</span>
       </a>
 
       <div className="wfx-crumb">

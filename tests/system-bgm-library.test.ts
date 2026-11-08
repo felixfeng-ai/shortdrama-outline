@@ -60,5 +60,5 @@ test("SYS-BGM4 时间线可通过 getBgmTrack 解析系统曲目", () => {
   const track = getBgmTrack(db, "any-project", "system-rain-mystery")
   assert.equal(track?.sourceType, "system")
   assert.equal(track?.previewUrl, "/audio/bgm/system/rain-mystery.mp3")
-  assert.equal(track?.licenseName, "VeyaFrame Original License")
+  assert.equal(track?.licenseName, "VeyaTV Original License")
 })

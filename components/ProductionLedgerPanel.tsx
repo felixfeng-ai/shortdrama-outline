@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { copyText } from '@/lib/export'
 import {
   productionLedgerCsv,
@@ -11,6 +11,7 @@ import SmoothCollapse from './SmoothCollapse'
 interface Props {
   open: boolean
   ledger: ProductionLedger
+  projectId: string | null
 }
 
 function priority(row: ProductionLedger['rows'][number]): number {
@@ -27,8 +28,19 @@ function statusLabel(status: ProductionLedger['rows'][number]['status']): string
   return '待出图'
 }
 
-export default function ProductionLedgerPanel({ open, ledger }: Props) {
+export default function ProductionLedgerPanel({ open, ledger, projectId }: Props) {
   const [copied, setCopied] = useState(false)
+  const [delivery, setDelivery] = useState<null | {
+    totalPackages: number
+    readyPackages: number
+    approvedEpisodes: number
+    publishedEpisodes: number
+    totalViews: number
+    weightedRetention3s: number
+    completionRate: number
+    totalCostUnits: number
+    costPerThousandViews: number
+  }>(null)
   const rows = ledger.rows.slice().sort((left, right) =>
     priority(right) - priority(left)
     || left.episode - right.episode
@@ -39,6 +51,20 @@ export default function ProductionLedgerPanel({ open, ledger }: Props) {
     const done = await copyText(productionLedgerCsv(ledger))
     setCopied(done)
   }
+
+  useEffect(() => {
+    if (!open || !projectId) return
+    let cancelled = false
+    fetch(`/api/projects/${encodeURIComponent(projectId)}/delivery-summary`, {
+      cache: 'no-store',
+    })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled && payload?.success) setDelivery(payload.data.summary)
+      })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [open, projectId])
 
   return (
     <SmoothCollapse open={open} className="brief">
@@ -54,6 +80,17 @@ export default function ProductionLedgerPanel({ open, ledger }: Props) {
           <span>失败任务 {ledger.summary.failedTasks}</span>
         </div>
 
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-chip border border-surface-line bg-surface-soft px-3 py-2 text-[10.5px] text-ink-500 sm:grid-cols-4">
+          <span>交付包 {delivery?.totalPackages ?? 0}</span>
+          <span>可用 {delivery?.readyPackages ?? 0}</span>
+          <span>审核通过 {delivery?.approvedEpisodes ?? 0} 集</span>
+          <span>已发布 {delivery?.publishedEpisodes ?? 0} 集</span>
+          <span>播放 {delivery?.totalViews ?? 0}</span>
+          <span>3 秒留存 {Math.round((delivery?.weightedRetention3s ?? 0) * 100)}%</span>
+          <span>完播率 {Math.round((delivery?.completionRate ?? 0) * 100)}%</span>
+          <span>千播成本 {(delivery?.costPerThousandViews ?? 0).toFixed(2)} 额度</span>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[10.5px] text-ink-400">
             逐镜汇总批注、质检、任务与采用图；按问题优先排序。
@@ -66,6 +103,15 @@ export default function ProductionLedgerPanel({ open, ledger }: Props) {
           >
             {copied ? '台账已复制' : '复制台账 CSV'}
           </button>
+          {projectId && (
+            <a
+              href={`/delivery/${encodeURIComponent(projectId)}`}
+              className="min-h-8 rounded-chip border border-surface-line px-2.5 text-[10px] leading-8 text-ink-600
+                transition-colors hover:border-accent-300 hover:text-accent-700"
+            >
+              打开交付中心
+            </a>
+          )}
         </div>
 
         {rows.length === 0 ? (

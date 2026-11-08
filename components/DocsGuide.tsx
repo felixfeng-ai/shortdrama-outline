@@ -142,9 +142,9 @@ export default function DocsGuide() {
   return (
     <div className="docs-page">
       <header className="docs-topbar">
-        <a className="docs-brand" href="/" aria-label="返回成剧工作台">
+        <a className="docs-brand" href="/" aria-label="返回 VeyaTV · 成剧 工作台">
           <span className="docs-brand-mark"><VeyaBrandMark /></span>
-          <b>VeyaFrame</b>
+          <b>VeyaTV</b>
           <em>成剧</em>
         </a>
         <nav className="docs-topnav" aria-label="站点导航">
@@ -158,7 +158,7 @@ export default function DocsGuide() {
         <aside className="docs-sidebar" aria-label="教程章节">
           <div className="docs-side-title">
             <BookIcon />
-            <span>成剧教程</span>
+            <span>VeyaTV 教程</span>
           </div>
           {CHAPTERS.map((chapter) => (
             <section key={chapter.title}>
@@ -219,7 +219,7 @@ export default function DocsGuide() {
                 >
                   <img
                     src="/docs/tutorial/01-quick-start.png"
-                    alt="VeyaFrame 工作台当前项目总览"
+                    alt="VeyaTV 工作台当前项目总览"
                     width={1440}
                     height={1000}
                     loading="eager"
@@ -408,7 +408,7 @@ export default function DocsGuide() {
             </p>
             <TutorialFigure
               src="/docs/tutorial/05-export.png"
-              alt="VeyaFrame 工作区顶栏导出交付包完成状态，展示预检结果和导出文件数量"
+              alt="VeyaTV 工作区顶栏导出交付包完成状态，展示预检结果和导出文件数量"
               label="顶栏 · 导出交付包"
               points={[
                 '导出前先执行阻断和提醒预检，结果会写进项目报告。',
@@ -437,7 +437,7 @@ export default function DocsGuide() {
             </p>
             <TutorialFigure
               src="/docs/tutorial/09-novel-workspace.png"
-              alt="VeyaFrame 小说工作台，左侧卷章目录、中间正文编辑和右侧质量检查"
+              alt="VeyaTV 小说工作台，左侧卷章目录、中间正文编辑和右侧质量检查"
               label="小说稿 · 卷章与正文编辑"
               points={[
                 '先选篇幅并确认预算，再按章节低优先级生成；媒体任务运行时自动等待。',
@@ -466,7 +466,7 @@ export default function DocsGuide() {
             </p>
             <TutorialFigure
               src="/docs/tutorial/06-workspace-create.png"
-              alt="VeyaFrame 创作模式，展示当前项目推荐、折叠的执行准备、技能执行计划和右侧圆形 Agent 图标"
+              alt="VeyaTV 创作模式，展示当前项目推荐、折叠的执行准备、技能执行计划和右侧圆形 Agent 图标"
               label="创作模式 · 推荐与执行准备"
               points={[
                 '创作模式首屏先给当前项目推荐；选择技能后自动展开“执行准备”，显示读取范围、前置与产出。',
@@ -485,7 +485,7 @@ export default function DocsGuide() {
             </p>
             <TutorialFigure
               src="/docs/tutorial/07-fullscreen-canvas.png"
-              alt="VeyaFrame 独立全屏编排画布，展示节点、依赖线、缩放和节点属性面板"
+              alt="VeyaTV 独立全屏编排画布，展示节点、依赖线、缩放和节点属性面板"
               label="独立窗口 · 全屏编排画布"
               points={[
                 '新窗口保留当前项目和当前步骤，不会打开一个重复的完整工作台。',
@@ -505,7 +505,7 @@ export default function DocsGuide() {
             </p>
             <TutorialFigure
               src="/docs/tutorial/08-mobile-app.png"
-              alt="VeyaFrame 手机 App 下载二维码弹层，展示二维码和跨设备继续项目说明"
+              alt="VeyaTV 手机 App 下载二维码弹层，展示二维码和跨设备继续项目说明"
               label="手机 App · 扫码下载"
               points={[
                 '扫码下载 App 后使用与 Web 相同的邮箱账号登录。',

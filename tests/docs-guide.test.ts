@@ -57,7 +57,7 @@ test("教程页面具备三栏文档骨架、CTA 与移动端布局", () => {
   const route = fs.readFileSync("app/docs/page.tsx", "utf8")
   const css = fs.readFileSync("app/docs/docs.css", "utf8")
   const guide = fs.readFileSync("components/DocsGuide.tsx", "utf8")
-  assert.match(route, /成剧使用教程/)
+  assert.match(route, /VeyaTV 使用教程/)
   assert.match(guide, /docs-layout/)
   assert.match(guide, /docs-toc/)
   assert.match(guide, /开始第一次创作/)

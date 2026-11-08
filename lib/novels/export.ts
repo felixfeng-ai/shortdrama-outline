@@ -211,7 +211,7 @@ function epub(input: NovelExportInput): Uint8Array {
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id">
 <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-<dc:identifier id="book-id">veyaframe-${escapeXml(input.title)}</dc:identifier>
+<dc:identifier id="book-id">veyatv-${escapeXml(input.title)}</dc:identifier>
 <dc:title>${escapeXml(input.title)}</dc:title><dc:language>zh-CN</dc:language>
 <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d{3}Z$/, "Z")}</meta>
 </metadata>

@@ -8,8 +8,8 @@ import "./app-download.css"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "成剧 App 内测 · VeyaFrame",
-  description: "成剧 VeyaFrame 原生 App 小范围内测安装、测试路线与反馈入口。",
+  title: "VeyaTV App 内测 · 成剧",
+  description: "VeyaTV · 成剧 原生 App 小范围内测安装、测试路线与反馈入口。",
   robots: {
     index: false,
     follow: false,
@@ -24,8 +24,8 @@ export default function AppDownloadPage() {
       <header className="app-download-topbar">
         <Link className="app-download-brand" href="/">
           <span>V</span>
-          <b>成剧</b>
-          <em>VEYAFRAME</em>
+          <b>VeyaTV</b>
+          <em>成剧</em>
         </Link>
         <nav aria-label="内测页面导航">
           <Link href="/docs">使用教程</Link>
@@ -40,7 +40,7 @@ export default function AppDownloadPage() {
           <p className="app-download-kicker">
             {release.releasedAt ? `更新于 ${release.releasedAt}` : "小范围分享内测"}
           </p>
-          <h1>把最新的成剧，装进手机里。</h1>
+          <h1>把最新的 VeyaTV，装进手机里。</h1>
           <p className="app-download-lede">
             当前版本用于验证 Agent、语音、图像与视频生成、视频审片和现场检查。
             Android 可直接安装 APK；iOS 需要 TestFlight 或已登记设备。

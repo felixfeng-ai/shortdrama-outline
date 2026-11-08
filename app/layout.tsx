@@ -33,7 +33,7 @@ const mono = localFont({
 
 export const metadata: Metadata = {
   // 品牌名在前，描述性关键词留在后面——品牌要靠描述词才被搜到
-  title: 'VeyaFrame · AI 短剧与漫剧创作工作台',
+  title: 'VeyaTV · AI 短剧与漫剧生产平台',
   description:
     '从一句想法或已有剧本出发，完成人物、分集、场次、分镜、角色一致性、镜头视频、配音字幕与按集成片。外部导出和平台内成片并行，本地参考图默认不上传。',
   // 分享到微信/推特要有图，否则只是一行光秃秃的链接
@@ -41,27 +41,27 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
-    siteName: 'VeyaFrame',
+    siteName: 'VeyaTV',
     locale: 'zh_CN',
     url: '/',
-    title: 'VeyaFrame · AI 短剧与漫剧创作工作台',
+    title: 'VeyaTV · AI 短剧与漫剧生产平台',
     description:
       '从想法或剧本到分镜、镜头视频与成片。角色、场景、首帧、TTS、BGM 和时间线在同一条项目链里，外部交付与平台内渲染并行。',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'VeyaFrame —— AI 短剧与漫剧创作工作台' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'VeyaTV —— AI 短剧与漫剧生产平台' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'VeyaFrame · AI 短剧与漫剧创作工作台',
+    title: 'VeyaTV · AI 短剧与漫剧生产平台',
     description:
       '从想法或剧本到分镜、镜头视频与成片。角色、场景、首帧、TTS、BGM 和时间线在同一条项目链里，外部交付与平台内渲染并行。',
     images: ['/og.png'],
   },
   manifest: '/manifest.webmanifest',
-  icons: { icon: '/veyaframe-icon.svg', apple: '/veyaframe-icon.svg' },
+  icons: { icon: '/veyatv-icon.svg', apple: '/veyatv-icon.svg' },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'VeyaFrame',
+    title: 'VeyaTV',
   },
 }
 

@@ -1,12 +1,12 @@
-﻿<div align="center">
+<div align="center">
 
-# 成剧 VeyaFrame
+# VeyaTV · 成剧
 
-**短剧与漫剧的 AI 创作与成片工作台：从一句想法或已有原文，到分镜、镜头视频与时间线成片**
+**AI 短剧与漫剧生产平台：从一句想法或已有原文，到分镜、镜头视频与时间线成片**
 
-**VeyaFrame — From a line or an existing script to a production-ready short drama.**
+**VeyaTV — AI short drama and comic drama production platform.**
 
-面向独立短剧与漫剧创作者的 AI 创作、镜头资产与成片工具。**打开网页就用，不装任何东西。**
+面向独立短剧与漫剧创作者的 AI 创作、镜头资产与成片生产平台。**打开网页就用，不装任何东西。**
 
 [![线上体验](https://img.shields.io/badge/🌐_线上体验-chenju.work-2ea44f?style=for-the-badge)](https://chenju.work)
 [![使用教程](https://img.shields.io/badge/📘_使用教程-chenju.work%2Fdocs-C4D98A?style=for-the-badge)](https://chenju.work/docs)
@@ -24,7 +24,7 @@
 
 ### 一句话定位
 
-成剧 VeyaFrame 目前不是单纯的“AI 生图/生视频工具”，而是一个面向独立短剧、漫剧创作者的 **AI 生产工作台**：
+VeyaTV · 成剧是面向独立短剧、漫剧创作者的 **AI 短剧与漫剧生产平台**，不是单纯的“AI 生图/生视频工具”：
 
 > 把一个想法、小说或已有剧本，拆成可以修改、可以追踪、可以继续生产、最后可以交付的短剧资产与成片。
 
@@ -62,6 +62,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 | Agent 与 Skill | 识别快速出片、小说改编、继续制作、生产检查、画布编排等意图；提供执行计划、项目上下文和确定性检查 | 可以用自然语言操作项目，但执行前能知道会改什么、消耗多少额度 |
 | 镜头视频 | 使用已采用首帧生成镜头视频，支持模型、画幅、时长、预算、候选视频和批量任务 | 分镜不只停留在提示词，可以直接往成片推进 |
 | 时间线与成片 | 按集组织镜头、角色音色、TTS、BGM、SRT；支持一键智能成片、预览版 / 交付版、平台画幅、转场、字幕、BGM ducking、审核与 MP4 下载 | 在平台内形成从分镜到可审、可交付成片的闭环 |
+| 交付与发布 | 单集 / 整季发布包、字幕烧录、封面、发布文案、AI 声明、轻量审片链接、手动发布记录与播放数据回填 | 把成片整理成可以真正交付和上传的文件，并把结果带回台账 |
 | 画布与追踪 | 生产画布、自由画布、快照、版本、血缘、影响分析、分支、Agent 执行与回滚 | 修改人物、定妆或场次时，能知道影响了哪些下游内容，避免越改越乱 |
 | 产物与交付 | 导出交付包、完整备份、提示词表、执行单、采用图片，并支持重新导入 | 既能继续在平台制作，也能交给即梦、可灵、剪映等外部工具 |
 | 可选小说稿 | 复用人物、分集、场次、Canon 和项目原文生成小说，默认不自动生成 | 同一套故事资产可以多产出一个内容形态，而不是重新写一遍 |
@@ -94,7 +95,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 
 > **跨集一致性 + 版本可追踪 + 改动影响可计算 + 生产状态可视化 + 可平台内成片，也可交付外部平台。**
 
-即梦、可灵更擅长单条生成质量和模型能力；Flova、LibTV 更强调快速生成和创意画布。VeyaFrame 更适合占据另一个位置：
+即梦、可灵更擅长单条生成质量和模型能力；Flova、LibTV 更强调快速生成和创意画布。VeyaTV 更适合占据另一个位置：
 
 > **不是帮用户多生成几条素材，而是帮用户把一部多集短剧稳定做完，并在返修时少丢内容、少返工、少花冤枉钱。**
 
@@ -117,6 +118,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 - **第 6 步的三个工作区**：分镜、镜头视频、时间线成片是平级页签，各自只展示当前任务；页头另有“镜头视频”直达入口，点击后定位并切换，不再要求用户翻到分镜长页面中段寻找。
 - **视频候选与时间线**：镜头视频工作区直接展示本集真实视频候选，采用后才成为时间线素材；旧时间线草稿可显式同步已采用视频，不自动覆盖镜头顺序、静音或裁剪。
 - **成片交付与编辑**：时间线默认进入成片状态，先显示可播放、可下载的结果或当前唯一下一步，并明确区分成功、排队、渲染中、失败、待同步与阻断；成片状态、镜头轨道、声音配乐改为三个工具页签。支持“一键智能成片 / 重新智能成片”：自动采用每镜最新候选、补齐缺失 TTS、匹配系统 BGM、固化时间线并加入渲染队列。输出可选预览版 480P 或交付版 1080P，并支持竖屏、横屏、方形三种平台画幅；基础后期包含淡入淡出、字幕风格和对白触发 BGM ducking。成片记录可提交审核、通过或退回修改。配乐提供智能推荐、20 首平台自制原创系统曲库和用户上传三个入口，支持搜索、分类、试听、收藏、BPM、波形、音量与淡入淡出。
+- **交付中心**：从成功成片进入 `/delivery/[projectId]`，按单集或整季生成发布包。包内包含 clean MP4、烧录字幕 MP4、SRT、ASS、封面、metadata、manifest、AI 声明和 ZIP；平台预检覆盖抖音、快手、视频号、TikTok、Reels、Shorts、B站和 YouTube。审片使用一次性 Token 链接，小团队无需注册即可添加时间点批注并通过或退回；发布后回填作品链接和播放数据。
 - **小说工作台**：项目导出菜单进入 `/novels/[projectId]`，默认不生成、不导出；用户确认篇幅、章数、Token、额度和耗时后才按低优先级排队。小说不增加第七步，也不占主导航。
 - **教程入口**：工作台和创作技能页都提供“教程”，完整说明见 [`/docs`](https://chenju.work/docs)。
 
@@ -150,6 +152,9 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 
 「成剧」既读作「一句话成为一部剧」，也谐音「成句」——产品的输入恰好就是一句话。
 短剧这行靠钩子活着，但钩子只有放进完整结构里才成立，所以名字落在「剧」上，不落在「钩」上。
+
+`VeyaTV` 是平台主品牌：`Veya` 承担长期技术品牌与产品家族，`TV` 指向视频、剧集和内容生产。
+中文正式名继续使用「成剧」，对外标准组合固定为 `VeyaTV · 成剧`。
 
 > 线上域名是 `chenju.work`，比品牌拼音少一个 g——`chengju.work` 已被他人注册，
 > 退而取了去掉 g 的拼写，读音不变。
@@ -392,7 +397,7 @@ npm run build
 | `WEB_PUSH_SUBJECT` | | `mailto:admin@chengju.work` | VAPID 联系主体 |
 | `AUTH_SECRET` | 登录功能必填 | — | 验证码散列所需的强随机服务端密钥 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只存在服务端 |
-| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证发件域名下的发件人，例如 `成剧 VeyaFrame <login@chenju.work>` |
+| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证发件域名下的发件人，例如 `VeyaTV · 成剧 <login@chenju.work>` |
 | `AUTH_CODE_IP_10M_LIMIT` | | `5` | 同一 IP 每 10 分钟最多请求验证码次数 |
 | `AUTH_CODE_IP_DAILY_LIMIT` | | `20` | 同一 IP 每连续 24 小时最多请求验证码次数 |
 | `AUTH_CODE_GLOBAL_DAILY_LIMIT` | | `200` | 全站每连续 24 小时验证码发送预算 |
@@ -475,6 +480,8 @@ SQLite + 私有数据目录
 | `timeline_drafts` / `timeline_versions` | 按集时间线草稿与确认后的不可变版本 |
 | `voice_profiles` / `project_bgm_tracks` | 项目角色系统音色绑定与已确认授权的配乐轨 |
 | `video_renders` | MP4、SRT、manifest 的渲染状态、版本和私有文件记录 |
+| `video_delivery_*` | 发布包、交付项、审片链接、时间点批注和审片结论 |
+| `video_publish_*` | 人工发布记录、作品链接、播放、互动和成本快照 |
 | `canvas_graphs` / `agent_action_runs` | 编排画布状态与 Agent 执行/回滚记录 |
 | `text_generation_checkpoints` | 分集/分镜的输入签名、批次游标、已生成内容和稳定 stamp |
 | `users` / `login_codes` / `email_login_codes` / `auth_sessions` | 邮箱或手机号用户、验证码哈希和可撤销会话 |
@@ -745,6 +752,13 @@ chengju/
 | POST | `/api/video/smart-render` | `{ projectId, episode, qualityProfile, exportPreset }` | 自动采用视频、补齐 TTS、匹配 BGM、固化新版本并加入渲染队列 |
 | GET | `/api/video/renders/[id]` | — | 渲染状态；完成后可分别下载 MP4、SRT 和 manifest |
 | POST | `/api/video/renders/[id]/approval` | `{ projectId, action, note? }` | 提交审核、审核通过或退回修改 |
+| POST | `/api/video/delivery-packages` | `{ projectId, title, scope, platform, subtitleMode, items }` | 创建单集或整季发布包，后台生成字幕、封面和 ZIP |
+| GET | `/api/video/delivery-packages/[id]` | `?projectId=` | 读取交付包、发布记录、审片状态和播放汇总 |
+| GET | `/api/video/delivery-packages/[id]/file` | `?projectId=&kind=&itemId=` | 下载交付 ZIP、manifest、视频、字幕或封面 |
+| POST | `/api/video/delivery-packages/[id]/review-links` | `{ projectId, reviewerName, roleLabel }` | 生成一次性审片链接，Token 只存哈希 |
+| GET / POST | `/api/reviews/[token]` | GET 审片数据；POST feedback / decision | 公开审片、时间点批注与通过 / 退回 |
+| POST | `/api/video/delivery-packages/[id]/publish-records` | `{ projectId, itemId, platform, status, publishedUrl? }` | 保存真实发布记录 |
+| POST | `/api/video/publish-records/[id]/metrics` | `{ views, views3s, completionRate, costUnits }` | 回填播放与成本数据 |
 | GET | `/api/push/subscription` | — | 返回 VAPID 公钥与当前设备订阅状态 |
 | POST | `/api/push/subscription` | `{ subscription }` | 保存或幂等更新当前设备订阅 |
 | DELETE | `/api/push/subscription` | `{ endpoint }` | 关闭当前设备通知 |
@@ -997,6 +1011,7 @@ TypeScript 省略扩展名，所以可以直接测试路由导出函数，不必
 | 订阅与支付 | 📋 | 套餐、订单、计费、额度充值、退款和发票能力尚未开发 |
 | 原生 App | 📋 | Web/PWA 已具备；原生工作区仍需合并当前 Web 基线，并补 Keychain/Keystore、401 单飞刷新、深链、原生推送、相机/相册和离线草稿 |
 | 图生视频与成片交付 | ✅ | 镜头视频、跨镜身份锁定、TTS、BGM、不可变时间线、SRT、manifest、单集成片、一键智能成片、预览 / 交付档位、平台画幅、基础后期、审核流转与逐集串行队列已完成；真实 MiniMax 付费视频、1080×1920 交付成片和审核链路均已验收，仍待首批用户片质验收 |
+| 交付中心与轻量发布 | ✅ | 单集 / 整季发布包、字幕烧录、封面、平台预检、审片链接、发布记录、播放指标和台账汇总已完成；真实生产浏览器闭环、桌面与 390px 截图、ZIP 与 FFmpeg 测试通过 |
 | 海外平台自动发布 | 📋 | 当前只输出 TikTok / ReelShort / DramaBox 等平台规格和文本交付包，不接私密上传 API、买量、支付或地区运营 |
 
 发布顺序按“真实用户能否安全进入并持续使用”判断：邮箱登录生产配置与收件验收 → 审阅、通知和本地授权的发布验收 → 多实例与运维 → 团队、计费、合规。通用调用风控已覆盖当前单实例生产；短信和微信登录不再阻塞个人开发者的首轮上线。平台内成片已具备工程闭环，但仍需用真实项目和真实付费任务验收画质、时长与混音。
@@ -1087,7 +1102,7 @@ Nginx 反代配置见 `deploy/nginx-chenju.work.conf`。
 | `FFMPEG_PATH` / `FFPROBE_PATH` | | 内置二进制 | 可选覆盖为系统媒体工具路径 |
 | `AUTH_SECRET` | 登录功能必填 | — | 生产环境必须设置强随机值；验证码与散列密钥分离保存 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只放服务端 |
-| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `成剧 VeyaFrame <login@chenju.work>` |
+| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `VeyaTV · 成剧 <login@chenju.work>` |
 | `AUTH_CODE_IP_10M_LIMIT` | | `5` | 同一 IP 每 10 分钟验证码请求上限 |
 | `AUTH_CODE_IP_DAILY_LIMIT` | | `20` | 同一 IP 每连续 24 小时验证码请求上限 |
 | `AUTH_CODE_GLOBAL_DAILY_LIMIT` | | `200` | 全站每连续 24 小时验证码发送上限 |
@@ -1123,7 +1138,7 @@ App 构建完成后，只需把 APK 上传到稳定对象存储，然后执行�
 npm run app:release -- \
   --version 1.2.0 \
   --released-at 2026-11-12 \
-  --android-url https://cdn.example.com/veyaframe-1.2.0.apk \
+  --android-url https://cdn.example.com/veyatv-1.2.0.apk \
   --notes "新的移动工作台|视频审片修复"
 ```
 
@@ -1164,7 +1179,7 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    ALIYUN_DASHSCOPE_API_KEY=sk-你的通义密钥
    AUTH_SECRET=至少 32 字节的随机值
    RESEND_API_KEY=re_你的邮件密钥
-   AUTH_EMAIL_FROM=成剧 VeyaFrame <login@chenju.work>
+   AUTH_EMAIL_FROM=VeyaTV · 成剧 <login@chenju.work>
    AUTH_CODE_IP_10M_LIMIT=5
    AUTH_CODE_IP_DAILY_LIMIT=20
    AUTH_CODE_GLOBAL_DAILY_LIMIT=200

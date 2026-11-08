@@ -1187,6 +1187,9 @@ export default function EpisodeTimelinePanel({
                 {latestSuccessfulRender.subtitleUrl && (
                   <a href={latestSuccessfulRender.subtitleUrl} download>下载 SRT</a>
                 )}
+                {currentProjectId && (
+                  <a href={`/delivery/${encodeURIComponent(currentProjectId)}`}>交付中心</a>
+                )}
                 <button
                   type="button"
                   onClick={() => openTimelineSection('render', true)}

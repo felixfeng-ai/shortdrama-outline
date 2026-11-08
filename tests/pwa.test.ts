@@ -5,14 +5,14 @@ import fs from "node:fs"
 import { PWA_MANIFEST } from "../lib/pwa.ts"
 
 test("P1.1 Manifest 具备安装所需字段和 SVG 图标", () => {
-  assert.equal(PWA_MANIFEST.name, "VeyaFrame")
-  assert.equal(PWA_MANIFEST.short_name, "VeyaFrame")
+  assert.equal(PWA_MANIFEST.name, "VeyaTV · 成剧")
+  assert.equal(PWA_MANIFEST.short_name, "VeyaTV")
   assert.equal(PWA_MANIFEST.start_url, "/")
   assert.equal(PWA_MANIFEST.display, "standalone")
   assert.equal(PWA_MANIFEST.background_color, "#08090A")
   assert.equal(PWA_MANIFEST.theme_color, "#08090A")
   assert.ok(PWA_MANIFEST.icons.some((icon) => icon.type === "image/svg+xml"))
-  assert.ok(PWA_MANIFEST.icons.every((icon) => icon.src === "/veyaframe-icon.svg"))
+  assert.ok(PWA_MANIFEST.icons.every((icon) => icon.src === "/veyatv-icon.svg"))
   assert.equal(fs.existsSync("public/manifest.webmanifest"), false, "旧静态清单会覆盖 App Router Manifest")
 })
 
@@ -46,6 +46,6 @@ test("P5 开发环境清理旧 Service Worker，Next 静态块使用网络优先
   assert.match(source, /process\.env\.NODE_ENV === 'production'/)
   assert.match(source, /getRegistrations\(\)/)
   assert.match(source, /\.unregister\(\)/)
-  assert.match(sw, /chengju-shell-v3/)
+  assert.match(sw, /chengju-shell-v4/)
   assert.match(sw, /url\.pathname\.startsWith\('\/_next\/static\/'\)[\s\S]{0,500}event\.respondWith\([\s\S]{0,300}fetch\(request\)/)
 })

@@ -13,15 +13,15 @@ export interface ProductRelease {
  */
 export const PRODUCT_RELEASES = [
   {
-    version: "v2026.11.06",
-    publishedAt: "2026-11-06T00:00:00+08:00",
+    version: "v2026.11.08",
+    publishedAt: "2026-11-08T00:00:00+08:00",
     status: "LIVE BETA",
-    title: "VeyaFrame 火热内测中",
-    summary: "AI 短剧与漫剧工作流已开放，欢迎进入体验",
+    title: "VeyaTV · 成剧品牌更新",
+    summary: "平台正式统一为 VeyaTV，定位 AI 短剧与漫剧生产平台",
     highlights: [
-      "平台正在火热内测，欢迎踊跃体验 AI 短剧创作、协作画布、Veya Agent 与全屏编排画布。",
-      "手机 App 已支持安卓和鸿蒙扫码体验，iOS 版本更新中。",
-      "使用中遇到问题可直接反馈；你的意见会进入下一轮产品更新。",
+      "母品牌统一为 Veya，平台主品牌为 VeyaTV，中文正式名继续使用成剧。",
+      "品类定位更新为 AI 短剧与漫剧生产平台，覆盖创作、视觉资产、镜头视频、时间线与成片。",
+      "Veya Agent 与 Veya Canvas 继续作为平台内子品牌；当前官网仍使用 chenju.work。",
     ],
   },
 ] as const satisfies readonly ProductRelease[]

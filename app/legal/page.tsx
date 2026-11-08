@@ -3,8 +3,8 @@ import type { Metadata } from "next"
 import "./legal.css"
 
 export const metadata: Metadata = {
-  title: "内测条款与隐私说明 · VeyaFrame",
-  description: "VeyaFrame 内测版的数据处理、AI 内容规则、用户权利与举报说明。",
+  title: "内测条款与隐私说明 · VeyaTV",
+  description: "VeyaTV 内测版的数据处理、AI 内容规则、用户权利与举报说明。",
 }
 
 const NAV_ITEMS = [
@@ -20,9 +20,9 @@ export default function LegalPage() {
   return (
     <main className="legal-page">
       <header className="legal-topbar">
-        <a className="legal-brand" href="/" aria-label="返回成剧 VeyaFrame 工作台">
+        <a className="legal-brand" href="/" aria-label="返回 VeyaTV · 成剧 工作台">
           <span aria-hidden="true">V</span>
-          <b>VeyaFrame</b>
+          <b>VeyaTV</b>
           <em>法务与隐私</em>
         </a>
         <a className="legal-back" href="/">
@@ -36,7 +36,7 @@ export default function LegalPage() {
           <p className="legal-kicker">BETA / LEGAL BASELINE</p>
           <h1>内测条款与隐私说明</h1>
           <p className="legal-lede">
-            本说明适用于成剧 VeyaFrame 内测服务，解释项目数据如何处理、AI 产物如何使用，
+            本说明适用于 VeyaTV · 成剧 内测服务，解释项目数据如何处理、AI 产物如何使用，
             以及你可以如何管理、导出、删除数据和提交举报。
           </p>
         </div>
@@ -66,7 +66,7 @@ export default function LegalPage() {
             </header>
             <div>
               <p>
-                当你登录或使用成剧 VeyaFrame 内测版，即表示你已阅读并同意本说明。
+                当你登录或使用 VeyaTV · 成剧 内测版，即表示你已阅读并同意本说明。
                 内测功能可能调整、暂停或删除，重要项目请通过项目导出功能自行保留备份。
               </p>
               <p>
@@ -168,7 +168,7 @@ export default function LegalPage() {
       </div>
 
       <footer className="legal-page-footer">
-        <span>© 2026 VeyaFrame</span>
+        <span>© 2026 VeyaTV</span>
         <a href="/report">内容举报</a>
         <a href="mailto:support@chenju.work">support@chenju.work</a>
       </footer>

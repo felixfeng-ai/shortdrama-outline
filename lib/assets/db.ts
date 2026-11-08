@@ -1238,6 +1238,145 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON video_render_approvals(project_id, status, requested_at DESC);
     `,
   },
+  {
+    version: 33,
+    name: "video-delivery-packages",
+    sql: `
+      -- 交付包面向个人创作者和小团队：单集或整季一次打包，不建立企业组织。
+      CREATE TABLE IF NOT EXISTS video_delivery_packages (
+        id                    TEXT PRIMARY KEY,
+        project_id            TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        title                 TEXT NOT NULL,
+        scope                 TEXT NOT NULL,
+        platform              TEXT NOT NULL,
+        subtitle_mode         TEXT NOT NULL DEFAULT 'both',
+        status                TEXT NOT NULL DEFAULT 'queued',
+        review_status         TEXT NOT NULL DEFAULT 'not_requested',
+        progress              INTEGER NOT NULL DEFAULT 0,
+        error                 TEXT,
+        package_storage_key   TEXT,
+        manifest_storage_key  TEXT,
+        total_quota_units     INTEGER NOT NULL DEFAULT 0,
+        idempotency_key       TEXT,
+        created_at            INTEGER NOT NULL,
+        updated_at            INTEGER NOT NULL,
+        finished_at           INTEGER,
+        UNIQUE (project_id, idempotency_key)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_video_delivery_packages_project
+        ON video_delivery_packages(project_id, created_at DESC);
+    `,
+  },
+  {
+    version: 34,
+    name: "video-delivery-items",
+    sql: `
+      -- 每一项引用已成功的交付版渲染；交付包只派生媒体，不改写原时间线版本。
+      CREATE TABLE IF NOT EXISTS video_delivery_items (
+        id                  TEXT PRIMARY KEY,
+        package_id          TEXT NOT NULL REFERENCES video_delivery_packages(id) ON DELETE CASCADE,
+        episode             INTEGER NOT NULL,
+        render_id           TEXT NOT NULL REFERENCES video_renders(id) ON DELETE CASCADE,
+        status              TEXT NOT NULL DEFAULT 'queued',
+        error               TEXT,
+        clean_video_key     TEXT,
+        publish_video_key   TEXT,
+        srt_key             TEXT,
+        ass_key             TEXT,
+        cover_key           TEXT,
+        metadata_json       TEXT NOT NULL DEFAULT '{}',
+        created_at          INTEGER NOT NULL,
+        updated_at          INTEGER NOT NULL,
+        UNIQUE (package_id, episode)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_video_delivery_items_package
+        ON video_delivery_items(package_id, episode);
+    `,
+  },
+  {
+    version: 35,
+    name: "video-delivery-reviews",
+    sql: `
+      -- 审片是链接式轻量协作：Token 只存哈希，角色只是标签，不是权限系统。
+      CREATE TABLE IF NOT EXISTS video_delivery_review_links (
+        id             TEXT PRIMARY KEY,
+        package_id     TEXT NOT NULL REFERENCES video_delivery_packages(id) ON DELETE CASCADE,
+        token_hash     TEXT NOT NULL UNIQUE,
+        reviewer_name  TEXT NOT NULL,
+        role_label     TEXT NOT NULL,
+        expires_at     INTEGER NOT NULL,
+        last_viewed_at INTEGER,
+        revoked_at     INTEGER,
+        created_at     INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS video_delivery_review_feedback (
+        id            TEXT PRIMARY KEY,
+        link_id       TEXT NOT NULL REFERENCES video_delivery_review_links(id) ON DELETE CASCADE,
+        package_id    TEXT NOT NULL REFERENCES video_delivery_packages(id) ON DELETE CASCADE,
+        item_id       TEXT NOT NULL REFERENCES video_delivery_items(id) ON DELETE CASCADE,
+        timestamp_ms  INTEGER NOT NULL,
+        body          TEXT NOT NULL,
+        status        TEXT NOT NULL DEFAULT 'open',
+        created_at    INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS video_delivery_review_decisions (
+        id             TEXT PRIMARY KEY,
+        package_id     TEXT NOT NULL REFERENCES video_delivery_packages(id) ON DELETE CASCADE,
+        link_id        TEXT NOT NULL REFERENCES video_delivery_review_links(id) ON DELETE CASCADE,
+        reviewer_name  TEXT NOT NULL,
+        role_label     TEXT NOT NULL,
+        decision       TEXT NOT NULL,
+        note           TEXT NOT NULL DEFAULT '',
+        created_at     INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_video_delivery_review_links_package
+        ON video_delivery_review_links(package_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_video_delivery_review_feedback_package
+        ON video_delivery_review_feedback(package_id, created_at DESC);
+    `,
+  },
+  {
+    version: 36,
+    name: "video-publish-records",
+    sql: `
+      -- 第一版只记录用户真实完成的人工发布，不伪造平台自动上传成功。
+      CREATE TABLE IF NOT EXISTS video_publish_records (
+        id             TEXT PRIMARY KEY,
+        package_id     TEXT NOT NULL REFERENCES video_delivery_packages(id) ON DELETE CASCADE,
+        item_id        TEXT NOT NULL REFERENCES video_delivery_items(id) ON DELETE CASCADE,
+        platform       TEXT NOT NULL,
+        status         TEXT NOT NULL DEFAULT 'ready',
+        published_url  TEXT NOT NULL DEFAULT '',
+        published_at   INTEGER,
+        note           TEXT NOT NULL DEFAULT '',
+        created_at     INTEGER NOT NULL,
+        updated_at     INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS video_publish_metrics (
+        id                 TEXT PRIMARY KEY,
+        publish_record_id  TEXT NOT NULL REFERENCES video_publish_records(id) ON DELETE CASCADE,
+        captured_at        INTEGER NOT NULL,
+        views              INTEGER NOT NULL DEFAULT 0,
+        views_3s           INTEGER NOT NULL DEFAULT 0,
+        completion_rate    REAL NOT NULL DEFAULT 0,
+        likes              INTEGER NOT NULL DEFAULT 0,
+        comments           INTEGER NOT NULL DEFAULT 0,
+        shares             INTEGER NOT NULL DEFAULT 0,
+        cost_units         INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_video_publish_records_package
+        ON video_publish_records(package_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_video_publish_metrics_record
+        ON video_publish_metrics(publish_record_id, captured_at DESC);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

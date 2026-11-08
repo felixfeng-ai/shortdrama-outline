@@ -4825,6 +4825,10 @@ export default function Home() {
         onOpenCanvas={() => openCanvas('graph')}
         onOpenArtifacts={openArtifactCenter}
         onOpenLedger={openWorkspaceLedger}
+        onOpenDelivery={() => {
+          if (!projectId) return
+          window.open(`/delivery/${encodeURIComponent(projectId)}`, '_blank', 'noopener,noreferrer')
+        }}
       />
 
       <div className="wfx-workspace-main">
@@ -5116,10 +5120,11 @@ export default function Home() {
               open={metaPanel === 'compliance'}
               result={complianceAudit}
             />
-            <ProductionLedgerPanel
-              open={metaPanel === 'ledger'}
-              ledger={productionLedger}
-            />
+              <ProductionLedgerPanel
+                open={metaPanel === 'ledger'}
+                ledger={productionLedger}
+                projectId={projectId}
+              />
             <BriefCard
               headless
               open={metaPanel === 'brief'}

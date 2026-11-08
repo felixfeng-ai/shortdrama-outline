@@ -205,9 +205,9 @@ export default function LoginPanel() {
   return (
     <main className="auth-page">
       <header className="auth-topbar">
-        <a className="auth-brand" href="/" aria-label="成剧 VeyaFrame 首页">
+        <a className="auth-brand" href="/" aria-label="VeyaTV · 成剧 首页">
           <span className="auth-brand-mark" aria-hidden="true"><VeyaBrandMark /></span>
-          <span className="auth-brand-name">VeyaFrame</span>
+          <span className="auth-brand-name">VeyaTV</span>
           <span className="auth-brand-cn">成剧</span>
         </a>
         <a className="auth-back" href={returnTo}>
@@ -218,7 +218,7 @@ export default function LoginPanel() {
 
       <section className="auth-story" aria-labelledby="auth-story-title">
         <div className="auth-story-copy">
-          <p className="auth-kicker">短剧创作工作台</p>
+          <p className="auth-kicker">AI 短剧与漫剧生产平台</p>
           <h1 id="auth-story-title">
             回来接着写，<br />
             把下一场做成<span className="auth-title-accent">镜头</span>。

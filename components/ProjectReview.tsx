@@ -96,7 +96,7 @@ export default function ProjectReview({ token }: { token: string }) {
       <header className="review-topbar">
         <a className="review-brand" href="/">
           <span aria-hidden="true">V</span>
-          <b>VeyaFrame</b>
+          <b>VeyaTV</b>
           <em>成剧</em>
         </a>
         <div className="review-badge">

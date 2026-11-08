@@ -2,7 +2,7 @@
 
 当前域名：`chenju.work`  
 DNS 服务商：阿里云 HiChina  
-应用发件人：`成剧 VeyaFrame <login@chenju.work>`
+应用发件人：`VeyaTV · 成剧 <login@chenju.work>`
 
 ## 1. AUTH_ALLOW_DEV_CODE
 
@@ -64,7 +64,7 @@ Resend 会给出该账号专属记录，名称通常包括：
 域名通过 Resend 验证后设置：
 
 ```dotenv
-AUTH_EMAIL_FROM="成剧 VeyaFrame <login@chenju.work>"
+AUTH_EMAIL_FROM="VeyaTV · 成剧 <login@chenju.work>"
 ```
 
 发件地址必须属于已验证域名。不要填写 Gmail、QQ 邮箱等外部地址，否则 Resend 会拒绝发送。

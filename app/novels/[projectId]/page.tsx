@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import NovelWorkspace from "@/components/NovelWorkspace"
 
 export const metadata: Metadata = {
-  title: "小说工作台 · VeyaFrame",
+  title: "小说工作台 · VeyaTV",
   description: "复用短剧项目的人物、分集、场次与 Canon，生成可编辑、可导出的长篇连载初稿。",
 }
 

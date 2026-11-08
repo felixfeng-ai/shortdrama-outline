@@ -39,6 +39,7 @@ interface Props {
   onOpenCanvas: () => void
   onOpenArtifacts: () => void
   onOpenLedger: () => void
+  onOpenDelivery: () => void
 }
 
 const WORKSPACE_ICONS = {
@@ -50,6 +51,7 @@ const WORKSPACE_ICONS = {
   docs: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" /><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21.5v-16Z" /></>,
   canvas: <><circle cx="6" cy="6" r="2" /><circle cx="18" cy="6" r="2" /><circle cx="12" cy="18" r="2" /><path d="M8 6h8M7 8l4 8M17 8l-4 8" /></>,
   artifacts: <><path d="m12 3 8 5-8 5-8-5z" /><path d="m4 13 8 5 8-5" /></>,
+  publish: <><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 14v5h14v-5" /></>,
   ledger: <><path d="M5 4h14v16H5z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
 }
 
@@ -82,6 +84,7 @@ export default function WorkspaceSidebar({
   onOpenCanvas,
   onOpenArtifacts,
   onOpenLedger,
+  onOpenDelivery,
 }: Props) {
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [confirmingProjectId, setConfirmingProjectId] = useState<string | null>(null)
@@ -110,7 +113,7 @@ export default function WorkspaceSidebar({
       <aside className={`wfx-side ${mobileOpen ? 'is-open' : ''}`} aria-label="工作区导航">
         <a className="wfx-brand" href="#" onClick={(event) => { event.preventDefault(); closeAnd(onHome) }}>
           <span className="wfx-brand-mark"><VeyaBrandMark /></span>
-          <b>VeyaFrame</b>
+          <b>VeyaTV</b>
           <small>成剧</small>
         </a>
 
@@ -344,6 +347,9 @@ export default function WorkspaceSidebar({
               </button>
               <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenArtifacts)}>
                 <NavIcon>{WORKSPACE_ICONS.artifacts}</NavIcon><span>产物中心</span>
+              </button>
+              <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenDelivery)}>
+                <NavIcon>{WORKSPACE_ICONS.publish}</NavIcon><span>交付中心</span>
               </button>
               <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenLedger)}>
                 <NavIcon>{WORKSPACE_ICONS.ledger}</NavIcon><span>生产台账</span>

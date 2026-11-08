@@ -3,17 +3,17 @@ import type { Metadata } from "next"
 import "../legal/legal.css"
 
 export const metadata: Metadata = {
-  title: "内容举报 · VeyaFrame",
-  description: "向 VeyaFrame 内测团队举报侵权、违法或不当内容。",
+  title: "内容举报 · VeyaTV",
+  description: "向 VeyaTV 内测团队举报侵权、违法或不当内容。",
 }
 
 export default function ReportPage() {
   return (
     <main className="legal-page">
       <header className="legal-topbar">
-        <a className="legal-brand" href="/" aria-label="返回成剧 VeyaFrame 工作台">
+        <a className="legal-brand" href="/" aria-label="返回 VeyaTV · 成剧 工作台">
           <span aria-hidden="true">V</span>
-          <b>VeyaFrame</b>
+          <b>VeyaTV</b>
           <em>内容举报</em>
         </a>
         <a className="legal-back" href="/legal">
@@ -87,7 +87,7 @@ export default function ReportPage() {
       </div>
 
       <footer className="legal-page-footer">
-        <span>© 2026 VeyaFrame</span>
+        <span>© 2026 VeyaTV</span>
         <a href="/legal#privacy">隐私政策</a>
         <a href="/legal#rules">内容规则</a>
         <a href="/">返回工作台</a>

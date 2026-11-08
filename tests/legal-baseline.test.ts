@@ -31,7 +31,7 @@ test("LEGAL2 首页启用统一法务页脚", () => {
     assert.ok(footer.includes(`href="${link}"`))
   }
   assert.match(footer, /mailto:support@chenju\.work/)
-  assert.match(footer, /© 2026 VeyaFrame/)
+  assert.match(footer, /© 2026 VeyaTV/)
   assert.match(css, /\.site-legal-footer/)
 })
 

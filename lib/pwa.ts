@@ -1,7 +1,7 @@
 export const PWA_MANIFEST = {
-  name: "VeyaFrame",
-  short_name: "VeyaFrame",
-  description: "AI 短剧与漫剧创作工作台",
+  name: "VeyaTV · 成剧",
+  short_name: "VeyaTV",
+  description: "AI 短剧与漫剧生产平台",
   start_url: "/",
   scope: "/",
   display: "standalone",
@@ -17,13 +17,13 @@ export const PWA_MANIFEST = {
   ],
   icons: [
     {
-      src: "/veyaframe-icon.svg",
+      src: "/veyatv-icon.svg",
       sizes: "any",
       type: "image/svg+xml",
       purpose: "any",
     },
     {
-      src: "/veyaframe-icon.svg",
+      src: "/veyatv-icon.svg",
       sizes: "any",
       type: "image/svg+xml",
       purpose: "maskable",

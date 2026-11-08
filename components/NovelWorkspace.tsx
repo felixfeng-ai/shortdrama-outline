@@ -419,7 +419,7 @@ export default function NovelWorkspace({ projectId }: Props) {
       <main className="novel-page novel-setup">
         <header className="novel-setup-top">
           <a href={`/?project=${encodeURIComponent(projectId)}`}><Icon name="back" />返回项目</a>
-          <span>VeyaFrame · 小说稿</span>
+          <span>VeyaTV · 小说稿</span>
         </header>
         <section className="novel-setup-main">
           <div className="novel-setup-copy">
@@ -468,7 +468,7 @@ export default function NovelWorkspace({ projectId }: Props) {
         <div className="novel-brand">
           <span><Icon name="book" /></span>
           <b>小说稿</b>
-          <small>VeyaFrame</small>
+          <small>VeyaTV</small>
         </div>
         <div className="novel-crumb">
           <span>{workspace?.edition.title || "当前项目"}</span>

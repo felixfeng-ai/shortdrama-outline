@@ -4,7 +4,7 @@ import DocsGuide from '@/components/DocsGuide'
 import './docs.css'
 
 export const metadata: Metadata = {
-  title: '成剧使用教程 · VeyaFrame',
+  title: 'VeyaTV 使用教程 · 成剧',
   description:
     '从总览、创作、画布三种工作面，到六步创作、镜头视频、时间线成片、全屏画布和手机 App 跨端的完整教程。',
 }
