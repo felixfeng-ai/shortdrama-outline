@@ -76,6 +76,9 @@ interface Props {
   seedPrompt?: { id: number; text: string } | null
   /** 页面负责恢复快照与同步工作台内存状态 */
   onRollbackAgentRun?: (runId: string) => Promise<{ ok: boolean; message: string }>
+  onExecuteAgentCommand?: (
+    card: Extract<AgentCard, { kind: 'command-plan' }>,
+  ) => Promise<{ ok: boolean; message: string }>
 }
 
 /** 一轮里的一个"过程步骤"（查了什么、拿到什么） */
@@ -120,6 +123,7 @@ const TOOL_LABEL: Record<string, string> = {
   propose_voice_bindings: '生成音色建议',
   propose_tts_batch: '计算 TTS 批量预算',
   propose_episode_render: '生成成片提案',
+  propose_agent_command: '生成待确认执行卡',
 }
 
 function inspectCardTarget(card: AgentCard, state: AgentState): EditTargetStatus {
@@ -149,6 +153,7 @@ function cardHeading(card: AgentCard): string {
   if (card.kind === 'voice-plan') return `音色建议：${card.bindings.length} 个角色`
   if (card.kind === 'tts-plan') return `TTS 批量：${card.lineCount} 句`
   if (card.kind === 'render-plan') return `成片提案：第 ${card.episode} 集`
+  if (card.kind === 'command-plan') return `待确认执行：${card.title}`
   return `待确认：重新生成「${card.stepLabel}」`
 }
 
@@ -167,6 +172,9 @@ function cardBody(card: AgentCard): string {
     return `${card.summary} · 预计 ¥${(card.estimatedCostMicros / 1_000_000).toFixed(2)} · 上限 ¥${(card.maxBudgetMicros / 1_000_000).toFixed(2)}`
   }
   if (card.kind === 'render-plan') return card.summary
+  if (card.kind === 'command-plan') {
+    return [card.summary, ...card.impact].filter(Boolean).join(' · ')
+  }
   return card.reason
 }
 
@@ -179,6 +187,7 @@ function cardPrimaryLabel(card: AgentCard): string {
     || card.kind === 'tts-plan'
     || card.kind === 'render-plan'
   ) return '去处理'
+  if (card.kind === 'command-plan') return '确认执行'
   return '确认'
 }
 
@@ -234,6 +243,7 @@ export default function AgentDock({
   seedPrompt,
   projectId,
   onRollbackAgentRun,
+  onExecuteAgentCommand,
 }: Props) {
   const [lines, setLines] = useState<Line[]>([])
   const [threads, setThreads] = useState<Array<{ id: string; title: string; messageCount: number }>>([])
@@ -792,6 +802,14 @@ export default function AgentDock({
                             onApplyDecision(line.card)
                             removeCard(line.card)
                             push({ role: 'note', text: '已提交这条创作决策。' })
+                          } else if (line.card.kind === 'command-plan') {
+                            if (!onExecuteAgentCommand) {
+                              push({ role: 'note', text: '当前页面暂不支持执行这类命令。' })
+                              return
+                            }
+                            const result = await onExecuteAgentCommand(line.card)
+                            if (result.ok) removeCard(line.card)
+                            push({ role: 'note', text: result.message })
                           } else if (line.card.kind === 'video-plan') {
                             removeCard(line.card)
                             push({ role: 'note', text: '视频预算已记录，尚未创建付费任务。' })

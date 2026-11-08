@@ -110,6 +110,7 @@ function productionCardHeading(card: AgentCard): string {
   if (card.kind === 'voice-plan') return `音色建议 · ${card.bindings.length} 个角色`
   if (card.kind === 'tts-plan') return `TTS 批量 · ${card.lineCount} 句`
   if (card.kind === 'render-plan') return `成片提案 · 第 ${card.episode} 集`
+  if (card.kind === 'command-plan') return `待确认执行 · ${card.title}`
   return card.stepLabel
 }
 
@@ -124,6 +125,9 @@ function productionCardBody(card: AgentCard): string {
   }
   if (card.kind === 'tts-plan') {
     return `${card.summary} / 预计 ¥${(card.estimatedCostMicros / 1_000_000).toFixed(2)} / 上限 ¥${(card.maxBudgetMicros / 1_000_000).toFixed(2)}`
+  }
+  if (card.kind === 'command-plan') {
+    return [card.summary, ...card.impact].filter(Boolean).join(' · ')
   }
   return card.summary
 }

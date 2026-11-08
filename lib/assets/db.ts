@@ -1377,6 +1377,33 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON video_publish_metrics(publish_record_id, captured_at DESC);
     `,
   },
+  {
+    version: 37,
+    name: "storyboard-exports",
+    sql: `
+      CREATE TABLE IF NOT EXISTS storyboard_exports (
+        id                    TEXT PRIMARY KEY,
+        project_id            TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        status                TEXT NOT NULL DEFAULT 'running',
+        include_narration     INTEGER NOT NULL DEFAULT 1,
+        include_bgm           INTEGER NOT NULL DEFAULT 1,
+        bgm_track_id          TEXT,
+        duration_ms           INTEGER NOT NULL DEFAULT 0,
+        narration_count       INTEGER NOT NULL DEFAULT 0,
+        video_storage_key     TEXT,
+        srt_storage_key       TEXT,
+        subtitle_mode         TEXT NOT NULL DEFAULT 'burned',
+        warning               TEXT,
+        error                 TEXT,
+        created_at            INTEGER NOT NULL,
+        updated_at            INTEGER NOT NULL,
+        finished_at           INTEGER
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_storyboard_exports_project
+        ON storyboard_exports(project_id, created_at DESC);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

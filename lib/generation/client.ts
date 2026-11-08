@@ -65,6 +65,12 @@ export interface ImageBatchState {
   items: ImageBatchItem[]
 }
 
+export interface StoryboardKeyframeBatchResult {
+  assets: GeneratedAsset[]
+  failed: ImageBatchItem[]
+  state: ImageBatchState
+}
+
 export function createImageGenerationBatch(input: {
   projectId: string
   targets: Array<{
@@ -211,6 +217,78 @@ export async function generateKeyframe(input: {
   const task = generation.tasks.find((candidate) => candidate.id === item.taskId)
   if (!task) throw new Error("图像任务已完成，但任务记录暂时不可用")
   return { task, asset, referenceCount: null }
+}
+
+/**
+ * 快速动态分镜使用一个持久批次补齐五镜首帧。
+ * 批次成功后立即逐张采用；部分失败时把成功图和失败项一起返回给页面。
+ */
+export async function generateStoryboardKeyframes(input: {
+  projectId: string
+  targets: Array<{
+    targetId: string
+    prompt: string
+    aspect: ImageAspect
+  }>
+  look?: LookBook
+  onProgress?: (state: ImageBatchState) => void
+}, signal?: AbortSignal): Promise<StoryboardKeyframeBatchResult> {
+  if (input.targets.length === 0) {
+    throw new Error("没有需要补齐的动态分镜首帧")
+  }
+  const targetKeys = new Map(
+    input.targets.map((target) => [
+      target.targetId,
+      `storyboard:shot:${target.targetId}`,
+    ]),
+  )
+  const idempotencyKey = [
+    "quick-storyboard",
+    input.projectId,
+    globalThis.crypto?.randomUUID?.() ?? Date.now().toString(),
+  ].join(":")
+  let state = await createImageGenerationBatch({
+    projectId: input.projectId,
+    targets: input.targets.map((target) => ({
+      key: targetKeys.get(target.targetId)!,
+      name: target.targetId,
+      targetType: "shot",
+      targetId: target.targetId,
+      prompt: target.prompt,
+      aspect: target.aspect,
+    })),
+    look: input.look ?? EMPTY_LOOK,
+    idempotencyKey,
+    concurrency: 2,
+  }, signal)
+  const selectedAssets = new Map<string, GeneratedAsset>()
+
+  async function adoptSucceeded(current: ImageBatchState): Promise<void> {
+    for (const item of current.items) {
+      if (item.status !== "succeeded" || !item.asset || selectedAssets.has(item.taskId)) continue
+      const selected = await selectKeyframe(input.projectId, item.asset.id)
+      selectedAssets.set(item.taskId, selected)
+    }
+  }
+
+  while (true) {
+    await adoptSucceeded(state)
+    input.onProgress?.(state)
+    const pending = state.items.some(
+      (item) => item.status === "queued" || item.status === "running",
+    )
+    if (!pending) break
+    await wait(1_500, signal)
+    state = await fetchImageGenerationBatch(input.projectId, state.batch.id, signal)
+  }
+
+  const failures: ImageBatchItem[] = []
+  for (const item of state.items) {
+    if (item.status === "failed") {
+      failures.push(item)
+    }
+  }
+  return { assets: [...selectedAssets.values()], failed: failures, state }
 }
 
 export async function fetchGenerationState(

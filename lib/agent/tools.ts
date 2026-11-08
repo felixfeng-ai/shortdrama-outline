@@ -23,6 +23,7 @@ import {
 } from '../skills/source-index'
 import { estimateVideoCostMicros } from '../video/model.ts'
 import { DEFAULT_EPISODE_COUNT, projectQuotaUnits } from '../episodes.ts'
+import { AGENT_COMMAND_KINDS, type AgentCommandKind } from './commands.ts'
 
 export interface AgentShot {
   /** 跨版本稳定目标；修改镜头必须用它，不能依赖可变的展示镜号。 */
@@ -275,6 +276,14 @@ export type AgentCard =
     issueCount: number
     totalDurationMs: number
     summary: string
+  }
+  | {
+    kind: 'command-plan'
+    command: AgentCommandKind
+    title: string
+    summary: string
+    impact: string[]
+    payload: Record<string, unknown>
   }
 
 export interface ToolResult {
@@ -614,6 +623,21 @@ export const AGENT_TOOL_SCHEMAS: ToolSchema[] = [
         episode: { type: 'number' },
       },
       required: ['episode'],
+    },
+  },
+  {
+    name: 'propose_agent_command',
+    description: '提出快速试片、批量生成、批量返修或画布动作的待确认执行卡。只生成卡片，用户确认后才执行。',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', enum: [...AGENT_COMMAND_KINDS] },
+        title: { type: 'string' },
+        summary: { type: 'string' },
+        impact: { type: 'array', items: { type: 'string' } },
+        payload: { type: 'object' },
+      },
+      required: ['command', 'title', 'summary', 'payload'],
     },
   },
 ]
@@ -1417,6 +1441,39 @@ export function createToolExecutors(
           issueCount,
           totalDurationMs,
           summary: `${readyCount}/${totalShots} 镜 · ${versionText} · ${issueCount} 项问题`,
+        },
+      }
+    },
+    propose_agent_command: (args) => {
+      const command = typeof args?.command === 'string' ? args.command.trim() : ''
+      if (!AGENT_COMMAND_KINDS.includes(command as AgentCommandKind)) {
+        return { ok: false, content: '不支持的命令类型。' }
+      }
+      const title = typeof args?.title === 'string' ? args.title.trim() : ''
+      const summary = typeof args?.summary === 'string' ? args.summary.trim() : ''
+      const payload = args?.payload && typeof args.payload === 'object' && !Array.isArray(args.payload)
+        ? args.payload as Record<string, unknown>
+        : null
+      if (!title || !summary || !payload) {
+        return { ok: false, content: '执行卡缺少标题、摘要或参数。' }
+      }
+      const impact = Array.isArray(args?.impact)
+        ? args.impact
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .slice(0, 8)
+        : []
+      return {
+        ok: true,
+        content: `已生成待确认执行卡：${title}。等待确认后才会执行。`,
+        card: {
+          kind: 'command-plan',
+          command: command as AgentCommandKind,
+          title,
+          summary,
+          impact,
+          payload,
         },
       }
     },

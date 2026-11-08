@@ -58,7 +58,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 | 项目工作台 | 项目总览、当前任务、阻断项、下一步、项目脉搏，以及样片、小批、整季生产模式 | 始终知道项目做到哪里、现在卡在哪里、下一步该做什么 |
 | 创作层 | 核心人物、三幕大纲、分集剧情、场次剧本、分镜；每一步可编辑、可单独重新生成 | 不让 AI 一次吐出一大段无法修改的内容，人始终保留判断权 |
 | 视觉资产层 | 角色定妆、地点场景图、镜头首帧、视觉锚点、本地参考图挂载和批量生图 | 保证同一角色、同一地点跨镜头和跨集尽量保持一致 |
-| 快速创作 | 一个入口选择故事、首帧或单镜头视频范围，统一展示额度与费用确认 | 尽快拿到可判断结果，同时不建立第二套项目事实 |
+| 快速创作 | 一句话输入，默认生成 5 镜动态分镜，也可切到故事或单镜头视频；开始前统一展示额度、预算和预计时间 | 先拿到可播放结果，再进入六步精修，同时不建立第二套项目事实 |
 | Agent 与 Skill | 识别快速出片、小说改编、继续制作、生产检查、画布编排等意图；提供执行计划、项目上下文和确定性检查 | 可以用自然语言操作项目，但执行前能知道会改什么、消耗多少额度 |
 | 镜头视频 | 使用已采用首帧生成镜头视频，支持模型、画幅、时长、预算、候选视频和批量任务 | 分镜不只停留在提示词，可以直接往成片推进 |
 | 时间线与成片 | 按集组织镜头、角色音色、TTS、BGM、SRT；支持一键智能成片、预览版 / 交付版、平台画幅、转场、字幕、BGM ducking、审核与 MP4 下载 | 在平台内形成从分镜到可审、可交付成片的闭环 |
@@ -103,7 +103,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 
 - 视频和成片仍以按集、按镜推进，并保留人工采用与确认，不是无人值守的 30 集自动短剧工厂。
 - 单条视频的绝对质量仍受上游模型限制。
-- “快速创作”已统一故事、首帧和单镜头视频三档范围，并在开始前展示统一预算；更完整的快速成片体验继续基于同一生产链迭代。
+- “快速创作”已统一故事、动态分镜和单镜头视频三档范围；默认动态分镜通过单个并发 2 的持久批次补齐前 5 镜首帧，并在开始前展示统一预算。
 - 生产画布目前更擅长展示生产状态，距离直接在画布上处理所有阻断和批量返修仍有差距。
 - 团队权限、正式支付和完整原生 App 仍属于后续阶段。
 
@@ -706,6 +706,11 @@ chengju/
 | POST | `/api/projects/[id]/localization/branches/[branchId]/visual` | `{ commit?, suggestions? }` | 分析或确认视觉本地化修正 |
 | POST | `/api/projects/[id]/localization/branches/[branchId]/delivery` | `{ title, sourceSnapshotId, items }` | 生成字幕、配音稿、术语表和本地化 manifest |
 | GET | `/api/projects/[id]/localization/backup` | — | 完整备份海外分支、Context、术语、Canon、运行和审计 |
+| GET | `/api/projects/[id]/acceptance` | — | 10 集生产链只读验收：人物、分集、定妆、场次、分镜、首帧、视频、渲染、交付、任务健康及按顺序排列的修复队列 |
+| GET | `/api/projects/[id]/storyboard-preview` | — | 用已采用视频和首帧生成 30～45 秒动态分镜计划；不足时返回真实缺口和验收修复动作 |
+| GET / POST | `/api/projects/[id]/storyboard-exports` | `{ includeNarration, includeBgm }` | 导出带自动配音、系统 BGM、字幕和 MP4 的动态分镜；不可用能力明确降级 |
+| GET | `/api/projects/[id]/progress` | — | 统一返回六步、生产阶段、完成度、唯一阻断和下一步 |
+| POST | `/api/projects/[id]/agent-commands` | `{ command, payload, confirmed }` | 用户确认后执行快速试片、图像批量、批量返修或画布动作 |
 | POST | `/api/mcp` | MCP JSON-RPC：`initialize`、`tools/list`、`tools/call` | 仅提供项目摘要和只读能力，不开放写入 |
 | POST | `/api/auth/email/request-code` | `{ email }` | 发送邮箱验证码；仅本机开发且显式开启时返回 `devCode` |
 | POST | `/api/auth/email/verify-code` | `{ email, code, client?, deviceName? }` | Web 设置 HttpOnly Cookie；App 返回 Access/Refresh Token |
@@ -716,6 +721,7 @@ chengju/
 | POST | `/api/auth/refresh` | `{ refreshToken }` | App 换取新的短期 access token，同时轮换 refresh token；旧 refresh token 立即失效 |
 | GET | `/api/auth/sessions` | — | 按最后活跃时间返回当前账号的设备会话 |
 | DELETE | `/api/auth/sessions` | `{ sessionId }` | 撤销指定设备会话 |
+| GET | `/api/admin/product-metrics` | — | 管理账号只读查看快速试片耗时、失败/卡住状态及交付、发布转化；不返回想法或项目标题 |
 | POST | `/api/ideas` | `{ idea, genre, count? }` | 想法联想与题材推荐 |
 
 | POST | `/api/characters` | `{ idea, mode?, existing? }` | `{ characters: Character[] }` |

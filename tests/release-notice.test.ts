@@ -20,14 +20,17 @@ test("产品更新由版本、发布时间和条目组成", () => {
     )
   }
   assert.match(LATEST_PRODUCT_RELEASE.version, /^v\d{4}\.\d{2}\.\d{2}$/)
-  assert.match(LATEST_PRODUCT_RELEASE.publishedAt, /^2026-11-08T00:00:00\+08:00$/)
-  assert.equal(formatReleaseTimestamp(LATEST_PRODUCT_RELEASE.publishedAt), "2026-11-08 00:00")
+  assert.match(LATEST_PRODUCT_RELEASE.publishedAt, /^2026-11-09T00:00:00\+08:00$/)
+  assert.equal(formatReleaseTimestamp(LATEST_PRODUCT_RELEASE.publishedAt), "2026-11-09 00:00")
   assert.ok(LATEST_PRODUCT_RELEASE.highlights.length >= 2)
-  assert.equal(LATEST_PRODUCT_RELEASE.title, "VeyaTV · 成剧品牌更新")
+  assert.equal(LATEST_PRODUCT_RELEASE.title, "VeyaTV 内测开放中")
   assert.equal(LATEST_PRODUCT_RELEASE.status, "LIVE BETA")
-  assert.match(LATEST_PRODUCT_RELEASE.summary, /生产平台/)
+  assert.match(LATEST_PRODUCT_RELEASE.summary, /开放体验/)
+  assert.ok(LATEST_PRODUCT_RELEASE.highlights.some((item) => item.includes("正在内测")))
   assert.ok(LATEST_PRODUCT_RELEASE.highlights.some((item) => item.includes("Veya Agent")))
   assert.ok(LATEST_PRODUCT_RELEASE.highlights.some((item) => item.includes("veyatv.com")))
+  assert.ok(LATEST_PRODUCT_RELEASE.highlights.some((item) => item.includes("HarmonyOS")))
+  assert.ok(PRODUCT_RELEASES.some((release) => release.version === "v2026.11.08"))
 })
 
 test("公告组件展示最新版本、时间戳，并按版本保存已读状态", () => {

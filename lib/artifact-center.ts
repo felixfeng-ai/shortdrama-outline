@@ -285,6 +285,14 @@ export function describeAgentCard(card: AgentCard): AgentCardDescription {
       nextAction: "打开 Agent 核对成片条件",
     }
   }
+  if (card.kind === "command-plan") {
+    return {
+      type: "执行命令",
+      target: card.title,
+      summary: card.summary,
+      nextAction: "打开 Agent 确认后执行",
+    }
+  }
   return {
     type: "重新生成",
     target: stepTarget(card.stepLabel),

@@ -13,6 +13,7 @@ import type { ProductionPlanDto } from '@/lib/production/client'
 import type { ProductionPlanSuggestion } from '@/lib/production/presets'
 import type { QuickCreationTarget } from '@/lib/production/quick-trial'
 import { buildWorkbenchCommand } from '@/lib/workbench-command'
+import { buildProjectProgress } from '@/lib/project-progress'
 import {
   buildProjectPulse,
   formatWorkspaceSaved,
@@ -28,6 +29,7 @@ import ProductionActionCenter from './ProductionActionCenter'
  * 修复动作仍回到各步骤的现有写入链路，总览不复制生成或版本逻辑。
  */
 interface Props {
+  projectId: string
   projectTitle: string
   genreLabel: string
   updatedAt?: number | null
@@ -63,6 +65,8 @@ interface Props {
   onCreateProductionPlan: (suggestion?: ProductionPlanSuggestion) => void
   onPromoteProductionPlan: () => void
   onOpenProductionStage: (stage: ProductionStageKey) => void
+  selectedImageCount: number
+  selectedVideoCount: number
 }
 
 function ArrowIcon() {
@@ -70,6 +74,7 @@ function ArrowIcon() {
 }
 
 export default function WorkspaceHome({
+  projectId,
   projectTitle,
   genreLabel,
   updatedAt,
@@ -105,6 +110,8 @@ export default function WorkspaceHome({
   onCreateProductionPlan,
   onPromoteProductionPlan,
   onOpenProductionStage,
+  selectedImageCount,
+  selectedVideoCount,
 }: Props) {
   const step = STEPS.find((item) => item.index === currentStep) ?? STEPS[0]
   const command = buildWorkbenchCommand({
@@ -115,6 +122,37 @@ export default function WorkspaceHome({
     shotTotal: shots.length,
     todoItems,
   })
+  const productionStage = productionPlan?.stages.find(
+    (stage) => stage.key === productionPlan.currentStage,
+  )
+  const progress = buildProjectProgress({
+    projectId,
+    projectTitle,
+    counts: {
+      characters: characters.length,
+      acts: acts.length,
+      episodes: episodes.length,
+      visuals: visuals.length,
+      scenes: scenes.length,
+      shots: shots.length,
+      images: selectedImageCount,
+      videos: selectedVideoCount,
+    },
+    completed,
+    todoItems,
+    productionStage: productionPlan && productionStage
+      ? {
+          key: productionPlan.currentStage,
+          label: productionStage.label,
+          position: productionStage.position,
+          total: productionPlan.stages.length,
+          status: productionStage.status,
+          planStatus: productionPlan.status,
+        }
+      : null,
+  })
+  const blockerItem = progress.blocker ?? command.blocker
+  const nextItem = progress.nextAction ?? command.next
   const activeShot = selectCurrentShot(shots)
   const activeScene = activeShot
     ? scenes.find((scene) => scene.location === activeShot.place || scene.summary === activeShot.scene) ?? scenes[0]
@@ -126,12 +164,12 @@ export default function WorkspaceHome({
     shots: shots.length,
     todoItems,
   })
-  const blockerStep = command.blocker?.step ?? step.key
-  const nextStep = command.next?.step ?? step.key
+  const blockerStep = blockerItem?.step ?? step.key
+  const nextStep = nextItem?.step ?? step.key
   const imageSrc = activeShot ? "/skills/manor.png" : activeEpisode ? "/skills/story.png" : null
   const title = activeShot?.missingRefFor.length
     ? `先补${activeShot.missingRefFor.join("、")}的定妆参考，再返修第 ${String(activeShot.shot).padStart(2, "0")} 镜`
-    : command.blocker?.text ?? `继续处理${step.nav}`
+    : blockerItem?.text ?? `继续处理${step.nav}`
   const subtitle = activeShot
     ? `镜头 ${String(activeShot.shot).padStart(2, "0")} 的双人画面${activeShot.missingRefFor.length ? `缺少${activeShot.missingRefFor.join("、")}参考图` : "还需要确认首尾帧"}，处理后会立即更新当前集的生产台账。`
     : episodes.length
@@ -203,8 +241,8 @@ export default function WorkspaceHome({
         <div className="wfx-command-copy">
           <h2 id="wfx-command-title">{title}</h2>
           <div className="wfx-command-state">
-            <span className={`wfx-status-pill ${command.blocker ? "is-warning" : "is-accent"}`}>
-              <i />{command.blocker ? `${pulse.blockers} 个阻断` : "主线正常"}
+            <span className={`wfx-status-pill ${blockerItem ? "is-warning" : "is-accent"}`}>
+              <i />{blockerItem ? `${pulse.blockers} 个阻断` : "主线正常"}
             </span>
             <span>当前任务 · 第 {step.index} 步</span>
           </div>
@@ -212,7 +250,7 @@ export default function WorkspaceHome({
         </div>
         <div className="wfx-command-actions">
           <button className="wfx-button" type="button" onClick={() => onOpenStep(blockerStep)}>
-            {command.blocker ? "处理阻断" : "继续当前步骤"}
+            {blockerItem ? "处理阻断" : "继续当前步骤"}
           </button>
           <button className="wfx-button is-ghost" type="button" onClick={onOpenAgent}>
             让 Veya 检查
@@ -273,7 +311,7 @@ export default function WorkspaceHome({
                   <span className="wfx-status-pill">{activeShot?.shotSize || "中景"}</span>
                   <span className="wfx-status-pill">{activeShot?.params.ratio || "9:16"}</span>
                   <span className={`wfx-status-pill ${activeShot?.missingRefFor.length ? "is-warning" : ""}`}>
-                    {activeShot?.missingRefFor.length ? `缺${activeShot.missingRefFor.join("、")}参考图` : command.blocker ? "待确认" : "已就绪"}
+                    {activeShot?.missingRefFor.length ? `缺${activeShot.missingRefFor.join("、")}参考图` : blockerItem ? "待确认" : "已就绪"}
                   </span>
                 </div>
                 <div className="wfx-issue-row">
@@ -281,7 +319,7 @@ export default function WorkspaceHome({
                     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 18 17H2z" /><path d="M10 8v4M10 15h.01" /></svg>
                     <span>修改角色定妆后，相关镜头会被标记为待复核，不会静默覆盖已有关键帧。</span>
                   </div>
-                  <button className="wfx-button is-secondary" type="button" onClick={() => onOpenStep(command.blocker?.step ?? "visuals")}>
+                  <button className="wfx-button is-secondary" type="button" onClick={() => onOpenStep(blockerItem?.step ?? "visuals")}>
                     去补定妆
                   </button>
                 </div>
@@ -329,8 +367,8 @@ export default function WorkspaceHome({
           <section className="wfx-rail-panel">
             <h3>下一步</h3>
             <div className="wfx-next-action">
-              <span>{command.blocker ? "最早解除阻塞的动作" : "当前主链的下一步"}</span>
-              <b>{command.blocker?.text ?? `继续${workspaceStepLabel(nextStep)}`}</b>
+              <span>{blockerItem ? "最早解除阻塞的动作" : "当前主链的下一步"}</span>
+              <b>{blockerItem?.text ?? nextItem?.text ?? `继续${workspaceStepLabel(nextStep)}`}</b>
               <button className="wfx-button is-secondary" type="button" onClick={() => onOpenStep(nextStep)}>
                 前往{workspaceStepLabel(nextStep)}
               </button>

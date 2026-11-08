@@ -195,7 +195,8 @@ import {
   type WorkspaceMode,
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
-import { fetchProjectGenerationAssets, generateKeyframe } from '@/lib/generation/client'
+import { fetchProjectGenerationAssets, generateStoryboardKeyframes } from '@/lib/generation/client'
+import { missingStoryboardKeyframes, selectStoryboardShots } from '@/lib/production/quick-storyboard'
 import {
   fetchProjectVideoState,
   generateShotVideo,
@@ -2561,25 +2562,65 @@ export default function Home() {
         throw new Error("分镜快照缺失，请先重新生成分镜。")
       }
 
+      const storyboardShots = selectStoryboardShots(quickShots)
+      if (storyboardShots.length < 5) {
+        throw new Error("快速动态分镜至少需要 5 个镜头，请先生成更多分镜。")
+      }
       if (!quickTrialCompletedAtLeast(completedPhase, "keyframe")) {
         setQuickTrial({ phase: "keyframe", error: null, target: activeRun.target })
-        const firstShot = quickShots[0]
+        const firstShot = storyboardShots[0]
         if (!firstShot) throw new Error("快速试片没有可生成首帧的镜头。")
-        const frame = await generateKeyframe({
-          projectId,
-          targetType: "shot",
-          targetId: firstShot.entityId,
-          prompt: firstShot.prompt || firstShot.action || firstShot.scene,
-          aspect: firstShot.params.ratio === "16:9" ? "landscape" : "vertical",
-          look,
-          autoSelect: true,
-        }, controller.signal)
+        const generationState = await fetchProjectGenerationAssets(projectId)
+        const existingAssets = generationState.assets
+        const missingShots = missingStoryboardKeyframes(storyboardShots, existingAssets)
+        let generatedAssets: GeneratedAsset[] = []
+        if (missingShots.length > 0) {
+          const batch = await generateStoryboardKeyframes({
+            projectId,
+            targets: missingShots.map((shot) => ({
+              targetId: shot.entityId,
+              prompt: shot.prompt || shot.action || shot.scene,
+              aspect: shot.params.ratio === "16:9" ? "landscape" : "vertical",
+            })),
+            look,
+            onProgress: (state) => {
+              setShotProgress(
+                `正在生成动态分镜 ${state.counts.succeeded} / ${state.counts.total}`,
+              )
+            },
+          }, controller.signal)
+          generatedAssets = batch.assets
+          if (isCleared(epoch)) return
+          const mergedAssets = [
+            ...generatedAssets,
+            ...existingAssets.filter(
+              (asset) => !generatedAssets.some((generated) => generated.id === asset.id),
+            ),
+          ]
+          setProductionAssets(mergedAssets)
+          if (batch.failed.length > 0) {
+            throw new Error(
+              `动态分镜有 ${batch.failed.length} 张首帧生成失败，已保留成功素材，可继续补齐。`,
+            )
+          }
+        }
         if (isCleared(epoch)) return
-        setProductionAssets((current) => [
-          frame.asset,
-          ...current.filter((asset) => asset.id !== frame.asset.id),
-        ])
-        knownFrameAssetId = frame.asset.id
+        const allAssets = [
+          ...generatedAssets,
+          ...existingAssets.filter(
+            (asset) => !generatedAssets.some((generated) => generated.id === asset.id),
+          ),
+        ]
+        setProductionAssets(allAssets)
+        const firstFrame = allAssets.find((asset) =>
+          asset.targetType === "shot"
+          && (asset.targetId === firstShot.entityId || asset.targetId === firstShot.id)
+          && Boolean(asset.selectedAt)
+          && asset.mime.startsWith("image/"),
+        )
+        if (!firstFrame) throw new Error("动态分镜首镜缺少已采用首帧。")
+        knownFrameAssetId = firstFrame.id
+        setShotProgress(null)
         setActiveShotId(firstShot.id)
         setInspectorOpen(true)
         completedPhase = "visual-ready"
@@ -2601,7 +2642,7 @@ export default function Home() {
           visuals: quickVisuals,
           scenes: quickScenes,
           places: quickPlaces,
-          shots: quickShots,
+          shots: storyboardShots,
         }, controller.signal, knownFrameAssetId || undefined)
         return
       }
@@ -2622,7 +2663,7 @@ export default function Home() {
         // 视觉结果已经生成，生产阶段同步失败不能反向把成功改写成失败。
       }
       goToStep("shots")
-      setNotice("首帧样片已完成并自动采用，镜头视频仍需你单独确认。")
+      setNotice("动态分镜已完成：前 5 镜首帧已自动采用，可直接播放；镜头视频仍需单独确认。")
     } catch (error) {
       if (isCleared(epoch)) return
       const message = isAbortError(error)
@@ -4677,6 +4718,35 @@ export default function Home() {
     }
   }
 
+  async function executeAgentCommand(
+    card: Extract<AgentCard, { kind: 'command-plan' }>,
+  ): Promise<{ ok: boolean; message: string }> {
+    if (!projectId) return { ok: false, message: "请先保存项目再执行。" }
+    try {
+      const data = await postJson<{
+        result: { summary: string }
+      }>(`/api/projects/${projectId}/agent-commands`, {
+        command: card.command,
+        payload: card.payload,
+        confirmed: true,
+      })
+      if (card.command === "quick-trial" || card.command === "batch-rework") {
+        await loadProject(projectId)
+      }
+      if (card.command === "image-batch") {
+        window.dispatchEvent(new CustomEvent("chengju:generation-updated"))
+      }
+      if (card.command === "canvas-action") {
+        window.dispatchEvent(new CustomEvent("chengju:canvas-updated"))
+      }
+      setNotice(data.result.summary)
+      return { ok: true, message: data.result.summary }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Agent 命令执行失败"
+      return { ok: false, message }
+    }
+  }
+
   async function applyAgentDecision(card: {
     step: StepKey
     question: string
@@ -4861,6 +4931,10 @@ export default function Home() {
               onContinueVisual={requestQuickTrialVisuals}
               onOpenFirstFrame={() => goToStep("shots")}
               onOpenVideo={() => goToStep("shots")}
+              onOpenStoryboard={() => {
+                const id = quickTrialRun?.projectId ?? workspaceProject?.id
+                if (id) window.open(`/storyboard/${id}`, "_blank", "noopener,noreferrer")
+              }}
               onRetry={retryQuickTrialRun}
               onDismiss={() => setQuickTrial(null)}
             />
@@ -4887,6 +4961,7 @@ export default function Home() {
 
           {workspaceMode === 'overview' && !workspaceStepDetail && (
             <WorkspaceHome
+              projectId={projectId ?? ''}
               projectTitle={workspaceProjectTitle}
               genreLabel={genre.label}
               updatedAt={workspaceProject?.updatedAt}
@@ -4938,6 +5013,16 @@ export default function Home() {
               }}
               onPromoteProductionPlan={() => { void handlePromoteProductionPlan() }}
               onOpenProductionStage={openProductionStage}
+              selectedImageCount={productionAssets.filter((asset) =>
+                asset.selectedAt
+                && asset.targetType === 'shot'
+                && (asset.mediaKind === 'image' || asset.mime.startsWith('image/')),
+              ).length}
+              selectedVideoCount={productionAssets.filter((asset) =>
+                asset.selectedAt
+                && asset.targetType === 'shot'
+                && (asset.mediaKind === 'video' || asset.mime.startsWith('video/')),
+              ).length}
             />
           )}
 
@@ -5852,6 +5937,7 @@ export default function Home() {
                 onApplyDecision={(card) => { void applyAgentDecision(card) }}
                 onRegenerate={regenerateByAgent}
                 onRollbackAgentRun={handleRollbackAgentRun}
+                onExecuteAgentCommand={executeAgentCommand}
                 projectId={projectId}
                 onOpenStep={(step) => {
                   goToStep(step)

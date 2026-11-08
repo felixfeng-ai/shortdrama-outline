@@ -46,13 +46,13 @@ test("UQE1 快速创作按故事、首帧和视频范围给出统一预算", () 
 
   assert.equal(quotes.story.units, 5)
   assert.equal(quotes.story.totalMicros, 500_000)
-  assert.equal(quotes.keyframe.units, 15)
-  assert.equal(quotes.keyframe.totalMicros, 1_500_000)
-  assert.equal(quotes.video.units, 23)
+  assert.equal(quotes.keyframe.units, 23)
+  assert.equal(quotes.keyframe.totalMicros, 2_300_000)
+  assert.equal(quotes.video.units, 31)
   assert.equal(quotes.video.videoCostMicros, 800_000)
-  assert.equal(quotes.video.totalMicros, 2_300_000)
+  assert.equal(quotes.video.totalMicros, 3_100_000)
   assert.equal(quotes.video.available, true)
-  assert.deepEqual(quotes.video.steps, ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "首帧", "镜头视频"])
+  assert.deepEqual(quotes.video.steps, ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "5 张首帧", "镜头视频"])
 })
 
 test("UQE2 视频能力未启用时只关闭视频范围", () => {
@@ -121,10 +121,10 @@ test("UQE4 空项目只保留一个快速创作入口，旧快速出片不再作
 
   assert.match(onboarding, /fetchQuickCreationQuotes/)
   assert.match(onboarding, /TARGETS/)
-  assert.match(onboarding, /总预算/)
+  assert.match(onboarding, /额度/)
   assert.match(onboarding, /开始快速创作/)
   assert.match(quotes, /故事样片/)
-  assert.match(quotes, /首帧样片/)
+  assert.match(quotes, /动态分镜/)
   assert.match(quotes, /单镜头视频/)
   assert.doesNotMatch(picker, /value:\s*["']quick_video["']/)
   assert.match(progress, /镜头视频/)
@@ -159,7 +159,7 @@ test("快速创作报价 API 返回三类可用性与统一预算", async () => 
     const payload = await response.json()
     assert.equal(response.status, 200)
     assert.equal(payload.data.quotes.story.units, 5)
-    assert.equal(payload.data.quotes.video.units, 23)
+    assert.equal(payload.data.quotes.video.units, 31)
     assert.equal(payload.data.quotes.video.available, true)
   } finally {
     if (previous.enabled === undefined) delete process.env.VIDEO_GENERATION_ENABLED
@@ -207,7 +207,7 @@ test("快速创作 API 冻结目标预算，并允许在故事后升级到视频
     const upgradedPayload = await upgraded.json()
     assert.equal(upgraded.status, 200)
     assert.equal(upgradedPayload.data.run.target, "video")
-    assert.equal(upgradedPayload.data.run.budgetUnits, 23)
+    assert.equal(upgradedPayload.data.run.budgetUnits, 31)
     assert.equal(upgradedPayload.data.run.videoApproved, true)
     assert.equal(upgradedPayload.data.run.videoBudgetMicros, 800_000)
   } finally {

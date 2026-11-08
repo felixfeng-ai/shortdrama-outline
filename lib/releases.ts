@@ -13,6 +13,18 @@ export interface ProductRelease {
  */
 export const PRODUCT_RELEASES = [
   {
+    version: "v2026.11.09",
+    publishedAt: "2026-11-09T00:00:00+08:00",
+    status: "LIVE BETA",
+    title: "VeyaTV 内测开放中",
+    summary: "从一句故事到成片，AI 短剧与漫剧生产链路开放体验",
+    highlights: [
+      "平台正在内测，欢迎体验从故事构思、分镜视频到成片交付的完整链路，并直接反馈问题。",
+      "成剧品牌统一为 VeyaTV，Veya Agent 与 Veya Canvas 继续提供创作与画布编排。",
+      "官网已切换至 veyatv.com；Android 与 HarmonyOS App 支持扫码体验，iOS 版本更新中。",
+    ],
+  },
+  {
     version: "v2026.11.08",
     publishedAt: "2026-11-08T00:00:00+08:00",
     status: "LIVE BETA",

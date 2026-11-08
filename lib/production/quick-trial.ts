@@ -33,6 +33,8 @@ export interface QuickCreationQuote {
 
 export type QuickCreationQuotes = Record<QuickCreationTarget, QuickCreationQuote>
 
+export const QUICK_TRIAL_STORYBOARD_SHOT_COUNT = 5
+
 export const QUICK_TRIAL_PHASES = [
   "start",
   "characters",
@@ -72,13 +74,13 @@ export interface QuickTrialRunDto {
 
 /**
  * 快速试片视觉阶段的额度口径。
- * 包含定妆、场次、分镜和一张首帧；视频不在这条链里自动扣费。
+ * 包含定妆、场次、分镜和五张首帧；视频不在这条链里自动扣费。
  */
 export const QUICK_TRIAL_VISUAL_UNITS =
   STEP_COST.visual
   + STEP_COST.scenes
   + STEP_COST.shots
-  + IMAGE_GENERATION_UNITS
+  + IMAGE_GENERATION_UNITS * QUICK_TRIAL_STORYBOARD_SHOT_COUNT
 
 export const QUICK_TRIAL_STORY_UNITS =
   STEP_COST.characters
@@ -150,19 +152,19 @@ export function buildQuickCreationQuotes(
     ),
     keyframe: make(
       "keyframe",
-      "首帧样片",
-      "继续完成定妆、场次、分镜和第 1 镜首帧。",
+      "动态分镜",
+      "继续完成定妆、场次、分镜和前 5 镜已采用首帧，直接播放 30 秒动态分镜。",
       keyframeUnits,
       360,
-      ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "首帧"],
+      ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "5 张首帧"],
     ),
     video: make(
       "video",
       "单镜头视频",
-      `在第 1 镜首帧后生成一条 ${video.durationSeconds} 秒视频。`,
+      `在前 5 镜首帧后，为第 1 镜生成一条 ${video.durationSeconds} 秒视频。`,
       videoTotalUnits,
       600,
-      ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "首帧", "镜头视频"],
+      ["人物", "三幕", "第一集", "定妆", "场次", "分镜", "5 张首帧", "镜头视频"],
       video.enabled,
       missingVideoReason,
       video.costMicros,
