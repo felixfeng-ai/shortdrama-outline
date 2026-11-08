@@ -1,10 +1,20 @@
 'use client'
 
-// 项目状态条：项目 / 意图 / 待办 / 判断收成一行，点哪段展开哪段。
-// 目的是让"可选项"不再各自占一行，把视觉主角留给想法与当前步骤。
+import { useEffect, useState } from 'react'
+
+// 项目状态条只常驻高频判断，低频检查收进“更多”，避免零值挤占首屏。
 
 export type MetaPanel =
   | 'brief' | 'todo' | 'decisions' | 'canon' | 'log' | 'audit' | 'compliance' | 'ledger'
+
+const LOW_FREQUENCY_PANELS: readonly MetaPanel[] = [
+  'canon',
+  'decisions',
+  'audit',
+  'compliance',
+  'ledger',
+  'log',
+]
 
 interface Props {
   briefFilled: boolean
@@ -31,79 +41,104 @@ export default function WorkMeta({
   active,
   onToggle,
 }: Props) {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const lowFrequencyActive = active
+    ? LOW_FREQUENCY_PANELS.includes(active)
+    : false
+
+  // 外部跳转也可能直接打开低频面板，此时同步展开“更多”，避免入口隐藏。
+  useEffect(() => {
+    if (lowFrequencyActive) setMoreOpen(true)
+  }, [lowFrequencyActive])
+
+  function countLabel(count: number) {
+    return count > 0 ? ` ${count}` : ''
+  }
+
+  function togglePanel(panel: MetaPanel) {
+    onToggle(panel)
+    if (LOW_FREQUENCY_PANELS.includes(panel)) setMoreOpen(true)
+  }
+
   return (
     <div className="workmeta" role="group" aria-label="项目状态">
       <button
         type="button"
         className={active === 'brief' ? 'on' : ''}
         aria-expanded={active === 'brief'}
-        onClick={() => onToggle('brief')}
+        onClick={() => togglePanel('brief')}
       >
         创作契约 · {briefFilled ? '已填' : '未填'}
       </button>
-      <span className="workmeta-sep" aria-hidden="true">·</span>
-      <button
-        type="button"
-        className={active === 'canon' ? 'on' : ''}
-        aria-expanded={active === 'canon'}
-        onClick={() => onToggle('canon')}
-      >
-        Canon {canonIssueCount}
-      </button>
-      <span className="workmeta-sep" aria-hidden="true">·</span>
-      <button
-        type="button"
-        className={active === 'decisions' ? 'on' : ''}
-        aria-expanded={active === 'decisions'}
-        onClick={() => onToggle('decisions')}
-      >
-        决策 {decisionCount}
-      </button>
-      <span className="workmeta-sep" aria-hidden="true">·</span>
       <button
         type="button"
         className={active === 'todo' ? 'on' : ''}
         aria-expanded={active === 'todo'}
-        onClick={() => onToggle('todo')}
+        onClick={() => togglePanel('todo')}
       >
-        待办 {todoCount}
+        待办{countLabel(todoCount)}
       </button>
-      <span className="workmeta-sep" aria-hidden="true">·</span>
       <button
         type="button"
-        className={active === 'audit' ? 'on' : ''}
-        aria-expanded={active === 'audit'}
-        onClick={() => onToggle('audit')}
+        className={moreOpen || lowFrequencyActive ? 'on' : ''}
+        aria-expanded={moreOpen}
+        aria-controls="workmeta-more-panel"
+        onClick={() => setMoreOpen((open) => !open)}
       >
-        创作体检 {auditCount}
+        更多
       </button>
-      <span className="workmeta-sep" aria-hidden="true">·</span>
-      <button
-        type="button"
-        className={active === 'compliance' ? 'on' : ''}
-        aria-expanded={active === 'compliance'}
-        onClick={() => onToggle('compliance')}
-      >
-        合规预检 {complianceCount}
-      </button>
-      <span className="workmeta-sep" aria-hidden="true">·</span>
-      <button
-        type="button"
-        className={active === 'ledger' ? 'on' : ''}
-        aria-expanded={active === 'ledger'}
-        onClick={() => onToggle('ledger')}
-      >
-        生产台账 {ledgerCount}
-      </button>
-      <span className="workmeta-sep" aria-hidden="true">·</span>
-      <button
-        type="button"
-        className={active === 'log' ? 'on' : ''}
-        aria-expanded={active === 'log'}
-        onClick={() => onToggle('log')}
-      >
-        判断 {logCount}
-      </button>
+      {moreOpen && (
+        <div id="workmeta-more-panel" className="workmeta-more-panel" role="group" aria-label="更多项目状态">
+          <button
+            type="button"
+            className={active === 'canon' ? 'on' : ''}
+            aria-expanded={active === 'canon'}
+            onClick={() => togglePanel('canon')}
+          >
+            Canon{countLabel(canonIssueCount)}
+          </button>
+          <button
+            type="button"
+            className={active === 'decisions' ? 'on' : ''}
+            aria-expanded={active === 'decisions'}
+            onClick={() => togglePanel('decisions')}
+          >
+            决策{countLabel(decisionCount)}
+          </button>
+          <button
+            type="button"
+            className={active === 'audit' ? 'on' : ''}
+            aria-expanded={active === 'audit'}
+            onClick={() => togglePanel('audit')}
+          >
+            创作体检{countLabel(auditCount)}
+          </button>
+          <button
+            type="button"
+            className={active === 'compliance' ? 'on' : ''}
+            aria-expanded={active === 'compliance'}
+            onClick={() => togglePanel('compliance')}
+          >
+            合规预检{countLabel(complianceCount)}
+          </button>
+          <button
+            type="button"
+            className={active === 'ledger' ? 'on' : ''}
+            aria-expanded={active === 'ledger'}
+            onClick={() => togglePanel('ledger')}
+          >
+            生产台账{countLabel(ledgerCount)}
+          </button>
+          <button
+            type="button"
+            className={active === 'log' ? 'on' : ''}
+            aria-expanded={active === 'log'}
+            onClick={() => togglePanel('log')}
+          >
+            判断{countLabel(logCount)}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

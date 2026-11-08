@@ -187,7 +187,7 @@ export default function DocsGuide() {
           </details>
 
           <header className="docs-hero">
-            <p className="docs-kicker">QUICK START · ABOUT 8 MIN</p>
+            <p className="docs-kicker">开始使用 · 约 8 分钟</p>
             <h1>完成第一部短剧</h1>
             <p className="docs-lede">
               从一句想法或已有原文开始，完成人物、分集、分镜、镜头视频和第一集成片。
@@ -238,7 +238,7 @@ export default function DocsGuide() {
           </header>
 
           <section id="platform-map" className="docs-section">
-            <p className="docs-section-kicker">01 / PLATFORM MAP</p>
+            <p className="docs-section-kicker">01 · 平台能力</p>
             <h2>平台能做什么</h2>
             <p>
               你可以从一句想法、已有小说或剧本文本开始，逐步得到人物设定、三幕大纲、分集、视觉定妆、
@@ -265,7 +265,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="quick-start" className="docs-section">
-            <p className="docs-section-kicker">02 / QUICK START</p>
+            <p className="docs-section-kicker">02 · 快速开始</p>
             <h2>开始第一次创作</h2>
             <ol className="docs-steps">
               <li>
@@ -295,7 +295,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="project-flow" className="docs-section">
-            <p className="docs-section-kicker">03 / SIX-STEP FLOW</p>
+            <p className="docs-section-kicker">03 · 六步工作流</p>
             <h2>认识六步工作流</h2>
             <div className="docs-flow-strip" aria-label="从想法到成片">
               {['想法 / 原文', '人物与分集', '场次与分镜', '首帧与视频', '声音与成片'].map((item, index) => (
@@ -321,7 +321,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="visual-output" className="docs-section">
-            <p className="docs-section-kicker">04 / VISUAL ASSETS</p>
+            <p className="docs-section-kicker">04 · 视觉资产</p>
             <h2>定妆、场景与首帧</h2>
             <p>
               视觉定妆把角色的外观、服装和光线固定成可复用的文字锚点。地点场景图负责统一同一个空间的
@@ -344,7 +344,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="shot-video" className="docs-section">
-            <p className="docs-section-kicker">05 / SHOT VIDEO</p>
+            <p className="docs-section-kicker">05 · 镜头视频</p>
             <h2>镜头视频</h2>
             <p>
               第 6 步顶部有三个工作区：<b>分镜</b>、<b>镜头视频</b>和<b>时间线成片</b>。
@@ -370,7 +370,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="timeline-final" className="docs-section">
-            <p className="docs-section-kicker">06 / AUDIO & FINAL CUT</p>
+            <p className="docs-section-kicker">06 · 声音与成片</p>
             <h2>声音与时间线成片</h2>
             <p>
               在“时间线成片”中，系统按集号和镜号建立初始顺序。你可以重排、裁剪、静音和替换素材，
@@ -400,7 +400,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="export-delivery" className="docs-section">
-            <p className="docs-section-kicker">07 / DELIVERY</p>
+            <p className="docs-section-kicker">07 · 交付</p>
             <h2>导出与外部交付</h2>
             <p>
               平台内成片路径输出 MP4、SRT 和 render manifest；外部路径继续提供逐镜提示词、
@@ -429,7 +429,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="novel-companion" className="docs-section">
-            <p className="docs-section-kicker">08 / NOVEL COMPANION</p>
+            <p className="docs-section-kicker">08 · 小说稿</p>
             <h2>项目附赠小说稿</h2>
             <p>
               小说稿从项目条导出菜单进入，不增加第七步。它复用已有人物、三观、分集、场次、
@@ -454,26 +454,30 @@ export default function DocsGuide() {
           </section>
 
           <section id="workspace-modes" className="docs-section">
-            <p className="docs-section-kicker">09 / WORKSPACE MODES</p>
+            <p className="docs-section-kicker">09 · 工作面</p>
             <h2>总览 / 创作 / 画布</h2>
             <p>
               三个工作面属于同一个项目，不会丢失当前项目和步骤。总览负责当前阻断与下一步，
               创作复用完整技能库和 Agent，画布负责查看节点、依赖和人工编排。
             </p>
+            <p>
+              项目状态条默认只展示“创作契约 / 待办 / 更多”。Canon、决策、创作体检、
+              合规预检、生产台账和判断从“更多”展开；没有内容时只显示入口，不堆零值计数。
+            </p>
             <TutorialFigure
               src="/docs/tutorial/06-workspace-create.png"
-              alt="VeyaFrame 创作模式，展示创作技能、执行计划和右侧圆形 Agent 图标"
-              label="创作模式 · 技能与计划"
+              alt="VeyaFrame 创作模式，展示当前项目推荐、折叠的执行准备、技能执行计划和右侧圆形 Agent 图标"
+              label="创作模式 · 推荐与执行准备"
               points={[
-                '创作模式保留技能分类、图片、搜索和执行计划，不切换项目。',
-                '右侧执行计划先说明读取范围、产物、写入边界与确认节点。',
+                '创作模式首屏先给当前项目推荐；选择技能后自动展开“执行准备”，显示读取范围、前置与产出。',
+                '右侧执行计划继续说明步骤、写入边界、确认节点与中断恢复。',
                 '“问场记”使用圆形 Veya 图标；桌面侧舱和手机抽屉共用同一 Agent。',
               ]}
             />
           </section>
 
           <section id="canvas-window" className="docs-section">
-            <p className="docs-section-kicker">10 / FULLSCREEN CANVAS</p>
+            <p className="docs-section-kicker">10 · 全屏画布</p>
             <h2>全屏画布</h2>
             <p>
               工作区里的“画布”主入口仍在当前页面打开。需要并排审阅或更大的拖拽空间时，
@@ -492,7 +496,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="mobile-app" className="docs-section">
-            <p className="docs-section-kicker">11 / MOBILE & CONTINUITY</p>
+            <p className="docs-section-kicker">11 · 手机与跨端</p>
             <h2>手机 App 与跨端</h2>
             <p>
               桌面顶栏“下载手机 App”会展示二维码。手机扫码安装后登录同一账号，
@@ -512,15 +516,16 @@ export default function DocsGuide() {
           </section>
 
           <section id="skills-agent" className="docs-section">
-            <p className="docs-section-kicker">12 / SKILLS & AGENT</p>
+            <p className="docs-section-kicker">12 · 技能与 Agent</p>
             <h2>创作技能与 Agent</h2>
             <p>
               桌面端 Agent 默认收起在工作区右下角，不占用主工作面宽度；点击 Veya 图标后展开侧舱，
               再点一次或按 Esc 收起。手机端继续使用底部抽屉。
             </p>
             <p>
-              创作技能是可复用的创作方法、阶段规则和验收标准。选择技能后会先显示执行计划，
-              说明会读取哪些项目事实、产生什么结果，以及哪些步骤需要确认。
+              创作技能是可复用的创作方法、阶段规则和验收标准。首屏先展示当前项目推荐；
+              选择技能后自动展开“执行准备”，再进入执行计划确认会读取哪些项目事实、
+              产生什么结果，以及哪些步骤需要确认。
             </p>
             <p>
               Agent 可以读取项目状态、任务、分镜和原文，也可以提出改写、视频预算、返修、
@@ -530,7 +535,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="cost-recovery" className="docs-section">
-            <p className="docs-section-kicker">13 / COST & RECOVERY</p>
+            <p className="docs-section-kicker">13 · 费用与恢复</p>
             <h2>费用、恢复与版本</h2>
             <ul className="docs-checklist">
               <li>可计费动作会先显示预估费用；批量操作还会显示预算上限。</li>
@@ -542,7 +547,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="faq" className="docs-section">
-            <p className="docs-section-kicker">13 / FAQ</p>
+            <p className="docs-section-kicker">14 · 常见问题</p>
             <h2>常见问题</h2>
             <div className="docs-faq">
               <details>
@@ -570,7 +575,7 @@ export default function DocsGuide() {
 
           <footer className="docs-end">
             <div>
-              <p className="docs-section-kicker">READY TO START</p>
+              <p className="docs-section-kicker">准备开始</p>
               <h2>从第一次创作开始</h2>
               <p>先载入示例查看完整链路，或直接创建自己的项目。</p>
             </div>

@@ -110,6 +110,20 @@ test("教程首屏按已确认 Demo 重排为任务优先", () => {
   }
   assert.match(css, /\.docs-start-rail/)
   assert.match(css, /\.docs-hero-preview/)
-  assert.match(css, /\.docs-sidebar a[^{]*\{[^}]*font-size:\s*12px/s)
-  assert.match(css, /\.docs-toc a[^{]*\{[^}]*font-size:\s*11\.5px/s)
+  assert.match(css, /\.docs-sidebar a[^{]*\{[^}]*font-size:\s*13px/s)
+  assert.match(css, /\.docs-toc a[^{}]*\{[^}]*font-size:\s*12px/s)
+})
+
+test("教程同步创作技能与项目状态条的渐进披露", () => {
+  const guide = fs.readFileSync("components/DocsGuide.tsx", "utf8")
+
+  for (const text of [
+    "执行准备",
+    "选择技能后自动展开",
+    "创作契约 / 待办 / 更多",
+    "Canon、决策、创作体检",
+    "创作模式 · 推荐与执行准备",
+  ]) {
+    assert.ok(guide.includes(text), `教程缺少最新交互说明：${text}`)
+  }
 })

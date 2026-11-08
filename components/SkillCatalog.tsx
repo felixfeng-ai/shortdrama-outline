@@ -125,6 +125,7 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
   const [materialBusy, setMaterialBusy] = useState(false)
   const [creatingProject, setCreatingProject] = useState(false)
   const [materialNotice, setMaterialNotice] = useState<string | null>(null)
+  const [preflightOpen, setPreflightOpen] = useState(false)
   const materialInputRef = useRef<HTMLInputElement | null>(null)
   const prompt = drafts[mode]
 
@@ -259,13 +260,21 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
       briefReady,
     })
     : null
+  const episodeCount = context?.episodeCount ?? projectState.episodes
+  const preflightSummary = [
+    episodeCount > 0 ? `${episodeCount} 集` : '剧情尚未建立',
+    materials.length > 0 ? `${materials.length} 份原文` : '暂无项目原文',
+    intentSummary || '创作契约尚未设置',
+  ].join(' · ')
 
   function chooseSkill(skill: SkillDefinition) {
     if (selectedId === skill.id) {
       setSelectedId(null)
+      setPreflightOpen(false)
       return
     }
     setSelectedId(skill.id)
+    setPreflightOpen(true)
     setPrompt(skill.prompt)
     requestAnimationFrame(() => {
       document.getElementById('skill-execution-plan')?.scrollIntoView({
@@ -278,6 +287,7 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
   function switchMode(next: IntakeMode) {
     setMode(next)
     setSelectedId(null)
+    setPreflightOpen(false)
     const url = new URL(window.location.href)
     if (next === 'idea') url.searchParams.delete('mode')
     else url.searchParams.set('mode', next)
@@ -451,7 +461,7 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
 
       <main className="page">
         <section className="hero" aria-labelledby="pageTitle">
-          <p className="hero-kicker">CREATIVE METHODS / CONTROLLED RUNS</p>
+          <p className="hero-kicker">创作方法 · 可控执行</p>
           <h1 id="pageTitle">
             <span>创作技能</span>
             <span className="title-separator" aria-hidden="true">·</span>
@@ -592,47 +602,6 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
             )}
           </form>
 
-          <div className="intake-preflight" aria-live="polite">
-            <div>
-              <span>本次读取</span>
-              <b>{project?.title || (loadingProject ? '正在读取项目…' : '尚未选择项目')}</b>
-              <small>
-                {context?.episodeCount ?? projectState.episodes ?? 0} 集
-                {' · '}
-                {materials.length} 份原文
-                {intentSummary ? ` · ${intentSummary}` : ' · 意图尚未设置'}
-              </small>
-              {!project && !loadingProject && (
-                <button
-                  className="create-project-inline"
-                  type="button"
-                  disabled={creatingProject}
-                  onClick={() => { void createNewProject() }}
-                >
-                  {creatingProject ? '创建中…' : '新建项目'}
-                </button>
-              )}
-            </div>
-            <div className={readiness && !readiness.ready ? 'needs-input' : ''}>
-              <span>技能前置</span>
-              <b>{selectedSkill ? selectedSkill.title : '场记自动匹配'}</b>
-              <small>
-                {!selectedSkill
-                  ? '发送后先判断适合的创作技能'
-                  : !resourcesReady
-                    ? '正在核对项目状态…'
-                    : readiness?.ready
-                      ? '前置已满足'
-                      : `还缺 ${readiness?.missing.join('、')}`}
-              </small>
-            </div>
-            <div>
-              <span>预期产出</span>
-              <b>{selectedSkill ? selectedSkill.produces.join(' · ') : '下一步计划'}</b>
-              <small>{selectedSkill ? selectedSkill.writePolicy : '写入项目前继续确认'}</small>
-            </div>
-          </div>
-
           <div className="skill-recommendations" aria-label="为当前项目推荐">
             <div className="skill-recommendations-head">
               <span>为当前项目推荐</span>
@@ -665,6 +634,56 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
               ))}
             </div>
           </div>
+
+          <details
+            className="intake-preflight"
+            open={preflightOpen}
+            onToggle={(event) => setPreflightOpen(event.currentTarget.open)}
+          >
+            <summary>
+              <span>执行准备</span>
+              <small>
+                {selectedSkill
+                  ? `${selectedSkill.title} · ${preflightSummary}`
+                  : '选择技能后查看读取范围、前置与产出'}
+              </small>
+            </summary>
+            <div className="intake-preflight-grid" aria-live="polite">
+              <div>
+                <span>本次读取</span>
+                <b>{project?.title || (loadingProject ? '正在读取项目…' : '尚未选择项目')}</b>
+                <small>{preflightSummary}</small>
+                {!project && !loadingProject && (
+                  <button
+                    className="create-project-inline"
+                    type="button"
+                    disabled={creatingProject}
+                    onClick={() => { void createNewProject() }}
+                  >
+                    {creatingProject ? '创建中…' : '新建项目'}
+                  </button>
+                )}
+              </div>
+              <div className={readiness && !readiness.ready ? 'needs-input' : ''}>
+                <span>技能前置</span>
+                <b>{selectedSkill ? selectedSkill.title : '场记自动匹配'}</b>
+                <small>
+                  {!selectedSkill
+                    ? '发送后先判断适合的创作技能'
+                    : !resourcesReady
+                      ? '正在核对项目状态…'
+                      : readiness?.ready
+                        ? '前置已满足'
+                        : `还缺 ${readiness?.missing.join('、')}`}
+                </small>
+              </div>
+              <div>
+                <span>预期产出</span>
+                <b>{selectedSkill ? selectedSkill.produces.join(' · ') : '下一步计划'}</b>
+                <small>{selectedSkill ? selectedSkill.writePolicy : '写入项目前继续确认'}</small>
+              </div>
+            </div>
+          </details>
 
           {!embedded && skillPlanNode}
 
