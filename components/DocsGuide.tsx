@@ -196,7 +196,7 @@ export default function DocsGuide() {
             </p>
             <div className="docs-hero-actions">
               <a href="#quick-start">开始第一次创作 <ArrowIcon /></a>
-              <a href="/skills?mode=source">从已有小说或剧本开始</a>
+              <a href="/?view=create&amp;mode=source">从已有小说或剧本开始</a>
             </div>
 
             <div className="docs-start-rail" aria-label="三种开始方式">

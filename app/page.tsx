@@ -1622,7 +1622,8 @@ export default function Home() {
     if (projectId) params.set('project', projectId)
     params.set('step', view)
     params.set('mode', 'source')
-    window.location.assign(`/skills?${params.toString()}`)
+    params.set('view', 'create')
+    window.location.assign(`/?${params.toString()}`)
   }
 
   const openWorkspaceLedger = () => {

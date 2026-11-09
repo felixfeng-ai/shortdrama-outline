@@ -83,10 +83,7 @@ export function workspaceModeHref(
 }
 
 export function skillsHref(projectId: string | null, step?: StepKey | null): string {
-  const params = new URLSearchParams()
-  if (projectId) params.set("project", projectId)
-  if (step) params.set("step", step)
-  return buildHref("/skills", params)
+  return workspaceModeHref(projectId, step, "create")
 }
 
 export function canvasHref(projectId: string | null, step?: StepKey | null): string {

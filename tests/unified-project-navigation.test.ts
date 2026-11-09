@@ -34,14 +34,14 @@ test("NP2 三个入口共用项目与步骤，不把 Skill 的画布链接固定
   )
   assert.equal(
     skillsHref(projectId, "episodes"),
-    `/skills?project=${projectId}&step=episodes`,
+    `/?project=${projectId}&step=episodes&view=create`,
   )
   assert.equal(
     canvasHref(projectId, "episodes"),
     `/?project=${projectId}&step=episodes&view=canvas`,
   )
   assert.equal(workspaceHref(null, "episodes"), "/?step=episodes")
-  assert.equal(skillsHref(null, "episodes"), "/skills?step=episodes")
+  assert.equal(skillsHref(null, "episodes"), "/?step=episodes&view=create")
   assert.equal(canvasHref(null, "episodes"), "/?step=episodes&view=canvas")
 })
 
