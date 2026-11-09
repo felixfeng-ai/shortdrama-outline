@@ -12,6 +12,12 @@
 */
 :root,
 [data-theme="paper"] {
+  /* UI 字形只在这里定义一次：Inter 负责拉丁与数字，系统栈负责中文。 */
+  --font-ui: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "HarmonyOS Sans SC", "MiSans", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans SC", sans-serif;
+  --font-mono: var(--font-code, ui-monospace), ui-monospace, "SF Mono", Menlo,
+    Consolas, monospace;
   --c-surface: 239 229 215;
   --c-surface-deep: 231 219 202;
   --c-surface-card: 252 248 242;
@@ -133,13 +139,13 @@
 .signal-desk .h-wordmark { color: var(--signal-text-3); }
 .signal-desk .h-brand,
 .signal-desk .h-lockup .h-brand {
-  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-family: var(--font-ui);
   font-weight: 700;
   letter-spacing: 0;
   white-space: nowrap;
 }
 .signal-desk .h-wordmark {
-  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-family: var(--font-ui);
   font-weight: 600;
   white-space: nowrap;
 }

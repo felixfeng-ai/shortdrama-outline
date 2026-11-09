@@ -55,6 +55,15 @@ const WORKSPACE_ICONS = {
   ledger: <><path d="M5 4h14v16H5z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
 }
 
+const STEP_TONES: Record<StepKey, 'gold' | 'blue' | 'mint' | 'coral'> = {
+  characters: 'gold',
+  acts: 'blue',
+  episodes: 'mint',
+  visuals: 'gold',
+  scenes: 'coral',
+  shots: 'mint',
+}
+
 function NavIcon({ children }: { children: React.ReactNode }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true">{children}</svg>
 }
@@ -283,6 +292,7 @@ export default function WorkspaceSidebar({
               <button
                 className={`wfx-nav-item ${homeActive ? 'is-active' : ''}`}
                 type="button"
+                data-tone="gold"
                 onClick={() => closeAnd(onHome)}
               >
                 <NavIcon>{WORKSPACE_ICONS.home}</NavIcon><span>首页</span>
@@ -290,22 +300,24 @@ export default function WorkspaceSidebar({
               <button
                 className="wfx-nav-item"
                 type="button"
+                data-tone="blue"
                 onClick={() => setProjectMenuOpen((open) => !open)}
               >
                 <NavIcon>{WORKSPACE_ICONS.projects}</NavIcon><span>我的项目</span>
               </button>
-              <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenTodo)}>
+              <button className="wfx-nav-item" data-tone="coral" type="button" onClick={() => closeAnd(onOpenTodo)}>
                 <NavIcon>{WORKSPACE_ICONS.todo}</NavIcon><span>项目待办</span>
                 {todoCount > 0 && <i className="wfx-count">{todoCount}</i>}
               </button>
               <button
                 className={`wfx-nav-item ${mode === 'create' ? 'is-active' : ''}`}
                 type="button"
+                data-tone="gold"
                 onClick={() => closeAnd(onOpenCreate)}
               >
                 <NavIcon>{WORKSPACE_ICONS.skills}</NavIcon><span>创作技能</span>
               </button>
-              <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenAssets)}>
+              <button className="wfx-nav-item" data-tone="mint" type="button" onClick={() => closeAnd(onOpenAssets)}>
                 <NavIcon>{WORKSPACE_ICONS.assets}</NavIcon><span>资产库</span>
               </button>
               <a className="wfx-nav-item wfx-docs-entry" href="/docs" onClick={onCloseMobile}>
@@ -324,6 +336,7 @@ export default function WorkspaceSidebar({
                     key={step}
                     className={`wfx-nav-item wfx-project-step ${isCurrent ? 'is-current' : ''} ${completed[step] ? 'is-done' : ''}`}
                     type="button"
+                    data-tone={STEP_TONES[step]}
                     aria-current={isCurrent ? 'step' : undefined}
                     onClick={() => closeAnd(() => onOpenStep(step))}
                   >
@@ -341,17 +354,18 @@ export default function WorkspaceSidebar({
               <button
                 className={`wfx-nav-item ${mode === 'canvas' ? 'is-active' : ''}`}
                 type="button"
+                data-tone="blue"
                 onClick={() => closeAnd(onOpenCanvas)}
               >
                 <NavIcon>{WORKSPACE_ICONS.canvas}</NavIcon><span>编排画布</span>
               </button>
-              <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenArtifacts)}>
+              <button className="wfx-nav-item" data-tone="gold" type="button" onClick={() => closeAnd(onOpenArtifacts)}>
                 <NavIcon>{WORKSPACE_ICONS.artifacts}</NavIcon><span>产物中心</span>
               </button>
-              <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenDelivery)}>
+              <button className="wfx-nav-item" data-tone="coral" type="button" onClick={() => closeAnd(onOpenDelivery)}>
                 <NavIcon>{WORKSPACE_ICONS.publish}</NavIcon><span>交付中心</span>
               </button>
-              <button className="wfx-nav-item" type="button" onClick={() => closeAnd(onOpenLedger)}>
+              <button className="wfx-nav-item" data-tone="mint" type="button" onClick={() => closeAnd(onOpenLedger)}>
                 <NavIcon>{WORKSPACE_ICONS.ledger}</NavIcon><span>生产台账</span>
               </button>
             </div>

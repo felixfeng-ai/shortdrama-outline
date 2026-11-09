@@ -3,13 +3,13 @@ import localFont from 'next/font/local'
 import './globals.css'
 
 /*
-  西文/数字用 Albert Sans（即梦同款思路：展示体 + 系统中文），
-  中文仍走系统栈——不引中文字体，避免几 MB 的首屏成本。
-  两个文件都只含 latin 子集，各约 32KB，自托管不依赖 Google。
+  西文/数字用 Inter，中文仍走系统栈。
+  Inter 的字宽和标点更适合密集产品界面；中文不额外加载整包字体，
+  避免几 MB 的首屏成本。两个字体文件都只保留 latin 子集并自托管。
 */
 const latin = localFont({
-  src: './fonts/albert-sans-latin.woff2',
-  weight: '400 700',
+  src: './fonts/inter-latin-variable.woff2',
+  weight: '100 900',
   variable: '--font-latin',
   display: 'swap',
   fallback: [
@@ -26,7 +26,7 @@ const latin = localFont({
 const mono = localFont({
   src: './fonts/jetbrains-mono-latin.woff2',
   weight: '400 500',
-  variable: '--font-mono',
+  variable: '--font-code',
   display: 'swap',
   fallback: ['ui-monospace', 'SF Mono', 'Menlo', 'Consolas', 'monospace'],
 })

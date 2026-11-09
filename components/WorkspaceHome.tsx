@@ -166,7 +166,11 @@ export default function WorkspaceHome({
   })
   const blockerStep = blockerItem?.step ?? step.key
   const nextStep = nextItem?.step ?? step.key
-  const imageSrc = activeShot ? "/skills/manor.png" : activeEpisode ? "/skills/story.png" : null
+  const imageSrc = activeShot
+    ? "/visuals/premium/umbrella-heir.webp"
+    : activeEpisode
+      ? "/visuals/premium/night-letter.webp"
+      : null
   const title = activeShot?.missingRefFor.length
     ? `先补${activeShot.missingRefFor.join("、")}的定妆参考，再返修第 ${String(activeShot.shot).padStart(2, "0")} 镜`
     : blockerItem?.text ?? `继续处理${step.nav}`
@@ -398,15 +402,15 @@ export default function WorkspaceHome({
         </header>
         <div className="wfx-artifact-grid">
           <button type="button" onClick={() => onOpenStep("episodes")}>
-            <img src="/skills/story.png" alt="分集剧情参考" />
+            <img src="/visuals/premium/night-letter.webp" alt="分集剧情参考" />
             <span><small>第 3 步 · 最新版本</small><b>{episodes[0]?.title || "分集剧情待生成"}</b><em>{episodes.length} 集 · {episodes[0]?.hook ? "钩子已建立" : "等待内容"}</em></span>
           </button>
           <button type="button" onClick={() => onOpenStep("visuals")}>
-            <img src="/skills/canon.png" alt="角色定妆参考" />
+            <img src="/visuals/premium/estate-rain.webp" alt="角色定妆参考" />
             <span><small>第 4 步 · 最新版本</small><b>{visuals.slice(0, 3).map((item) => item.name).join(" · ") || "角色定妆待生成"}</b><em>{visuals.length} 人已建立视觉锚点</em></span>
           </button>
           <button type="button" onClick={() => onOpenStep("shots")}>
-            <img src="/skills/manor.png" alt="分镜场景参考" />
+            <img src="/visuals/premium/green-corridor.webp" alt="分镜场景参考" />
             <span><small>第 6 步 · 最新版本</small><b>{shots.length} 个镜头</b><em>{shots.filter((shot) => shot.status === "done").length} 个已出图 · {shots.filter((shot) => shot.status === "rework").length} 个待返修</em></span>
           </button>
         </div>

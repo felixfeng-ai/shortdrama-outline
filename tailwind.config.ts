@@ -88,9 +88,8 @@ const config: Config = {
       },
       fontFamily: {
         /**
-         * 西文/数字：Albert Sans（自托管 latin 子集，约 32KB）。
-         * 中文：系统栈，优先苹方，其次鸿蒙/MiSans，最后微软雅黑。
-         * 不引中文字体——主流的即梦/可灵/豆包也都是这个策略。
+         * 西文/数字：Inter；中文：系统栈。
+         * 这一层只决定字形，不直接写字号和字重，避免页面各自演化。
          */
         serif: ['Georgia', 'Songti SC', 'SimSun', 'Noto Serif SC', 'serif'],
         sans: [
@@ -105,7 +104,7 @@ const config: Config = {
           'Noto Sans SC',
           'sans-serif',
         ],
-        mono: ['var(--font-mono)', 'ui-monospace', 'SF Mono', 'Menlo', 'Consolas', 'monospace'],
+        mono: ['var(--font-code)', 'ui-monospace', 'SF Mono', 'Menlo', 'Consolas', 'monospace'],
       },
       borderRadius: {
         /** 参考图：卡片 14px、内嵌块 12px、徽标 8px、胶囊按钮走全圆 */

@@ -34,7 +34,59 @@ function SampleIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1.5" /><path d="m8 7 5 3-5 3V7Z" /></svg>
 }
 
+function TargetIcon({ target }: { target: QuickCreationTarget }) {
+  if (target === "story") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 4.5h8a2.5 2.5 0 0 1 2.5 2.5v12H7.5A2.5 2.5 0 0 1 5 16.5z" />
+        <path d="M15.5 7H19v12h-6.5A2.5 2.5 0 0 1 10 16.5V4.5" />
+        <path d="M8 8h4M8 11h3" />
+      </svg>
+    )
+  }
+  if (target === "video") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="14" rx="2.5" />
+        <path d="m10 9 5 3-5 3z" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <path d="m5 15 4.5-4.5 3 3L16 10l3 3M8 9h.01" />
+    </svg>
+  )
+}
+
 const TARGETS: QuickCreationTarget[] = ["story", "keyframe", "video"]
+const SHOWCASE = [
+  {
+    label: "雨夜继承人",
+    detail: "人物定妆",
+    meta: "Canon · 角色锚点",
+    frame: "FRAME 01",
+    image: "/visuals/premium/estate-rain.webp",
+    tone: "cyan",
+  },
+  {
+    label: "门外对峙",
+    detail: "动态分镜",
+    meta: "Shot 02 · 连续运镜",
+    frame: "FRAME 02",
+    image: "/visuals/premium/umbrella-heir.webp",
+    tone: "gold",
+  },
+  {
+    label: "伪造的遗嘱",
+    detail: "镜头与成片",
+    meta: "Take 03 · 情绪特写",
+    frame: "FRAME 03",
+    image: "/visuals/premium/night-letter.webp",
+    tone: "coral",
+  },
+] as const
 
 function formatBudget(micros: number): string {
   return `¥${(micros / 1_000_000).toFixed(2)}`
@@ -78,6 +130,12 @@ export default function WorkspaceOnboarding({
             ["视觉定妆", "角色、场次和分镜自动准备"],
             ["动态分镜与视频", "5 张首帧后追加第一条镜头视频"],
           ]
+  const outcomeImage =
+    target === "story"
+      ? "/visuals/premium/night-letter.webp"
+      : target === "keyframe"
+        ? "/visuals/premium/green-corridor.webp"
+        : "/visuals/premium/umbrella-heir.webp"
 
   useEffect(() => {
     let cancelled = false
@@ -136,9 +194,33 @@ export default function WorkspaceOnboarding({
   return (
     <div className="wfx-onboarding">
       <header className="wfx-onboarding-head">
-        <div>
-          <h1>一句成戏，先看一场</h1>
-          <p>人物、分镜与首帧自动完成，满意后再做完整短剧。</p>
+        <div className="wfx-onboarding-head-copy">
+          <span className="wfx-onboarding-eyebrow">
+            <i aria-hidden="true" />
+            AI SHORT DRAMA PRODUCTION
+          </span>
+          <h1 aria-label="一句成戏，先看一场">
+            <span className="is-gold">一句成戏</span>
+            <span className="is-punctuation" aria-hidden="true">，</span>
+            <span className="is-white">先看一场</span>
+          </h1>
+          <p>
+            从 <span className="is-gold">故事</span> 到 <span className="is-blue">镜头</span>，
+            人物、分镜与首帧自动完成，满意后再做完整短剧。
+          </p>
+        </div>
+        <div className="wfx-onboarding-showcase" aria-label="从故事到成片的真实工作区预览">
+          {SHOWCASE.map((item) => (
+            <figure key={item.label} className={`is-${item.tone}`}>
+              <img src={item.image} alt="" />
+              <span className="wfx-onboarding-frame-index">{item.frame}</span>
+              <figcaption>
+                <span>{item.detail}</span>
+                <b>{item.label}</b>
+                <small>{item.meta}</small>
+              </figcaption>
+            </figure>
+          ))}
         </div>
       </header>
 
@@ -183,16 +265,20 @@ export default function WorkspaceOnboarding({
                   role="radio"
                   aria-checked={target === key}
                   className={target === key ? "is-active" : ""}
+                  data-target={key}
                   disabled={busy !== null || !option.available}
                   title={option.description}
                   onClick={() => setTarget(key)}
                 >
+                  <span className="wfx-onboarding-target-icon" aria-hidden="true">
+                    <TargetIcon target={key} />
+                  </span>
                   <b>{option.label}</b>
-                  <span>
+                  <small>
                     {option.available
                       ? `${option.units} 额度 · ${formatBudget(option.totalMicros)}`
                       : option.unavailableReason}
-                  </span>
+                  </small>
                 </button>
               )
             })}
@@ -231,9 +317,16 @@ export default function WorkspaceOnboarding({
         <aside className="wfx-onboarding-outcome" aria-labelledby="onboarding-outcome-title">
           <span>自动完成</span>
           <h2 id="onboarding-outcome-title">{quote.label}</h2>
+          <figure className={`wfx-onboarding-outcome-media is-${target}`}>
+            <img src={outcomeImage} alt={quote.label} />
+            <span className="wfx-onboarding-outcome-shot">
+              {target === "video" ? "SHOT 01 / TAKE 03" : target === "keyframe" ? "SCENE 04 / FRAME 12" : "STORY / EPISODE 01"}
+            </span>
+            <figcaption>{target === "video" ? "首帧 + 镜头视频" : target === "keyframe" ? "前 5 镜动态分镜" : "人物、三幕与第一集"}</figcaption>
+          </figure>
           <ol>
             {outcomeLines.map(([label, detail], index) => (
-              <li key={label}>
+              <li key={label} className={`is-step-${index + 1}`}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <div><b>{label}</b><small>{detail}</small></div>
               </li>

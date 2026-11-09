@@ -13,8 +13,10 @@
       --acid-strong: #a7daec;
       --blue: #8dc8dc;
       --warning: #d58d73;
-      --font-ui: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-      --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --font-ui: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC",
+        "HarmonyOS Sans SC", "MiSans", "Hiragino Sans GB", "Microsoft YaHei",
+        "Noto Sans SC", sans-serif;
+      --font-mono: var(--font-code), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
       --ease: cubic-bezier(.23, 1, .32, 1);
     }
     .skill-page * { box-sizing: border-box; }
@@ -173,7 +175,7 @@
     .skill-page .hero h1 {
       margin: 0;
       color: var(--text);
-      font-size: clamp(27px, 3.1vw, 42px);
+      font-size: clamp(27px, 2.8vw, 38px);
       font-weight: 500;
       line-height: 1.22;
       text-wrap: balance;
@@ -2076,8 +2078,10 @@
 .skill-page.skill-page-embedded {
   --acid: var(--signal-blue);
   --acid-strong: #a8ccf3;
-  --font-ui: var(--font-latin);
-  --font-mono: var(--font-latin);
+  --font-ui: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "HarmonyOS Sans SC", "MiSans", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans SC", sans-serif;
+  --font-mono: var(--font-code), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
 }
 .skill-page-embedded .hero {
@@ -2089,8 +2093,8 @@
 }
 .skill-page-embedded .hero h1 {
   max-width: 760px;
-  font-size: clamp(24px, 2.2vw, 32px);
-  font-weight: 560;
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 600;
   line-height: 1.3;
   text-wrap: pretty;
 }
@@ -2148,5 +2152,421 @@
   }
   .skill-page-embedded .hero > p {
     font-size: 12px;
+  }
+}
+
+/*
+ * Keep the skills page on the same neutral heading scale as the workspace.
+ * The hero may stay lighter, but no heading uses a separate display family.
+ */
+.skill-page :is(h1, h2, h3, h4) {
+  font-family: var(--font-ui);
+  letter-spacing: 0;
+}
+
+.skill-page h1 {
+  font-weight: 500;
+}
+
+.skill-page :is(h2, h3, h4) {
+  font-weight: 600;
+}
+
+/* Visual skill shelf: actual thumbnails carry recognition before the copy. */
+.skill-page {
+  --skill-gold: #d6b36a;
+  --skill-coral: #df8d75;
+  --skill-mint: #8fcbb0;
+}
+
+.skill-page .skill-hero-showcase {
+  display: grid;
+  width: min(920px, 100%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 21px;
+}
+
+.skill-page .skill-hero-showcase button {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 16 / 8;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--raised);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.skill-page .skill-hero-showcase button:hover,
+.skill-page .skill-hero-showcase button:focus-visible {
+  border-color: color-mix(in srgb, var(--tone) 46%, var(--line));
+  transform: translateY(-1px);
+}
+
+.skill-page .skill-hero-showcase button::after {
+  position: absolute;
+  inset: 28% 0 0;
+  background: linear-gradient(180deg, transparent, rgba(7, 9, 10, .92));
+  content: "";
+}
+
+.skill-page .skill-hero-showcase img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 220ms var(--ease);
+}
+
+.skill-page .skill-hero-showcase button:hover img {
+  transform: scale(1.025);
+}
+
+.skill-page .skill-hero-showcase-copy {
+  position: absolute;
+  z-index: 1;
+  right: 11px;
+  bottom: 9px;
+  left: 11px;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: 8px;
+}
+
+.skill-page .skill-hero-showcase-copy > span {
+  grid-column: 1 / -1;
+  color: var(--tone);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
+.skill-page .skill-hero-showcase-copy b {
+  overflow: hidden;
+  color: #f5f7f6;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-page .skill-hero-showcase-copy small {
+  color: rgba(245, 247, 246, .66);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.skill-page .tone-story { --tone: var(--skill-gold); }
+.skill-page .tone-visual { --tone: var(--acid); }
+.skill-page .tone-studio { --tone: var(--skill-mint); }
+.skill-page .tone-delivery { --tone: var(--skill-coral); }
+
+.skill-page .skill-recommendations-grid button {
+  min-height: 82px;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 8px;
+}
+
+.skill-page .skill-recommendation-media {
+  position: relative;
+  display: block;
+  width: 76px;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--line));
+  border-radius: 7px;
+  background: var(--bg);
+}
+
+.skill-page .skill-recommendation-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.skill-page .skill-recommendation-media i {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(7, 9, 10, .78);
+  color: var(--tone);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.skill-page .skill-recommendation-copy {
+  gap: 3px;
+}
+
+.skill-page .skill-recommendation-kicker {
+  color: var(--tone);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: .04em;
+}
+
+.skill-page .skill-recommendations-grid button > em {
+  align-self: center;
+  white-space: normal;
+}
+
+@media (max-width: 680px) {
+  .skill-page .skill-hero-showcase {
+    width: calc(100% + 16px);
+    grid-template-columns: repeat(3, 148px);
+    justify-content: start;
+    gap: 7px;
+    margin-right: -16px;
+    margin-left: -8px;
+    padding: 0 8px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .skill-page .skill-hero-showcase::-webkit-scrollbar {
+    display: none;
+  }
+
+  .skill-page .skill-hero-showcase button {
+    scroll-snap-align: start;
+  }
+
+  .skill-page .skill-recommendations-grid button {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .skill-page .skill-recommendation-media {
+    width: 64px;
+    height: 50px;
+  }
+
+  .skill-page .skill-recommendations-grid button > em {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* A · 石墨极光：电影剧照、分类色与冷调工作区共用同一套视觉语法。 */
+.skill-page {
+  --skill-gold: #d6b36a;
+  --skill-coral: #df8d75;
+  --skill-mint: #8fcbb0;
+  --skill-blue: #8dc8dc;
+  overflow-x: clip;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .015), transparent 18%),
+    radial-gradient(980px 520px at 72% -16%, rgba(141, 200, 220, .09), transparent 66%),
+    var(--bg);
+}
+
+.skill-page .hero {
+  position: relative;
+  isolation: isolate;
+  padding-top: 28px;
+}
+
+.skill-page .hero::before {
+  position: absolute;
+  z-index: -1;
+  top: -58px;
+  right: -4%;
+  left: -4%;
+  height: 390px;
+  background:
+    linear-gradient(90deg, var(--bg) 0%, rgba(19, 23, 26, .76) 34%, rgba(19, 23, 26, .2) 74%, var(--bg) 100%),
+    linear-gradient(180deg, rgba(19, 23, 26, .08), var(--bg) 93%),
+    url("/visuals/premium/night-letter.webp") 72% 24% / cover no-repeat;
+  content: "";
+  opacity: .16;
+  pointer-events: none;
+}
+
+.skill-page .hero-kicker {
+  color: var(--skill-gold);
+}
+
+.skill-page .hero h1 .hero-title-primary {
+  color: var(--skill-gold);
+}
+
+.skill-page .hero h1 .hero-title-secondary {
+  color: var(--text);
+}
+
+.skill-page .hero > p {
+  color: var(--text-2);
+}
+
+.skill-page .skill-hero-showcase button {
+  border-color: color-mix(in srgb, var(--tone) 22%, var(--line));
+  background: #0d1012;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .025),
+    0 18px 44px -34px color-mix(in srgb, var(--tone) 52%, #000);
+}
+
+.skill-page .skill-hero-showcase button::before {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--tone), transparent);
+  content: "";
+  opacity: .72;
+}
+
+.skill-page .skill-hero-showcase button::after {
+  inset: 22% 0 0;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(5, 7, 8, .18) 24%, rgba(5, 7, 8, .96) 100%),
+    linear-gradient(90deg, rgba(5, 7, 8, .32), transparent 54%);
+}
+
+.skill-page .skill-hero-showcase img {
+  filter: saturate(.92) contrast(1.07) brightness(.86);
+}
+
+.skill-page .skill-hero-showcase button:nth-child(1) img {
+  object-position: 52% 34%;
+}
+
+.skill-page .skill-hero-showcase button:nth-child(2) img {
+  object-position: 56% 22%;
+}
+
+.skill-page .skill-hero-showcase button:nth-child(3) img {
+  object-position: 50% 36%;
+}
+
+.skill-page .skill-hero-showcase-copy > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--tone);
+  font-weight: 600;
+  letter-spacing: .045em;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .65);
+}
+
+.skill-page .skill-hero-showcase-copy > span::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.skill-page .skill-hero-showcase-copy b {
+  font-size: 13px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .7);
+}
+
+.skill-page .skill-recommendation-kicker {
+  color: var(--tone);
+  font-weight: 600;
+}
+
+.skill-page .skill-recommendation-media {
+  border-color: color-mix(in srgb, var(--tone) 42%, var(--line));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .025);
+}
+
+.skill-page .skill-recommendation-media img {
+  filter: saturate(.9) contrast(1.06) brightness(.8);
+}
+
+.skill-page .skill-card {
+  border-color: color-mix(in srgb, var(--tone) 14%, var(--line));
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--tone) 4%, transparent), transparent 42%),
+    var(--panel);
+}
+
+.skill-page .skill-card:hover {
+  border-color: color-mix(in srgb, var(--tone) 38%, var(--line));
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--tone) 7%, transparent), transparent 46%),
+    var(--raised);
+}
+
+.skill-page .skill-card.selected {
+  border-color: color-mix(in srgb, var(--tone) 66%, var(--line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent);
+}
+
+.skill-page .skill-visual::after {
+  background:
+    linear-gradient(180deg, rgba(7, 9, 10, .02) 28%, rgba(7, 9, 10, .52)),
+    linear-gradient(90deg, transparent 72%, color-mix(in srgb, var(--tone) 9%, transparent));
+}
+
+.skill-page .skill-visual img {
+  filter: saturate(.88) contrast(1.06) brightness(.82);
+}
+
+.skill-page .skill-card:hover .skill-visual img {
+  filter: saturate(1) contrast(1.06) brightness(.9);
+}
+
+.skill-page .visual-badge {
+  border-color: color-mix(in srgb, var(--tone) 38%, rgba(255, 255, 255, .12));
+  background: color-mix(in srgb, #0b0d0e 82%, var(--tone));
+  color: var(--tone);
+}
+
+.skill-page .visual-count {
+  color: color-mix(in srgb, var(--tone) 78%, #fff);
+}
+
+.skill-page .official-mark {
+  background: var(--tone);
+  color: #080a0b;
+}
+
+.skill-page .skill-card .skill-arrow {
+  color: var(--tone);
+}
+
+.skill-page .catalog-title::after {
+  display: inline-block;
+  width: 42px;
+  height: 1px;
+  margin-left: 10px;
+  background: linear-gradient(90deg, var(--skill-gold), transparent);
+  vertical-align: middle;
+  content: "";
+}
+
+@media (max-width: 680px) {
+  .skill-page .hero::before {
+    right: -20px;
+    left: -20px;
+    height: 300px;
+    background-position: 62% 22%;
+  }
+
+  .skill-page .skill-hero-showcase button {
+    aspect-ratio: 4 / 3;
+  }
+
+  .skill-page .skill-hero-showcase-copy b {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.32;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 }

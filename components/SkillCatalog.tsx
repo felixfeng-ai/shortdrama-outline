@@ -66,6 +66,15 @@ const CATEGORIES: Array<SkillCategory | '全部'> = [
   '交付效率',
 ]
 
+const HERO_SKILL_IDS = ['adaptation', 'continuity', 'delivery'] as const
+
+function skillTone(category: SkillCategory): 'story' | 'visual' | 'studio' | 'delivery' {
+  if (category === '小说改编' || category === '小说创作') return 'story'
+  if (category === '视觉一致性') return 'visual'
+  if (category === '交付效率') return 'delivery'
+  return 'studio'
+}
+
 const EMPTY_PROJECT_STATE: IntakeProjectState = {
   hasIdea: false,
   materialCount: 0,
@@ -253,6 +262,9 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
     !project
     || (resourcesReady && resolvedProjectId === project.id)
   )
+  const heroSkills = HERO_SKILL_IDS
+    .map((id) => SKILL_CATALOG.find((skill) => skill.id === id))
+    .filter((skill): skill is SkillDefinition => Boolean(skill))
   const executionPlan = selectedSkill
     ? buildSkillExecutionPlan(selectedSkill, {
       state: projectState,
@@ -463,11 +475,29 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
         <section className="hero" aria-labelledby="pageTitle">
           <p className="hero-kicker">创作方法 · 可控执行</p>
           <h1 id="pageTitle">
-            <span>创作技能</span>
+            <span className="hero-title-primary">创作技能</span>
             <span className="title-separator" aria-hidden="true">·</span>
-            从想法、原文到成片
+            <span className="hero-title-secondary">从想法、原文到成片</span>
           </h1>
           <p>从一句想法、已有小说或当前项目开始。每条创作技能先展示会读取什么、产出什么；写入和付费前仍由你确认。</p>
+
+          <div className="skill-hero-showcase" aria-label="常用创作技能">
+            {heroSkills.map((skill) => (
+              <button
+                key={skill.id}
+                type="button"
+                className={`tone-${skillTone(skill.category)}`}
+                onClick={() => chooseSkill(skill)}
+              >
+                <img src={skill.image} alt="" loading="lazy" />
+                <span className="skill-hero-showcase-copy">
+                  <span>{skill.category}</span>
+                  <b>{skill.title}</b>
+                  <small>{skill.count}</small>
+                </span>
+              </button>
+            ))}
+          </div>
 
           <form
             className="composer"
@@ -616,12 +646,16 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
                 <button
                   key={recommendation.skill.id}
                   type="button"
-                  className={selectedId === recommendation.skill.id ? 'active' : ''}
+                  className={`tone-${skillTone(recommendation.skill.category)} ${selectedId === recommendation.skill.id ? 'active' : ''}`}
                   aria-pressed={selectedId === recommendation.skill.id}
                   onClick={() => chooseSkill(recommendation.skill)}
                 >
-                  <span className="skill-recommendation-index">0{index + 1}</span>
+                  <span className="skill-recommendation-media">
+                    <img src={recommendation.skill.image} alt="" loading="lazy" />
+                    <i>0{index + 1}</i>
+                  </span>
                   <span className="skill-recommendation-copy">
+                    <span className="skill-recommendation-kicker">{recommendation.skill.category}</span>
                     <b>{recommendation.skill.title}</b>
                     <span>{recommendation.reason}</span>
                   </span>
@@ -752,7 +786,7 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
                 {skills.map((skill) => (
                   <button
                     key={skill.id}
-                    className={`skill-card ${skill.visual} ${skill.id === selectedId ? 'selected' : ''}`}
+                    className={`skill-card tone-${skillTone(skill.category)} ${skill.visual} ${skill.id === selectedId ? 'selected' : ''}`}
                     type="button"
                     aria-pressed={skill.id === selectedId}
                     onClick={() => chooseSkill(skill)}

@@ -24,7 +24,7 @@ test("WM-UI2 创作复用技能库，公告保留在确认稿位置", () => {
 
 test("WM-UI3 嵌入创作使用紧凑标题、白色主操作和冷蓝运行态", () => {
   assert.match(skills, /--acid:\s*var\(--signal-blue\)/)
-  assert.match(skills, /font-size:\s*clamp\(24px,\s*2\.2vw,\s*32px\)/)
+  assert.match(skills, /font-size:\s*clamp\(24px,\s*2vw,\s*30px\)/)
   assert.match(skills, /\.skill-page-embedded \.send-button/)
   assert.match(skills, /background:\s*var\(--text\)/)
 })
