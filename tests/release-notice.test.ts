@@ -35,11 +35,14 @@ test("产品更新由版本、发布时间和条目组成", () => {
 
 test("公告组件展示最新版本、时间戳，并按版本保存已读状态", () => {
   const source = fs.readFileSync("components/ReleaseNotice.tsx", "utf8")
+  const dialog = fs.readFileSync("components/ReleaseDetailsDialog.tsx", "utf8")
 
   assert.match(source, /LATEST_PRODUCT_RELEASE\.version/)
   assert.match(source, /LATEST_PRODUCT_RELEASE\.publishedAt/)
-  assert.match(source, /LATEST_PRODUCT_RELEASE\.highlights/)
-  assert.match(source, /<time\s+dateTime=/)
+  assert.match(dialog, /LATEST_PRODUCT_RELEASE\.version/)
+  assert.match(dialog, /LATEST_PRODUCT_RELEASE\.highlights/)
+  assert.match(dialog, /<time\s+dateTime=/)
+  assert.match(dialog, /formatReleaseTimestamp/)
   assert.match(source, /chengju:product-release:\$\{LATEST_PRODUCT_RELEASE\.version\}/)
   assert.doesNotMatch(source, /chengju:notice:h-deck-v1/)
   assert.doesNotMatch(source, /左边写、右边看/)

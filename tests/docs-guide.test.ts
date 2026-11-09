@@ -72,6 +72,7 @@ test("教程用真实界面截图解释关键生产节点", () => {
     "03-shot-video.png",
     "04-timeline.png",
     "05-export.png",
+    "10-release-notes.png",
   ]) {
     assert.ok(guide.includes(image), `教程缺少截图 ${image}`)
     assert.ok(fs.existsSync(`public/docs/tutorial/${image}`), `截图文件不存在：${image}`)
@@ -98,7 +99,8 @@ test("教程首屏按已确认 Demo 重排为任务优先", () => {
   const guide = fs.readFileSync("components/DocsGuide.tsx", "utf8")
   const css = fs.readFileSync("app/docs/docs.css", "utf8")
 
-  assert.match(guide, /<h1>完成第一部短剧<\/h1>/)
+  assert.match(guide, /<h1>把第一部短剧，做成可交付成片<\/h1>/)
+  assert.match(guide, /docs-difference-rail/)
   assert.match(guide, /docs-start-rail/)
   assert.match(guide, /只有一句想法/)
   assert.match(guide, /已有小说或剧本/)
@@ -109,6 +111,7 @@ test("教程首屏按已确认 Demo 重排为任务优先", () => {
     assert.ok(guide.includes(group), `教程目录缺少分组：${group}`)
   }
   assert.match(css, /\.docs-start-rail/)
+  assert.match(css, /\.docs-difference-rail/)
   assert.match(css, /\.docs-hero-preview/)
   assert.match(css, /\.docs-sidebar a[^{]*\{[^}]*font-size:\s*13px/s)
   assert.match(css, /\.docs-toc a[^{}]*\{[^}]*font-size:\s*12px/s)

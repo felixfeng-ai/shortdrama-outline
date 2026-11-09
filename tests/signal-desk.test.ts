@@ -164,7 +164,6 @@ test("SDA16 高频展开动作必须共用可中断的柔和折叠容器", () =>
   for (const [name, source] of [
     ["项目菜单", projectSrc],
     ["灵感助手", ideaSrc],
-    ["更新公告", releaseSrc],
     ["创作契约", briefSrc],
     ["待办", todoSrc],
     ["判断日志", judgmentSrc],
@@ -176,6 +175,8 @@ test("SDA16 高频展开动作必须共用可中断的柔和折叠容器", () =>
   ]) {
     assert.ok(source.includes("SmoothCollapse"), `${name}仍未改用柔和折叠`)
   }
+  assert.match(releaseSrc, /ReleaseDetailsDialog/)
+  assert.doesNotMatch(releaseSrc, /SmoothCollapse/)
   assert.ok(css.includes(".smooth-collapse"), "折叠容器缺少主题过渡样式")
 })
 

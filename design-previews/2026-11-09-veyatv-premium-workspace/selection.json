@@ -1,0 +1,14 @@
+{
+  "id": "A",
+  "label": "A: 石墨极光",
+  "name": "石墨极光",
+  "notes": "",
+  "dials": {
+    "variance": 7,
+    "motion": 6,
+    "density": 6
+  },
+  "adjustments": "",
+  "source": "click",
+  "receivedAt": "2026-11-08T19:48:01.538Z"
+}

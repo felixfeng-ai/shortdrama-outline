@@ -1251,29 +1251,6 @@
   height: 14px;
 }
 
-.wfx-content .inline-release-detail {
-  margin-top: 6px;
-  padding: 13px 15px 14px;
-  border: 1px solid var(--wfx-line);
-  border-radius: var(--wfx-radius);
-  background:
-    radial-gradient(70% 120% at 10% 0%, rgba(141, 200, 220, .035), transparent 60%),
-    var(--wfx-surface-2);
-}
-
-.inline-release-detail-status {
-  color: var(--wfx-accent);
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: .06em;
-}
-
-.wfx-content .inline-release-detail li {
-  color: var(--wfx-muted);
-  font-size: 12px;
-}
-
 @keyframes inline-release-pulse {
   0% {
     opacity: .55;

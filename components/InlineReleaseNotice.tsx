@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react'
 
 import {
   LATEST_PRODUCT_RELEASE,
-  formatReleaseTimestamp,
 } from '@/lib/releases'
-import SmoothCollapse from './SmoothCollapse'
+import ReleaseDetailsDialog from './ReleaseDetailsDialog'
 
 const STORAGE_KEY = `chengju:inline-release:${LATEST_PRODUCT_RELEASE.version}`
 const RELEASE_AT = Date.parse(LATEST_PRODUCT_RELEASE.publishedAt)
@@ -66,36 +65,24 @@ export default function InlineReleaseNotice({ hidden = false }: Props) {
         <button
           className="inline-release-action"
           type="button"
+          aria-haspopup="dialog"
           aria-expanded={open}
-          aria-controls="inline-release-detail"
-          onClick={() => setOpen((current) => !current)}
+          onClick={() => setOpen(true)}
         >
-          <span className="inline-release-action-label">{open ? '收起' : '了解内测'}</span>
+          <span className="inline-release-action-label">查看详情</span>
           <svg viewBox="0 0 20 20" aria-hidden="true">
-            <path d={open ? 'm6 12 4-4 4 4' : 'm8 5 5 5-5 5'} />
+            <path d="m8 5 5 5-5 5" />
           </svg>
         </button>
         <button className="inline-release-close" type="button" aria-label="关闭平台公告" onClick={dismiss}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
         </button>
       </div>
-      <SmoothCollapse open={open}>
-        <div className="inline-release-detail" id="inline-release-detail">
-          <header>
-            <span className="inline-release-detail-status">
-              {LATEST_PRODUCT_RELEASE.status} · {LATEST_PRODUCT_RELEASE.version}
-            </span>
-            <time dateTime={LATEST_PRODUCT_RELEASE.publishedAt}>
-              {formatReleaseTimestamp(LATEST_PRODUCT_RELEASE.publishedAt)}
-            </time>
-          </header>
-          <ul>
-            {LATEST_PRODUCT_RELEASE.highlights.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </SmoothCollapse>
+      <ReleaseDetailsDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onDismiss={dismiss}
+      />
     </section>
   )
 }

@@ -106,6 +106,11 @@ try {
     await page.goto(`${baseURL}/?project=${projectID}`, { waitUntil: "domcontentloaded", timeout: 30_000 })
     await settleProject(page, project.title)
     await shot(page, "01-quick-start.png")
+    await page.getByRole("button", { name: "查看详情" }).click()
+    await settle(page, ".release-dialog")
+    await shot(page, "10-release-notes.png")
+    await page.getByRole("button", { name: "关闭公告详情" }).click()
+    await page.locator(".release-dialog").waitFor({ state: "detached", timeout: 5_000 })
     fs.copyFileSync(path.join(tutorialDir, "01-quick-start.png"), path.join(tutorialDir, "05-export.png"))
 
     await page.goto(`${baseURL}/?project=${projectID}&step=visuals`, { waitUntil: "domcontentloaded", timeout: 30_000 })

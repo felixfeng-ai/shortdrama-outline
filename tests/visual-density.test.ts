@@ -36,10 +36,10 @@ test("VD3 教程使用中文眉标，并把正文、列表和图示说明提升�
   const guide = fs.readFileSync("components/DocsGuide.tsx", "utf8")
   const css = fs.readFileSync("app/docs/docs.css", "utf8")
 
-  assert.match(guide, /开始使用 · 约 8 分钟/)
+  assert.match(guide, /可控短剧生产 · 约 8 分钟/)
   assert.doesNotMatch(guide, /QUICK START · ABOUT 8 MIN/)
   assert.doesNotMatch(guide, /01 \/ PLATFORM MAP/)
-  assert.match(guide, /14 · 常见问题/)
+  assert.match(guide, /15 · 常见问题/)
   assert.match(css, /\.docs-section-kicker\s*\{[^}]*font-size:\s*11px/s)
   assert.match(css, /\.docs-steps p\s*\{[^}]*font-size:\s*13px/s)
   assert.match(css, /\.docs-checklist li\s*\{[^}]*font-size:\s*13px/s)

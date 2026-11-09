@@ -10,7 +10,9 @@ test("公告使用内测状态信号、价值摘要和单一主操作", () => {
   assert.match(notice, /LATEST_PRODUCT_RELEASE\.status/)
   assert.match(notice, /LATEST_PRODUCT_RELEASE\.summary/)
   assert.match(notice, /inline-release-action/)
-  assert.match(notice, /SmoothCollapse/)
+  assert.match(notice, /aria-haspopup="dialog"/)
+  assert.match(notice, /ReleaseDetailsDialog/)
+  assert.doesNotMatch(notice, /SmoothCollapse/)
   assert.doesNotMatch(notice, /className="inline-release-bar"[\s\S]*<b>\{LATEST_PRODUCT_RELEASE\.version\}<\/b>/)
 })
 

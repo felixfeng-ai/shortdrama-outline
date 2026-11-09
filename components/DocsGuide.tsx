@@ -34,7 +34,7 @@ const CHAPTERS = [
     title: '快速开始',
     links: [
       ['platform-map', '平台能做什么'],
-      ['quick-start', '完成第一部短剧'],
+      ['quick-start', '把第一部短剧做成片'],
       ['project-flow', '认识六步工作流'],
     ],
   },
@@ -57,6 +57,7 @@ const CHAPTERS = [
   {
     title: '工作区与排障',
     links: [
+      ['release-notes', '平台公告与版本'],
       ['workspace-modes', '总览 / 创作 / 画布'],
       ['canvas-window', '全屏画布'],
       ['mobile-app', '手机 App 与跨端'],
@@ -187,26 +188,34 @@ export default function DocsGuide() {
           </details>
 
           <header className="docs-hero">
-            <p className="docs-kicker">开始使用 · 约 8 分钟</p>
-            <h1>完成第一部短剧</h1>
+            <p className="docs-kicker">可控短剧生产 · 约 8 分钟</p>
+            <h1>把第一部短剧，做成可交付成片</h1>
             <p className="docs-lede">
-              从一句想法或已有原文开始，完成人物、分集、分镜、镜头视频和第一集成片。
-              成剧把“从想法、原文到成片”的路径放在同一条项目链里，每个阶段都先告诉你需要准备什么、
-              会产出什么，写入和付费前仍由你确认。
+              从一句想法或已有原文开始，把“从想法、原文到成片”的路径放在同一条可追溯项目链：
+              人物、分集、定妆、分镜、镜头视频和成片逐步确认。和“一句话直接出片”的工具不同，
+              VeyaTV 的每一步都能编辑、验证和回滚，人物 Canon、首帧参考、Agent 与画布共享同一份项目事实。
             </p>
             <div className="docs-hero-actions">
               <a href="#quick-start">开始第一次创作 <ArrowIcon /></a>
               <a href="/?view=create&amp;mode=source">从已有小说或剧本开始</a>
             </div>
 
-            <div className="docs-start-rail" aria-label="三种开始方式">
-              {START_PATHS.map((item) => (
-                <div key={item.index}>
-                  <i>{item.index}</i>
-                  <b>{item.title}</b>
-                  <span>{item.description}</span>
-                </div>
-              ))}
+            <div className="docs-difference-rail" aria-label="VeyaTV 核心差异">
+              <div>
+                <small>可控生产</small>
+                <b>六步逐段确认</b>
+                <span>人物、分集、定妆、场次和分镜都能编辑、验证与回滚，不是黑盒等结果。</span>
+              </div>
+              <div>
+                <small>跨镜一致</small>
+                <b>人物 Canon 不断链</b>
+                <span>定妆、场景、首帧和参考图贯穿同一项目，返修前先看影响范围。</span>
+              </div>
+              <div>
+                <small>生产闭环</small>
+                <b>返工成本可追溯</b>
+                <span>Agent 与画布共用项目事实，最终落到时间线、MP4、SRT 和交付包。</span>
+              </div>
             </div>
 
             <figure className="docs-hero-preview">
@@ -270,7 +279,7 @@ export default function DocsGuide() {
             <ol className="docs-steps">
               <li>
                 <b>选择工作面</b>
-                <p>从左侧菜单进入“首页”查看当前任务，或在“创作技能”里从想法、原文和当前项目开始。</p>
+                <p>从左侧菜单进入“首页”查看当前任务，或在“创作”里从想法、原文和当前项目开始。</p>
               </li>
               <li>
                 <b>生成核心人物</b>
@@ -292,6 +301,15 @@ export default function DocsGuide() {
             <Callout title="第一次使用">
               可以先载入示例项目，查看完整六步和成片入口；示例不会调用模型，也不消耗创作额度。
             </Callout>
+            <div className="docs-start-rail" aria-label="三种开始方式">
+              {START_PATHS.map((item) => (
+                <div key={item.index}>
+                  <i>{item.index}</i>
+                  <b>{item.title}</b>
+                  <span>{item.description}</span>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section id="project-flow" className="docs-section">
@@ -453,8 +471,32 @@ export default function DocsGuide() {
             </ul>
           </section>
 
+          <section id="release-notes" className="docs-section">
+            <p className="docs-section-kicker">09 · 平台公告</p>
+            <h2>平台公告与版本</h2>
+            <p>
+              工作台顶部的内测公告条展示当前状态和最新版本。点击“查看详情”打开公告弹框，
+              弹框集中展示版本号、发布时间和本次更新内容，避免长说明一直占据工作区。
+            </p>
+            <TutorialFigure
+              src="/docs/tutorial/10-release-notes.png"
+              alt="VeyaTV 平台公告详情弹框，展示内测状态、版本号、发布时间和本次更新内容"
+              label="平台公告 · 查看详情"
+              points={[
+                '公告条只保留内测状态、标题和单一“查看详情”入口；详情进入独立弹框，不再在页面内展开长列表。',
+                '弹框按“状态与版本、发布时间、更新内容、确认操作”组织，支持关闭按钮、遮罩和 Esc 关闭。',
+                '关闭详情不会修改项目；点击“知道了”只记录当前版本的公告已读状态。',
+              ]}
+            />
+            <ul className="docs-checklist">
+              <li>公告按版本保留，新版本发布会重新显示入口提示。</li>
+              <li>版本号、发布时间和更新条目都来自同一份产品发布记录。</li>
+              <li>弹框打开时背景页面锁定滚动，关闭后焦点回到公告入口。</li>
+            </ul>
+          </section>
+
           <section id="workspace-modes" className="docs-section">
-            <p className="docs-section-kicker">09 · 工作面</p>
+            <p className="docs-section-kicker">10 · 工作面</p>
             <h2>总览 / 创作 / 画布</h2>
             <p>
               三个工作面属于同一个项目，不会丢失当前项目和步骤。总览负责当前阻断与下一步，
@@ -477,7 +519,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="canvas-window" className="docs-section">
-            <p className="docs-section-kicker">10 · 全屏画布</p>
+            <p className="docs-section-kicker">11 · 全屏画布</p>
             <h2>全屏画布</h2>
             <p>
               工作区里的“画布”主入口仍在当前页面打开。需要并排审阅或更大的拖拽空间时，
@@ -496,7 +538,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="mobile-app" className="docs-section">
-            <p className="docs-section-kicker">11 · 手机与跨端</p>
+            <p className="docs-section-kicker">12 · 手机与跨端</p>
             <h2>手机 App 与跨端</h2>
             <p>
               桌面顶栏“下载手机 App”会展示二维码。手机扫码安装后登录同一账号，
@@ -516,7 +558,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="skills-agent" className="docs-section">
-            <p className="docs-section-kicker">12 · 技能与 Agent</p>
+            <p className="docs-section-kicker">13 · 技能与 Agent</p>
             <h2>创作技能与 Agent</h2>
             <p>
               桌面端 Agent 默认收起在工作区右下角，不占用主工作面宽度；点击 Veya 图标后展开侧舱，
@@ -535,7 +577,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="cost-recovery" className="docs-section">
-            <p className="docs-section-kicker">13 · 费用与恢复</p>
+            <p className="docs-section-kicker">14 · 费用与恢复</p>
             <h2>费用、恢复与版本</h2>
             <ul className="docs-checklist">
               <li>可计费动作会先显示预估费用；批量操作还会显示预算上限。</li>
@@ -547,7 +589,7 @@ export default function DocsGuide() {
           </section>
 
           <section id="faq" className="docs-section">
-            <p className="docs-section-kicker">14 · 常见问题</p>
+            <p className="docs-section-kicker">15 · 常见问题</p>
             <h2>常见问题</h2>
             <div className="docs-faq">
               <details>

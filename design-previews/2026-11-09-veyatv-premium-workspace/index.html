@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeyaTV 首页视觉皮肤预览</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+        "Noto Sans SC", sans-serif;
+      --shell-bg: #ecece8;
+      --shell-card: #fff;
+      --shell-ink: #181918;
+      --shell-muted: #6d706e;
+      --shell-line: #d8d8d3;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--shell-bg); color: var(--shell-ink); }
+    button, textarea, input { font: inherit; }
+    button { cursor: pointer; }
+    .shell-head {
+      position: sticky; top: 0; z-index: 20; display: flex; min-height: 58px;
+      align-items: center; justify-content: space-between; gap: 20px; padding: 12px 28px;
+      border-bottom: 1px solid var(--shell-line); background: rgba(236,236,232,.94);
+      backdrop-filter: blur(14px);
+    }
+    .shell-head strong { font-size: 14px; }
+    .shell-head span { color: var(--shell-muted); font-size: 12px; text-align: right; }
+    .shell-body { padding: 20px 28px 44px; }
+    .dial-panel {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;
+      margin-bottom: 20px; padding: 16px 18px; border: 1px solid var(--shell-line);
+      border-radius: 10px; background: rgba(255,255,255,.68);
+    }
+    .dial-panel label { display: grid; gap: 7px; font-size: 12px; }
+    .dial-panel label > span { display: flex; justify-content: space-between; gap: 12px; }
+    .dial-panel output { color: var(--shell-muted); font-variant-numeric: tabular-nums; }
+    .dial-panel input { width: 100%; accent-color: #444846; }
+    .direction-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+    .direction-card {
+      display: flex; min-width: 0; overflow: hidden; border: 1px solid var(--shell-line);
+      border-radius: 12px; background: var(--shell-card); flex-direction: column;
+      box-shadow: 0 14px 40px -34px rgba(0,0,0,.55);
+      transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
+    }
+    .direction-card:hover { border-color: #b8b9b4; }
+    .direction-card.selected { border-color:#151716; box-shadow:0 0 0 2px #151716,0 16px 46px -34px rgba(0,0,0,.6); }
+    .mock { position: relative; height: 440px; overflow: hidden; border-bottom: 1px solid var(--shell-line); background:#101111; }
+    .mock .stage {
+      position:absolute; top:0; left:50%; width:960px; height:540px; margin-left:-480px;
+      overflow:hidden; transform:scale(.68); transform-origin:top center;
+      font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+    }
+    .mock .stage * { box-sizing:border-box; }
+    .mock-label {
+      position:absolute; right:12px; bottom:10px; z-index:4; padding:4px 7px;
+      border:1px solid rgba(255,255,255,.14); border-radius:999px;
+      background:rgba(7,8,9,.66); color:rgba(255,255,255,.68); font-size:9px;
+      backdrop-filter:blur(8px);
+    }
+    .card-meta { display:grid; gap:9px; padding:16px 18px 18px; }
+    .meta-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .meta-head h2 { margin:0; font-size:17px; font-weight:600; }
+    .recommended { padding:4px 8px; border-radius:999px; background:#181a19; color:#fff; font-size:10px; font-weight:600; }
+    .card-meta p { margin:0; color:var(--shell-muted); font-size:12px; line-height:1.6; }
+    .meta-tags { display:flex; flex-wrap:wrap; gap:6px; }
+    .meta-tags span { padding:3px 7px; border:1px solid #deded9; border-radius:999px; color:#565a58; font-size:9px; }
+    .qmdp-pick-button {
+      width:100%; min-height:42px; border:1px solid #1b1d1c; border-radius:7px;
+      background:#1b1d1c; color:#fff; font-size:12px; font-weight:600;
+      transition:background-color 140ms var(--ease), transform 100ms var(--ease);
+    }
+    .qmdp-pick-button:hover { background:#303432; }
+    .qmdp-pick-button:active { transform:scale(.99); }
+    .confirm {
+      position:fixed; inset:0; z-index:50; display:none; place-items:center; padding:18px;
+      background:rgba(8,9,8,.46);
+    }
+    .confirm.open { display:grid; }
+    .dialog { width:min(520px,100%); padding:22px; border-radius:12px; background:#fff; box-shadow:0 30px 90px -36px rgba(0,0,0,.7); }
+    .dialog h2 { margin:0; font-size:20px; }
+    .dialog p { color:var(--shell-muted); line-height:1.65; }
+    .dialog textarea { width:100%; min-height:92px; resize:vertical; padding:11px 12px; border:1px solid var(--shell-line); border-radius:8px; outline:none; }
+    .dialog textarea:focus { border-color:#6f7471; }
+    .dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+    .dialog-actions button { min-height:40px; padding:0 15px; border:1px solid var(--shell-line); border-radius:7px; background:#fff; }
+    .dialog-actions .primary { border-color:#171918; background:#171918; color:#fff; }
+    .pickbar {
+      position:fixed; right:18px; bottom:18px; z-index:60; max-width:min(460px,calc(100vw - 36px));
+      padding:11px 14px; border-radius:8px; background:#171918; color:#fff; font-size:12px;
+      opacity:0; transform:translateY(12px); transition:opacity 160ms var(--ease),transform 160ms var(--ease);
+      pointer-events:none;
+    }
+    .pickbar.show { opacity:1; transform:translateY(0); }
+
+    /* Shared mockup layout. Only the skin changes between A/B/C/D. */
+    .skin {
+      --bg:#0b0d0e; --panel:#121517; --panel2:#181c1e; --line:rgba(255,255,255,.09);
+      --ink:#f4f6f4; --muted:#9da6a3; --faint:#6c7673;
+      --cyan:#8bd4df; --gold:#e0bd78; --coral:#eb9278; --mint:#8dd0b0;
+      background:var(--bg); color:var(--ink);
+    }
+    .skin .topbar {
+      display:flex; height:54px; align-items:center; gap:16px; padding:0 24px;
+      border-bottom:1px solid var(--line); background:var(--panel);
+    }
+    .skin .brand { font-size:17px; font-weight:700; letter-spacing:-.02em; }
+    .skin .brand em { margin-left:7px; color:var(--faint); font-size:9px; font-style:normal; font-weight:500; }
+    .skin .nav { display:flex; gap:16px; margin-left:20px; color:var(--muted); font-size:10px; }
+    .skin .top-actions { display:flex; gap:8px; margin-left:auto; }
+    .skin .top-actions span {
+      padding:6px 10px; border:1px solid var(--line); border-radius:6px; color:var(--muted); font-size:9px;
+    }
+    .skin .main {
+      display:grid; grid-template-columns:415px minmax(0,1fr); gap:24px;
+      height:402px; min-height:0; overflow:hidden; padding:24px 24px 18px;
+    }
+    .skin .copy { position:relative; z-index:2; min-height:0; overflow:hidden; padding:12px 0 0 8px; }
+    .skin .kicker {
+      display:inline-flex; align-items:center; gap:6px; color:var(--accent);
+      font-size:9px; font-weight:600; letter-spacing:.08em;
+    }
+    .skin .kicker::before {
+      width:6px; height:6px; border-radius:50%; background:var(--accent);
+      box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent);
+      content:"";
+    }
+    .skin h1 {
+      margin:14px 0 0; max-width:390px; color:var(--ink);
+      font-size:47px; line-height:1.1; font-weight:600; letter-spacing:-.03em;
+      text-wrap:balance;
+    }
+    .skin h1 strong { color:var(--accent); font-weight:600; }
+    .skin .sub { max-width:380px; margin:12px 0 0; color:var(--muted); font-size:12px; line-height:1.75; }
+    .skin .composer {
+      display:flex; min-height:52px; align-items:center; gap:10px; margin-top:20px; padding:7px 8px 7px 14px;
+      border:1px solid var(--line); border-radius:8px; background:var(--panel);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.035), 0 18px 50px -44px #000;
+    }
+    .skin .composer span { flex:1; min-width:0; overflow:hidden; color:var(--faint); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+    .skin .composer button {
+      display:flex; min-height:36px; align-items:center; gap:7px; padding:0 13px;
+      border:0; border-radius:6px; background:var(--button); color:var(--button-ink); font-size:9px; font-weight:600;
+    }
+    .skin .composer svg { width:14px; height:14px; }
+    .skin .facts { display:flex; gap:7px; margin-top:11px; }
+    .skin .facts span { padding:4px 7px; border:1px solid var(--line); border-radius:999px; color:var(--faint); font-size:8px; }
+    .skin .media {
+      display:grid; grid-template-columns:1.45fr .8fr; grid-template-rows:1fr 1fr; gap:9px; min-width:0;
+      min-height:0; overflow:hidden;
+    }
+    .skin .media figure {
+      position:relative; min-width:0; min-height:0; margin:0; overflow:hidden; border:1px solid var(--media-border);
+      border-radius:var(--media-radius); background:var(--panel2);
+    }
+    .skin .media figure:first-child { grid-row:1 / 3; }
+    .skin .media img { width:100%; height:100%; object-fit:cover; }
+    .skin .media figure::after {
+      position:absolute; inset:42% 0 0;
+      background:linear-gradient(180deg,transparent,rgba(4,6,7,.92)); content:"";
+    }
+    .skin .media figcaption {
+      position:absolute; z-index:1; right:11px; bottom:10px; left:11px;
+      display:flex; align-items:end; justify-content:space-between; gap:8px;
+    }
+    .skin .media figcaption b { font-size:11px; font-weight:600; }
+    .skin .media figcaption span { color:var(--accent); font-size:8px; }
+    .skin .actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)) 1.35fr; gap:8px; padding:0 24px 20px; }
+    .skin .action {
+      display:flex; min-width:0; min-height:62px; align-items:center; gap:9px; padding:10px;
+      border:1px solid var(--line); border-radius:7px; background:var(--panel);
+    }
+    .skin .action-icon {
+      display:grid; width:31px; height:31px; flex:0 0 auto; place-items:center; border-radius:7px;
+      background:var(--tone); color:#0b0d0e;
+    }
+    .skin .action-icon svg { width:17px; height:17px; }
+    .skin .action div { display:grid; min-width:0; gap:2px; }
+    .skin .action b { color:var(--ink); font-size:10px; font-weight:600; }
+    .skin .action span { overflow:hidden; color:var(--faint); font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
+    .skin .continue {
+      position:relative; display:flex; min-width:0; align-items:center; gap:10px; overflow:hidden;
+      padding:0 12px 0 0; border:1px solid var(--line); border-radius:7px; background:var(--panel2);
+    }
+    .skin .continue img { width:92px; height:100%; object-fit:cover; }
+    .skin .continue div { display:grid; min-width:0; gap:3px; }
+    .skin .continue b { font-size:10px; }
+    .skin .continue span { color:var(--faint); font-size:8px; }
+
+    /* A. Graphite Aurora: 推荐。冷灰石墨 + 冷蓝重音 + 金/珊瑚分类色 */
+    .skin-a {
+      --bg:#090b0c; --panel:#121516; --panel2:#171b1d; --line:rgba(255,255,255,.085);
+      --ink:#f2f5f3; --muted:#a4adaa; --faint:#737d7a;
+      --accent:#8cd9e4; --button:#e6ece9; --button-ink:#111515;
+      --media-border:rgba(140,217,228,.16); --media-radius:8px;
+    }
+    .skin-a::before {
+      position:absolute; inset:54px 0 auto; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(140,217,228,.6),transparent);
+      content:""; opacity:.45;
+    }
+    .skin-a .media figure:first-child { box-shadow:0 0 40px -24px rgba(140,217,228,.45); }
+
+    /* B. Black Gold Cinema: 黑金电影感，主打金色文字与衬线标题 */
+    .skin-b {
+      --bg:#0b0907; --panel:#14110e; --panel2:#1b1712; --line:rgba(238,209,158,.12);
+      --ink:#f5efe3; --muted:#b4aa98; --faint:#786f61;
+      --accent:#e3c07c; --button:#e3c07c; --button-ink:#1b140a;
+      --media-border:rgba(227,192,124,.28); --media-radius:2px;
+    }
+    .skin-b h1 { font-family:Georgia,"Songti SC",serif; font-weight:400; letter-spacing:-.015em; }
+    .skin-b h1 strong { color:#e3c07c; font-weight:400; }
+    .skin-b .brand { font-family:Georgia,serif; font-weight:600; }
+    .skin-b .media figcaption span { color:#efcf92; }
+    .skin-b .action-icon { border-radius:2px; }
+
+    /* C. Neon Set: 冷蓝 + 珊瑚霓虹片场，强调动态与模型色 */
+    .skin-c {
+      --bg:#071014; --panel:#0d191d; --panel2:#122126; --line:rgba(112,229,238,.14);
+      --ink:#f0fbfb; --muted:#9bb5b7; --faint:#658184;
+      --accent:#61e6ee; --button:#61e6ee; --button-ink:#071013;
+      --media-border:rgba(97,230,238,.25); --media-radius:7px;
+    }
+    .skin-c::after {
+      position:absolute; inset:54px 0 auto; height:1px;
+      background:linear-gradient(90deg,#61e6ee,transparent 55%,#ef8a72);
+      content:""; opacity:.72; animation:scan 3.2s linear infinite;
+    }
+    .skin-c h1 { text-shadow:0 0 30px rgba(97,230,238,.12); }
+    .skin-c .composer { box-shadow:inset 0 0 0 1px rgba(97,230,238,.08),0 0 42px -32px rgba(97,230,238,.8); }
+
+    /* D. Warm Film Lab: 暖纸色、朱红文字与真实胶片颗粒 */
+    .skin-d {
+      --bg:#ece6da; --panel:#f7f2e9; --panel2:#ddd4c4; --line:rgba(46,42,35,.15);
+      --ink:#262823; --muted:#6f6c63; --faint:#958d80;
+      --accent:#bb3b31; --button:#262b27; --button-ink:#fffaf2;
+      --media-border:rgba(54,47,37,.18); --media-radius:3px;
+    }
+    .skin-d .topbar { background:rgba(247,242,233,.92); }
+    .skin-d .brand { font-family:Georgia,serif; }
+    .skin-d .media figure::after { background:linear-gradient(180deg,transparent,rgba(25,22,18,.82)); }
+    .skin-d .media figcaption b { color:#fff; }
+    .skin-d .media figcaption span { color:#f0c3ad; }
+    .skin-d .action-icon { border-radius:50%; }
+    .skin-d::before {
+      position:absolute; inset:0; pointer-events:none; opacity:.045;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.72'/%3E%3C/svg%3E");
+      content:"";
+    }
+
+    @keyframes scan {
+      from { transform:translateX(-70%); }
+      to { transform:translateX(70%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation:none !important; transition-duration:.01ms !important; }
+    }
+    @media (max-width:980px) {
+      .direction-grid { grid-template-columns:1fr; }
+      .mock { height:382px; }
+      .mock .stage { transform:scale(.59); }
+    }
+    @media (max-width:680px) {
+      .shell-head { align-items:flex-start; padding:12px 16px; flex-direction:column; gap:4px; }
+      .shell-head span { text-align:left; }
+      .shell-body { padding:14px 12px 34px; }
+      .dial-panel { grid-template-columns:1fr; gap:12px; padding:14px; }
+      .direction-grid { gap:16px; }
+      .mock {
+        height: 350px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: thin;
+      }
+      .mock .stage {
+        position: relative;
+        left: auto;
+        margin-left: 0;
+        transform: none;
+        zoom: .52;
+      }
+      .card-meta { padding:14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell-head">
+    <strong>VeyaTV 首页视觉皮肤预览</strong>
+    <span>同一布局与信息结构 · 方向样机，不是最终页面 · 键盘 1-4 选择</span>
+  </header>
+
+  <main class="shell-body">
+    <section class="dial-panel" aria-label="设计拨盘">
+      <label><span><b>视觉冒险度</b><output data-qmdp-output="variance">7</output></span><input data-qmdp-dial="variance" type="range" min="1" max="10" value="7"></label>
+      <label><span><b>动效强度</b><output data-qmdp-output="motion">6</output></span><input data-qmdp-dial="motion" type="range" min="1" max="10" value="6"></label>
+      <label><span><b>信息密度</b><output data-qmdp-output="density">6</output></span><input data-qmdp-dial="density" type="range" min="1" max="10" value="6"></label>
+    </section>
+
+    <section class="direction-grid" aria-label="四个视觉皮肤方向"></section>
+  </main>
+
+  <template id="skin-template">
+    <div class="stage skin">
+      <header class="topbar">
+        <div class="brand">VeyaTV<em>成剧</em></div>
+        <nav class="nav"><span>首页</span><span>项目</span><span>创作技能</span><span>资产</span></nav>
+        <div class="top-actions"><span>教程</span><span>登录</span></div>
+      </header>
+      <main class="main">
+        <section class="copy">
+          <div class="kicker">AI SHORT DRAMA PRODUCTION</div>
+          <h1><strong>一句成戏</strong><br>先看一场</h1>
+          <p class="sub">从故事到人物、分镜与镜头视频。先拿到能判断的样片，再决定是否继续做完整短剧。</p>
+          <div class="composer">
+            <span>被家族抛弃的继承人，在婚礼当天发现自己的死亡证明被人伪造……</span>
+            <button>
+              生成动态分镜
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 10h12M11 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="facts"><span>前 5 镜首帧</span><span>约 6 分钟</span><span>参考图不上传</span></div>
+        </section>
+        <section class="media">
+          <figure><img src="assets/male-gate.png" alt=""><figcaption><b>雨夜旧宅 · 镜头首帧</b><span>EP.01 / SHOT 01</span></figcaption></figure>
+          <figure><img src="assets/vintage-platform.png" alt=""><figcaption><b>站台重逢</b><span>角色定妆</span></figcaption></figure>
+          <figure><img src="assets/green-corridor.png" alt=""><figcaption><b>医院走廊</b><span>场景锚点</span></figcaption></figure>
+        </section>
+      </main>
+      <footer class="actions">
+        <div class="action"><span class="action-icon" style="--tone:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4.5h8A2.5 2.5 0 0 1 15.5 7v12H7.5A2.5 2.5 0 0 1 5 16.5z"/><path d="M15.5 7H19v12h-6.5A2.5 2.5 0 0 1 10 16.5"/></svg></span><div><b>故事骨架</b><span>人物与第一集</span></div></div>
+        <div class="action"><span class="action-icon" style="--tone:var(--cyan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M4 19c.4-3 2.2-5 5-5s4.6 2 5 5M14 7.5a2.5 2.5 0 1 1 0 5"/></svg></span><div><b>角色定妆</b><span>跨镜一致性</span></div></div>
+        <div class="action"><span class="action-icon" style="--tone:var(--mint)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h18M3 15h18"/></svg></span><div><b>动态分镜</b><span>前 5 镜首帧</span></div></div>
+        <div class="action"><span class="action-icon" style="--tone:var(--coral)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9 5 3-5 3z"/></svg></span><div><b>镜头视频</b><span>首帧驱动</span></div></div>
+        <div class="continue"><img src="assets/umbrella-man.png" alt=""><div><b>继续《婚礼死亡证明》</b><span>第 6 集 · 镜头 18 待确认</span></div></div>
+      </footer>
+    </div>
+  </template>
+
+  <div class="confirm" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="dialog">
+      <h2 id="confirmTitle">确认视觉方向</h2>
+      <p id="confirmMeta"></p>
+      <textarea id="adjustments" placeholder="可选：写下想调整的地方，例如更亮一点、减少动效、要 A 的结构 + B 的质感"></textarea>
+      <div class="dialog-actions">
+        <button type="button" id="cancelPick">取消</button>
+        <button class="primary" type="button" id="confirmPick">确认并回传</button>
+      </div>
+    </div>
+  </div>
+  <div class="pickbar" id="pickbar" role="status" aria-live="polite"></div>
+
+  <script>
+    const directions = [
+      {
+        id: "A", name: "石墨极光", className: "skin-a", recommended: true,
+        summary: "冷灰石墨底、冷蓝标题重音、金/珊瑚分类色，最接近 LibTV 的产品化高级感。",
+        tags: ["冷蓝重音", "彩色图标", "电影剧照", "轻扫描光"]
+      },
+      {
+        id: "B", name: "黑金电影", className: "skin-b",
+        summary: "黑金与衬线标题拉出电影海报质感，正文仍保持系统中文和清晰层级。",
+        tags: ["黑金文字", "衬线展示", "电影边框", "低饱和图片"]
+      },
+      {
+        id: "C", name: "霓虹片场", className: "skin-c",
+        summary: "冷蓝与珊瑚高光模拟片场监视器，运行线和发光层次更明显。",
+        tags: ["冷蓝霓虹", "珊瑚状态色", "扫描光线", "高对比图标"]
+      },
+      {
+        id: "D", name: "暖光胶片", className: "skin-d",
+        summary: "暖纸底、朱红标题和胶片颗粒，适合长时间阅读，也保留创作片的质感。",
+        tags: ["暖纸材质", "朱红文字", "胶片颗粒", "轻盈图标"]
+      }
+    ];
+
+    const grid = document.querySelector(".direction-grid");
+    const template = document.getElementById("skin-template");
+    const cards = directions.map((direction) => {
+      const card = document.createElement("article");
+      card.className = "direction-card";
+      card.dataset.direction = direction.id;
+      card.dataset.name = direction.name;
+      const mock = document.createElement("div");
+      mock.className = "mock";
+      const stage = template.content.firstElementChild.cloneNode(true);
+      stage.classList.add(direction.className);
+      mock.append(stage);
+      const label = document.createElement("span");
+      label.className = "mock-label";
+      label.textContent = `方向样机 ${direction.id}`;
+      mock.append(label);
+      const meta = document.createElement("div");
+      meta.className = "card-meta";
+      meta.innerHTML = `
+        <div class="meta-head"><h2>${direction.id} · ${direction.name}</h2>${direction.recommended ? '<span class="recommended">推荐</span>' : ''}</div>
+        <p>${direction.summary}</p>
+        <div class="meta-tags">${direction.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
+        <button class="qmdp-pick-button" type="button" data-qmdp-native-handler="true" data-pick="${direction.id}">选择 ${direction.id} · ${direction.name}</button>
+      `;
+      card.append(mock, meta);
+      grid.append(card);
+      return card;
+    });
+
+    const dialInputs = [...document.querySelectorAll("[data-qmdp-dial]")];
+    let pending = null;
+    function dials() {
+      return Object.fromEntries(dialInputs.map((input) => [input.dataset.qmdpDial, Number(input.value)]));
+    }
+    dialInputs.forEach((input) => {
+      const output = document.querySelector(`[data-qmdp-output="${input.dataset.qmdpDial}"]`);
+      const update = () => { if (output) output.textContent = input.value; };
+      input.addEventListener("input", update);
+      update();
+    });
+
+    function openConfirm(card) {
+      cards.forEach((item) => item.classList.toggle("selected", item === card));
+      const values = dials();
+      pending = {
+        id: card.dataset.direction,
+        name: card.dataset.name,
+        label: `选 ${card.dataset.direction}：${card.dataset.name}`,
+      };
+      document.getElementById("confirmMeta").textContent =
+        `${pending.label} · 视觉冒险度 ${values.variance} / 动效强度 ${values.motion} / 信息密度 ${values.density}`;
+      document.getElementById("confirm").classList.add("open");
+      document.getElementById("adjustments").focus();
+    }
+
+    async function sendSelection(payload) {
+      if (location.protocol === "file:") {
+        const text = `${payload.label}；拨盘：视觉冒险度 ${payload.dials.variance} / 动效强度 ${payload.dials.motion} / 信息密度 ${payload.dials.density}${payload.adjustments ? `；建议：${payload.adjustments}` : ""}`;
+        await navigator.clipboard?.writeText(text).catch(() => {});
+        return { ok: false };
+      }
+      const response = await fetch("/api/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return response.json();
+    }
+
+    cards.forEach((card) => {
+      card.querySelector(".qmdp-pick-button").addEventListener("click", () => openConfirm(card));
+    });
+    document.addEventListener("keydown", (event) => {
+      const index = ["1", "2", "3", "4"].indexOf(event.key);
+      if (index >= 0) openConfirm(cards[index]);
+      if (event.key === "Escape") document.getElementById("confirm").classList.remove("open");
+    });
+    document.getElementById("cancelPick").addEventListener("click", () => {
+      document.getElementById("confirm").classList.remove("open");
+    });
+    document.getElementById("confirmPick").addEventListener("click", async () => {
+      if (!pending) return;
+      const payload = {
+        ...pending,
+        dials: dials(),
+        adjustments: document.getElementById("adjustments").value.trim(),
+      };
+      const result = await sendSelection(payload);
+      const bar = document.getElementById("pickbar");
+      bar.textContent = result.ok
+        ? `已选择 ${pending.label}，已回传`
+        : `已选择 ${pending.label}；当前为静态降级，请回到对话发送这句话`;
+      bar.classList.add("show");
+      document.getElementById("confirm").classList.remove("open");
+    });
+  </script>
+</body>
+</html>
