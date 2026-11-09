@@ -17,6 +17,8 @@ test("品牌元数据以 VeyaTV 为最新名称并引用新图标", () => {
   assert.match(report, /内容举报 · VeyaTV/)
 
   assert.match(icon, /fill="#08090A"/)
-  assert.match(icon, /stroke="#F0F2EF"/)
+  assert.match(icon, /fill="#F0F2EF"/)
+  assert.match(icon, /fill-rule="evenodd"/)
+  assert.doesNotMatch(icon, /stroke="#F0F2EF"/)
   assert.doesNotMatch(icon, />剧</)
 })

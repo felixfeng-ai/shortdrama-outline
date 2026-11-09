@@ -31,14 +31,14 @@ export async function sendLoginCodeEmail(email: string, code: string): Promise<v
       body: JSON.stringify({
         from: current.from,
         to: [email],
-        subject: "VeyaTV · 成剧 登录验证码",
+        subject: "VeyaTV 登录验证码",
         text: [
           `你的登录验证码是：${code}`,
           "",
           "验证码 5 分钟内有效，只能使用一次。",
           "如果不是你本人发起登录，请忽略这封邮件。",
           "",
-          "VeyaTV · 成剧",
+          "VeyaTV",
         ].join("\n"),
         html: `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#172018;line-height:1.7">
@@ -46,7 +46,7 @@ export async function sendLoginCodeEmail(email: string, code: string): Promise<v
             <p style="font-size:30px;font-weight:700;letter-spacing:8px;margin:20px 0">${code}</p>
             <p>验证码 5 分钟内有效，只能使用一次。</p>
             <p style="color:#667066">如果不是你本人发起登录，请忽略这封邮件。</p>
-            <p style="margin-top:28px">VeyaTV · 成剧</p>
+            <p style="margin-top:28px">VeyaTV</p>
           </div>
         `,
       }),

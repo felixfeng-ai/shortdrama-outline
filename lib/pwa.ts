@@ -1,5 +1,5 @@
 export const PWA_MANIFEST = {
-  name: "VeyaTV · 成剧",
+  name: "VeyaTV",
   short_name: "VeyaTV",
   description: "AI 短剧与漫剧生产平台",
   start_url: "/",

@@ -1,5 +1,8 @@
 import type { Metadata } from "next"
 
+import VeyaBrandMark from "@/components/VeyaBrandMark"
+import VeyaWordmark from "@/components/VeyaWordmark"
+
 import "../legal/legal.css"
 
 export const metadata: Metadata = {
@@ -11,9 +14,9 @@ export default function ReportPage() {
   return (
     <main className="legal-page">
       <header className="legal-topbar">
-        <a className="legal-brand" href="/" aria-label="返回 VeyaTV · 成剧 工作台">
-          <span aria-hidden="true">V</span>
-          <b>VeyaTV</b>
+        <a className="legal-brand" href="/" aria-label="返回 VeyaTV 工作台">
+          <span aria-hidden="true"><VeyaBrandMark /></span>
+          <VeyaWordmark />
           <em>内容举报</em>
         </a>
         <a className="legal-back" href="/legal">
@@ -74,7 +77,7 @@ export default function ReportPage() {
               </p>
               <a
                 className="legal-report-action"
-                href="mailto:support@chenju.work?subject=成剧内测内容举报"
+                href="mailto:support@chenju.work?subject=VeyaTV 内测内容举报"
               >
                 发送举报邮件
               </a>

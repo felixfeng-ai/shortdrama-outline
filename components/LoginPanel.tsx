@@ -16,6 +16,7 @@ import {
 import { safeReturnPath } from '@/lib/auth/return-to'
 import { normalizeUsername } from '@/lib/auth/username'
 import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
 
 type LoginStep = 'email' | 'code'
 
@@ -205,10 +206,9 @@ export default function LoginPanel() {
   return (
     <main className="auth-page">
       <header className="auth-topbar">
-        <a className="auth-brand" href="/" aria-label="VeyaTV · 成剧 首页">
+        <a className="auth-brand" href="/" aria-label="VeyaTV 首页">
           <span className="auth-brand-mark" aria-hidden="true"><VeyaBrandMark /></span>
-          <span className="auth-brand-name">VeyaTV</span>
-          <span className="auth-brand-cn">成剧</span>
+          <VeyaWordmark className="auth-brand-name" />
         </a>
         <a className="auth-back" href={returnTo}>
           <span aria-hidden="true">←</span>

@@ -37,10 +37,15 @@
   width: 28px;
   height: 28px;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--download-accent) 55%, var(--download-line));
-  color: var(--download-accent);
+  color: var(--download-text);
   font-family: var(--font-mono), monospace;
   font-size: 11px;
+}
+.app-download-brand svg {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+  stroke: none;
 }
 
 .app-download-brand b {

@@ -72,7 +72,7 @@ export default function PwaInstallButton() {
       type="button"
       className="h-install"
       onClick={() => void install()}
-      title={`将成剧添加到${installTarget}`}
+      title={`将 VeyaTV 添加到${installTarget}`}
       aria-label={`添加到${installTarget}`}
     >
       <svg viewBox="0 0 20 20" aria-hidden="true">

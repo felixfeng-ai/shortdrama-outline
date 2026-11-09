@@ -20,7 +20,7 @@ export const PRODUCT_RELEASES = [
     summary: "从一句故事到成片，AI 短剧与漫剧生产链路开放体验",
     highlights: [
       "平台正在内测，欢迎体验从故事构思、分镜视频到成片交付的完整链路，并直接反馈问题。",
-      "成剧品牌统一为 VeyaTV，Veya Agent 与 Veya Canvas 继续提供创作与画布编排。",
+      "主品牌统一为 VeyaTV，Veya Agent 与 Veya Canvas 继续提供创作与画布编排。",
       "官网已切换至 veyatv.com；Android 与 HarmonyOS App 支持扫码体验，iOS 版本更新中。",
     ],
   },
@@ -28,10 +28,10 @@ export const PRODUCT_RELEASES = [
     version: "v2026.11.08",
     publishedAt: "2026-11-08T00:00:00+08:00",
     status: "LIVE BETA",
-    title: "VeyaTV · 成剧品牌更新",
+    title: "VeyaTV 品牌更新",
     summary: "平台正式统一为 VeyaTV，定位 AI 短剧与漫剧生产平台",
     highlights: [
-      "母品牌统一为 Veya，平台主品牌为 VeyaTV，中文正式名继续使用成剧。",
+      "母品牌统一为 Veya，平台主品牌为 VeyaTV；成剧仅作为中文辅助名保留。",
       "品类定位更新为 AI 短剧与漫剧生产平台，覆盖创作、视觉资产、镜头视频、时间线与成片。",
       "Veya Agent 与 Veya Canvas 继续作为平台内子品牌；官网已切换为 veyatv.com。",
     ],

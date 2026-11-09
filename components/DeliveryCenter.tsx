@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
 import {
   addPublishMetric,
   createDeliveryPackage,
@@ -189,7 +190,7 @@ export default function DeliveryCenter({ projectId }: { projectId: string }) {
       <header className="delivery-topbar">
         <a href="/" className="delivery-brand" aria-label="返回 VeyaTV 工作台">
           <span><VeyaBrandMark /></span>
-          <b>VeyaTV</b>
+          <VeyaWordmark />
           <em>交付中心</em>
         </a>
         <a className="delivery-back" href={`/?project=${encodeURIComponent(projectId)}&step=shots`}>

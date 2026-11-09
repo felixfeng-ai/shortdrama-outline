@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 主品牌锁定组：Veya 保持稳定字重，TV 只作为较轻的媒介后缀。 */
+.veya-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  color: inherit;
+  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.veya-wordmark-tv {
+  margin-left: .04em;
+  font-size: .82em;
+  font-weight: 420;
+  letter-spacing: .01em;
+}
+
+.wfx-mobile-brand > .veya-wordmark {
+  color: var(--wfx-ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.wfx-mobile-brand > .veya-wordmark .veya-wordmark-tv {
+  font-size: .82em;
+  font-weight: 420;
+}
+
 /*
   三套底色的变量（tailwind.config.ts 把颜色都接到了这些变量上）。
   切换方式：<html data-theme="paper | paper-light | neutral">，见 lib/theme.ts。
@@ -1497,13 +1527,16 @@
   height: 24px;
   flex: 0 0 24px;
   place-items: center;
-  border: 1px solid rgba(141, 200, 220, .28);
-  border-radius: 5px;
-  background: rgba(141, 200, 220, .08);
-  color: var(--signal-acid);
+  color: var(--signal-text-2);
   font-family: var(--font-latin), sans-serif;
   font-size: 10px;
   font-weight: 600;
+}
+.signal-desk .site-legal-footer-brand svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  stroke: none;
 }
 
 .signal-desk .site-legal-footer-brand p {
@@ -1653,12 +1686,18 @@
   width: 26px;
   height: 26px;
   place-items: center;
-  border-radius: 5px;
-  background: var(--signal-acid);
-  color: #071014;
+  border-radius: 0;
+  background: transparent;
+  color: var(--signal-text);
   font-family: var(--font-latin), sans-serif;
   font-size: 12px;
   font-weight: 600;
+}
+.signal-desk .auth-brand-mark svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+  stroke: none;
 }
 .signal-desk .auth-brand-name {
   font-family: var(--font-latin), sans-serif;
@@ -2340,12 +2379,16 @@
   width: 24px;
   height: 24px;
   place-items: center;
-  border-radius: 5px;
-  background: var(--signal-acid);
-  color: #071014;
+  color: var(--signal-text);
   font-family: var(--font-latin), sans-serif;
   font-size: 11px;
   font-weight: 600;
+}
+.signal-desk .review-brand svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  stroke: none;
 }
 .signal-desk .review-brand b {
   font-family: var(--font-latin), sans-serif;
@@ -15427,16 +15470,13 @@
   height: 28px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 50%;
 }
 
 .delivery-brand svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+  stroke: none;
 }
 
 .delivery-brand b { font-size: 16px; letter-spacing: 0; }

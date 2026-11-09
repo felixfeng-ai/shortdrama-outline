@@ -1,10 +1,13 @@
+import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
+
 export default function SiteLegalFooter() {
   return (
     <footer className="site-legal-footer">
       <div className="site-legal-footer-brand">
-        <span aria-hidden="true">V</span>
+        <span aria-hidden="true"><VeyaBrandMark /></span>
         <p>
-          <b>VeyaTV</b>
+          <VeyaWordmark />
           <small>内测版</small>
         </p>
       </div>

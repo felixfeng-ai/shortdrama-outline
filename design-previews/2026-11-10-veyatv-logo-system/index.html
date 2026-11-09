@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VeyaTV Logo System · 设计方向预览</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --shell-bg: #f1f1ee;
+      --shell-panel: #fafaf8;
+      --shell-line: #d8d8d2;
+      --shell-line-strong: #b9b9b1;
+      --shell-text: #171817;
+      --shell-muted: #696a66;
+      --shell-faint: #94958f;
+      --brand-bg: #08090a;
+      --brand-side: #0a0b0c;
+      --brand-panel: #111315;
+      --brand-line: rgba(255, 255, 255, .09);
+      --brand-text: #f2f3f0;
+      --brand-muted: #929793;
+      --brand-gold: #d6b36a;
+      --brand-blue: #8dc8dc;
+      --brand-coral: #df8d75;
+      --radius: 8px;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+      font-family: "Sora", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--shell-bg);
+      color: var(--shell-text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+
+    .shell-bar {
+      position: sticky;
+      z-index: 20;
+      top: 0;
+      display: flex;
+      min-height: 64px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 12px 28px;
+      border-bottom: 1px solid var(--shell-line);
+      background: rgba(250, 250, 248, .92);
+      backdrop-filter: blur(16px);
+    }
+    .shell-title {
+      display: flex;
+      min-width: 0;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .shell-title strong {
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+    .shell-title span {
+      overflow: hidden;
+      color: var(--shell-muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .shell-note {
+      color: var(--shell-faint);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .shell-note kbd {
+      padding: 2px 5px;
+      border: 1px solid var(--shell-line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--shell-muted);
+      font: inherit;
+    }
+
+    .dials {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+      padding: 16px 28px 18px;
+      border-bottom: 1px solid var(--shell-line);
+      background: var(--shell-panel);
+    }
+    .dial {
+      display: grid;
+      gap: 8px;
+      color: var(--shell-muted);
+      font-size: 11px;
+    }
+    .dial-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .dial-head b { color: var(--shell-text); font-weight: 600; }
+    .dial output {
+      min-width: 18px;
+      color: var(--shell-text);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .dial input {
+      width: 100%;
+      height: 3px;
+      border-radius: 999px;
+      appearance: none;
+      background: #d8d8d3;
+      outline: 0;
+    }
+    .dial input::-webkit-slider-thumb {
+      width: 15px;
+      height: 15px;
+      border: 2px solid var(--shell-panel);
+      border-radius: 50%;
+      appearance: none;
+      background: var(--shell-text);
+      box-shadow: 0 0 0 1px var(--shell-line-strong);
+    }
+    .dial input::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border: 2px solid var(--shell-panel);
+      border-radius: 50%;
+      background: var(--shell-text);
+      box-shadow: 0 0 0 1px var(--shell-line-strong);
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      width: min(1460px, 100%);
+      margin: 0 auto;
+      padding: 22px 24px 36px;
+    }
+    .direction-card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--shell-line);
+      border-radius: 10px;
+      background: #fff;
+      transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease);
+    }
+    .direction-card.selected {
+      border-color: #252622;
+      box-shadow: 0 0 0 1px #252622;
+    }
+    .stage {
+      position: relative;
+      min-height: 335px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .017), transparent 28%),
+        radial-gradient(560px 300px at 78% -10%, rgba(141, 200, 220, .055), transparent 70%),
+        var(--brand-bg);
+      color: var(--brand-text);
+    }
+    .stage::after {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, .018) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(rgba(255, 255, 255, .014) 1px, transparent 1px) 0 0 / 36px 36px;
+      content: "";
+      opacity: .34;
+      pointer-events: none;
+    }
+    .stage-label {
+      position: absolute;
+      z-index: 3;
+      top: 13px;
+      left: 14px;
+      color: rgba(255, 255, 255, .38);
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: 8px;
+      letter-spacing: .08em;
+    }
+    .stage-main {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      min-height: 335px;
+      grid-template-columns: minmax(0, 1.2fr) minmax(175px, .8fr);
+      gap: 14px;
+      padding: 34px 28px 22px;
+    }
+
+    .mini-sidebar {
+      display: flex;
+      min-height: 244px;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 17px 16px 14px;
+      border: 1px solid var(--brand-line);
+      border-radius: 7px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .016), transparent 30%),
+        var(--brand-side);
+      box-shadow: 0 25px 60px -45px rgba(0, 0, 0, .95);
+    }
+    .demo-brand {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 9px;
+    }
+    .demo-brand svg { display: block; flex: 0 0 auto; }
+    .demo-wordmark {
+      display: inline-flex;
+      align-items: baseline;
+      color: var(--brand-text);
+      font-family: "Sora", sans-serif;
+      white-space: nowrap;
+    }
+    .demo-wordmark .veya { font-weight: 650; }
+    .demo-wordmark .tv {
+      margin-left: 1px;
+      font-size: .82em;
+      font-weight: 420;
+      letter-spacing: .015em;
+    }
+    .demo-tagline {
+      margin-top: 5px;
+      color: rgba(255, 255, 255, .38);
+      font-size: 7px;
+      line-height: 1.4;
+    }
+    .demo-nav {
+      display: grid;
+      gap: 4px;
+      margin-top: 20px;
+    }
+    .demo-nav span {
+      display: flex;
+      height: 25px;
+      align-items: center;
+      gap: 8px;
+      padding: 0 8px;
+      border-radius: 5px;
+      color: rgba(255, 255, 255, .42);
+      font-size: 8px;
+    }
+    .demo-nav span.active {
+      background: rgba(255, 255, 255, .07);
+      color: rgba(255, 255, 255, .9);
+    }
+    .demo-nav i {
+      width: 18px;
+      height: 18px;
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 4px;
+    }
+    .demo-foot {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: rgba(255, 255, 255, .28);
+      font-size: 7px;
+    }
+    .demo-foot i {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .1);
+    }
+
+    .mark-tests {
+      display: grid;
+      min-width: 0;
+      align-content: center;
+      gap: 16px;
+    }
+    .mark-hero {
+      display: grid;
+      min-height: 142px;
+      place-items: center;
+      border: 1px solid var(--brand-line);
+      border-radius: 7px;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, .02), transparent 54%),
+        var(--brand-panel);
+    }
+    .mark-row {
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      gap: 16px;
+    }
+    .size-test {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      color: rgba(255, 255, 255, .3);
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: 7px;
+    }
+    .icon-tile {
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 13px;
+      background: #f0f1ee;
+      color: #0b0d0e;
+      box-shadow: 0 14px 32px -24px rgba(0, 0, 0, .9);
+    }
+    .icon-tile.dark {
+      background: #0d0f10;
+      color: #f0f1ee;
+    }
+
+    .direction-a .brand-v {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 7px;
+      background: #f0f1ee;
+      color: #0a0b0c;
+      font-family: "Sora", sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .direction-a .large-wordmark {
+      display: flex;
+      align-items: baseline;
+      color: #f4f5f2;
+      font-family: "Sora", sans-serif;
+      font-size: 42px;
+      line-height: 1;
+      letter-spacing: -.025em;
+    }
+    .direction-a .large-wordmark .veya { font-weight: 650; }
+    .direction-a .large-wordmark .tv {
+      font-size: .72em;
+      font-weight: 420;
+      letter-spacing: .01em;
+    }
+    .direction-a .wordmark-rule {
+      width: 18px;
+      height: 2px;
+      margin-top: 16px;
+      background: var(--brand-gold);
+    }
+    .direction-a .demo-brand svg,
+    .direction-a .size-svg { display: none; }
+
+    .direction-b .mark-svg {
+      color: #f3f4f1;
+    }
+    .direction-b .mark-small {
+      color: #f3f4f1;
+    }
+    .direction-b .large-mark {
+      display: grid;
+      place-items: center;
+      color: #f3f4f1;
+    }
+    .direction-b .large-mark svg {
+      width: 104px;
+      height: 104px;
+    }
+    .direction-b .demo-brand svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .direction-c .mark-svg { color: #f3f4f1; }
+    .direction-c .large-mark {
+      display: grid;
+      place-items: center;
+      color: #f3f4f1;
+    }
+    .direction-c .large-mark svg {
+      width: 108px;
+      height: 108px;
+    }
+    .direction-c .demo-brand svg {
+      width: 27px;
+      height: 27px;
+    }
+
+    .direction-d .mark-svg { color: #f3f4f1; }
+    .direction-d .large-mark {
+      display: grid;
+      place-items: center;
+      color: #f3f4f1;
+    }
+    .direction-d .large-mark svg {
+      width: 108px;
+      height: 108px;
+    }
+    .direction-d .demo-brand svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .card-meta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 13px 18px;
+      padding: 16px 17px 17px;
+      background: #fff;
+    }
+    .card-copy { min-width: 0; }
+    .card-title-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title-line h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+    .recommend-badge {
+      padding: 2px 6px;
+      border: 1px solid #242521;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 600;
+    }
+    .card-copy p {
+      margin: 5px 0 0;
+      color: var(--shell-muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 9px;
+    }
+    .card-tags span {
+      padding: 3px 6px;
+      border: 1px solid var(--shell-line);
+      border-radius: 999px;
+      color: var(--shell-muted);
+      font-size: 9px;
+    }
+    .card-result {
+      align-self: start;
+      padding-top: 4px;
+      color: var(--shell-muted);
+      font-size: 9px;
+      white-space: nowrap;
+    }
+    .qmdp-pick-button {
+      position: relative;
+      z-index: 1;
+      grid-column: 1 / -1;
+      width: 100%;
+      min-height: 42px;
+      padding: 0 14px;
+      border: 1px solid #252622;
+      border-radius: 6px;
+      background: #252622;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      transition: background-color 150ms var(--ease), transform 120ms var(--ease);
+    }
+    .qmdp-pick-button:hover { background: #090a09; }
+    .qmdp-pick-button:active { transform: scale(.99); }
+    .direction-card.selected .qmdp-pick-button {
+      background: #111210;
+      border-color: #111210;
+    }
+
+    .comparison-note {
+      width: min(1460px, calc(100% - 48px));
+      margin: 0 auto 34px;
+      padding: 16px 18px;
+      border-top: 1px solid var(--shell-line);
+      color: var(--shell-muted);
+      font-size: 11px;
+      line-height: 1.65;
+    }
+    .comparison-note b { color: var(--shell-text); }
+
+    .modal {
+      position: fixed;
+      z-index: 50;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, .48);
+    }
+    .modal.open { display: grid; }
+    .dialog {
+      width: min(520px, 100%);
+      padding: 20px;
+      border: 1px solid var(--shell-line-strong);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 30px 80px -36px rgba(0, 0, 0, .64);
+    }
+    .dialog h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 650;
+    }
+    .dialog p {
+      margin: 7px 0 0;
+      color: var(--shell-muted);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .dialog textarea {
+      width: 100%;
+      min-height: 92px;
+      margin-top: 14px;
+      padding: 10px 11px;
+      resize: vertical;
+      border: 1px solid var(--shell-line);
+      border-radius: 6px;
+      color: var(--shell-text);
+      font-size: 12px;
+      line-height: 1.55;
+      outline: 0;
+    }
+    .dialog textarea:focus {
+      border-color: #77786f;
+      box-shadow: 0 0 0 3px rgba(20, 20, 20, .05);
+    }
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 13px;
+    }
+    .dialog-actions button {
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--shell-line);
+      border-radius: 6px;
+      background: #fff;
+      font-size: 11px;
+      font-weight: 550;
+    }
+    .dialog-actions button.primary {
+      border-color: #252622;
+      background: #252622;
+      color: #fff;
+    }
+    .toast {
+      position: fixed;
+      z-index: 60;
+      bottom: 18px;
+      left: 50%;
+      max-width: calc(100vw - 32px);
+      padding: 10px 14px;
+      border: 1px solid #252622;
+      border-radius: 7px;
+      background: #252622;
+      color: #fff;
+      font-size: 11px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 160ms var(--ease), transform 160ms var(--ease);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 1040px) {
+      .stage-main {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+      }
+      .mini-sidebar { min-height: 215px; }
+      .mark-tests {
+        grid-template-columns: minmax(0, 1fr) minmax(160px, .55fr);
+        align-items: stretch;
+      }
+      .mark-hero { min-height: 150px; }
+    }
+
+    @media (max-width: 760px) {
+      .shell-bar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+        padding: 11px 16px;
+      }
+      .shell-note { white-space: normal; }
+      .dials {
+        grid-template-columns: 1fr;
+        gap: 13px;
+        padding: 14px 16px 17px;
+      }
+      .preview-grid {
+        grid-template-columns: 1fr;
+        padding: 16px 12px 26px;
+      }
+      .stage { min-height: 0; }
+      .stage-main {
+        min-height: 0;
+        padding: 30px 15px 18px;
+      }
+      .mini-sidebar { min-height: 205px; }
+      .mark-tests {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .mark-hero { min-height: 138px; }
+      .card-meta {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .card-result {
+        padding-top: 0;
+      }
+      .direction-a .large-wordmark { font-size: 35px; }
+      .comparison-note {
+        width: calc(100% - 24px);
+        margin-bottom: 22px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell-bar">
+    <div class="shell-title">
+      <strong>VeyaTV Logo System</strong>
+      <span>四个极简品牌符号方向 · 方向样机，不是最终 Logo</span>
+    </div>
+    <div class="shell-note">方向样机 · 键盘 <kbd>1</kbd>–<kbd>4</kbd> 选择 · 确认后回传</div>
+  </header>
+
+  <section class="dials" data-qmdp-dials aria-label="设计拨盘">
+    <label class="dial">
+      <span class="dial-head"><b>视觉冒险度</b><output id="varianceOut" data-qmdp-output="variance">5</output></span>
+      <input id="variance" data-qmdp-dial="variance" type="range" min="1" max="10" value="5">
+    </label>
+    <label class="dial">
+      <span class="dial-head"><b>动效强度</b><output id="motionOut" data-qmdp-output="motion">2</output></span>
+      <input id="motion" data-qmdp-dial="motion" type="range" min="1" max="10" value="2">
+    </label>
+    <label class="dial">
+      <span class="dial-head"><b>信息密度</b><output id="densityOut" data-qmdp-output="density">3</output></span>
+      <input id="density" data-qmdp-dial="density" type="range" min="1" max="10" value="3">
+    </label>
+  </section>
+
+  <main class="preview-grid">
+    <article class="direction-card direction-a" data-id="A" data-name="纯字标">
+      <div class="stage">
+        <span class="stage-label">A / WORDMARK PURE</span>
+        <div class="stage-main">
+          <div class="mini-sidebar">
+            <div>
+              <div class="demo-brand">
+                <span class="brand-v">V</span>
+                <div>
+                  <div class="demo-wordmark"><span class="veya">Veya</span><span class="tv">TV</span></div>
+                  <div class="demo-tagline">AI 短剧与漫剧生产平台</div>
+                </div>
+              </div>
+              <div class="demo-nav">
+                <span class="active"><i></i>首页</span>
+                <span><i></i>项目</span>
+                <span><i></i>创作技能</span>
+                <span><i></i>资产库</span>
+              </div>
+            </div>
+            <div class="demo-foot"><i></i>工作室 · 个人空间</div>
+          </div>
+          <div class="mark-tests">
+            <div class="mark-hero">
+              <div>
+                <div class="large-wordmark"><span class="veya">Veya</span><span class="tv">TV</span></div>
+                <div class="wordmark-rule"></div>
+              </div>
+            </div>
+            <div class="mark-row">
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:44px;height:44px;border-radius:12px;font-size:23px;font-weight:700">V</div>
+                <span>44</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:32px;height:32px;border-radius:9px;font-size:17px;font-weight:700">V</div>
+                <span>32</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:22px;height:22px;border-radius:6px;font-size:12px;font-weight:700">V</div>
+                <span>22</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <div class="card-copy">
+          <div class="card-title-line"><h2>A · 纯字标</h2><span class="recommend-badge">推荐</span></div>
+          <p>去掉外层图形，只保留 VeyaTV 字标。小尺寸用单独的 V 方块承担图标，识别最快，最接近 LibTV 和 Flova 的克制方向。</p>
+          <div class="card-tags"><span>零冗余</span><span>最易缩小</span><span>品牌优先</span></div>
+        </div>
+        <div class="card-result">优势最大 / 风险最低</div>
+        <button class="qmdp-pick-button" type="button" data-qmdp-native-handler="true">选择 A · 纯字标</button>
+      </div>
+    </article>
+
+    <article class="direction-card direction-b" data-id="B" data-name="切角 V">
+      <div class="stage">
+        <span class="stage-label">B / CUT V</span>
+        <div class="stage-main">
+          <div class="mini-sidebar">
+            <div>
+              <div class="demo-brand">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7h5l5 13 5-13h5L17.3 26h-2.6z" fill="currentColor"/></svg>
+                <div>
+                  <div class="demo-wordmark"><span class="veya">Veya</span><span class="tv">TV</span></div>
+                  <div class="demo-tagline">AI 短剧与漫剧生产平台</div>
+                </div>
+              </div>
+              <div class="demo-nav">
+                <span class="active"><i></i>首页</span>
+                <span><i></i>项目</span>
+                <span><i></i>创作技能</span>
+                <span><i></i>资产库</span>
+              </div>
+            </div>
+            <div class="demo-foot"><i></i>工作室 · 个人空间</div>
+          </div>
+          <div class="mark-tests">
+            <div class="mark-hero">
+              <div class="large-mark">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7h5l5 13 5-13h5L17.3 26h-2.6z" fill="currentColor"/></svg>
+              </div>
+            </div>
+            <div class="mark-row">
+              <div class="size-test">
+                <div class="icon-tile dark"><svg width="29" height="29" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7h5l5 13 5-13h5L17.3 26h-2.6z" fill="currentColor"/></svg></div>
+                <span>44</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:32px;height:32px;border-radius:9px"><svg width="21" height="21" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7h5l5 13 5-13h5L17.3 26h-2.6z" fill="currentColor"/></svg></div>
+                <span>32</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:22px;height:22px;border-radius:6px"><svg width="14" height="14" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7h5l5 13 5-13h5L17.3 26h-2.6z" fill="currentColor"/></svg></div>
+                <span>22</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <div class="card-copy">
+          <div class="card-title-line"><h2>B · 切角 V</h2></div>
+          <p>用单个不等边 V 代替六边形和双层 V。去掉外框后更像专业工具，比纯文字多一个可在社交头像中独立存在的符号。</p>
+          <div class="card-tags"><span>单符号</span><span>强识别</span><span>适合头像</span></div>
+        </div>
+        <div class="card-result">符号记忆最好</div>
+        <button class="qmdp-pick-button" type="button" data-qmdp-native-handler="true">选择 B · 切角 V</button>
+      </div>
+    </article>
+
+    <article class="direction-card direction-c" data-id="C" data-name="开放画框">
+      <div class="stage">
+        <span class="stage-label">C / OPEN FRAME</span>
+        <div class="stage-main">
+          <div class="mini-sidebar">
+            <div>
+              <div class="demo-brand">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h9v4H9v12h5v4H5zM27 6h-9v4h5v12h-5v4h9z" fill="currentColor"/></svg>
+                <div>
+                  <div class="demo-wordmark"><span class="veya">Veya</span><span class="tv">TV</span></div>
+                  <div class="demo-tagline">AI 短剧与漫剧生产平台</div>
+                </div>
+              </div>
+              <div class="demo-nav">
+                <span class="active"><i></i>首页</span>
+                <span><i></i>项目</span>
+                <span><i></i>创作技能</span>
+                <span><i></i>资产库</span>
+              </div>
+            </div>
+            <div class="demo-foot"><i></i>工作室 · 个人空间</div>
+          </div>
+          <div class="mark-tests">
+            <div class="mark-hero">
+              <div class="large-mark">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h9v4H9v12h5v4H5zM27 6h-9v4h5v12h-5v4h9z" fill="currentColor"/></svg>
+              </div>
+            </div>
+            <div class="mark-row">
+              <div class="size-test">
+                <div class="icon-tile dark"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h9v4H9v12h5v4H5zM27 6h-9v4h5v12h-5v4h9z" fill="currentColor"/></svg></div>
+                <span>44</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:32px;height:32px;border-radius:9px"><svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h9v4H9v12h5v4H5zM27 6h-9v4h5v12h-5v4h9z" fill="currentColor"/></svg></div>
+                <span>32</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:22px;height:22px;border-radius:6px"><svg width="15" height="15" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h9v4H9v12h5v4H5zM27 6h-9v4h5v12h-5v4h9z" fill="currentColor"/></svg></div>
+                <span>22</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <div class="card-copy">
+          <div class="card-title-line"><h2>C · 开放画框</h2></div>
+          <p>两个开口框架围出负形 V，表达镜头、画框和分镜，但没有闭合六边形。比纯文字更有行业语义，仍控制在两条图形内。</p>
+          <div class="card-tags"><span>镜头语义</span><span>负形 V</span><span>偏编辑感</span></div>
+        </div>
+        <div class="card-result">品牌语义最明确</div>
+        <button class="qmdp-pick-button" type="button" data-qmdp-native-handler="true">选择 C · 开放画框</button>
+      </div>
+    </article>
+
+    <article class="direction-card direction-d" data-id="D" data-name="实心负形">
+      <div class="stage">
+        <span class="stage-label">D / SOLID NEGATIVE</span>
+        <div class="stage-main">
+          <div class="mini-sidebar">
+            <div>
+              <div class="demo-brand">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path fill-rule="evenodd" d="M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z" fill="currentColor"/></svg>
+                <div>
+                  <div class="demo-wordmark"><span class="veya">Veya</span><span class="tv">TV</span></div>
+                  <div class="demo-tagline">AI 短剧与漫剧生产平台</div>
+                </div>
+              </div>
+              <div class="demo-nav">
+                <span class="active"><i></i>首页</span>
+                <span><i></i>项目</span>
+                <span><i></i>创作技能</span>
+                <span><i></i>资产库</span>
+              </div>
+            </div>
+            <div class="demo-foot"><i></i>工作室 · 个人空间</div>
+          </div>
+          <div class="mark-tests">
+            <div class="mark-hero">
+              <div class="large-mark">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path fill-rule="evenodd" d="M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z" fill="currentColor"/></svg>
+              </div>
+            </div>
+            <div class="mark-row">
+              <div class="size-test">
+                <div class="icon-tile dark"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path fill-rule="evenodd" d="M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z" fill="currentColor"/></svg></div>
+                <span>44</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:32px;height:32px;border-radius:9px"><svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><path fill-rule="evenodd" d="M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z" fill="currentColor"/></svg></div>
+                <span>32</span>
+              </div>
+              <div class="size-test">
+                <div class="icon-tile dark" style="width:22px;height:22px;border-radius:6px"><svg width="15" height="15" viewBox="0 0 32 32" aria-hidden="true"><path fill-rule="evenodd" d="M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z" fill="currentColor"/></svg></div>
+                <span>22</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <div class="card-copy">
+          <div class="card-title-line"><h2>D · 实心负形</h2></div>
+          <p>用一个实心方块和负形 V 形成品牌印章，适合 App 图标和视频头像。仍然极简，但比 A、B 更有完整的图形识别。</p>
+          <div class="card-tags"><span>App 图标</span><span>高对比</span><span>最稳缩放</span></div>
+        </div>
+        <div class="card-result">小尺寸最稳定</div>
+        <button class="qmdp-pick-button" type="button" data-qmdp-native-handler="true">选择 D · 实心负形</button>
+      </div>
+    </article>
+  </main>
+
+  <section class="comparison-note">
+    <b>基准判断：</b>这次应该删掉“六边形外框 + V 内形 + VeyaTV + 成剧”的多层同时表达。
+    LibTV 和 Flova 的共同点不是某个具体符号，而是主品牌只保留一个记忆对象：要么是字标，要么是极简单色符号。
+    如果希望主界面最干净，选 A；如果需要独立 App 图标，B 或 D 更合适；C 的行业语义更明确，但缩小后风险最高。
+  </section>
+
+  <div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="dialog">
+      <h3 id="confirmTitle">确认 Logo 方向</h3>
+      <p id="confirmMeta"></p>
+      <textarea id="adjustments" placeholder="可选：写一句调整建议，例如“要 A 的字标 + D 的 App 图标”"></textarea>
+      <div class="dialog-actions">
+        <button id="cancelPick" type="button">取消</button>
+        <button id="confirmPick" class="primary" type="button">确认并回传</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const dialInputs = ["variance", "motion", "density"].map((id) => ({
+      input: document.getElementById(id),
+      output: document.getElementById(id + "Out")
+    }));
+    dialInputs.forEach(({ input, output }) => {
+      const update = () => {
+        output.value = input.value;
+        output.textContent = input.value;
+      };
+      input.addEventListener("input", update);
+      update();
+    });
+
+    function currentDials() {
+      return {
+        variance: Number(document.getElementById("variance").value),
+        motion: Number(document.getElementById("motion").value),
+        density: Number(document.getElementById("density").value)
+      };
+    }
+
+    let pending = null;
+    const modal = document.getElementById("confirmModal");
+    const confirmMeta = document.getElementById("confirmMeta");
+    const adjustments = document.getElementById("adjustments");
+    const toast = document.getElementById("toast");
+
+    function openConfirm(card) {
+      document.querySelectorAll(".direction-card").forEach((item) => {
+        item.classList.toggle("selected", item === card);
+      });
+      const id = card.dataset.id;
+      const name = card.dataset.name;
+      pending = { id, name, label: "选 " + id + "：" + name };
+      const dials = currentDials();
+      confirmMeta.textContent =
+        pending.label + " · 视觉冒险度 " + dials.variance +
+        " / 动效强度 " + dials.motion +
+        " / 信息密度 " + dials.density;
+      adjustments.value = "";
+      modal.classList.add("open");
+      window.setTimeout(() => adjustments.focus(), 30);
+    }
+
+    function closeConfirm() {
+      modal.classList.remove("open");
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2600);
+    }
+
+    async function sendSelection(payload) {
+      const response = await fetch("/api/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error("submit failed");
+      return response.json();
+    }
+
+    async function confirmSelection() {
+      if (!pending) return;
+      const payload = {
+        ...pending,
+        dials: currentDials(),
+        adjustments: adjustments.value.trim()
+      };
+      try {
+        await sendSelection(payload);
+        showToast("已回传：" + pending.label);
+      } catch {
+        const text =
+          pending.label + "；拨盘：视觉冒险度 " + payload.dials.variance +
+          " / 动效强度 " + payload.dials.motion +
+          " / 信息密度 " + payload.dials.density +
+          (payload.adjustments ? "；建议：" + payload.adjustments : "");
+        if (navigator.clipboard) await navigator.clipboard.writeText(text).catch(() => {});
+        showToast("当前为静态模式，选择已复制");
+      } finally {
+        closeConfirm();
+      }
+    }
+
+    document.querySelectorAll(".direction-card").forEach((card, index) => {
+      card.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        openConfirm(card);
+      });
+      const button = card.querySelector(".qmdp-pick-button");
+      button.addEventListener("click", () => openConfirm(card));
+      card.dataset.keyboardIndex = String(index + 1);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (modal.classList.contains("open")) return;
+      const index = ["1", "2", "3", "4"].indexOf(event.key);
+      if (index < 0) return;
+      const card = document.querySelectorAll(".direction-card")[index];
+      if (card) openConfirm(card);
+    });
+
+    document.getElementById("cancelPick").addEventListener("click", closeConfirm);
+    document.getElementById("confirmPick").addEventListener("click", confirmSelection);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeConfirm();
+    });
+  </script>
+</body>
+</html>

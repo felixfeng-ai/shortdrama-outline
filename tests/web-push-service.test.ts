@@ -14,7 +14,7 @@ import {
 const owner = `anon_${"s".repeat(48)}`
 const payload = {
   title: "定妆图已生成",
-  body: "打开成剧查看最新关键帧并决定是否采用。",
+  body: "打开 VeyaTV 查看最新关键帧并决定是否采用。",
   url: "/?step=visuals",
   tag: "generation-task-1",
 }

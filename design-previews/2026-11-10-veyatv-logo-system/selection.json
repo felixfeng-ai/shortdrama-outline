@@ -1,0 +1,14 @@
+{
+  "id": "D",
+  "label": "选 D：实心负形",
+  "name": "实心负形",
+  "notes": "用户在对话中明确确认",
+  "dials": {
+    "variance": 5,
+    "motion": 2,
+    "density": 3
+  },
+  "adjustments": "",
+  "source": "conversation",
+  "receivedAt": "2026-11-10T00:00:00.000+08:00"
+}

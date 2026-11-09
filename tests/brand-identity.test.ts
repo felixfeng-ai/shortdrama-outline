@@ -27,7 +27,7 @@ function listTextFiles(root: string): string[] {
   return files
 }
 
-test("BRAND1 使用 VeyaTV · 成剧 与生产平台定位", () => {
+test("BRAND1 使用 VeyaTV 主品牌，并保留成剧作为中文辅助名", () => {
   const design = fs.readFileSync("DESIGN.md", "utf8")
   const readme = fs.readFileSync("README.md", "utf8")
   const guide = fs.readFileSync("docs/brand-guidelines.md", "utf8")
@@ -46,8 +46,9 @@ test("BRAND1 使用 VeyaTV · 成剧 与生产平台定位", () => {
   assert.match(guide, /veyatv\.com/)
   assert.match(guide, /chenju\.work/)
   assert.match(layout, /title:\s*'VeyaTV · AI 短剧与漫剧生产平台'/)
-  assert.match(pwa, /name:\s*"VeyaTV · 成剧"/)
+  assert.match(pwa, /name:\s*"VeyaTV"/)
   assert.match(pwa, /short_name:\s*"VeyaTV"/)
+  assert.doesNotMatch(guide, /标准组合\s*\|\s*`VeyaTV · 成剧`/)
 })
 
 test("BRAND2 当前产品、文档和规范不再残留旧品牌", () => {

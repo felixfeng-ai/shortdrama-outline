@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 
+import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
 import type { ProjectShareReview } from '@/lib/assets/shares'
 
 const SECTIONS = [
@@ -95,9 +97,8 @@ export default function ProjectReview({ token }: { token: string }) {
     <main className="review-page">
       <header className="review-topbar">
         <a className="review-brand" href="/">
-          <span aria-hidden="true">V</span>
-          <b>VeyaTV</b>
-          <em>成剧</em>
+          <span aria-hidden="true"><VeyaBrandMark /></span>
+          <VeyaWordmark />
         </a>
         <div className="review-badge">
           <i aria-hidden="true" />
@@ -114,7 +115,7 @@ export default function ProjectReview({ token }: { token: string }) {
           <p className="review-state-code">LINK UNAVAILABLE</p>
           <h1>这份审阅链接已失效</h1>
           <p>{error || '链接可能已过期，或项目所有者重新生成了新的审阅链接。'}</p>
-          <a href="/">返回成剧</a>
+          <a href="/">返回 VeyaTV</a>
         </div>
       ) : (
         <>

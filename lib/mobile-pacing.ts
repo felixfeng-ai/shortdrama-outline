@@ -8,7 +8,7 @@ export interface PacingBenchmark {
 }
 
 export const DEFAULT_MOBILE_PACING_BENCHMARK: PacingBenchmark = {
-  label: '成剧竖屏短剧基准',
+  label: 'VeyaTV 竖屏短剧基准',
   hookMinChars: 20,
   hookMaxChars: 80,
   dialogueCharsPerShotMax: 35,

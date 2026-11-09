@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import ProjectReview from '@/components/ProjectReview'
 
 export const metadata: Metadata = {
-  title: '项目审阅 · VeyaTV · 成剧',
+  title: '项目审阅 · VeyaTV',
   robots: { index: false, follow: false },
 }
 

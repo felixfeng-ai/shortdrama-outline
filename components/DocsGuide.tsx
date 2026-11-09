@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
 
 const FLOW = [
   ['01', '核心人物', '先明确角色身份、动机与人物弧光。'],
@@ -143,10 +144,9 @@ export default function DocsGuide() {
   return (
     <div className="docs-page">
       <header className="docs-topbar">
-        <a className="docs-brand" href="/" aria-label="返回 VeyaTV · 成剧 工作台">
+        <a className="docs-brand" href="/" aria-label="返回 VeyaTV 工作台">
           <span className="docs-brand-mark"><VeyaBrandMark /></span>
-          <b>VeyaTV</b>
-          <em>成剧</em>
+          <VeyaWordmark />
         </a>
         <nav className="docs-topnav" aria-label="站点导航">
           <a className="active" href="/docs" aria-current="page">教程</a>

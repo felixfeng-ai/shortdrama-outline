@@ -303,7 +303,7 @@ export function buildStoryboardHtml(input: {
 
   ${shots.length ? `<h2>分镜</h2><table><thead><tr><th>首帧</th><th>镜</th><th>集号</th><th>场景</th><th>出场</th><th>动作</th><th>台词</th><th>景别</th><th>运镜</th><th>画幅 / 时长</th><th>状态</th><th>本镜参考图</th><th>提示词</th></tr></thead><tbody>${shotRows}</tbody></table>` : ''}
 
-  <footer>由「成剧」导出 —— 本文件包含 AI 生成内容，不依赖任何外部资源，可离线打开。</footer>
+  <footer>由「VeyaTV」导出 —— 本文件包含 AI 生成内容，不依赖任何外部资源，可离线打开。</footer>
 </body>
 </html>`
 }

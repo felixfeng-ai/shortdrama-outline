@@ -43,7 +43,7 @@ test("成功通知按目标跳转定妆或分镜，并且不包含提示词", ()
     }),
     {
       title: "定妆图已生成",
-      body: "打开成剧查看最新关键帧并决定是否采用。",
+      body: "打开 VeyaTV 查看最新关键帧并决定是否采用。",
       url: "/?step=visuals",
       tag: "generation-task-1",
     },
@@ -56,7 +56,7 @@ test("成功通知按目标跳转定妆或分镜，并且不包含提示词", ()
     }),
     {
       title: "镜头首帧已生成",
-      body: "打开成剧查看最新关键帧并决定是否采用。",
+      body: "打开 VeyaTV 查看最新关键帧并决定是否采用。",
       url: "/?step=shots",
       tag: "generation-task-2",
     },
@@ -69,7 +69,7 @@ test("成功通知按目标跳转定妆或分镜，并且不包含提示词", ()
     }),
     {
       title: "场景图已生成",
-      body: "打开成剧查看最新关键帧并决定是否采用。",
+      body: "打开 VeyaTV 查看最新关键帧并决定是否采用。",
       url: "/?step=scenes",
       tag: "generation-task-place",
     },
@@ -109,7 +109,7 @@ test("视频完成通知明确指向视频候选并使用视频服务脱敏文�
     }),
     {
       title: "镜头视频已生成",
-      body: "打开成剧查看最新视频候选并决定是否采用。",
+      body: "打开 VeyaTV 查看最新视频候选并决定是否采用。",
       url: "/?step=shots",
       tag: "generation-task-video-1",
     },

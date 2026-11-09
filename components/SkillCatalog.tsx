@@ -44,6 +44,7 @@ import {
 import SkillAgentDrawer from './SkillAgentDrawer'
 import SkillExecutionPlan from './SkillExecutionPlan'
 import PersonalSkillPanel from './PersonalSkillPanel'
+import VeyaWordmark from './VeyaWordmark'
 
 interface SeedPrompt {
   id: number
@@ -446,7 +447,7 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
   return (
     <div className={`skill-page ${embedded ? 'skill-page-embedded' : ''}`}>
       {!embedded && <header className="topbar">
-        <div className="brand"><b>VeyaTV</b><span>成剧</span><span className="ai">AI</span></div>
+        <div className="brand"><VeyaWordmark /></div>
         <nav className="top-nav" aria-label="主导航">
           <a href={skillsHref(project?.id ?? null, returnStep)} className="active" aria-current="page">创作技能</a>
           <a href={workspaceHref(project?.id ?? null, returnStep)}>项目</a>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
 import {
   fetchDeliveryReview,
   submitReviewDecision,
@@ -96,7 +97,7 @@ export default function ReviewRoom({ token }: { token: string }) {
         <header className="delivery-topbar">
           <a href="/" className="delivery-brand">
             <span><VeyaBrandMark /></span>
-            <b>VeyaTV</b>
+            <VeyaWordmark />
             <em>审片</em>
           </a>
         </header>
@@ -114,7 +115,7 @@ export default function ReviewRoom({ token }: { token: string }) {
       <header className="delivery-topbar">
         <a href="/" className="delivery-brand">
           <span><VeyaBrandMark /></span>
-          <b>VeyaTV</b>
+          <VeyaWordmark />
           <em>审片</em>
         </a>
         <div className="review-identity">

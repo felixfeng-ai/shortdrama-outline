@@ -13,6 +13,7 @@ import {
 import AuthButton from './AuthButton'
 import QuotaBar from './QuotaBar'
 import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
 
 interface Props {
   mode: WorkspaceMode
@@ -122,8 +123,7 @@ export default function WorkspaceSidebar({
       <aside className={`wfx-side ${mobileOpen ? 'is-open' : ''}`} aria-label="工作区导航">
         <a className="wfx-brand" href="#" onClick={(event) => { event.preventDefault(); closeAnd(onHome) }}>
           <span className="wfx-brand-mark"><VeyaBrandMark /></span>
-          <b>VeyaTV</b>
-          <small>成剧</small>
+          <VeyaWordmark />
         </a>
 
         <button

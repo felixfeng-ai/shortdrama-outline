@@ -7,6 +7,7 @@ import AuthButton from './AuthButton'
 import PwaInstallButton from './PwaInstallButton'
 import PushNotificationButton from './PushNotificationButton'
 import VeyaBrandMark from './VeyaBrandMark'
+import VeyaWordmark from './VeyaWordmark'
 
 interface Props {
   mode: WorkspaceMode
@@ -50,7 +51,7 @@ export default function WorkspaceTopbar({
 
       <a className="wfx-mobile-brand" href="#" aria-label="VeyaTV 首页">
           <VeyaBrandMark />
-        <span>VeyaTV</span>
+        <VeyaWordmark />
       </a>
 
       <div className="wfx-crumb">

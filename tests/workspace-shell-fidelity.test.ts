@@ -31,7 +31,7 @@ test("WFS1 桌面侧栏包含确认稿的三组菜单和固定顺序", () => {
   }
   assert.match(sidebar, /我的创作空间/)
   assert.match(sidebar, /个人工作区/)
-  assert.match(sidebar, /VeyaTV/)
+  assert.match(sidebar, /VeyaWordmark/)
 })
 
 test("WFS2 顶栏、公告和模式条使用确认稿顺序", () => {

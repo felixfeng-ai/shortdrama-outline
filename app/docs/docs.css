@@ -65,11 +65,8 @@
 .docs-brand-mark svg {
   width: 27px;
   height: 27px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  fill: currentColor;
+  stroke: none;
 }
 
 .docs-brand b {

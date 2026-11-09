@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 
+import VeyaBrandMark from "@/components/VeyaBrandMark"
+import VeyaWordmark from "@/components/VeyaWordmark"
 import { resolveRuntimeMobileRelease } from "@/lib/mobile-release-store"
 
 import "./app-download.css"
@@ -8,8 +10,8 @@ import "./app-download.css"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "VeyaTV App 内测 · 成剧",
-  description: "VeyaTV · 成剧 原生 App 小范围内测安装、测试路线与反馈入口。",
+  title: "VeyaTV App 内测",
+  description: "VeyaTV 原生 App 小范围内测安装、测试路线与反馈入口。",
   robots: {
     index: false,
     follow: false,
@@ -23,9 +25,8 @@ export default function AppDownloadPage() {
     <main className="app-download-page">
       <header className="app-download-topbar">
         <Link className="app-download-brand" href="/">
-          <span>V</span>
-          <b>VeyaTV</b>
-          <em>成剧</em>
+          <span><VeyaBrandMark /></span>
+          <VeyaWordmark />
         </Link>
         <nav aria-label="内测页面导航">
           <Link href="/docs">使用教程</Link>

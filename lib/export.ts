@@ -16,7 +16,7 @@ export function buildMarkdown(input: {
 }): string {
   const { idea, characters, acts, episodes } = input
   const lines: string[] = [
-    '# 成剧 · 短剧大纲',
+    '# VeyaTV · 短剧大纲',
     '',
     `> **AI 生成标识：${AI_GENERATION_LABEL}**`,
     `> ${AI_EXPORT_NOTICE}`,

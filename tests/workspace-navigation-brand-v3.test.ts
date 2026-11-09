@@ -33,13 +33,17 @@ test("WNB2 新窗口画布使用独立全屏路由，不携带工作区 chrome",
   assert.match(shellCss, /\.fullscreen-canvas-page\s*\{[^}]*height:\s*100dvh/s)
 })
 
-test("WNB3 登录页、侧栏与手机顶栏复用同一个六边形 V 品牌组件", () => {
-  assert.match(brandMark, /viewBox="0 0 30 30"/)
-  assert.match(brandMark, /M5 9 15 3l10 6v12l-10 6-10-6z/)
+test("WNB3 登录页、侧栏与手机顶栏复用同一个实心负形 V 品牌组件", () => {
+  assert.match(brandMark, /viewBox="0 0 32 32"/)
+  assert.match(brandMark, /M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z/)
+  assert.match(brandMark, /fillRule="evenodd"/)
   assert.match(sidebar, /VeyaBrandMark/)
   assert.match(topbar, /VeyaBrandMark/)
   assert.match(login, /VeyaBrandMark/)
   assert.doesNotMatch(login, />V<\/span>/)
+  assert.doesNotMatch(sidebar, /<small>成剧<\/small>/)
+  assert.doesNotMatch(login, /auth-brand-cn/)
+  assert.doesNotMatch(guide, /<em>成剧<\/em>/)
 })
 
 test("WNB4 教程同步当前工作区、全屏画布、App 与跨端说明", () => {

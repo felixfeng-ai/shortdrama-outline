@@ -63,8 +63,8 @@ export function buildGenerationNotification(input: {
     return {
       title: `${target}已生成`,
       body: video
-        ? "打开成剧查看最新视频候选并决定是否采用。"
-        : "打开成剧查看最新关键帧并决定是否采用。",
+        ? "打开 VeyaTV 查看最新视频候选并决定是否采用。"
+        : "打开 VeyaTV 查看最新关键帧并决定是否采用。",
       url,
       tag: `generation-${input.taskId}`,
     }

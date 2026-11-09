@@ -1,6 +1,6 @@
 <div align="center">
 
-# VeyaTV · 成剧
+# VeyaTV
 
 **AI 短剧与漫剧生产平台：从一句想法或已有原文，到分镜、镜头视频与时间线成片**
 
@@ -24,7 +24,7 @@
 
 ### 一句话定位
 
-VeyaTV · 成剧是面向独立短剧、漫剧创作者的 **AI 短剧与漫剧生产平台**，不是单纯的“AI 生图/生视频工具”：
+VeyaTV 是面向独立短剧、漫剧创作者的 **AI 短剧与漫剧生产平台**，不是单纯的“AI 生图/生视频工具”：
 
 > 把一个想法、小说或已有剧本，拆成可以修改、可以追踪、可以继续生产、最后可以交付的短剧资产与成片。
 
@@ -47,7 +47,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 ```
 
 后三步产出的**不是剧本，是资产**：角色视觉锚点、每场戏的时空、每个镜头的提示词与首帧。
-角色参考图始终存在你自己的硬盘上，**不会上传给成剧图像服务**。
+角色参考图始终存在你自己的硬盘上，**不会上传给 VeyaTV 图像服务**。
 用户主动生成关键帧或镜头视频时，平台只保存新生成的结果；已采用首帧可以继续生成镜头视频，
 再进入按集时间线完成 TTS、BGM、SRT、MP4 和无损导出，也可以继续交给即梦、可灵或剪映精修。
 
@@ -122,7 +122,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 - **小说工作台**：项目导出菜单进入 `/novels/[projectId]`，默认不生成、不导出；用户确认篇幅、章数、Token、额度和耗时后才按低优先级排队。小说不增加第七步，也不占主导航。
 - **教程入口**：工作台和创作技能页都提供“教程”，完整说明见 [`/docs`](https://veyatv.com/docs)。
 
-![成剧工作台：完整目录、当前步骤与 AI 场记](public/docs/tutorial/01-quick-start.png)
+![VeyaTV 工作台：完整目录、当前步骤与 AI 场记](public/docs/tutorial/01-quick-start.png)
 
 ## 三条硬指标
 
@@ -154,7 +154,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 短剧这行靠钩子活着，但钩子只有放进完整结构里才成立，所以名字落在「剧」上，不落在「钩」上。
 
 `VeyaTV` 是平台主品牌：`Veya` 承担长期技术品牌与产品家族，`TV` 指向视频、剧集和内容生产。
-中文正式名继续使用「成剧」，对外标准组合固定为 `VeyaTV · 成剧`。
+「成剧」保留为中文辅助名，用于中文 SEO、法律说明和必要的中文解释；主界面与 Logo 只显示 `VeyaTV`。
 
 > 正式域名是 `veyatv.com`。旧域名 `chenju.work` 继续保留 HTTPS，访问时通过
 > 一次性会话交接迁移到新域，已有匿名项目和登录态不会因跨域 Cookie 丢失。
@@ -218,7 +218,7 @@ MP4 成片 / 外部平台交付包 / 可选小说稿
 市面上的方案有的只解决出图，有的只做无人值守成片；独立创作者真正需要的是既能保留判断权，
 又不用在十个工具之间手工搬素材。
 
-**所以成剧做了三件事：**
+**所以 VeyaTV 做了三件事：**
 
 1. **把创作拆成六步工作流**，每一步单独编辑、单独重生成，人始终保留判断权（而不是一次性吐一大段文本）
 2. **把资产层做成本地优先**——角色锚点逐字注入每个镜头提示词保证一致；参考图存在你自己的文件夹，服务端连上传通道都没有
@@ -259,7 +259,7 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 
 **所以差异化不在功能清单上，在「谁在维护这套东西」。**
 
-| 维度 | Jellyfish | drama-skills | **成剧** |
+| 维度 | Jellyfish | drama-skills | **VeyaTV** |
 |---|---|---|---|
 | 部署 | Docker + MySQL + Redis + RustFS，要运维 | 需装 agent 会用 Claude Code | **零部署，浏览器打开就用** |
 | 图存哪 | 服务端对象存储（因为要跑视频生成，**必须**托管） | 本地，但需装环境 | **用户自己的文件夹，服务端无上传通道** |
@@ -353,7 +353,7 @@ Jellyfish 是绕不开的对手：它的 README 明确写了「拆章节剧本�
 ### 方式一：直接用（推荐，零安装）
 
 打开 **<https://veyatv.com>** 即可。不需要注册、不需要安装。
-第一次使用可先看 **[成剧教程](https://veyatv.com/docs)**：从一句想法或已有原文开始，
+第一次使用可先看 **[VeyaTV 教程](https://veyatv.com/docs)**：从一句想法或已有原文开始，
 依次完成人物、分集、定妆、场次、分镜、镜头视频、时间线成片和外部交付。
 
 ### 方式二：本地跑（要改代码 / 离线用）
@@ -397,7 +397,7 @@ npm run build
 | `WEB_PUSH_SUBJECT` | | `mailto:admin@chengju.work` | VAPID 联系主体 |
 | `AUTH_SECRET` | 登录功能必填 | — | 验证码散列所需的强随机服务端密钥 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只存在服务端 |
-| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证发件域名下的发件人，例如 `VeyaTV · 成剧 <login@chenju.work>` |
+| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证发件域名下的发件人，例如 `VeyaTV <login@chenju.work>` |
 | `CHENGJU_SITE_URL` | 生产必填 | `https://veyatv.com` | canonical 站点地址，用于 metadata、sitemap 与分享链接 |
 | `CHENGJU_ALLOWED_ORIGINS` | 生产必填 | 见 `.env.example` | Web/App 跨域白名单；迁移期同时保留新旧域 |
 | `AUTH_CODE_IP_10M_LIMIT` | | `5` | 同一 IP 每 10 分钟最多请求验证码次数 |
@@ -1110,7 +1110,7 @@ Nginx 反代配置见 `deploy/nginx-veyatv.com.conf`。
 | `FFMPEG_PATH` / `FFPROBE_PATH` | | 内置二进制 | 可选覆盖为系统媒体工具路径 |
 | `AUTH_SECRET` | 登录功能必填 | — | 生产环境必须设置强随机值；验证码与散列密钥分离保存 |
 | `RESEND_API_KEY` | 邮箱登录必填 | — | Resend 邮件 API Key，只放服务端 |
-| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `VeyaTV · 成剧 <login@chenju.work>` |
+| `AUTH_EMAIL_FROM` | 邮箱登录必填 | — | 已验证域名下的发件人，例如 `VeyaTV <login@chenju.work>` |
 | `CHENGJU_SITE_URL` | 生产必填 | `https://veyatv.com` | canonical 站点地址；旧域只负责迁移跳转 |
 | `CHENGJU_ALLOWED_ORIGINS` | 生产必填 | 见 `.env.example` | 迁移期同时允许 `veyatv.com` 与 `chenju.work` |
 | `CHENGJU_DOMAIN_MIGRATION_ENABLED` | | `0` | DNS 与证书完成前保持关闭；切换时改为 `1` |
@@ -1197,7 +1197,7 @@ GitHub main ──push──▶ GitHub Actions ──ssh──▶ /opt/chengju/d
    CHENGJU_ALLOWED_ORIGINS=https://veyatv.com,https://www.veyatv.com,https://chenju.work,https://www.chenju.work
    CHENGJU_DOMAIN_MIGRATION_ENABLED=0
    RESEND_API_KEY=re_你的邮件密钥
-   AUTH_EMAIL_FROM=VeyaTV · 成剧 <login@chenju.work>
+   AUTH_EMAIL_FROM=VeyaTV <login@chenju.work>
    AUTH_CODE_IP_10M_LIMIT=5
    AUTH_CODE_IP_DAILY_LIMIT=20
    AUTH_CODE_GLOBAL_DAILY_LIMIT=200

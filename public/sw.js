@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chengju-shell-v4'
+const CACHE_NAME = 'chengju-shell-v5'
 const SHELL = ['/offline.html', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', (event) => {

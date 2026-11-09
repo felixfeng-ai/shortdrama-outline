@@ -126,7 +126,7 @@ export async function POST(req: Request) {
             const lastUser =
               [...messages].reverse().find((message) => message.role === 'user')?.content ?? prompt
             const raw = await chatJson<{ reply?: string; answer?: string }>(
-              '你是「成剧」里的 AI 场记。用中文直接回答，80 字以内，干脆具体，不要客套。',
+              '你是「VeyaTV」里的 AI 场记。用中文直接回答，80 字以内，干脆具体，不要客套。',
               lastUser,
               { temperature: 0.5, maxTokens: 600 },
             )
