@@ -36,7 +36,8 @@ test("WM-UI4 正式构建保持严格嵌入与安全头", () => {
 })
 
 test("WM-UI5 每个工作模式都有页面级标题，输入区使用中文标签", () => {
-  assert.match(workspaceHome, /<h1>继续创作<\/h1>/)
+  assert.match(workspaceHome, /继续创作 · 第 \{step\.index\} 步/)
+  assert.match(workspaceHome, /<h1>\{projectTitle\}<\/h1>/)
   assert.match(page, /<h1 id="wfx-canvas-title">画布<\/h1>/)
   assert.match(ideaPanel, /故事指令/)
   assert.doesNotMatch(ideaPanel, />STORY COMMAND</)

@@ -11,6 +11,7 @@ import { STEPS } from "../lib/types.ts"
 
 const pageSrc = fs.readFileSync("app/page.tsx", "utf8")
 const workspaceHomeSrc = fs.readFileSync("components/WorkspaceHome.tsx", "utf8")
+const workspaceSidebarSrc = fs.readFileSync("components/WorkspaceSidebar.tsx", "utf8")
 const indicatorSrc = fs.readFileSync("components/StepIndicator.tsx", "utf8")
 const sideNavSrc = fs.readFileSync("components/SideNav.tsx", "utf8")
 const stepPillsSrc = fs.readFileSync("components/StepPills.tsx", "utf8")
@@ -91,10 +92,11 @@ test("G3b 六步导航必须用 nav 短标签，不能用 title 长标题", () =
   assert.ok(!stepPillsSrc.includes(">{step.subtitle}<"), "步骤条没有说明行")
 })
 
-test("G3c 桌面端六步导航必须真的挂在页面上", () => {
+test("G3c 桌面端六步导航由侧栏承载，首页不重复整套流程", () => {
   assert.ok(pageSrc.includes("<WorkspaceHome"), "page.tsx 没有渲染确认稿首页")
-  assert.ok(workspaceHomeSrc.includes("wfx-step-track"), "确认稿首页缺少六步轨道")
-  assert.ok(workspaceHomeSrc.includes("STEPS.map"), "六步轨道没有复用统一 STEPS")
+  assert.ok(pageSrc.includes("<WorkspaceSidebar"), "page.tsx 没有渲染桌面六步侧栏")
+  assert.ok(workspaceSidebarSrc.includes("orderWorkspaceSteps"), "侧栏没有复用统一六步顺序")
+  assert.ok(!workspaceHomeSrc.includes("wfx-step-track"), "首页不应再重复整套六步轨道")
 })
 
 // ── G4 左栏高亮与「下一步」提示 ──

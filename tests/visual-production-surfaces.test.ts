@@ -27,9 +27,10 @@ test("VISUAL2 创作技能页用缩略图和内容分类色替代纯文字推荐
   assert.match(skillCss, /\.tone-delivery/)
 })
 
-test("VISUAL3 空画布展示生产节点而不是大面积空白", () => {
-  assert.match(canvas, /production-canvas-empty-visual/)
-  assert.match(canvas, /EMPTY_CANVAS_NODES/)
-  assert.match(canvas, /CanvasStepIcon/)
-  assert.match(workspaceCss, /production-canvas-preview-node/)
+test("VISUAL3 空画布展示真实项目事实而不是通用节点插图", () => {
+  assert.match(canvas, /production-canvas-facts/)
+  assert.match(canvas, /当前项目事实/)
+  assert.match(canvas, /确认制作范围/)
+  assert.doesNotMatch(canvas, /EMPTY_CANVAS_NODES/)
+  assert.match(workspaceCss, /production-canvas-fact-columns/)
 })

@@ -1,8 +1,11 @@
-.storyboard-shell {
+﻿.storyboard-shell {
   min-height: 100dvh;
   overflow: hidden;
-  color: #f4f4f2;
-  background: #08090a;
+  color: var(--factory-ink);
+  background: var(--factory-ground);
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
+  line-height: var(--type-body-line);
 }
 
 .storyboard-topbar {
@@ -47,15 +50,15 @@
   align-items: center;
   gap: 7px;
   color: #9ba9ae;
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .storyboard-real-badge i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #74a3ff;
-  box-shadow: 0 0 0 4px rgba(116, 163, 255, .09);
+  background: #d8b56d;
+  box-shadow: 0 0 0 4px rgba(216, 181, 109, .09);
 }
 
 .storyboard-layout {
@@ -86,7 +89,7 @@
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 8px;
-  background: #101214;
+  background: var(--factory-surface);
   box-shadow: 0 26px 80px rgba(0, 0, 0, .46);
 }
 
@@ -142,8 +145,8 @@
 .storyboard-caption span {
   display: block;
   margin-bottom: 6px;
-  color: #90b7ff;
-  font-size: 10.5px;
+  color: var(--factory-accent);
+  font-size: 11px;
 }
 
 .storyboard-caption p {
@@ -208,14 +211,14 @@
 
 .storyboard-control-buttons button:hover {
   color: #fff;
-  background: #16191b;
+  background: var(--factory-raised);
 }
 
 .storyboard-control-buttons button.is-primary {
   width: 44px;
   height: 44px;
   color: #111;
-  background: #f4f4f2;
+  background: var(--factory-ink);
 }
 
 .storyboard-progress {
@@ -241,7 +244,7 @@
   min-width: 82px;
   color: #777d81;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   text-align: right;
 }
 
@@ -263,7 +266,7 @@
 }
 
 .storyboard-export-bar b {
-  color: #dfe4e5;
+  color: var(--factory-ink);
   font-size: 11.5px;
   font-weight: 600;
 }
@@ -271,7 +274,7 @@
 .storyboard-export-bar span {
   overflow: hidden;
   color: #727a7d;
-  font-size: 10px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -290,15 +293,15 @@
   border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 6px;
   color: #c4c9ca;
-  font-size: 10.5px;
+  font-size: 11px;
   text-decoration: none;
-  background: #131617;
+  background: var(--factory-surface);
   cursor: pointer;
 }
 
 .storyboard-export-actions button {
   color: #111;
-  background: #f4f4f2;
+  background: var(--factory-ink);
 }
 
 .storyboard-export-actions button:disabled {
@@ -321,8 +324,8 @@
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 8px;
-  color: #f4f4f2;
-  background: #111416;
+  color: var(--factory-ink);
+  background: var(--factory-surface);
   box-shadow: 0 28px 90px rgba(0, 0, 0, .58);
 }
 
@@ -334,7 +337,7 @@
 .storyboard-export-dialog header span,
 .storyboard-export-dialog dt {
   color: #747c7f;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .storyboard-export-dialog h2 {
@@ -379,7 +382,7 @@
   margin-top: 12px !important;
   padding: 9px 10px;
   border-radius: 5px;
-  background: #191b1c;
+  background: var(--factory-raised);
 }
 
 .storyboard-export-error {
@@ -399,13 +402,13 @@
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 6px;
   color: #c9cecf;
-  background: #171a1b;
+  background: var(--factory-raised);
   cursor: pointer;
 }
 
 .storyboard-export-dialog footer button:last-child {
   color: #111;
-  background: #f4f4f2;
+  background: var(--factory-ink);
 }
 
 .storyboard-rail {
@@ -413,7 +416,7 @@
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, .075);
   border-radius: 8px;
-  background: #0d0f10;
+  background: var(--factory-ground);
 }
 
 .storyboard-rail > header {
@@ -432,7 +435,7 @@
 .storyboard-rail > header span,
 .storyboard-rail > header small {
   color: #777d81;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .storyboard-rail > header b {
@@ -462,19 +465,19 @@
 }
 
 .storyboard-rail button:hover {
-  background: #15181a;
+  background: var(--factory-raised);
 }
 
 .storyboard-rail button.is-current {
   color: #fff;
-  background: #191c1e;
+  background: var(--factory-raised);
 }
 
 .storyboard-rail-index {
   padding-top: 2px;
   color: #5d6467;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .storyboard-rail-copy {
@@ -493,7 +496,7 @@
 
 .storyboard-rail-copy small {
   color: #6f7679;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .storyboard-state,
@@ -546,10 +549,10 @@
   padding: 10px 15px;
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 6px;
-  color: #f4f4f2;
+  color: var(--factory-ink);
   font-size: 12px;
   text-decoration: none;
-  background: #171a1c;
+  background: var(--factory-raised);
   cursor: pointer;
 }
 
@@ -566,7 +569,7 @@
 .storyboard-next-action span,
 .storyboard-coverage span {
   color: #7d8588;
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .storyboard-coverage {
@@ -601,7 +604,7 @@
 .storyboard-coverage-bar i {
   display: block;
   height: 100%;
-  background: #74a3ff;
+  background: #d8b56d;
 }
 
 .storyboard-insufficient-strip {
@@ -615,7 +618,7 @@
   overflow: hidden;
   aspect-ratio: 9 / 16;
   border-radius: 5px;
-  background: #15181a;
+  background: var(--factory-raised);
 }
 
 .storyboard-insufficient-strip img,
@@ -631,7 +634,7 @@
   bottom: 6px;
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .storyboard-next-action {
@@ -650,7 +653,7 @@
 .storyboard-next-action a {
   justify-self: auto;
   flex: 0 0 auto;
-  background: #f4f4f2;
+  background: var(--factory-ink);
   color: #111;
 }
 
@@ -781,4 +784,69 @@
   .storyboard-spinner {
     animation: none;
   }
+}
+
+/* Figma type scale extended to the storyboard viewer. */
+.storyboard-shell :is(h1, h2, h3) {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.storyboard-shell :is(p, li, label) {
+  font-size: var(--type-body);
+  line-height: 1.65;
+}
+
+.storyboard-topbar > div span,
+.storyboard-real-badge,
+.storyboard-frame-meta,
+.storyboard-back {
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-line);
+}
+
+.storyboard-shell :is(button, select, input) {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: var(--type-nav-line);
+}
+
+/* Extended neutral production-factory theme. */
+.storyboard-shell {
+  --storyboard-ground: var(--factory-ground);
+  --storyboard-panel: var(--factory-surface);
+  --storyboard-raised: var(--factory-raised);
+  --storyboard-line: var(--factory-line);
+  --storyboard-ink: var(--factory-ink);
+  --storyboard-muted: var(--factory-muted);
+  --storyboard-faint: var(--factory-faint);
+  --storyboard-accent: var(--factory-accent);
+  color: var(--factory-ink);
+  background: var(--factory-ground);
+}
+
+.storyboard-topbar {
+  border-bottom-color: var(--factory-line);
+  background: color-mix(in srgb, var(--factory-rail) 96%, transparent);
+}
+
+.storyboard-frame,
+.storyboard-sidebar,
+.storyboard-panel,
+.storyboard-shot-list {
+  border-color: var(--factory-line);
+  background: var(--factory-surface);
+  box-shadow: none;
+}
+
+.storyboard-shot-list > button:hover,
+.storyboard-shot-list > button.is-active {
+  background: var(--factory-raised);
+  border-color: var(--factory-line-strong);
+}
+
+.storyboard-real-badge i {
+  background: var(--factory-accent);
+  box-shadow: none;
 }

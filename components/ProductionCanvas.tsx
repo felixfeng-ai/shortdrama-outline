@@ -20,30 +20,6 @@ interface Props {
   onShowFlow: () => void
 }
 
-function CanvasStepIcon({ index }: { index: number }) {
-  if (index === 0) {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h8A2.5 2.5 0 0 1 15.5 7v12H7.5A2.5 2.5 0 0 1 5 16.5z" /><path d="M15.5 7H19v12h-6.5A2.5 2.5 0 0 1 10 16.5" /><path d="M8 8h4M8 11h3" /></svg>
-  }
-  if (index === 1) {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><circle cx="16.5" cy="9" r="2.5" /><path d="M3.5 19c.4-3 2.4-5 5.5-5s5.1 2 5.5 5M13 14.5c3.6-.8 6.2.8 7 4.5" /></svg>
-  }
-  if (index === 2) {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 5v14M17 5v14M3 9h18M3 15h18" /></svg>
-  }
-  if (index === 3) {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m10 9 5 3-5 3z" /></svg>
-  }
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v11H4zM8 7.5V5h8v2.5" /><path d="m8 13 2 2 5-5" /></svg>
-}
-
-const EMPTY_CANVAS_NODES = [
-  { label: "故事", detail: "人物与分集" },
-  { label: "角色", detail: "定妆与场景" },
-  { label: "分镜", detail: "镜头与首帧" },
-  { label: "视频", detail: "候选与采用" },
-  { label: "成片", detail: "时间线与交付" },
-] as const
-
 export default function ProductionCanvas({
   productionPlan,
   characterCount,
@@ -75,22 +51,61 @@ export default function ProductionCanvas({
     : null, [characterCount, episodes.length, productionPlan, scenes.length, selectedAssets, shots])
 
   if (!productionPlan || !model) {
+    const previewEpisodes = episodes.slice(0, 3)
+    const previewScenes = scenes.slice(0, 3)
+    const previewShots = shots.slice(0, 3)
     return (
       <section className="production-canvas production-canvas-empty">
-        <div className="production-canvas-empty-visual" aria-hidden="true">
-          {EMPTY_CANVAS_NODES.map((node, index) => (
-            <div key={node.label} className={`production-canvas-preview-node is-tone-${index}`}>
-              <span><CanvasStepIcon index={index} /></span>
-              <div><b>{node.label}</b><small>{node.detail}</small></div>
+        <div className="production-canvas-facts">
+          <header>
+            <div>
+              <span>当前项目事实</span>
+              <b>{episodes.length} 集 · {scenes.length} 场 · {shots.length} 镜</b>
             </div>
-          ))}
+            <em>{selectedAssets.length} 个已采用画面</em>
+          </header>
+          <div className="production-canvas-fact-columns">
+            <section>
+              <span>分集</span>
+              {previewEpisodes.length > 0
+                ? previewEpisodes.map((episode) => (
+                    <div key={episode.id}>
+                      <b>第 {episode.number} 集</b>
+                      <small>{episode.title}</small>
+                    </div>
+                  ))
+                : <p>还没有分集内容</p>}
+            </section>
+            <section>
+              <span>场次</span>
+              {previewScenes.length > 0
+                ? previewScenes.map((scene) => (
+                    <div key={scene.id}>
+                      <b>场 {String(scene.number).padStart(2, "0")}</b>
+                      <small>{scene.location}</small>
+                    </div>
+                  ))
+                : <p>还没有场次内容</p>}
+            </section>
+            <section>
+              <span>镜头</span>
+              {previewShots.length > 0
+                ? previewShots.map((shot) => (
+                    <div key={shot.id}>
+                      <b>第 {shot.shot} 镜</b>
+                      <small>{shot.status === "rework" ? "需返修" : shot.status === "done" ? "已出图" : "待制作"}</small>
+                    </div>
+                  ))
+                : <p>还没有镜头内容</p>}
+            </section>
+          </div>
         </div>
         <div className="production-canvas-empty-copy">
           <span>PRODUCTION CANVAS</span>
-          <h2>先建立生产计划</h2>
-          <p>选择样片、小批或整季后，这里会按真实集、场、镜和视频状态展开。</p>
+          <h2>把已有内容变成可执行的生产关系</h2>
+          <p>项目内容已经存在。确认样片、小批或整季范围后，画布会按真实集、场、镜和交付缺口展开，不重新生成正文。</p>
           <button className="wfx-button" type="button" onClick={onShowFlow}>
-            去设置项目
+            确认制作范围
           </button>
         </div>
       </section>

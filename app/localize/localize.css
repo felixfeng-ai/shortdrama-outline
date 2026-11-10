@@ -1,28 +1,29 @@
-.localize-page {
-  --localize-bg: var(--signal-bg, #13171a);
-  --localize-panel: var(--signal-panel, #181d21);
-  --localize-raised: var(--signal-raised, #1d2328);
+﻿.localize-page {
+  --localize-bg: var(--signal-bg, var(--factory-ground));
+  --localize-panel: var(--signal-panel, var(--factory-surface));
+  --localize-raised: var(--signal-raised, var(--factory-raised));
   --localize-floating: #22292e;
   --localize-line: var(--signal-line, rgba(213, 224, 228, .11));
   --localize-line-soft: var(--signal-line-soft, rgba(213, 224, 228, .07));
   --localize-line-strong: rgba(213, 224, 228, .18);
-  --localize-text: var(--signal-text, #dfe4e2);
-  --localize-text-2: var(--signal-text-2, #b6c0c5);
-  --localize-text-3: var(--signal-text-3, #8b969d);
-  --localize-action: var(--signal-acid, #8dc8dc);
+  --localize-text: var(--signal-text, var(--factory-ink));
+  --localize-text-2: var(--signal-text-2, var(--factory-muted));
+  --localize-text-3: var(--signal-text-3, var(--factory-faint));
+  --localize-action: var(--signal-acid, #d8b56d);
   --localize-action-hover: #d2e4a1;
-  --localize-info: var(--signal-blue, #8dc8dc);
+  --localize-info: var(--signal-blue, #d8b56d);
   --localize-warning: var(--signal-warning, #d58d73);
   --localize-ease: cubic-bezier(.23, 1, .32, 1);
   min-height: 100dvh;
   background:
-    radial-gradient(circle at 16% -10%, rgba(141, 200, 220, .045), transparent 28rem),
+    radial-gradient(circle at 16% -10%, rgba(216, 181, 109, .045), transparent 28rem),
     linear-gradient(180deg, rgba(255, 255, 255, .014), transparent 16rem),
     var(--localize-bg);
   color: var(--localize-text);
   color-scheme: dark;
-  font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
+  line-height: var(--type-body-line);
 }
 
 .localize-page *,
@@ -32,7 +33,7 @@
 }
 
 .localize-page ::selection {
-  background: rgba(141, 200, 220, .2);
+  background: rgba(216, 181, 109, .2);
   color: var(--localize-text);
 }
 
@@ -52,7 +53,7 @@
 .localize-page input:focus-visible,
 .localize-page textarea:focus-visible,
 .localize-page select:focus-visible {
-  outline: 2px solid rgba(141, 200, 220, .72);
+  outline: 2px solid rgba(216, 181, 109, .72);
   outline-offset: 2px;
 }
 
@@ -77,7 +78,7 @@
   background:
     linear-gradient(var(--localize-line-soft) 1px, transparent 1px),
     linear-gradient(90deg, var(--localize-line-soft) 1px, transparent 1px),
-    radial-gradient(circle at 50% 12%, rgba(141, 200, 220, .07), transparent 30rem),
+    radial-gradient(circle at 50% 12%, rgba(216, 181, 109, .07), transparent 30rem),
     var(--localize-bg);
   background-size: 64px 64px, 64px 64px, auto, auto;
 }
@@ -102,7 +103,7 @@
   margin: 0;
   color: var(--localize-info);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: .08em;
 }
 
@@ -110,7 +111,7 @@
   margin: 0;
   color: var(--localize-text);
   font-size: clamp(28px, 4vw, 38px);
-  font-weight: 520;
+  font-weight: 500;
   line-height: 1.2;
   letter-spacing: 0;
   text-align: center;
@@ -203,15 +204,15 @@
 .localize-form-grid textarea:focus,
 .localize-inline-form input:focus,
 .localize-diff-list textarea:focus {
-  border-color: rgba(141, 200, 220, .45);
-  outline-color: rgba(141, 200, 220, .24);
+  border-color: rgba(216, 181, 109, .45);
+  outline-color: rgba(216, 181, 109, .24);
   background: rgba(13, 18, 21, .7);
-  box-shadow: 0 0 0 3px rgba(141, 200, 220, .07);
+  box-shadow: 0 0 0 3px rgba(216, 181, 109, .07);
 }
 
 .localize-form-grid label > small {
   color: var(--localize-text-3);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.55;
   text-wrap: pretty;
 }
@@ -230,7 +231,7 @@
 
 .localize-create-card small {
   color: var(--localize-text-3);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .localize-create-card > button,
@@ -259,7 +260,7 @@
 }
 
 .localize-create-card > button {
-  border-color: rgba(141, 200, 220, .4);
+  border-color: rgba(216, 181, 109, .4);
   background: var(--localize-action);
   color: #151711;
   font-weight: 600;
@@ -291,7 +292,7 @@
   align-items: center;
   gap: 18px;
   border-bottom: 1px solid var(--localize-line);
-  background: rgba(19, 23, 26, .92);
+  background: color-mix(in srgb, var(--factory-rail) 92%, transparent);
   padding: 0 clamp(16px, 2.2vw, 30px);
   backdrop-filter: blur(18px) saturate(120%);
 }
@@ -346,7 +347,7 @@
   line-height: 1;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, .3) inset,
-    0 8px 22px rgba(141, 200, 220, .08);
+    0 8px 22px rgba(216, 181, 109, .08);
 }
 
 .localize-project-lockup > div {
@@ -359,7 +360,7 @@
   overflow: hidden;
   color: var(--localize-text);
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -369,7 +370,7 @@
   overflow: hidden;
   color: var(--localize-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -382,11 +383,11 @@
   gap: 7px;
   border: 1px solid var(--localize-line);
   border-radius: 999px;
-  background: rgba(24, 29, 33, .68);
+  background: color-mix(in srgb, var(--factory-surface) 68%, transparent);
   padding: 5px 10px;
   color: var(--localize-text-2);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -397,7 +398,7 @@
   flex: 0 0 6px;
   border-radius: 50%;
   background: var(--localize-action);
-  box-shadow: 0 0 0 3px rgba(141, 200, 220, .08);
+  box-shadow: 0 0 0 3px rgba(216, 181, 109, .08);
   content: "";
 }
 
@@ -446,20 +447,20 @@
   margin: 0 0 5px;
   color: var(--localize-info);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   letter-spacing: .11em;
 }
 
 .localize-sidebar-brand b {
   color: var(--localize-text);
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.35;
 }
 
 .localize-sidebar-brand span {
   color: var(--localize-text-3);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
@@ -511,7 +512,7 @@
 .localize-branches button.active .localize-branch-dot {
   border-color: var(--localize-info);
   background: var(--localize-info);
-  box-shadow: 0 0 0 3px rgba(141, 200, 220, .08);
+  box-shadow: 0 0 0 3px rgba(216, 181, 109, .08);
 }
 
 .localize-branches button > span:last-child {
@@ -523,7 +524,7 @@
 .localize-branches b {
   overflow: hidden;
   font-size: 11.5px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -533,7 +534,7 @@
   overflow: hidden;
   color: var(--localize-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -545,7 +546,7 @@
   margin-top: 4px;
   border: 1px dashed var(--localize-line);
   color: var(--localize-text-2);
-  font-size: 10.5px;
+  font-size: 11px;
   text-align: center;
 }
 
@@ -578,10 +579,10 @@
 }
 
 .localize-tabs button.active {
-  border-color: rgba(141, 200, 220, .22);
+  border-color: rgba(216, 181, 109, .22);
   background:
-    linear-gradient(90deg, rgba(141, 200, 220, .08), transparent 72%),
-    rgba(141, 200, 220, .045);
+    linear-gradient(90deg, rgba(216, 181, 109, .08), transparent 72%),
+    rgba(216, 181, 109, .045);
   color: var(--localize-text);
 }
 
@@ -599,14 +600,14 @@
 
 .localize-tabs b {
   font-size: 11.5px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.35;
 }
 
 .localize-tabs span {
   overflow: hidden;
   color: var(--localize-text-3);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.45;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -626,14 +627,14 @@
 
 .localize-sidebar-foot span {
   color: var(--localize-text-3);
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .localize-sidebar-foot b {
   overflow: hidden;
   color: var(--localize-text);
   font-size: 11.5px;
-  font-weight: 550;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -641,7 +642,7 @@
 .localize-sidebar-foot small {
   color: var(--localize-info);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
 }
 
 .localize-content {
@@ -688,7 +689,7 @@
 
 .localize-context-strip span {
   color: var(--localize-text-3);
-  font-size: 9.5px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -696,7 +697,7 @@
   overflow: hidden;
   color: var(--localize-text);
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -706,7 +707,7 @@
   overflow: hidden;
   color: var(--localize-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -723,10 +724,10 @@
   margin-bottom: 0;
   border: 1px solid var(--localize-line);
   border-radius: 6px;
-  background: rgba(24, 29, 33, .78);
+  background: color-mix(in srgb, var(--factory-surface) 78%, transparent);
   padding: 9px 11px;
   color: var(--localize-text-2);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.55;
 }
 
@@ -734,7 +735,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border-color: rgba(141, 200, 220, .24);
+  border-color: rgba(216, 181, 109, .24);
   color: var(--localize-info);
 }
 
@@ -744,7 +745,7 @@
   flex: 0 0 6px;
   border-radius: 50%;
   background: var(--localize-info);
-  box-shadow: 0 0 0 3px rgba(141, 200, 220, .08);
+  box-shadow: 0 0 0 3px rgba(216, 181, 109, .08);
   content: "";
   animation: localize-pulse 1.6s var(--localize-ease) infinite;
 }
@@ -772,7 +773,7 @@
   margin: 0 0 8px;
   color: var(--localize-info);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: .09em;
 }
 
@@ -780,7 +781,7 @@
   margin: 0;
   color: var(--localize-text);
   font-size: clamp(25px, 2.5vw, 32px);
-  font-weight: 520;
+  font-weight: 500;
   line-height: 1.2;
   letter-spacing: 0;
   text-wrap: balance;
@@ -813,7 +814,7 @@
   gap: 6px;
   color: var(--localize-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -857,14 +858,14 @@
 }
 
 .localize-panel-head .primary {
-  border-color: rgba(141, 200, 220, .42);
+  border-color: rgba(216, 181, 109, .42);
   background: var(--localize-action);
   color: #151711;
   font-weight: 600;
 }
 
 .localize-actions button:first-child {
-  border-color: rgba(141, 200, 220, .38);
+  border-color: rgba(216, 181, 109, .38);
   background: var(--localize-action);
   color: #151711;
   font-weight: 600;
@@ -884,13 +885,13 @@
 }
 
 .localize-form-grid > label {
-  background: rgba(24, 29, 33, .92);
+  background: color-mix(in srgb, var(--factory-surface) 92%, transparent);
   padding: 15px 16px 16px;
   transition: background-color 160ms var(--localize-ease);
 }
 
 .localize-form-grid > label:focus-within {
-  background: #1a2024;
+  background: var(--factory-raised);
 }
 
 .localize-form-grid.compact {
@@ -911,7 +912,7 @@
   overflow: hidden;
   border: 1px solid var(--localize-line);
   border-radius: 8px;
-  background: rgba(24, 29, 33, .9);
+  background: color-mix(in srgb, var(--factory-surface) 90%, transparent);
 }
 
 .localize-list article,
@@ -946,7 +947,7 @@
 .localize-audit-list article header b {
   color: var(--localize-info);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
   white-space: nowrap;
@@ -958,7 +959,7 @@
   overflow: hidden;
   color: var(--localize-text);
   font-size: 12.5px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.45;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -968,7 +969,7 @@
 .localize-visual-list article header span,
 .localize-audit-list article header span {
   color: var(--localize-text-3);
-  font-size: 9.5px;
+  font-size: 11px;
   line-height: 1.4;
   white-space: nowrap;
 }
@@ -996,7 +997,7 @@
 .localize-audit-list small {
   display: block;
   color: var(--localize-text-3);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.6;
   text-wrap: pretty;
 }
@@ -1008,7 +1009,7 @@
 }
 
 .localize-footer-actions button {
-  border-color: rgba(141, 200, 220, .36);
+  border-color: rgba(216, 181, 109, .36);
   background: var(--localize-action);
   color: #151711;
   font-weight: 600;
@@ -1025,7 +1026,7 @@
   margin: 0;
   color: var(--localize-text);
   font-size: 12.5px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.45;
 }
 
@@ -1043,7 +1044,7 @@
 .localize-diff-list article > div > span {
   color: var(--localize-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   letter-spacing: .05em;
 }
 
@@ -1067,7 +1068,7 @@
   min-width: 0;
   border: 1px solid var(--localize-line);
   border-radius: 8px;
-  background: rgba(24, 29, 33, .9);
+  background: color-mix(in srgb, var(--factory-surface) 90%, transparent);
   padding: 15px;
 }
 
@@ -1075,7 +1076,7 @@
   margin: 0 0 11px;
   color: var(--localize-text);
   font-size: 12.5px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.4;
 }
 
@@ -1114,7 +1115,7 @@
   border-bottom: 1px solid var(--localize-line-soft);
   padding: 9px 0;
   color: var(--localize-text-2);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .localize-rows strong {
@@ -1126,7 +1127,7 @@
   margin-left: auto;
   color: var(--localize-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -1140,7 +1141,7 @@
   overflow: hidden;
   border: 1px solid var(--localize-line);
   border-radius: 8px;
-  background: rgba(24, 29, 33, .9);
+  background: color-mix(in srgb, var(--factory-surface) 90%, transparent);
 }
 
 .localize-subtitle-list > div {
@@ -1160,7 +1161,7 @@
 .localize-subtitle-list small {
   color: var(--localize-text-3);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1192,7 +1193,7 @@
   overflow: hidden;
   border: 1px solid var(--localize-line);
   border-radius: 8px;
-  background: rgba(24, 29, 33, .9);
+  background: color-mix(in srgb, var(--factory-surface) 90%, transparent);
 }
 
 .localize-audit-summary > div {
@@ -1217,7 +1218,7 @@
 
 .localize-audit-summary span {
   color: var(--localize-text-3);
-  font-size: 9.5px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -1232,7 +1233,7 @@
   background: rgba(213, 141, 115, .045);
   padding: 9px 11px;
   color: var(--localize-warning);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.55;
 }
 
@@ -1240,7 +1241,7 @@
   margin: 0;
   border: 0;
   border-radius: 0;
-  background: rgba(24, 29, 33, .72);
+  background: color-mix(in srgb, var(--factory-surface) 72%, transparent);
   padding: 42px 22px;
   color: var(--localize-text-3);
   font-size: 11.5px;
@@ -1262,7 +1263,7 @@
 
   .localize-branches button:hover {
     border-color: var(--localize-line);
-    background: rgba(29, 35, 40, .66);
+    background: color-mix(in srgb, var(--factory-raised) 66%, transparent);
     color: var(--localize-text-2);
   }
 
@@ -1278,7 +1279,7 @@
   .localize-footer-actions button:hover {
     border-color: rgba(212, 229, 170, .58);
     background: var(--localize-action-hover);
-    box-shadow: 0 7px 18px rgba(141, 200, 220, .08);
+    box-shadow: 0 7px 18px rgba(216, 181, 109, .08);
   }
 
   .localize-actions button:hover,
@@ -1355,7 +1356,7 @@
 
   .localize-sidebar-brand span {
     overflow: hidden;
-    font-size: 9px;
+    font-size: 11px;
     text-align: right;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1565,7 +1566,7 @@
   .localize-status {
     min-height: 28px;
     padding: 4px 8px;
-    font-size: 8.5px;
+    font-size: 11px;
   }
 
   .localize-sidebar {
@@ -1580,7 +1581,7 @@
 
   .localize-context-strip span,
   .localize-context-strip small {
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .localize-panel-head h1 {
@@ -1589,7 +1590,7 @@
 
   .localize-panel-head > div > span,
   .localize-panel-head > span {
-    font-size: 10.5px;
+    font-size: 11px;
   }
 
   .localize-list article,
@@ -1663,4 +1664,82 @@
   50% {
     opacity: 1;
   }
+}
+
+/* Figma type scale extended to localization workflows. */
+.localize-page :is(h1, h2, h3) {
+  font-family: var(--font-ui);
+}
+
+.localize-page h1 {
+  font-size: clamp(30px, 3.4vw, 38px);
+  font-weight: 600;
+  line-height: 1.24;
+}
+
+.localize-page h2 {
+  font-size: var(--type-section-title);
+  font-weight: 600;
+  line-height: var(--type-section-title-line);
+}
+
+.localize-page h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.localize-page p,
+.localize-page li,
+.localize-page label > span {
+  font-size: var(--type-body);
+  line-height: 1.7;
+}
+
+.localize-page :is(button, input, select, textarea) {
+  font-size: var(--type-body);
+  line-height: var(--type-body-line);
+}
+
+/* Extended neutral production-factory theme. */
+.localize-page {
+  --localize-bg: var(--factory-ground);
+  --localize-panel: var(--factory-surface);
+  --localize-raised: var(--factory-raised);
+  --localize-floating: #22231f;
+  --localize-line: var(--factory-line);
+  --localize-line-soft: rgba(243, 242, 237, .055);
+  --localize-line-strong: var(--factory-line-strong);
+  --localize-text: var(--factory-ink);
+  --localize-text-2: var(--factory-muted);
+  --localize-text-3: var(--factory-faint);
+  --localize-action: var(--factory-accent);
+  --localize-action-hover: #e5c98f;
+  --localize-info: var(--factory-accent);
+  --localize-warning: var(--factory-danger);
+  background: var(--factory-ground);
+}
+
+.localize-topbar,
+.localize-sidebar,
+.localize-inspector {
+  border-color: var(--factory-line);
+  background: var(--factory-rail);
+}
+
+.localize-create-card,
+.localize-panel,
+.localize-audit-card,
+.localize-diff-list {
+  border-color: var(--factory-line);
+  background: var(--factory-surface);
+  box-shadow: none;
+}
+
+.localize-page button:not(:disabled):focus-visible,
+.localize-page a:focus-visible,
+.localize-page input:focus-visible,
+.localize-page textarea:focus-visible,
+.localize-page select:focus-visible {
+  outline-color: color-mix(in srgb, var(--factory-accent) 72%, transparent);
 }

@@ -143,7 +143,7 @@ test("WBC5 工作台组件挂载 todoItems，并提供当前任务/阻塞/下一
 
 test("WBC6 空项目优先故事输入；有项目时状态区移到故事输入之前", () => {
   const page = fs.readFileSync("app/page.tsx", "utf8")
-  const nonEmpty = page.indexOf("{!firstRun && signalOverview}")
+  const nonEmpty = page.indexOf('<div className="wfx-detail-signal">')
   const idea = page.indexOf("<IdeaPanel")
   const empty = page.indexOf("{firstRun && signalOverview}")
 

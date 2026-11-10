@@ -89,7 +89,7 @@ test("教程顶栏不提供创作技能跳转，并沿用主页反相白主操�
   assert.ok(topnav.includes('href="/docs"'))
   assert.ok(topnav.includes('href="/"'))
   assert.ok(!topnav.includes('href="/skills"'))
-  assert.match(css, /--docs-primary:\s*#f2f2ee/i)
+  assert.match(css, /--docs-primary:\s*var\(--factory-primary\)/i)
   assert.match(css, /\.docs-top-cta\s*\{[^}]*background:\s*var\(--docs-primary\)/s)
   assert.match(css, /\.docs-hero-actions a:first-child\s*\{[^}]*background:\s*var\(--docs-primary\)/s)
   assert.match(css, /\.docs-end > a\s*\{[^}]*background:\s*var\(--docs-primary\)/s)

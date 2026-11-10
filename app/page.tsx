@@ -3949,7 +3949,7 @@ export default function Home() {
         "## 说明",
         "本地参考图像素只随 ZIP 交给用户，不经过平台服务器。",
         mode === "backup"
-          ? "完整备份可在成剧的“导入项目包”中恢复。"
+          ? "完整备份可在 VeyaTV 的“导入项目包”中恢复。"
           : "交付包用于审阅和下游执行；项目迁移请使用完整备份。",
       ].join("\n")
       const readmeBytes = enc.encode(readme)
@@ -4144,7 +4144,7 @@ export default function Home() {
 
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    downloadMarkdown(`成剧-大纲-${stamp}.md`, markdown())
+    downloadMarkdown(`VeyaTV-大纲-${stamp}.md`, markdown())
   }
 
   const handleReset = () => {
@@ -5024,6 +5024,7 @@ export default function Home() {
                 && asset.targetType === 'shot'
                 && (asset.mediaKind === 'video' || asset.mime.startsWith('video/')),
               ).length}
+              assets={productionAssets}
             />
           )}
 
@@ -5037,7 +5038,7 @@ export default function Home() {
               <div className="wfx-page-actions">
                 {view === 'shots' && shots.length > 0 && (
                   <button
-                    className="wfx-button"
+                    className="wfx-button is-secondary"
                     type="button"
                     onClick={() => openShotWorkspace('video')}
                   >
@@ -5160,7 +5161,11 @@ export default function Home() {
                   />
                 </div>
               </div>
-              {!firstRun && signalOverview}
+              {!firstRun && (
+                <div className="wfx-detail-signal">
+                  {signalOverview}
+                </div>
+              )}
 
               <IdeaPanel
               key={view === 'characters' ? 'characters' : view}

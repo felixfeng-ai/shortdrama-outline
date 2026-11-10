@@ -197,7 +197,7 @@ export default function WorkspaceOnboarding({
         <div className="wfx-onboarding-head-copy">
           <span className="wfx-onboarding-eyebrow">
             <i aria-hidden="true" />
-            AI SHORT DRAMA PRODUCTION
+            VEYA STUDIO · NEW PRODUCTION
           </span>
           <h1 aria-label="一句成戏，先看一场">
             <span className="is-gold">一句成戏</span>
@@ -208,6 +208,17 @@ export default function WorkspaceOnboarding({
             从 <span className="is-gold">故事</span> 到 <span className="is-blue">镜头</span>，
             人物、分镜与首帧自动完成，满意后再做完整短剧。
           </p>
+          <div className="wfx-onboarding-pipeline" aria-label="短剧生产链路">
+            <span>故事</span>
+            <i aria-hidden="true" />
+            <span>人物</span>
+            <i aria-hidden="true" />
+            <span>分镜</span>
+            <i aria-hidden="true" />
+            <span>视频</span>
+            <i aria-hidden="true" />
+            <span>成片</span>
+          </div>
         </div>
         <div className="wfx-onboarding-showcase" aria-label="从故事到成片的真实工作区预览">
           {SHOWCASE.map((item) => (

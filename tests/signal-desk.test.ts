@@ -38,8 +38,8 @@ const richTextSrc = fs.existsSync("components/AgentRichText.tsx")
 test("SDA1 Signal Desk 主题挂在根节点，不改业务组件 API", () => {
   assert.ok(layoutSrc.includes('className="signal-desk"'), "根节点缺少 signal-desk 类")
   assert.ok(pageSrc.includes("wfx-workspace"), "正式工作区没有切到确认稿主题")
-  assert.ok(workspaceCss.includes("--wfx-bg: #08090a"), "页面底色不是确认稿近黑")
-  assert.ok(workspaceCss.includes("--wfx-accent: #8dc8dc"), "运行态不是确认稿冷蓝")
+  assert.ok(workspaceCss.includes("--wfx-bg: #0d0e0e"), "页面底色不是中性近黑")
+  assert.ok(workspaceCss.includes("--wfx-accent: #d8b56d"), "运行态不是确认稿琥珀")
 })
 
 test("SDA2 桌面六步导航进入左侧轨道，窄屏仍可回到顶栏", () => {
@@ -66,7 +66,7 @@ test("SDA4 整体换肤不能删掉核心入口", () => {
 })
 
 test("SDA5 深色主题里的警告提示和半透明代码块必须压暗", () => {
-  assert.ok(css.includes("--c-accent-700: 213 141 115"), "警告文字不是舒适版低饱和橙")
+  assert.ok(css.includes("--c-accent-700: 217 139 112"), "警告文字不是舒适版低饱和橙")
   assert.ok(css.includes('[class*="bg-ink-50/"]'), "半透明 ink 背景没有深色覆盖")
 })
 
@@ -79,17 +79,17 @@ test("SDA6 窄屏顶栏步骤和 AI 抽屉必须沿用 Signal Desk 状态色", (
 })
 
 test("SDA7 舒适版必须拉开底色、正文和辅助色层级", () => {
-  assert.ok(workspaceCss.includes("--wfx-ink: #f0f2ef"), "正文不是确认稿主文字色")
-  assert.ok(workspaceCss.includes("--wfx-muted: #b0b5b5"), "辅助文字层级缺失")
-  assert.ok(workspaceCss.includes("--wfx-line: rgba(255, 255, 255, .075)"), "边界不是确认稿弱分隔")
-  assert.ok(workspaceCss.includes("--wfx-accent: #8dc8dc"), "运行态不是确认稿冷蓝")
+  assert.ok(workspaceCss.includes("--wfx-ink: #f3f2ed"), "正文不是确认稿纸白")
+  assert.ok(workspaceCss.includes("--wfx-muted: #b4b0a8"), "辅助文字层级缺失")
+  assert.ok(workspaceCss.includes("--wfx-line: rgba(243, 242, 237, .09)"), "边界不是中性分隔")
+  assert.ok(workspaceCss.includes("--wfx-accent: #d8b56d"), "运行态不是确认稿琥珀")
 })
 
 test("SDA8 桌面左轨和 AI 舱必须采用舒适版信息节奏", () => {
   assert.ok(workspaceCss.includes("width: 232px;"), "侧栏不是确认稿宽度")
   assert.ok(workspaceCss.includes("font-size: 13px;"), "侧栏菜单正文节奏不正确")
   assert.ok(workspaceSidebarSrc.includes('aria-label="当前项目步骤"'), "侧栏缺少当前项目分组")
-  assert.ok(workspaceHomeSrc.includes("wfx-current-preview"), "首页当前工作不是确认稿结构")
+  assert.ok(workspaceHomeSrc.includes("wfx-shot-dossier"), "首页当前镜头不是制作证据主视图")
   assert.ok(
     css.includes("width: clamp(360px, 30vw, 400px);"),
     "AI 舱仍过宽，挤压主工作区",

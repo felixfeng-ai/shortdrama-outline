@@ -17,7 +17,7 @@ test("公告使用内测状态信号、价值摘要和单一主操作", () => {
 })
 
 test("公告内部有克制的冷蓝氛围光和可关闭的运行脉冲", () => {
-  assert.match(shellCss, /\.wfx-content \.inline-release-bar::before\s*\{[^}]*radial-gradient/s)
+  assert.match(shellCss, /\.wfx-content \.inline-release-bar::before\s*\{[^}]*display:\s*none/s)
   assert.match(shellCss, /\.inline-release-orbit::after\s*\{[^}]*animation:/s)
   assert.match(shellCss, /@keyframes inline-release-pulse/)
   assert.match(shellCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.inline-release-orbit::after/)

@@ -17,7 +17,7 @@ test("VP1 顶栏头像使用独立 30px 容器，内部层填满且无横向偏�
   assert.match(shellCss, /\.wfx-topbar \.h-install \.wfx-user-initial\s*\{[^}]*place-items:\s*center;/s)
 })
 
-test("VP2 登录页切换冷蓝/反相白主题并明确短剧生产链", () => {
+test("VP2 登录页使用中性制作台主题并明确短剧生产链", () => {
   assert.match(login, /AI 短剧与漫剧生产平台/)
   assert.match(login, /回来接着写/)
   assert.match(login, /把下一场做成/)
@@ -27,13 +27,14 @@ test("VP2 登录页切换冷蓝/反相白主题并明确短剧生产链", () => 
   assert.match(login, /场次直接接分镜/)
   assert.match(login, /每次修改可回看/)
   assert.match(loginPage, /AI 短剧与漫剧生产平台/)
-  assert.match(shellCss, /\.auth-page\s*\{[^}]*--signal-acid:\s*#8dc8dc/s)
+  assert.match(shellCss, /\.auth-page\s*\{[^}]*--signal-acid:\s*var\(--factory-accent\)/s)
   assert.doesNotMatch(login, /把故事<span className="auth-title-accent">做对/)
 })
 
-test("VP3 旧绿色聚焦态已替换为冷蓝单层提示", () => {
+test("VP3 聚焦态使用单层克制琥珀提示", () => {
   assert.doesNotMatch(skillsCss, /rgba\(196,\s*217,\s*138/)
-  assert.match(skillsCss, /outline:\s*1px solid rgba\(141,\s*200,\s*220/)
+  assert.match(skillsCss, /outline:\s*1px solid color-mix\(in srgb,\s*var\(--factory-accent\)/)
+  assert.doesNotMatch(skillsCss, /rgba\(141,\s*200,\s*220/)
   assert.match(shellCss, /\.auth-field:focus-within/)
   assert.match(shellCss, /var\(--wfx-accent\)/)
 })
@@ -52,10 +53,10 @@ test("VP5 右侧执行计划改单列并取消宽版侧栏分隔", () => {
   assert.match(plan, /execution-plan-side/)
 })
 
-test("VP6 深色工作区的强调斜面改用冷蓝，不再从旧主题继承绿色", () => {
-  assert.match(shellCss, /--c-accent-50:\s*19\s+38\s+44;/)
-  assert.match(shellCss, /--c-accent-500:\s*141\s+200\s+220;/)
-  assert.match(shellCss, /--c-accent-600:\s*121\s+179\s+198;/)
+test("VP6 深色工作区的强调斜面改用克制琥珀，不再从旧主题继承绿色", () => {
+  assert.match(shellCss, /--c-accent-50:\s*42\s+35\s+24;/)
+  assert.match(shellCss, /--c-accent-500:\s*216\s+181\s+109;/)
+  assert.match(shellCss, /--c-accent-600:\s*191\s+154\s+89;/)
   assert.doesNotMatch(globalsCss, /#c4d98a|rgba\(196,\s*217,\s*138|rgba\(185,\s*243,\s*90/i)
   assert.doesNotMatch(globalsCss, /background:\s*#263321/i)
 })
@@ -72,7 +73,7 @@ test("VP7 创作主输入框聚焦时不显示额外边框线", () => {
   )
 })
 
-test("VP8 AI 运行状态使用石墨冷蓝，不再出现旧粉色流光", () => {
+test("VP8 AI 运行状态使用克制琥珀，不再出现旧粉色流光", () => {
   const statusBlock = globalsCss.match(/\.ai-status\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? ""
 
   assert.match(statusBlock, /var\(--signal-blue\)/)

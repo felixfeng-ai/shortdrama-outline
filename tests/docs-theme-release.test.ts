@@ -6,11 +6,11 @@ test("DOCS-THEME1 tutorial matches the workspace palette and documents release d
   const guide = fs.readFileSync("components/DocsGuide.tsx", "utf8")
   const css = fs.readFileSync("app/docs/docs.css", "utf8")
 
-  assert.match(css, /--docs-canvas:\s*#08090a/i)
-  assert.match(css, /--docs-surface:\s*#101214/i)
-  assert.match(css, /--docs-raised:\s*#15181a/i)
-  assert.match(css, /--docs-accent:\s*#8dc8dc/i)
-  assert.match(css, /--docs-primary:\s*#f2f2ee/i)
+  assert.match(css, /--docs-canvas:\s*var\(--factory-ground\)/i)
+  assert.match(css, /--docs-surface:\s*var\(--factory-surface\)/i)
+  assert.match(css, /--docs-raised:\s*var\(--factory-raised\)/i)
+  assert.match(css, /--docs-accent:\s*var\(--factory-accent\)/i)
+  assert.match(css, /--docs-primary:\s*var\(--factory-primary\)/i)
   assert.match(css, /background:\s*var\(--docs-canvas\)/i)
 
   assert.match(guide, /\['release-notes',\s*'平台公告与版本'\]/)

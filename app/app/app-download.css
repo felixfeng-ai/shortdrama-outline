@@ -1,13 +1,16 @@
-.app-download-page {
-  --download-ground: var(--signal-bg, #101418);
-  --download-panel: var(--signal-panel, #181d21);
+﻿.app-download-page {
+  --download-ground: var(--signal-bg, var(--factory-surface));
+  --download-panel: var(--signal-panel, var(--factory-surface));
   --download-text: var(--signal-text, #e8edef);
-  --download-muted: var(--signal-text-3, #8b969d);
-  --download-accent: var(--signal-acid, #8dc8dc);
+  --download-muted: var(--signal-text-3, var(--factory-faint));
+  --download-accent: var(--signal-acid, #d8b56d);
   --download-line: var(--signal-line, #303a41);
   min-height: 100dvh;
   background: var(--download-ground);
   color: var(--download-text);
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
+  line-height: var(--type-body-line);
 }
 
 .app-download-topbar {
@@ -50,13 +53,13 @@
 
 .app-download-brand b {
   font-size: 16px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .app-download-brand em {
   color: var(--download-muted);
   font-family: var(--font-mono), monospace;
-  font-size: 9px;
+  font-size: 11px;
   font-style: normal;
 }
 
@@ -89,7 +92,7 @@
   border-radius: 4px;
   color: var(--download-accent);
   font-family: var(--font-mono), monospace;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .app-download-hero {
@@ -106,7 +109,7 @@
   margin: 0 0 14px;
   color: var(--download-accent);
   font-family: var(--font-mono), monospace;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: .06em;
 }
 
@@ -115,7 +118,7 @@
   margin: 0;
   font-family: var(--font-latin), "PingFang SC", sans-serif;
   font-size: clamp(42px, 6.2vw, 78px);
-  font-weight: 520;
+  font-weight: 500;
   line-height: 1.08;
   text-wrap: balance;
 }
@@ -123,7 +126,7 @@
 .app-download-lede {
   max-width: 47em;
   margin: 24px 0 0;
-  color: var(--signal-text-2, #b6c0c5);
+  color: var(--signal-text-2, var(--factory-muted));
   font-size: 14px;
   line-height: 1.9;
   text-wrap: pretty;
@@ -136,7 +139,7 @@
   margin-top: 28px;
   color: var(--download-muted);
   font-family: var(--font-mono), monospace;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .app-download-hero-actions {
@@ -176,7 +179,7 @@
 .app-download-status p {
   margin: 7px 0 0;
   color: var(--download-muted);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.75;
 }
 
@@ -199,13 +202,13 @@
 .app-download-section-head > span {
   color: var(--download-accent);
   font-family: var(--font-mono), monospace;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .app-download-section-head h2 {
   margin: 0;
   font-size: clamp(24px, 3vw, 34px);
-  font-weight: 540;
+  font-weight: 500;
   line-height: 1.2;
 }
 
@@ -242,19 +245,19 @@
 .app-download-platform-head span {
   color: var(--download-text);
   font-family: var(--font-mono), monospace;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .app-download-platform-head em {
   color: var(--download-accent);
-  font-size: 9px;
+  font-size: 11px;
   font-style: normal;
 }
 
 .app-download-platform h3 {
   margin: 20px 0 8px;
   font-size: 18px;
-  font-weight: 580;
+  font-weight: 600;
 }
 
 .app-download-platform p {
@@ -274,7 +277,7 @@
   padding: 0 14px;
   border-radius: 5px;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .app-download-primary {
@@ -284,7 +287,7 @@
 
 .app-download-secondary {
   border: 1px solid var(--download-line);
-  color: var(--signal-text-2, #b6c0c5);
+  color: var(--signal-text-2, var(--factory-muted));
 }
 
 .app-download-primary span,
@@ -323,7 +326,7 @@
 .app-download-route li::before {
   color: var(--download-accent);
   font-family: var(--font-mono), monospace;
-  font-size: 8px;
+  font-size: 11px;
   content: counter(download-step, decimal-leading-zero);
 }
 
@@ -333,7 +336,7 @@
 
 .app-download-route li span {
   color: var(--download-muted);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.7;
 }
 
@@ -348,8 +351,8 @@
   min-width: 0;
   padding: 15px 17px 15px 32px;
   background: var(--download-panel);
-  color: var(--signal-text-2, #b6c0c5);
-  font-size: 10.5px;
+  color: var(--signal-text-2, var(--factory-muted));
+  font-size: 11px;
   line-height: 1.65;
 }
 
@@ -381,7 +384,7 @@
 .app-download-footer p {
   margin: 6px 0 0;
   color: var(--download-muted);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.7;
 }
 
@@ -464,7 +467,7 @@
   .app-download-badge {
     padding-right: 6px;
     padding-left: 6px;
-    font-size: 7px;
+    font-size: 11px;
   }
 
   .app-download-hero h1 {
@@ -484,4 +487,74 @@
   .app-download-footer a span {
     transition: none;
   }
+}
+
+/* Figma type scale extended to the public App download page. */
+.app-download-topbar nav a {
+  font-size: 13px;
+  line-height: var(--type-nav-line);
+}
+
+.app-download-hero h1 {
+  font-family: var(--font-ui);
+  font-size: clamp(40px, 5.8vw, 64px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.app-download-lede {
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.app-download-status p,
+.app-download-meta,
+.app-download-kicker {
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-line);
+}
+
+.app-download-primary,
+.app-download-secondary,
+.app-download-footer a {
+  font-size: var(--type-body);
+  font-weight: 500;
+  line-height: var(--type-body-line);
+}
+
+/* Extended neutral production-factory theme. */
+.app-download-page {
+  --download-ground: var(--factory-ground);
+  --download-panel: var(--factory-surface);
+  --download-text: var(--factory-ink);
+  --download-muted: var(--factory-muted);
+  --download-accent: var(--factory-accent);
+  --download-line: var(--factory-line);
+  background: var(--factory-ground);
+}
+
+.app-download-topbar {
+  border-bottom-color: var(--factory-line);
+  background: color-mix(in srgb, var(--factory-rail) 96%, transparent);
+}
+
+.app-download-install-card,
+.app-download-platform-card,
+.app-download-step,
+.app-download-note {
+  border-color: var(--factory-line);
+  background: var(--factory-surface);
+  box-shadow: none;
+}
+
+.app-download-primary {
+  border-color: var(--factory-primary);
+  background: var(--factory-primary);
+  color: var(--factory-primary-ink);
+}
+
+.app-download-secondary {
+  border-color: var(--factory-line-strong);
+  background: transparent;
+  color: var(--factory-ink);
 }
