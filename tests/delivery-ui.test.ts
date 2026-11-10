@@ -2,6 +2,23 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
 
+test("DELIVERY-UI4 global delivery center groups projects and exposes filters", () => {
+  const overview = fs.readFileSync("components/DeliveryOverview.tsx", "utf8")
+  const page = fs.readFileSync("app/delivery/page.tsx", "utf8")
+  const sidebar = fs.readFileSync("components/WorkspaceSidebar.tsx", "utf8")
+  const pageSource = fs.readFileSync("app/page.tsx", "utf8")
+  const css = fs.readFileSync("app/globals.css", "utf8")
+
+  assert.match(page, /DeliveryOverview/)
+  assert.match(overview, /全部交付项目/)
+  assert.match(overview, /statusFilter/)
+  assert.match(overview, /进入项目交付/)
+  assert.match(overview, /\/delivery\/\$\{encodeURIComponent\(project\.project\.id\)\}/)
+  assert.match(sidebar, /交付中心/)
+  assert.match(pageSource, /window\.open\('\/delivery'/)
+  assert.match(css, /\.delivery-overview-list/)
+})
+
 test("DELIVERY-UI1 交付中心包含成片包、发布准备和真实发布记录", () => {
   const component = fs.readFileSync("components/DeliveryCenter.tsx", "utf8")
   const page = fs.readFileSync("app/delivery/[projectId]/page.tsx", "utf8")

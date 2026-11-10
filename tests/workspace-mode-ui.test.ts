@@ -9,6 +9,11 @@ const workspaceCss = fs.readFileSync("app/workspace-shell.css", "utf8")
 const skills = fs.readFileSync("app/skills/skills.css", "utf8")
 const nextConfig = fs.readFileSync("next.config.mjs", "utf8")
 
+test("WM-UI6 embedded creation can shrink inside the mobile workspace gutter", () => {
+  assert.match(skills, /\.skill-page\s*\{\s*min-width:\s*0;/)
+  assert.match(skills, /\.skill-page\.skill-page-embedded\s*\{[^}]*min-width:\s*0;/s)
+})
+
 test("WM-UI1 正式工作区保留总览、创作、画布三模式切换", () => {
   assert.match(page, /<WorkspaceModeTabs mode=\{workspaceMode\} onChange=\{openWorkspaceMode\}/)
   assert.match(page, /<CanvasGraphWorkspace/)

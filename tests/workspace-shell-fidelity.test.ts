@@ -150,8 +150,25 @@ test("WFS10 Figma typography keeps CJK-led hierarchy and readable production rol
   assert.match(css, /\.wfx-workspace \.wfx-dossier-head h1\s*\{[^}]*font-size:\s*28px;[^}]*line-height:\s*40px;/s)
 })
 
-test("WFS11 recent assets stay secondary and use compact thumbnail cards", () => {
-  assert.match(css, /\.wfx-recent-dossier-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(180px,\s*240px\)\)/s)
-  assert.match(css, /\.wfx-recent-dossier-grid > button\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*10;/s)
-  assert.match(css, /\.wfx-recent-dossier-grid > button:first-child\s*\{[^}]*grid-row:\s*auto;/s)
+test("WFS11 recent assets keep the asymmetric mosaic at a compact height", () => {
+  assert.match(css, /\.wfx-recent-dossier-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.2fr\)\s*minmax\(0,\s*\.8fr\);[^}]*grid-template-rows:\s*repeat\(2,\s*132px\);/s)
+  assert.match(css, /\.wfx-recent-dossier-grid > button:first-child\s*\{[^}]*grid-row:\s*span 2;/s)
+  assert.doesNotMatch(css, /\.wfx-recent-dossier-grid > button\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*10;/s)
+})
+
+test("WFS12 dossier rail keeps readable inset and mobile page gutters", () => {
+  assert.match(css, /\.wfx-dossier-rail > section\s*\{[^}]*padding:\s*18px 16px;/s)
+  assert.match(css, /\.wfx-dossier-rail \.wfx-dossier-inline-link\s*\{[^}]*min-height:\s*36px;/s)
+  assert.match(css, /@media \(max-width:\s*680px\)\s*\{[\s\S]*?\.wfx-dossier-rail \.wfx-dossier-inline-link\s*\{[^}]*min-height:\s*44px;/s)
+  assert.match(css, /@media \(max-width:\s*680px\)\s*\{[\s\S]*?\.wfx-content\s*\{[^}]*width:\s*calc\(100%\s*-\s*32px\);/s)
+})
+
+test("WFS13 workspace surface bands keep their labels off the edges", () => {
+  assert.match(css, /\.wfx-recent-dossier\s*\{[^}]*padding:\s*6px 16px 16px;/s)
+  assert.match(css, /\.wfx-production-dossier > summary\s*\{[^}]*padding:\s*0 16px;/s)
+})
+
+test("WFS14 dossier agent action keeps label inset on desktop and mobile", () => {
+  assert.match(css, /\.wfx-dossier-agent-link\s*\{[^}]*min-height:\s*34px;[^}]*padding:\s*0 12px;/s)
+  assert.match(css, /\.wfx-dossier-agent-link\s*\{[^}]*position:\s*absolute;[^}]*padding:\s*0 10px;/s)
 })

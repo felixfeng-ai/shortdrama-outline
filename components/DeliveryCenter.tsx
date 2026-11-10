@@ -193,9 +193,12 @@ export default function DeliveryCenter({ projectId }: { projectId: string }) {
           <VeyaWordmark />
           <em>交付中心</em>
         </a>
-        <a className="delivery-back" href={`/?project=${encodeURIComponent(projectId)}&step=shots`}>
-          返回项目
-        </a>
+        <div className="delivery-topbar-actions">
+          <a className="delivery-back" href="/delivery">全部交付</a>
+          <a className="delivery-back" href={`/?project=${encodeURIComponent(projectId)}&step=shots`}>
+            返回项目
+          </a>
+        </div>
       </header>
 
       <section className="delivery-hero">

@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { postJson } from '@/lib/api'
 import SmoothCollapse from './SmoothCollapse'
+import IdeaOpeningAssistant from './IdeaOpeningAssistant'
 import {
   GENRES,
   MAX_IDEA_LENGTH,
   MAX_KEYWORD_LENGTH,
   MIN_IDEA_LENGTH,
+  readGenre,
   type Genre,
   type IdeaCandidate,
 } from '@/lib/types'
@@ -77,10 +79,15 @@ export default function IdeaPanel({
   /** AI 推荐的题材 id：由「联想想法」那一次调用顺带产出，角标只认它 */
   const [recommendedGenres, setRecommendedGenres] = useState<string[]>([])
   const [expanded, setExpanded] = useState(!compact)
+  const [openingOpen, setOpeningOpen] = useState(firstRun)
 
   useEffect(() => {
     if (compact) setExpanded(false)
   }, [compact])
+
+  useEffect(() => {
+    if (firstRun) setOpeningOpen(true)
+  }, [firstRun])
 
   const runBrainstorm = async () => {
     const input = keywords.trim()
@@ -154,6 +161,14 @@ export default function IdeaPanel({
           <span className="flex items-center gap-2">
             <button
               type="button"
+              className={`story-tools-toggle ${openingOpen ? 'is-active' : ''}`}
+              aria-expanded={openingOpen}
+              onClick={() => setOpeningOpen((value) => !value)}
+            >
+              {openingOpen ? '收起开题' : '不知道怎么开始'}
+            </button>
+            <button
+              type="button"
               className="story-tools-toggle"
               aria-expanded={toolsOpen}
               onClick={() => setToolsOpen((value) => !value)}
@@ -171,6 +186,16 @@ export default function IdeaPanel({
             )}
           </span>
         </div>
+        {openingOpen && (
+          <IdeaOpeningAssistant
+            genre={genre}
+            onApply={(seed) => {
+              onIdeaChange(seed.logline)
+              onGenreChange(readGenre(seed.genreId))
+              setOpeningOpen(false)
+            }}
+          />
+        )}
         <label htmlFor="idea" className="sr-only">一句话故事想法</label>
         <div className="relative">
           <textarea
@@ -224,7 +249,7 @@ export default function IdeaPanel({
         )}
 
         {/* 主操作与清空并排：两者作用于同一件事，不该一上一下各占一行 */}
-        {allowGenerate && (
+        {allowGenerate && !openingOpen && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" onClick={onGenerate} disabled={!canGenerate} className="bmain">
             {/* 按钮说的必须是它真做的事：这里调的是生成核心人物，不是大纲 */}

@@ -10,18 +10,20 @@ import {
   fetchQuota,
   listProjects,
   listSnapshots,
+  saveSnapshot,
   type ProjectContextDto,
   type ProjectDto,
   type QuotaDto,
 } from '@/lib/assets/api'
 import type { ProjectMaterial } from '@/lib/assets/materials'
+import type { CreativeSeed } from '@/lib/inspiration'
 import {
   canvasHref,
   readStepQuery,
   skillsHref,
   workspaceHref,
 } from '@/lib/app-nav'
-import { STEPS, type StepKey } from '@/lib/types'
+import { STEPS, readGenre, type StepKey } from '@/lib/types'
 import {
   SKILL_CATALOG,
   filterSkillCatalog,
@@ -45,6 +47,7 @@ import SkillAgentDrawer from './SkillAgentDrawer'
 import SkillExecutionPlan from './SkillExecutionPlan'
 import PersonalSkillPanel from './PersonalSkillPanel'
 import VeyaWordmark from './VeyaWordmark'
+import IdeaOpeningAssistant, { type CreativeLaunchPath } from './IdeaOpeningAssistant'
 
 interface SeedPrompt {
   id: number
@@ -136,6 +139,9 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
   const [creatingProject, setCreatingProject] = useState(false)
   const [materialNotice, setMaterialNotice] = useState<string | null>(null)
   const [preflightOpen, setPreflightOpen] = useState(false)
+  const [openingOpen, setOpeningOpen] = useState(false)
+  const [seedLaunching, setSeedLaunching] = useState<CreativeLaunchPath | null>(null)
+  const [seedLaunchError, setSeedLaunchError] = useState('')
   const materialInputRef = useRef<HTMLInputElement | null>(null)
   const prompt = drafts[mode]
 
@@ -301,6 +307,8 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
     setMode(next)
     setSelectedId(null)
     setPreflightOpen(false)
+    setOpeningOpen(false)
+    setSeedLaunchError('')
     const url = new URL(window.location.href)
     if (next === 'idea') url.searchParams.delete('mode')
     else url.searchParams.set('mode', next)
@@ -319,6 +327,70 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
     if (!clean) return
     setSeed({ id: Date.now(), text: clean, skill })
     setAgentOpen(true)
+  }
+
+  function projectHasContent(): boolean {
+    return Boolean(
+      projectState.hasIdea
+      || projectState.materialCount
+      || projectState.characters
+      || projectState.acts
+      || projectState.episodes
+      || projectState.visuals
+      || projectState.scenes
+      || projectState.shots
+    )
+  }
+
+  async function applyCreativeSeed(seed: CreativeSeed, path: CreativeLaunchPath) {
+    if (seedLaunching) return
+    setSeedLaunching(path)
+    setSeedLaunchError('')
+    try {
+      let target = project
+      if (!target || projectHasContent()) {
+        const created = await createProject(seed.title || seed.logline.slice(0, 20))
+        target = created.project
+        setProjects((current) => [target!, ...current.filter((item) => item.id !== target!.id)])
+        setRequestedProjectId(target.id)
+      }
+
+      await saveSnapshot(target.id, 'idea', {
+        idea: seed.logline,
+        genre: seed.genreId,
+        source: 'inspiration-assistant',
+        sourceSignalId: seed.sourceSignalId,
+      })
+      setProjectState((current) => ({ ...current, hasIdea: true }))
+      setResolvedProjectId(target.id)
+      setMode('idea')
+      setDrafts((current) => ({ ...current, idea: seed.logline }))
+      const url = new URL(window.location.href)
+      url.searchParams.delete('mode')
+      window.history.replaceState(null, '', url)
+      setOpeningOpen(false)
+
+      if (path === 'agent') {
+        setSeed({
+          id: Date.now(),
+          text: [
+            seed.logline,
+            `推荐题材：${readGenre(seed.genreId).label}`,
+            `3 秒钩子：${seed.hook3s}`,
+            `核心冲突：${seed.conflict}`,
+            `差异点：${seed.differentiation}`,
+          ].join('\n'),
+          skill: selectedSkill,
+        })
+        setAgentOpen(true)
+      } else {
+        window.location.href = workspaceHref(target.id, 'characters')
+      }
+    } catch (error) {
+      setSeedLaunchError(error instanceof Error ? error.message : '创意方向写入失败，请重试')
+    } finally {
+      setSeedLaunching(null)
+    }
   }
 
   async function saveTextMaterial(name: string, content: string, mime = 'text/plain', bytes?: number) {
@@ -520,6 +592,36 @@ export default function SkillCatalog({ embedded = false }: SkillCatalogProps) {
                 </button>
               ))}
             </div>
+            {mode === 'idea' && (
+              <>
+                <div className={`intake-opening-entry ${openingOpen ? 'is-open' : ''}`}>
+                  <div>
+                    <span>不知道从哪开始？</span>
+                    <small>选三个条件，生成三个可拍方向。</small>
+                  </div>
+                  <button
+                    type="button"
+                    aria-expanded={openingOpen}
+                    onClick={() => {
+                      setOpeningOpen((open) => !open)
+                      setSeedLaunchError('')
+                    }}
+                  >
+                    {openingOpen ? '收起开题' : '帮我开题'}
+                  </button>
+                </div>
+                {openingOpen && (
+                  <IdeaOpeningAssistant
+                    genre={readGenre('none')}
+                    allowLaunchChoice
+                    onApply={(seed, path) => { void applyCreativeSeed(seed, path) }}
+                  />
+                )}
+                {seedLaunchError && (
+                  <p className="intake-opening-error" role="alert">{seedLaunchError}</p>
+                )}
+              </>
+            )}
             <label className="sr-only" htmlFor="skill-prompt">输入你的创作灵感或任务</label>
             <textarea
               id="skill-prompt"

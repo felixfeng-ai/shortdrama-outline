@@ -22,7 +22,7 @@
     .skill-page * { box-sizing: border-box; }
     .skill-page { background: var(--bg); }
     .skill-page {
-      min-width: 320px;
+      min-width: 0;
       min-height: 100dvh;
       margin: 0;
       background: var(--bg);
@@ -152,6 +152,7 @@
       padding: 46px 0 150px;
     }
     .skill-page.skill-page-embedded {
+      min-width: 0;
       min-height: 0;
       background: transparent;
     }
@@ -230,6 +231,64 @@
       color: var(--text);
     }
     .skill-page .intake-mode:active { transform: scale(.98); }
+    .skill-page .intake-opening-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 8px 12px 0;
+      padding-top: 9px;
+      border-top: 1px solid var(--line);
+    }
+    .skill-page .intake-opening-entry > div {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+    .skill-page .intake-opening-entry span {
+      color: var(--text);
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    .skill-page .intake-opening-entry small {
+      color: var(--text-3);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .skill-page .intake-opening-entry > button {
+      min-height: 32px;
+      flex: 0 0 auto;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--raised);
+      color: var(--text-2);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .skill-page .intake-opening-entry.is-open > button {
+      border-color: var(--acid);
+      color: var(--acid);
+    }
+    .skill-page .composer > .idea-opening {
+      margin: 10px 12px 0;
+    }
+    .skill-page .intake-opening-error {
+      margin: 7px 12px 0;
+      color: var(--warning);
+      font-size: 11px;
+    }
+    @media (max-width: 680px) {
+      .skill-page .intake-opening-entry {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .skill-page .intake-opening-entry > button {
+        width: 100%;
+        min-height: 44px;
+      }
+    }
     .skill-page .composer textarea {
       display: block;
       width: 100%;

@@ -499,7 +499,7 @@
 .wfx-recent-dossier {
   display: grid;
   gap: 12px;
-  padding-top: 6px;
+  padding: 6px 16px 16px;
 }
 
 .wfx-recent-dossier > header {
@@ -518,8 +518,8 @@
 
 .wfx-recent-dossier-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 240px));
-  justify-content: start;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
+  grid-template-rows: repeat(2, 132px);
   gap: 10px;
 }
 
@@ -528,7 +528,6 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  aspect-ratio: 16 / 10;
   overflow: hidden;
   padding: 0;
   border: 1px solid var(--wfx-line);
@@ -541,7 +540,7 @@
 
 .wfx-recent-dossier-grid > button:first-child {
   min-height: 0;
-  grid-row: auto;
+  grid-row: span 2;
 }
 
 .wfx-recent-dossier-grid img {
@@ -611,7 +610,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 0 2px;
+  padding: 0 16px;
   color: var(--wfx-muted);
   list-style: none;
   cursor: pointer;
@@ -865,12 +864,13 @@
   }
 
   .wfx-recent-dossier-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
+    grid-template-rows: repeat(2, 92px);
   }
 
   .wfx-recent-dossier-grid > button:first-child {
     min-height: 0;
-    grid-row: auto;
+    grid-row: span 2;
   }
 
   .wfx-recent-dossier-grid > button {
@@ -4834,7 +4834,7 @@
     height: 36px;
   }
   .wfx-content {
-    width: calc(100% - 24px);
+    width: calc(100% - 32px);
   }
   .wfx-content .inline-release-bar {
     min-height: 48px;
@@ -6929,7 +6929,7 @@
 
 @media (max-width: 680px) {
   .wfx-content {
-    width: calc(100% - 24px);
+    width: calc(100% - 32px);
     padding-top: 8px;
   }
 
@@ -7232,7 +7232,7 @@
 
 .wfx-dossier-agent-link {
   min-height: 34px;
-  padding: 0;
+  padding: 0 12px;
   border-color: transparent;
   background: transparent;
   color: rgba(255, 255, 255, .52);
@@ -7378,7 +7378,7 @@
 
 .wfx-dossier-rail > section {
   gap: 10px;
-  padding: 18px 0;
+  padding: 18px 16px;
 }
 
 .wfx-dossier-rail > section + section {
@@ -7419,6 +7419,19 @@
 
 .wfx-dossier-methods span {
   font-size: 12px;
+}
+
+.wfx-dossier-rail .wfx-dossier-inline-link {
+  width: fit-content;
+  min-width: 84px;
+  min-height: 36px;
+  padding: 0 8px 0 0;
+}
+
+@media (max-width: 680px) {
+  .wfx-dossier-rail .wfx-dossier-inline-link {
+    min-height: 44px;
+  }
 }
 
 .signal-desk .h-agent-fab {
@@ -8261,7 +8274,7 @@
     top: 0;
     right: 0;
     min-height: 24px;
-    padding: 0;
+    padding: 0 10px;
     font-size: 12px;
   }
 

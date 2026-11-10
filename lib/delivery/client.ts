@@ -1,4 +1,5 @@
 import { patchJson, postJson } from "../api.ts"
+import type { DeliveryOverview } from "./overview.ts"
 
 export interface DeliveryItemClient {
   id: string
@@ -73,6 +74,13 @@ export async function fetchDeliveryPackages(projectId: string): Promise<Delivery
     `/api/video/delivery-packages?${query.toString()}`,
   )
   return data.packages
+}
+
+export async function fetchDeliveryOverview(): Promise<DeliveryOverview> {
+  const data = await getJson<{ overview: DeliveryOverview }>(
+    "/api/video/delivery-overview",
+  )
+  return data.overview
 }
 
 export async function createDeliveryPackage(input: {

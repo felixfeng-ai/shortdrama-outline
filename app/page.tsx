@@ -4897,8 +4897,7 @@ export default function Home() {
         onOpenArtifacts={openArtifactCenter}
         onOpenLedger={openWorkspaceLedger}
         onOpenDelivery={() => {
-          if (!projectId) return
-          window.open(`/delivery/${encodeURIComponent(projectId)}`, '_blank', 'noopener,noreferrer')
+          window.open('/delivery', '_blank', 'noopener,noreferrer')
         }}
       />
 
