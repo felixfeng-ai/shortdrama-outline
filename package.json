@@ -10,6 +10,7 @@
     "restore:data": "node scripts/restore-data.mjs",
     "app:release": "node scripts/publish-mobile-release.mjs",
     "test": "node tests/run.mjs",
+    "test:e2e:output": "node scripts/verify-output-closure.mjs",
     "check:prod": "node scripts/check-production-readiness.mjs",
     "dev": "next dev",
     "build": "next build",

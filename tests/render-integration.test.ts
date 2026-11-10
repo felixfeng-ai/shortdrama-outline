@@ -4,15 +4,24 @@ import fs from "node:fs"
 import path from "node:path"
 import { createHash } from "node:crypto"
 
+import { readStoreZip } from "../lib/archive/zip.ts"
 import { openDb } from "../lib/assets/db.ts"
 import { createProject, createSnapshot } from "../lib/assets/repo.ts"
 import { saveBgmTrack } from "../lib/audio/bgm-repo.ts"
+import {
+  buildDeliveryPackage,
+} from "../lib/delivery/service.ts"
+import {
+  createDeliveryPackage,
+  getDeliveryPackage,
+} from "../lib/delivery/repo.ts"
 import {
   completeGenerationTask,
   createGenerationTask,
   saveGeneratedAsset,
   selectGeneratedAsset,
 } from "../lib/generation/repo.ts"
+import { resolveGeneratedStoragePath } from "../lib/generation/files.ts"
 import {
   freezeTimelineVersion,
   initializeEpisodeTimeline,
@@ -70,7 +79,7 @@ async function makeAudio(file: string, frequency: number, durationSeconds: numbe
   ])
 }
 
-test("P1-V5.15 两段视频、两句对白与 BGM 完成真实 FFmpeg 成片并产出三类文件", { timeout: 45_000 }, async () => {
+test("P1-V5.15 两段视频、两句对白与 BGM 完成真实 FFmpeg 成片、交付包和 ZIP", { timeout: 60_000 }, async () => {
   const db = openDb(":memory:")
   const project = createProject(db, "真实渲染", "owner-render-integration")
   createSnapshot(db, {
@@ -211,6 +220,7 @@ test("P1-V5.15 两段视频、两句对白与 BGM 完成真实 FFmpeg 成片并�
     projectId: project.id,
     episode: 1,
     timelineVersionId: version.id,
+    qualityProfile: "delivery",
   })
   await drainVideoRenderQueue(db)
 
@@ -233,4 +243,23 @@ test("P1-V5.15 两段视频、两句对白与 BGM 完成真实 FFmpeg 成片并�
   const probe = await probeMedia(outputPath)
   assert.ok((probe.durationMs ?? 0) >= 4_800)
   assert.ok(rendered!.createdAt >= createdAt)
+
+  const delivery = createDeliveryPackage(db, {
+    projectId: project.id,
+    title: "第一集交付包",
+    scope: "episode",
+    platform: "douyin",
+    subtitleMode: "both",
+    items: [{ episode: 1, renderId: queued.id }],
+  })
+  await buildDeliveryPackage(db, delivery.id)
+  const built = getDeliveryPackage(db, project.id, delivery.id)
+  assert.equal(built?.status, "ready", built?.error ?? undefined)
+  assert.ok(built?.packageStorageKey)
+  const zipBytes = fs.readFileSync(resolveGeneratedStoragePath(built.packageStorageKey))
+  const entries = await readStoreZip(new Blob([zipBytes]))
+  assert.ok(entries.has("manifest.json"))
+  assert.ok(entries.has("S01E01/S01E01-publish.mp4"))
+  assert.ok(entries.has("S01E01/S01E01-cover.jpg"))
+  assert.ok(entries.has("S01E01/metadata.json"))
 })

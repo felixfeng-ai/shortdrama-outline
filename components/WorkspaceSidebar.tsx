@@ -326,6 +326,8 @@ export default function WorkspaceSidebar({
             </div>
           </nav>
 
+          {projectId ? (
+          <>
           <nav aria-label="当前项目步骤">
             <div className="wfx-nav-group">
               <span className="wfx-nav-label">{projectTitle}</span>
@@ -370,6 +372,8 @@ export default function WorkspaceSidebar({
               </button>
             </div>
           </nav>
+          </>
+          ) : null}
         </div>
 
         <div className="wfx-side-user">

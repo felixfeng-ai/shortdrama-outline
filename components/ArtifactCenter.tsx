@@ -3,14 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import type { AgentCard } from "@/lib/agent/tools"
+import { fetchDeliveryPackages, type DeliveryPackageClient } from "@/lib/delivery/client"
 import {
   ARTIFACT_KIND_META,
   describeAgentCard,
   diffArtifactPayloads,
   summarizeArtifactSnapshots,
 } from "@/lib/artifact-center"
+import { buildOutputInventory } from "@/lib/output-inventory"
 import type { SnapshotDto } from "@/lib/assets/api"
 import type { ArtifactKind } from "@/lib/assets/types"
+import { fetchVideoRenders } from "@/lib/video/render-client"
+import type { VideoRenderDto } from "@/lib/video/render-types"
 import SmoothCollapse from "./SmoothCollapse"
 
 interface Props {
@@ -25,7 +29,7 @@ interface Props {
   onOpenAgent: () => void
 }
 
-type CenterTab = "versions" | "queue"
+type CenterTab = "outputs" | "versions" | "queue"
 
 function formatTimestamp(timestamp: number | null): string {
   if (!timestamp) return "尚无版本"
@@ -55,9 +59,13 @@ export default function ArtifactCenter({
   onRefresh,
   onOpenAgent,
 }: Props) {
-  const [tab, setTab] = useState<CenterTab>("versions")
+  const [tab, setTab] = useState<CenterTab>("outputs")
   const [activeKind, setActiveKind] = useState<ArtifactKind>("idea")
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null)
+  const [renders, setRenders] = useState<VideoRenderDto[]>([])
+  const [packages, setPackages] = useState<DeliveryPackageClient[]>([])
+  const [outputsLoading, setOutputsLoading] = useState(false)
+  const [outputsError, setOutputsError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLElement | null>(null)
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
@@ -77,6 +85,57 @@ export default function ArtifactCenter({
     () => diffArtifactPayloads(previous?.payload, selected?.payload),
     [previous?.payload, selected?.payload],
   )
+  const creationSnapshots = useMemo(
+    () => ARTIFACT_KIND_META.map((meta) => {
+      const itemSummary = summarizeArtifactSnapshots(snapshots[meta.kind] ?? [])
+      return {
+        kind: meta.kind,
+        version: itemSummary.version,
+        itemCount: itemSummary.itemCount,
+      }
+    }),
+    [snapshots],
+  )
+  const outputInventory = useMemo(
+    () => buildOutputInventory({
+      projectId: projectId ?? "",
+      renders,
+      packages,
+      snapshots: creationSnapshots,
+    }),
+    [creationSnapshots, packages, projectId, renders],
+  )
+
+  useEffect(() => {
+    if (!open || !projectId) {
+      setRenders([])
+      setPackages([])
+      setOutputsError(null)
+      return
+    }
+    let active = true
+    setOutputsLoading(true)
+    setOutputsError(null)
+    void Promise.all([
+      fetchVideoRenders(projectId),
+      fetchDeliveryPackages(projectId),
+    ])
+      .then(([nextRenders, nextPackages]) => {
+        if (!active) return
+        setRenders(nextRenders)
+        setPackages(nextPackages)
+      })
+      .catch((cause) => {
+        if (!active) return
+        setOutputsError(cause instanceof Error ? cause.message : "成品记录读取失败")
+      })
+      .finally(() => {
+        if (active) setOutputsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [open, projectId])
 
   useEffect(() => {
     if (summary.latest && selectedSnapshotId !== null
@@ -144,7 +203,7 @@ export default function ArtifactCenter({
           <div>
             <span>PROJECT ARTIFACTS</span>
             <h2 id="artifact-center-title">产物中心</h2>
-            <p>查看项目真实版本，或处理 Agent 尚未确认的提案。</p>
+            <p>先看成片和交付物，再回到创作版本或处理待确认提案。</p>
           </div>
           <div className="artifact-center-head-actions">
             {onRefresh && (
@@ -175,11 +234,20 @@ export default function ArtifactCenter({
           <button
             type="button"
             role="tab"
+            aria-selected={tab === "outputs"}
+            className="artifact-center-tab"
+            onClick={() => setTab("outputs")}
+          >
+            成品
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={tab === "versions"}
             className="artifact-center-tab"
             onClick={() => setTab("versions")}
           >
-            产物版本
+            创作产物
           </button>
           <button
             type="button"
@@ -188,7 +256,7 @@ export default function ArtifactCenter({
             className="artifact-center-tab"
             onClick={() => setTab("queue")}
           >
-            确认队列
+            <span>确认队列</span>
             {pendingCards.length > 0 && <b>{pendingCards.length}</b>}
           </button>
         </div>
@@ -198,6 +266,13 @@ export default function ArtifactCenter({
             <strong>还没有项目产物</strong>
             <p>先在工作台生成并保存一个项目，版本会在这里按类型汇总。</p>
           </div>
+        ) : tab === "outputs" ? (
+          <OutputLibrary
+            inventory={outputInventory}
+            loading={outputsLoading}
+            error={outputsError}
+            onOpenVersions={() => setTab("versions")}
+          />
         ) : tab === "versions" ? (
           <div className="artifact-center-grid">
             <nav className="artifact-kind-list" aria-label="产物类型">
@@ -361,6 +436,179 @@ export default function ArtifactCenter({
           </div>
         )}
       </section>
+    </div>
+  )
+}
+
+function renderStatus(render: VideoRenderDto): string {
+  if (render.status === "succeeded") return "可播放"
+  if (render.status === "running") return `渲染中 ${render.progress}%`
+  if (render.status === "queued") return "排队中"
+  return "渲染失败"
+}
+
+function renderQuality(render: VideoRenderDto): string {
+  return render.qualityProfile === "delivery" ? "正式交付版" : "快速预览版"
+}
+
+function outputDate(timestamp: number | null): string {
+  if (!timestamp) return "时间未知"
+  return new Date(timestamp).toLocaleString("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function OutputLibrary({
+  inventory,
+  loading,
+  error,
+  onOpenVersions,
+}: {
+  inventory: ReturnType<typeof buildOutputInventory>
+  loading: boolean
+  error: string | null
+  onOpenVersions: () => void
+}) {
+  const latest = inventory.latestPlayable
+  const latestPackage = inventory.latestPackage
+  return (
+    <div className="artifact-output-view">
+      <header className="artifact-output-head">
+        <div>
+          <span>FINAL OUTPUT</span>
+          <h3>{latest ? "最近可播放成片" : "还没有可播放成片"}</h3>
+          <p>{inventory.nextAction.detail}</p>
+        </div>
+        <div className="artifact-output-next">
+          <span>下一步</span>
+          <a href={inventory.nextAction.href}>
+            {latest
+              ? inventory.nextAction.label
+              : inventory.activeRender
+                ? "查看成片进度"
+                : "去生成成片"}
+          </a>
+        </div>
+      </header>
+
+      {loading && <p className="artifact-output-loading">正在读取成片和交付记录…</p>}
+      {error && <p className="artifact-center-error" role="alert">{error}</p>}
+
+      <div className="artifact-output-body">
+        {latest?.videoUrl ? (
+          <section className="artifact-output-player" aria-label="最近可播放成片">
+            <video controls playsInline preload="metadata" src={latest.videoUrl} />
+            <div className="artifact-output-player-meta">
+              <strong>第 {latest.episode} 集 · {renderQuality(latest)}</strong>
+              <span>版本 v{latest.timelineRevision} · {renderStatus(latest)} · {latest.durationMs ? `${(latest.durationMs / 1000).toFixed(1)}s` : "时长未知"}</span>
+            </div>
+            <div className="artifact-output-player-actions">
+              <a href={latest.videoUrl} download>下载 MP4</a>
+              {latest.subtitleUrl && <a href={latest.subtitleUrl} download>下载 SRT</a>}
+              <a href={inventory.nextAction.href}>{inventory.nextAction.label}</a>
+            </div>
+          </section>
+        ) : (
+          <section className="artifact-center-empty compact artifact-output-empty">
+            <strong>{inventory.activeRender ? "成片正在生成" : "还没有可播放成片"}</strong>
+            <p>
+              {inventory.activeRender
+                ? `第 ${inventory.activeRender.episode} 集渲染中，当前 ${inventory.activeRender.progress}%。`
+                : "先完成镜头视频和时间线，生成后会在这里出现真实视频和下载入口。"}
+            </p>
+          </section>
+        )}
+
+        <aside className="artifact-output-map" aria-label="产物分层">
+          <button type="button" onClick={onOpenVersions}>
+            <span>创作产物</span>
+            <b>{inventory.creationKinds} / {ARTIFACT_KIND_META.length} 类</b>
+          </button>
+          <div>
+            <span>成片</span>
+            <b>{inventory.playableRenders.length}</b>
+          </div>
+          <div>
+            <span>交付物</span>
+            <b>{inventory.readyPackages.length}</b>
+          </div>
+          <div>
+            <span>发布记录</span>
+            <b>{inventory.publishedRecords.length}</b>
+          </div>
+        </aside>
+      </div>
+
+      <div className="artifact-output-lists">
+        <section>
+          <header>
+            <b>成片</b>
+            <small>预览版和正式交付版分开查看</small>
+          </header>
+          {inventory.playableRenders.length === 0 ? (
+            <p className="artifact-output-list-empty">还没有成功渲染。</p>
+          ) : inventory.playableRenders.slice(0, 4).map((render) => (
+            <a className="artifact-output-row" key={render.id} href={render.videoUrl ?? "#"} target="_blank" rel="noreferrer">
+              <span>
+                <b>第 {render.episode} 集 · {renderQuality(render)}</b>
+                <small>v{render.timelineRevision} · {renderStatus(render)} · {outputDate(render.createdAt)}</small>
+              </span>
+              <em>打开成片</em>
+            </a>
+          ))}
+        </section>
+
+        <section>
+          <header>
+            <b>交付物</b>
+            <small>ZIP、视频、字幕、封面和 manifest</small>
+          </header>
+          {inventory.readyPackages.length === 0 ? (
+            <p className="artifact-output-list-empty">还没有可用交付包。</p>
+          ) : inventory.readyPackages.slice(0, 4).map((pkg) => (
+            <a className="artifact-output-row" key={pkg.id} href={`/delivery/${encodeURIComponent(pkg.projectId)}`}>
+              <span>
+                <b>{pkg.title}</b>
+                <small>{pkg.items.length} 集 · {outputDate(pkg.updatedAt)}</small>
+              </span>
+              <em>打开交付中心</em>
+            </a>
+          ))}
+        </section>
+
+        <section>
+          <header>
+            <b>发布记录</b>
+            <small>平台链接和真实播放数据</small>
+          </header>
+          {inventory.publishedRecords.length === 0 ? (
+            <p className="artifact-output-list-empty">还没有发布记录。</p>
+          ) : (
+            <a
+              className="artifact-output-row"
+              href={latestPackage ? `/delivery/${encodeURIComponent(latestPackage.projectId)}` : "#"}
+            >
+              <span>
+                <b>{inventory.publishedRecords.length} 条记录</b>
+                <small>在交付中心回填链接和播放数据</small>
+              </span>
+              <em>查看交付中心</em>
+            </a>
+          )}
+          {latestPackage?.packageUrl && (
+            <a className="artifact-output-row" href={latestPackage.packageUrl} download>
+              <span>
+                <b>最近交付包</b>
+                <small>{latestPackage.title} · {outputDate(latestPackage.updatedAt)}</small>
+              </span>
+              <em>下载 ZIP</em>
+            </a>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

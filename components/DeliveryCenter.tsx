@@ -264,12 +264,17 @@ export default function DeliveryCenter({ projectId }: { projectId: string }) {
 
         <div className="delivery-episode-picker">
           <div>
-            <b>选择交付版本</b>
-            <span>每集默认使用最新交付版渲染</span>
+            <b>成品来源</b>
+            <span>每集默认使用最新的正式交付版成片</span>
           </div>
           <div className="delivery-episode-list">
             {deliveryRenders.length === 0 ? (
-              <p>还没有交付版成片。先在分镜页渲染 1080P 交付版。</p>
+              <div className="delivery-empty compact">
+                <p>还没有正式交付版成片。先在分镜页完成时间线并渲染 1080P 交付版。</p>
+                <a href={`/?project=${encodeURIComponent(projectId)}&step=shots`}>
+                  去分镜页生成成片
+                </a>
+              </div>
             ) : deliveryRenders.map((render) => (
               <button
                 key={render.id}

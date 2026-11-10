@@ -1,4 +1,4 @@
-﻿.signal-desk.wfx-workspace {
+.signal-desk.wfx-workspace {
   --wfx-bg: #0d0e0e;
   --wfx-side: #101110;
   --wfx-surface: #151615;
@@ -2115,7 +2115,7 @@
   background: var(--wfx-surface);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a) {
   min-height: 36px;
   padding: 0 18px;
   border: 0;
@@ -2125,11 +2125,11 @@
   font-size: 13px;
 }
 
-.wfx-mode-strip .workspace-mode-tabs button:hover {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a):hover {
   color: var(--wfx-ink);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button.active {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a).active {
   background: var(--wfx-primary);
   color: var(--wfx-primary-ink);
 }
@@ -4875,7 +4875,7 @@
   .wfx-mode-strip .workspace-mode-tabs {
     width: 100%;
   }
-  .wfx-mode-strip .workspace-mode-tabs button {
+  .wfx-mode-strip .workspace-mode-tabs :is(button, a) {
     flex: 1;
     min-height: 38px;
     padding: 0 10px;
@@ -6977,7 +6977,7 @@
     padding: 3px;
   }
 
-  .wfx-mode-strip .workspace-mode-tabs button {
+  .wfx-mode-strip .workspace-mode-tabs :is(button, a) {
     min-height: 32px;
     padding: 0 13px;
     font-size: 12.5px;
@@ -7174,7 +7174,7 @@
   background: transparent;
 }
 
-.wfx-mode-strip .workspace-mode-tabs button {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a) {
   position: relative;
   min-height: 32px;
   padding: 0;
@@ -7187,17 +7187,17 @@
   transition: color 150ms var(--ease);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button:hover {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a):hover {
   background: transparent;
   color: var(--wfx-ink);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button.active {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a).active {
   background: transparent;
   color: var(--wfx-ink);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button.active::after {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a).active::after {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -7483,7 +7483,7 @@
     gap: 0;
   }
 
-  .wfx-mode-strip .workspace-mode-tabs button {
+  .wfx-mode-strip .workspace-mode-tabs :is(button, a) {
     min-height: 30px;
     font-size: 12px;
   }
@@ -7516,7 +7516,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wfx-mode-strip .workspace-mode-tabs button,
+  .wfx-mode-strip .workspace-mode-tabs :is(button, a),
   .wfx-dossier-agent-link {
     transition: none;
   }
@@ -7789,7 +7789,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a) {
   flex: 1 1 0;
   min-height: 36px;
   padding: 0 18px;
@@ -7798,17 +7798,17 @@
   font-size: 12.5px;
 }
 
-.wfx-mode-strip .workspace-mode-tabs button:hover {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a):hover {
   background: rgba(255, 255, 255, .035);
   color: var(--wfx-ink);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button.active {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a).active {
   background: var(--wfx-primary);
   color: var(--wfx-primary-ink);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button.active::after {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a).active::after {
   display: none;
 }
 
@@ -7885,7 +7885,7 @@
     padding: 3px;
   }
 
-  .wfx-mode-strip .workspace-mode-tabs button {
+  .wfx-mode-strip .workspace-mode-tabs :is(button, a) {
     min-height: 34px;
     padding: 0 12px;
   }
@@ -8010,16 +8010,16 @@
     0 14px 36px -32px rgba(0, 0, 0, .9);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a) {
   color: var(--wfx-faint);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button:hover {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a):hover {
   background: var(--wfx-surface-2);
   color: var(--wfx-ink);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button.active {
+.wfx-mode-strip .workspace-mode-tabs :is(button, a).active {
   background: var(--wfx-primary);
   color: var(--wfx-primary-ink);
 }
@@ -8237,7 +8237,7 @@
   line-height: var(--wfx-type-meta-line);
 }
 
-.wfx-mode-strip .workspace-mode-tabs button,
+.wfx-mode-strip .workspace-mode-tabs :is(button, a),
 .wfx-button,
 .wfx-dossier-blocker .wfx-button,
 .wfx-dossier-secondary-actions button,
@@ -8535,4 +8535,14 @@
   border-color: var(--factory-line);
   background: var(--factory-raised);
   color: var(--factory-ink);
+}
+
+@media (max-width: 960px) {
+  .wfx-workspace-main {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom));
+  }
+
+  .signal-desk .h-deck {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+  }
 }

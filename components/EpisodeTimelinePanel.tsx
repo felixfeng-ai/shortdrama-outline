@@ -875,6 +875,23 @@ export default function EpisodeTimelinePanel({
             : versions.length === 0
               ? '固化会把当前镜头顺序、裁剪、静音和配乐保存为不可变版本。'
               : '生成后会在顶部直接出现可播放的竖屏成片。'
+  const outputPrimaryAction = latestSuccessfulRender
+    ? '下载成片'
+    : activeRender
+      ? '查看渲染进度'
+      : !draft
+        ? '生成这一集时间线'
+        : selectedVersionStaleCount > 0
+          ? '同步并固化新版本'
+          : staleAdoptedCount > 0
+            ? '同步已采用视频'
+            : blockedClipCount > 0
+              ? '去处理镜头视频'
+              : dialogueInspection.issues.length > 0
+                ? '查看音频问题'
+                : versions.length === 0
+                  ? '固化当前版本'
+                  : '生成成片'
 
   async function enqueueRender() {
     if (!currentProjectId || !selectedVersion || enqueueingRender) return
@@ -1131,7 +1148,7 @@ export default function EpisodeTimelinePanel({
 
         <div className="episode-timeline-output-summary">
           <div className="episode-timeline-output-kicker">
-            <span>成片交付</span>
+            <span>最近可播放成片</span>
             <em>{renderStateLabel}</em>
           </div>
           <h4>{loading ? '正在读取时间线…' : outputTitle}</h4>
@@ -1183,7 +1200,13 @@ export default function EpisodeTimelinePanel({
             )}
             {latestSuccessfulRender ? (
               <>
-                <a href={latestSuccessfulRender.videoUrl ?? '#'} download>下载 MP4</a>
+                <a
+                  href={latestSuccessfulRender.videoUrl ?? '#'}
+                  download
+                  aria-label={outputPrimaryAction}
+                >
+                  下载 MP4
+                </a>
                 {latestSuccessfulRender.subtitleUrl && (
                   <a href={latestSuccessfulRender.subtitleUrl} download>下载 SRT</a>
                 )}
@@ -1231,6 +1254,7 @@ export default function EpisodeTimelinePanel({
             ) : (
               <button
                 type="button"
+                aria-label={outputPrimaryAction}
                 disabled={!selectedVersion || enqueueingRender}
                 onClick={() => void enqueueRender()}
               >

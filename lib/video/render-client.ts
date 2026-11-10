@@ -18,12 +18,10 @@ async function renderList(url: string): Promise<VideoRenderDto[]> {
 
 export function fetchVideoRenders(
   projectId: string,
-  episode: number,
+  episode?: number,
 ): Promise<VideoRenderDto[]> {
-  const query = new URLSearchParams({
-    projectId,
-    episode: String(episode),
-  })
+  const query = new URLSearchParams({ projectId })
+  if (episode !== undefined) query.set("episode", String(episode))
   return renderList(`/api/video/renders?${query.toString()}`)
 }
 

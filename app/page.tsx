@@ -192,6 +192,7 @@ import {
   withProjectQuery,
   withStepQuery,
   withWorkspaceModeQuery,
+  workspaceModeHref,
   type WorkspaceMode,
 } from '@/lib/app-nav'
 import { buildMarkdown, copyText, downloadMarkdown } from '@/lib/export'
@@ -4837,6 +4838,9 @@ export default function Home() {
     />
   )
 
+  // 空项目总览是首次创作入口，不提前挂载项目级导航和 Agent 浮层。
+  const showProjectChrome = Boolean(projectId) || workspaceMode !== 'overview'
+
   return (
     <div className={`signal-desk wfx-workspace ${workspaceMode === 'create' ? 'is-create-mode' : ''}`}>
       {/*
@@ -4905,6 +4909,7 @@ export default function Home() {
         <WorkspaceTopbar
           mode={workspaceMode}
           projectTitle={workspaceProjectTitle}
+          hasProject={Boolean(projectId)}
           savedLabel={workspaceSavedLabel}
           running={anyRunning}
           onOpenMobileMenu={() => setWorkspaceMobileOpen(true)}
@@ -4918,7 +4923,15 @@ export default function Home() {
         <div className="wfx-content">
           <InlineReleaseNotice />
           <div className="wfx-mode-strip">
-            <WorkspaceModeTabs mode={workspaceMode} onChange={openWorkspaceMode} />
+            <WorkspaceModeTabs
+              mode={workspaceMode}
+              onChange={openWorkspaceMode}
+              hrefForMode={(next) => workspaceModeHref(
+                projectId,
+                workspaceStepDetail ? view : null,
+                next,
+              )}
+            />
           </div>
 
           {quickTrial && (
@@ -5731,6 +5744,7 @@ export default function Home() {
           <SiteLegalFooter />
         </div>
 
+        {showProjectChrome && (
         <nav className="wfx-mobile-nav" aria-label="移动端导航">
           <button className={workspaceMode === 'overview' ? 'is-active' : ''} type="button" onClick={goWorkspaceHome}>
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3 9 7-6 7 6v8H3z" /></svg>
@@ -5753,8 +5767,11 @@ export default function Home() {
             <span>我的</span>
           </button>
         </nav>
+        )}
       </div>
 
+        {showProjectChrome && (
+        <>
         {/*
           Agent 工作舱：
           桌面默认收起为主工作面旁的 Veya 图标，点击后以浮层侧舱展开；
@@ -5982,6 +5999,8 @@ export default function Home() {
             )}
           </div>
         </aside>
+        </>
+        )}
     </div>
   )
 }

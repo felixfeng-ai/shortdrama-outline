@@ -56,3 +56,12 @@ test("LEGAL4 举报页说明人工核查与反馈，不承诺固定时限", () =
   assert.match(report, /反馈/)
   assert.doesNotMatch(report, /24\s*小时|48\s*小时|7\s*个工作日/)
 })
+
+test("LEGAL5 举报处理说明右侧信息保留内边距，不贴卡片边线", () => {
+  const css = read("app/legal/legal.css")
+
+  assert.match(
+    css,
+    /\.legal-facts > div\s*\{[\s\S]*?padding:\s*0 16px;/,
+  )
+})

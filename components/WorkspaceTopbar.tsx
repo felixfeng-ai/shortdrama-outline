@@ -12,6 +12,7 @@ import VeyaWordmark from './VeyaWordmark'
 interface Props {
   mode: WorkspaceMode
   projectTitle: string
+  hasProject: boolean
   savedLabel: string
   running: boolean
   onOpenMobileMenu: () => void
@@ -28,6 +29,7 @@ const PAGE_NAMES: Record<WorkspaceMode, string> = {
 export default function WorkspaceTopbar({
   mode,
   projectTitle,
+  hasProject,
   savedLabel,
   running,
   onOpenMobileMenu,
@@ -55,21 +57,27 @@ export default function WorkspaceTopbar({
       </a>
 
       <div className="wfx-crumb">
-        <span>我的项目</span>
+        <span>{hasProject ? "我的项目" : "创作入口"}</span>
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>
-        <b>{mode === "overview" ? projectTitle : `${projectTitle} · ${PAGE_NAMES[mode]}`}</b>
+        <b>
+          {!hasProject
+            ? mode === "create" ? "创作" : "开始创作"
+            : mode === "overview" ? projectTitle : `${projectTitle} · ${PAGE_NAMES[mode]}`}
+        </b>
       </div>
 
         <div className="wfx-topbar-actions">
-        {savedLabel && (
+        {hasProject && savedLabel && (
           <span className={`wfx-save-state ${running ? 'is-running' : ''}`}>
             <i />
             {running ? "正在生成…" : savedLabel}
           </span>
         )}
-        <button className="wfx-button is-secondary" type="button" onClick={onExport}>
-          导出交付包
-        </button>
+        {hasProject && (
+          <button className="wfx-button is-secondary" type="button" onClick={onExport}>
+            导出交付包
+          </button>
+        )}
           <button
             className="wfx-icon-button wfx-app-download-entry"
             type="button"
@@ -102,9 +110,11 @@ export default function WorkspaceTopbar({
         <AuthButton variant="workspace-avatar" />
         {moreOpen && (
           <div className="wfx-more-menu" role="menu" aria-label="更多工具">
-            <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onOpenMore() }}>
-              项目工具
-            </button>
+            {hasProject && (
+              <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onOpenMore() }}>
+                项目工具
+              </button>
+            )}
             <a href="/docs" role="menuitem">使用教程</a>
             <button
               type="button"

@@ -235,7 +235,7 @@ test("GA1-GA3 全局抽屉接线完整", () => {
   const page = fs.readFileSync("app/page.tsx", "utf8")
 
   assert.match(component, /if \(!open\) return null/)
-  assert.match(component, /产物版本/)
+  assert.match(component, /创作产物/)
   assert.match(component, /确认队列/)
   assert.match(component, /SmoothCollapse/)
   assert.match(component, /role="dialog"/)

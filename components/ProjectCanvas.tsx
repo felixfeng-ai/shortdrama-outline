@@ -21,7 +21,7 @@ import {
 import type { SnapshotDto } from '@/lib/assets/api'
 import { fetchProjectGenerationAssets } from '@/lib/generation/client'
 import type { GeneratedAsset, GenerationTask } from '@/lib/generation/types'
-import type { WorkspaceMode } from '@/lib/app-nav'
+import { workspaceModeHref, type WorkspaceMode } from '@/lib/app-nav'
 import ProductionMap from './ProductionMap'
 import CanvasGraphWorkspace from './CanvasGraphWorkspace'
 import WorkspaceModeTabs from './WorkspaceModeTabs'
@@ -700,6 +700,7 @@ export default function ProjectCanvas({
           <div className="canvas-mode-switch">
             <WorkspaceModeTabs
               mode={workspaceMode}
+              hrefForMode={(next) => workspaceModeHref(projectId, null, next)}
               onChange={(next) => {
                 if (next === 'canvas') return
                 requestClose(() => onWorkspaceModeChange(next))

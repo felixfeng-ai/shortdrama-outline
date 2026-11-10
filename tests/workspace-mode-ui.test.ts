@@ -15,7 +15,8 @@ test("WM-UI6 embedded creation can shrink inside the mobile workspace gutter", (
 })
 
 test("WM-UI1 正式工作区保留总览、创作、画布三模式切换", () => {
-  assert.match(page, /<WorkspaceModeTabs mode=\{workspaceMode\} onChange=\{openWorkspaceMode\}/)
+  assert.match(page, /<WorkspaceModeTabs\s+mode=\{workspaceMode\}\s+onChange=\{openWorkspaceMode\}/)
+  assert.match(page, /hrefForMode=/)
   assert.match(page, /<CanvasGraphWorkspace/)
   assert.match(page, /className="wfx-mode-strip"/)
   assert.match(workspaceCss, /\.wfx-mode-strip/)
