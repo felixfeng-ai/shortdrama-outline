@@ -11,7 +11,7 @@ test("LOGO1 主 Logo 使用同一实心负形路径并保持单色", () => {
   const wordmark = read("components/VeyaWordmark.tsx")
   const appIcon = read("app/icon.svg")
   const pwaIcon = read("public/veyatv-icon.svg")
-  const path = /M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z/
+  const path = /M5 5h22v22H5zm4 4v14h4l3-9 3 9h4V9h-4l-3 8-3-8z/
 
   assert.match(component, path)
   assert.match(component, /fill="currentColor"/)

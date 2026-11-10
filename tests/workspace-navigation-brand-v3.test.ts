@@ -35,7 +35,7 @@ test("WNB2 新窗口画布使用独立全屏路由，不携带工作区 chrome",
 
 test("WNB3 登录页、侧栏与手机顶栏复用同一个实心负形 V 品牌组件", () => {
   assert.match(brandMark, /viewBox="0 0 32 32"/)
-  assert.match(brandMark, /M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z/)
+  assert.match(brandMark, /M5 5h22v22H5zm4 4v14h4l3-9 3 9h4V9h-4l-3 8-3-8z/)
   assert.match(brandMark, /fillRule="evenodd"/)
   assert.match(sidebar, /VeyaBrandMark/)
   assert.match(topbar, /VeyaBrandMark/)

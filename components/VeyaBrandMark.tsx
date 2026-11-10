@@ -11,12 +11,12 @@ export default function VeyaBrandMark({ className }: Props) {
       focusable="false"
       shapeRendering="geometricPrecision"
     >
-      {/* 实心方块挖出负形 V，保证 16px favicon 到侧栏尺寸都只保留一个识别层。 */}
+      {/* 使用已选定的 D「实心负形」原始几何，后续不得为了字形优化重新绘制。 */}
       <path
         fill="currentColor"
         fillRule="evenodd"
         clipRule="evenodd"
-        d="M5 5h22v22H5zm3 4h5l3 9 3-9h5l-5.5 14h-5z"
+        d="M5 5h22v22H5zm4 4v14h4l3-9 3 9h4V9h-4l-3 8-3-8z"
       />
     </svg>
   )
