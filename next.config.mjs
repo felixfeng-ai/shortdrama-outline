@@ -3,6 +3,10 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   devIndicators: false,
+  experimental: {
+    // 保留安全升级来源标记，后续审计能识别这次补丁升级。
+    agentUpgrade: "security",
+  },
   // node:sqlite 是 Node 内置模块，必须交给运行时而不是被打包器处理，
   // 否则 Next 在构建期会把 `node:sqlite` 当普通依赖去解析而报错。
   serverExternalPackages: [
