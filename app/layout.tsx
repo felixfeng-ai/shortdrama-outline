@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
+import { WebVitalsReporter } from '@/components/web-vitals-reporter'
 import './globals.css'
 
 /*
@@ -80,7 +81,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${latin.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
-      <body className="signal-desk">{children}</body>
+      <body className="signal-desk">
+        {children}
+        <WebVitalsReporter
+          release={
+            process.env.CHENGJU_RELEASE
+            || process.env.CHENGJU_APP_VERSION
+            || 'web'
+          }
+        />
+      </body>
     </html>
   )
 }

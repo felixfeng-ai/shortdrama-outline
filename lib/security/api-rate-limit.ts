@@ -17,6 +17,7 @@ export type ApiRateLimitGroup =
   | "export"
   | "import"
   | "material"
+  | "vitals"
 
 interface ApiRateLimitPolicy {
   group: ApiRateLimitGroup
@@ -100,6 +101,14 @@ export const API_RATE_LIMIT_POLICIES: Record<ApiRateLimitGroup, ApiRateLimitPoli
     ipLimit: { env: "API_MATERIAL_IP_10M_LIMIT", fallback: 20, windowMs: TEN_MINUTES },
     identityLimit: { env: "API_MATERIAL_IDENTITY_10M_LIMIT", fallback: 12, windowMs: TEN_MINUTES },
     globalLimit: { env: "API_MATERIAL_GLOBAL_DAILY_LIMIT", fallback: 500, windowMs: ONE_DAY },
+  },
+  vitals: {
+    group: "vitals",
+    label: "性能采样",
+    message: "性能采样过于频繁，请稍后再试",
+    ipLimit: { env: "API_VITALS_IP_10M_LIMIT", fallback: 300, windowMs: TEN_MINUTES },
+    identityLimit: { env: "API_VITALS_IDENTITY_10M_LIMIT", fallback: 180, windowMs: TEN_MINUTES },
+    globalLimit: { env: "API_VITALS_GLOBAL_DAILY_LIMIT", fallback: 50_000, windowMs: ONE_DAY },
   },
 }
 

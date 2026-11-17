@@ -4336,6 +4336,34 @@
   height: 100%;
 }
 
+.wfx-lazy-module {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid var(--wfx-line);
+  border-radius: var(--wfx-radius);
+  background: var(--wfx-surface);
+  color: var(--wfx-muted);
+  font-size: 11px;
+}
+
+.wfx-lazy-module-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wfx-accent);
+  animation: wfx-lazy-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes wfx-lazy-pulse {
+  50% {
+    opacity: .35;
+    transform: scale(.72);
+  }
+}
+
 .canvas-view-switch {
   display: inline-flex;
   min-height: 38px;

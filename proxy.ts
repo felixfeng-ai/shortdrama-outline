@@ -40,6 +40,22 @@ function enabled(value: string | undefined): boolean {
   return /^(1|true|yes|on)$/i.test(value ?? "")
 }
 
+function isLightweightStartRequest(req: NextRequest): boolean {
+  return req.nextUrl.pathname === "/" && req.nextUrl.search === ""
+}
+
+function continueRequest(req: NextRequest, requestHeaders?: Headers): NextResponse {
+  if (!isLightweightStartRequest(req)) {
+    return requestHeaders
+      ? NextResponse.next({ request: { headers: requestHeaders } })
+      : NextResponse.next()
+  }
+  return NextResponse.rewrite(
+    new URL("/start", req.url),
+    requestHeaders ? { request: { headers: requestHeaders } } : undefined,
+  )
+}
+
 export function proxy(req: NextRequest) {
   const isApi = req.nextUrl.pathname.startsWith("/api/")
   const requestOrigin = req.headers.get("origin")
@@ -76,9 +92,9 @@ export function proxy(req: NextRequest) {
   const localHostname = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
   // 生产 Nginx 也可能把上游地址解析成 localhost；公网 HTTPS 必须优先于主机名。
   const local = localHostname && !https
-  if (local && existing === LOCAL_SESSION_ID) return withCors(NextResponse.next(), origin)
+  if (local && existing === LOCAL_SESSION_ID) return withCors(continueRequest(req), origin)
   if (!local && isSessionId(existing) && existing !== LOCAL_SESSION_ID) {
-    return withCors(NextResponse.next(), origin)
+    return withCors(continueRequest(req), origin)
   }
 
   const sessionId = local ? LOCAL_SESSION_ID : makeSessionId()
@@ -88,7 +104,7 @@ export function proxy(req: NextRequest) {
     "cookie",
     existingCookie ? `${existingCookie}; ${SESSION_COOKIE}=${sessionId}` : `${SESSION_COOKIE}=${sessionId}`,
   )
-  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  const response = continueRequest(req, requestHeaders)
   response.cookies.set(SESSION_COOKIE, sessionId, {
     httpOnly: true,
     sameSite: "lax",

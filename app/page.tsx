@@ -1,53 +1,27 @@
 ﻿'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import ActList from '@/components/ActList'
-import CharacterList from '@/components/CharacterList'
-import AttachReview from '@/components/AttachReview'
-import EpisodeList from '@/components/EpisodeList'
-import EpisodeCountPicker from '@/components/EpisodeCountPicker'
-import IdeaPanel from '@/components/IdeaPanel'
-import StepSection from '@/components/StepSection'
+import dynamic from 'next/dynamic'
 import StepPills from '@/components/StepPills'
 import SideNav from '@/components/SideNav'
 import SignalOverview from '@/components/SignalOverview'
-import ShotPreviewDock from '@/components/ShotPreviewDock'
 import QuotaBar from '@/components/QuotaBar'
 import ProjectBar from '@/components/ProjectBar'
-import GenerationTaskPanel from '@/components/GenerationTaskPanel'
 import PwaInstallButton from '@/components/PwaInstallButton'
 import PushNotificationButton from '@/components/PushNotificationButton'
 import AuthButton from '@/components/AuthButton'
 import ReleaseNotice from '@/components/ReleaseNotice'
 import SiteLegalFooter from '@/components/SiteLegalFooter'
-import BriefCard from '@/components/BriefCard'
-import JudgmentLogPanel from '@/components/JudgmentLogPanel'
-import DecisionPanel from '@/components/DecisionPanel'
-import CanonPanel from '@/components/CanonPanel'
 import type { AssetLibrarySource } from '@/components/AssetLibraryPanel'
-import ProjectToolsPanel from '@/components/ProjectToolsPanel'
-import ArtifactCenter from '@/components/ArtifactCenter'
-import LookBookCard from '@/components/LookBookCard'
-import VariantPicker from '@/components/VariantPicker'
-import PacingCurve from '@/components/PacingCurve'
-import WorkMeta, { type MetaPanel } from '@/components/WorkMeta'
-import CreativeAuditPanel from '@/components/CreativeAuditPanel'
-import CompliancePanel from '@/components/CompliancePanel'
-import ProductionLedgerPanel from '@/components/ProductionLedgerPanel'
-import TodoPanel from '@/components/TodoPanel'
-import ProjectCanvas, { type CanvasNodeId, type CanvasPreview } from '@/components/ProjectCanvas'
-import CanvasGraphWorkspace from '@/components/CanvasGraphWorkspace'
+import type { MetaPanel } from '@/components/WorkMeta'
+import type { CanvasNodeId, CanvasPreview } from '@/components/ProjectCanvas'
 import CanvasViewSwitch, { type CanvasWorkspaceView } from '@/components/CanvasViewSwitch'
-import ProductionCanvas from '@/components/ProductionCanvas'
-import SkillCatalog from '@/components/SkillCatalog'
 import WorkspaceModeTabs from '@/components/WorkspaceModeTabs'
 import InlineReleaseNotice from '@/components/InlineReleaseNotice'
 import WorkspaceSidebar from '@/components/WorkspaceSidebar'
 import WorkspaceTopbar from '@/components/WorkspaceTopbar'
 import WorkspaceHome from '@/components/WorkspaceHome'
 import QuickTrialProgress from '@/components/QuickTrialProgress'
-import ImpactPreviewDialog from '@/components/ImpactPreviewDialog'
-import QuickTrialVisualGate from '@/components/QuickTrialVisualGate'
 import '@/app/skills/skills.css'
 import '@/app/workspace-shell.css'
 import { buildTodoList, type TodoItem } from '@/lib/todo'
@@ -72,7 +46,6 @@ import {
   type VariantChoiceOption,
   type VariantChoiceStep,
 } from '@/lib/variant-decision'
-import AgentDock from '@/components/AgentDock'
 import type { AgentCard, AgentState } from '@/lib/agent/tools'
 import { buildAgentActionPlan } from '@/lib/agent/plan'
 import {
@@ -80,19 +53,11 @@ import {
   rollbackAgentRun,
 } from '@/lib/agent/runs-client'
 import { applyTextFieldEdit } from '@/lib/agent/edits'
-import ShotList from '@/components/ShotList'
-import ShotInspector from '@/components/ShotInspector'
-import SceneList from '@/components/SceneList'
-import VisualAnchorPanel from '@/components/VisualAnchorPanel'
-import PlacePanel from '@/components/PlacePanel'
 import { applyProjectRework } from '@/lib/rework/client'
 import {
   buildRepairAnchorsPreview,
   type RepairAnchorsPreview,
 } from '@/lib/rework/preview'
-import VaultPanel from '@/components/VaultPanel'
-import VersionBar from '@/components/VersionBar'
-import CopyButton from '@/components/CopyButton'
 import {
   createProject,
   createProjectReviewShare,
@@ -261,6 +226,172 @@ import {
   type StepKey,
   type StepStatus,
 } from '@/lib/types'
+import {
+  parseWorkspaceStartIntent,
+  WORKSPACE_START_STORAGE_KEY,
+} from '@/lib/workspace-entry'
+
+function LazyWorkspaceModule() {
+  return (
+    <div className="wfx-lazy-module" role="status" aria-live="polite">
+      <span className="wfx-lazy-module-dot" aria-hidden="true" />
+      <span>正在载入工作模块</span>
+    </div>
+  )
+}
+
+const AgentDock = dynamic(
+  () => import('@/components/AgentDock'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const CanvasGraphWorkspace = dynamic(
+  () => import('@/components/CanvasGraphWorkspace'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ProductionCanvas = dynamic(
+  () => import('@/components/ProductionCanvas'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const SkillCatalog = dynamic(
+  () => import('@/components/SkillCatalog'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ShotInspector = dynamic(
+  () => import('@/components/ShotInspector'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ShotPreviewDock = dynamic(
+  () => import('@/components/ShotPreviewDock'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ActList = dynamic(
+  () => import('@/components/ActList'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const CharacterList = dynamic(
+  () => import('@/components/CharacterList'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const AttachReview = dynamic(
+  () => import('@/components/AttachReview'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const EpisodeList = dynamic(
+  () => import('@/components/EpisodeList'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const EpisodeCountPicker = dynamic(
+  () => import('@/components/EpisodeCountPicker'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const IdeaPanel = dynamic(
+  () => import('@/components/IdeaPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const StepSection = dynamic(
+  () => import('@/components/StepSection'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const GenerationTaskPanel = dynamic(
+  () => import('@/components/GenerationTaskPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const BriefCard = dynamic(
+  () => import('@/components/BriefCard'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const JudgmentLogPanel = dynamic(
+  () => import('@/components/JudgmentLogPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const DecisionPanel = dynamic(
+  () => import('@/components/DecisionPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const CanonPanel = dynamic(
+  () => import('@/components/CanonPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ProjectToolsPanel = dynamic(
+  () => import('@/components/ProjectToolsPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ArtifactCenter = dynamic(
+  () => import('@/components/ArtifactCenter'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const LookBookCard = dynamic(
+  () => import('@/components/LookBookCard'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const VariantPicker = dynamic(
+  () => import('@/components/VariantPicker'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const PacingCurve = dynamic(
+  () => import('@/components/PacingCurve'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const WorkMeta = dynamic(
+  () => import('@/components/WorkMeta'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const CreativeAuditPanel = dynamic(
+  () => import('@/components/CreativeAuditPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const CompliancePanel = dynamic(
+  () => import('@/components/CompliancePanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ProductionLedgerPanel = dynamic(
+  () => import('@/components/ProductionLedgerPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const TodoPanel = dynamic(
+  () => import('@/components/TodoPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ProjectCanvas = dynamic(
+  () => import('@/components/ProjectCanvas'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ImpactPreviewDialog = dynamic(
+  () => import('@/components/ImpactPreviewDialog'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const QuickTrialVisualGate = dynamic(
+  () => import('@/components/QuickTrialVisualGate'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const ShotList = dynamic(
+  () => import('@/components/ShotList'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const SceneList = dynamic(
+  () => import('@/components/SceneList'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const VisualAnchorPanel = dynamic(
+  () => import('@/components/VisualAnchorPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const PlacePanel = dynamic(
+  () => import('@/components/PlacePanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const VaultPanel = dynamic(
+  () => import('@/components/VaultPanel'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const VersionBar = dynamic(
+  () => import('@/components/VersionBar'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
+const CopyButton = dynamic(
+  () => import('@/components/CopyButton'),
+  { ssr: false, loading: LazyWorkspaceModule },
+)
 
 /** 本地已挂、但尚未落库的参考图也要显示在镜头卡上（B6 的界面一致性） */
 function applyLocalRefs(
@@ -534,6 +665,8 @@ export default function Home() {
   const [activeShotQc, setActiveShotQc] = useState<ShotQcResult | null>(null)
   /** Agent 工作舱是否展开：桌面为右侧浮层，窄屏为底部抽屉。 */
   const [deckOpen, setDeckOpen] = useState(false)
+  /** Agent 代码只在用户第一次打开工作舱后加载，避免进入默认首包。 */
+  const [agentDeckMounted, setAgentDeckMounted] = useState(false)
   const agentFabRef = useRef<HTMLButtonElement>(null)
   /** 停在「产出」tab 时收到的新回答数；切到场记即清零 */
   const [agentUnread, setAgentUnread] = useState(0)
@@ -582,6 +715,9 @@ export default function Home() {
   useEffect(() => {
     if (agentOpen) setAgentUnread(0)
   }, [agentOpen])
+  useEffect(() => {
+    if (deckOpen) setAgentDeckMounted(true)
+  }, [deckOpen])
   /*
     没有可预览镜头时只保留 Agent；进入分镜后，用户没手动选过页签时
     默认打开镜头预览。离开分镜则立即回收预览和镜头属性状态。
@@ -3426,6 +3562,9 @@ export default function Home() {
       const list = await listProjects().catch(() => [])
       if (cancelled) return
       setProjects(list)
+      const freshEntry = new URLSearchParams(window.location.search).get('new') === '1'
+        && !readProjectQuery(window.location.search)
+      if (freshEntry) return
       const requestedProjectId = readProjectQuery(window.location.search)
       const requestedProject = requestedProjectId
         ? list.find((project) => project.id === requestedProjectId) ?? null
@@ -3460,6 +3599,28 @@ export default function Home() {
     })()
     return () => { cancelled = true }
     // 只在挂载时跑一次；依赖的 setter 都是稳定的
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 起始页只负责确认动作；进入完整工作区后在这里消费一次，避免刷新重复生成。
+  useEffect(() => {
+    let raw: string | null = null
+    try {
+      raw = window.sessionStorage.getItem(WORKSPACE_START_STORAGE_KEY)
+      window.sessionStorage.removeItem(WORKSPACE_START_STORAGE_KEY)
+    } catch {
+      return
+    }
+    const intent = parseWorkspaceStartIntent(raw)
+    if (!intent) return
+    if (intent.kind === 'quick') {
+      void startQuickTrial(intent.idea, intent.target)
+    } else if (intent.kind === 'guided') {
+      startGuidedCreation(intent.idea)
+    } else {
+      void handleLoadSample()
+    }
+    // 只消费起始页交接的一次意图；业务函数读取当前项目状态，不参与重跑。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -5040,7 +5201,8 @@ export default function Home() {
             />
           )}
 
-          <div className={workspaceMode === 'overview' && workspaceStepDetail ? '' : 'hidden'}>
+          {workspaceMode === 'overview' && workspaceStepDetail && (
+          <div>
           {workspaceMode === 'overview' && workspaceStepDetail && (
             <header className="wfx-detail-head">
               <div>
@@ -5687,6 +5849,7 @@ export default function Home() {
 
           </div>
           </div>
+          )}
 
           {workspaceMode === 'create' && (
             <div className="wfx-create">
@@ -5936,7 +6099,8 @@ export default function Home() {
               aria-labelledby="deck-tab-agent"
               style={{ display: !hasDeckOutput || agentOpen ? 'flex' : 'none' }}
             >
-              <AgentDock
+              {agentDeckMounted ? (
+                <AgentDock
                 variant="docked"
                 state={agentState}
                 open
@@ -5965,8 +6129,11 @@ export default function Home() {
                   goToStep(step)
                   if (window.matchMedia('(max-width: 920px)').matches) setDeckOpen(false)
                 }}
-                seedPrompt={agentSeed}
-              />
+                  seedPrompt={agentSeed}
+                />
+              ) : (
+                <LazyWorkspaceModule />
+              )}
             </div>
             {hasDeckOutput && activeShot && (
               <div

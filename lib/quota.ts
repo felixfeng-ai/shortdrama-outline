@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto"
 import { ownerFromRequest } from "./session.ts"
 import { FULL_PROJECT_COST, QUOTA_PRICING_VERSION, STEP_COST } from "./model-pricing.ts"
 import { isUnlimitedQuotaIdentity } from "./auth/unlimited.ts"
+import { effectiveQuotaExtraUnits } from "./admin/quota-overrides.ts"
 
 // 兼容既有调用方：价格表已抽到纯模块，服务端继续从这里取同一口径。
 export { FULL_PROJECT_COST, STEP_COST }
@@ -164,9 +165,10 @@ export function getQuota(
      FROM billing_entitlements
      WHERE owner_id = ? AND starts_at <= ? AND expires_at > ?`,
   ).get(identity, now, now) as { u: number }
+  const overrideUnits = effectiveQuotaExtraUnits(db, identity, now)
   const limit = unlimited
     ? UNLIMITED_QUOTA_UNITS
-    : DAILY_UNITS_PER_IDENTITY + Number(grants.u || 0)
+    : DAILY_UNITS_PER_IDENTITY + Number(grants.u || 0) + overrideUnits
 
   return {
     used: mine.u + held.u,

@@ -1404,6 +1404,63 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         ON storyboard_exports(project_id, created_at DESC);
     `,
   },
+  {
+    version: 38,
+    name: "web-vitals",
+    sql: `
+      -- 只保存性能指标和运行环境，不保存页面正文、项目内容或用户输入。
+      CREATE TABLE IF NOT EXISTS web_vitals_events (
+        id              TEXT PRIMARY KEY,
+        owner_id        TEXT NOT NULL,
+        metric_name     TEXT NOT NULL,
+        metric_value    REAL NOT NULL,
+        rating          TEXT NOT NULL DEFAULT 'good',
+        path            TEXT NOT NULL,
+        device          TEXT NOT NULL DEFAULT 'other',
+        connection_type TEXT NOT NULL DEFAULT '',
+        release         TEXT NOT NULL DEFAULT '',
+        created_at      INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_web_vitals_created
+        ON web_vitals_events(created_at, metric_name, path);
+      CREATE INDEX IF NOT EXISTS idx_web_vitals_owner
+        ON web_vitals_events(owner_id, created_at);
+    `,
+  },
+  {
+    version: 39,
+    name: "admin-operations",
+    sql: `
+      -- 管理员身份独立于普通用户资料；初始管理员也可由服务端邮箱白名单提供。
+      CREATE TABLE IF NOT EXISTS admin_users (
+        user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        created_by TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      );
+
+      -- 额度覆盖是临时增量，避免破坏按天计费和订阅权益。
+      CREATE TABLE IF NOT EXISTS user_quota_overrides (
+        user_id     TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        extra_units INTEGER NOT NULL DEFAULT 0,
+        expires_at  INTEGER NOT NULL,
+        reason      TEXT NOT NULL,
+        created_by  TEXT NOT NULL,
+        created_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS admin_audit_log (
+        id            TEXT PRIMARY KEY,
+        admin_user_id TEXT NOT NULL,
+        action        TEXT NOT NULL,
+        target_user_id TEXT NOT NULL DEFAULT '',
+        detail_json   TEXT NOT NULL DEFAULT '{}',
+        created_at    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_admin_audit_created
+        ON admin_audit_log(created_at DESC);
+    `,
+  },
 ]
 
 function applyMigrations(db: DatabaseSync): void {

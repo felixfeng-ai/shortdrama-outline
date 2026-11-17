@@ -73,6 +73,7 @@ echo "=== 2/6 同步代码 ==="
 # 要上线的任何改动都必须先 commit + push。
 git fetch origin main --quiet
 git reset --hard origin/main --quiet
+export CHENGJU_RELEASE="$(git rev-parse --short HEAD)"
 echo "当前版本: $(git log -1 --format='%h %s')"
 
 echo "=== 3/6 校验 .env 仍在 ==="
