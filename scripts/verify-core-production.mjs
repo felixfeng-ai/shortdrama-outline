@@ -34,7 +34,7 @@ async function freePort() {
   })
 }
 
-async function waitForUrl(url, timeoutMs = 30_000) {
+async function waitForUrl(url, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
@@ -43,7 +43,8 @@ async function waitForUrl(url, timeoutMs = 30_000) {
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
-  throw new Error(`服务未在 ${timeoutMs}ms 内就绪：${url}`)
+  const tail = serverLogs.trim().slice(-4_000)
+  throw new Error(`服务未在 ${timeoutMs}ms 内就绪：${url}${tail ? `\n--- server log ---\n${tail}` : ""}`)
 }
 
 let serverProcess = null
@@ -152,7 +153,14 @@ if (!baseUrl) {
     serverLogs += chunk.toString()
   })
   baseUrl = `http://127.0.0.1:${port}`
-  await waitForUrl(`${baseUrl}/api/health`)
+  try {
+    await waitForUrl(`${baseUrl}/api/health`, 60_000)
+  } catch (error) {
+    fs.writeFileSync(path.join(evidenceDir, "server.log"), serverLogs)
+    if (serverProcess) serverProcess.kill("SIGTERM")
+    if (mockServer) await new Promise((resolve) => mockServer.close(resolve))
+    throw error
+  }
 }
 
 function chromeExecutable() {
