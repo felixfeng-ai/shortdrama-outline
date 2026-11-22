@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import { mkdir, mkdtemp, rm } from "node:fs/promises"
-import { createServer } from "node:http"
+import { createServer, get as httpGet } from "node:http"
 import net from "node:net"
 import { createRequire } from "node:module"
 import os from "node:os"
@@ -36,15 +36,28 @@ async function freePort() {
 
 async function waitForUrl(url, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs
+  let lastStatus = "no response"
   while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url)
-      if (response.ok) return
-    } catch {}
+    const status = await new Promise((resolve) => {
+      const request = httpGet(url, (response) => {
+        response.resume()
+        resolve(response.statusCode ?? 0)
+      })
+      request.setTimeout(1_500, () => {
+        request.destroy()
+        resolve(0)
+      })
+      request.on("error", () => resolve(0))
+    })
+    lastStatus = String(status)
+    if (status === 200) return
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
   const tail = serverLogs.trim().slice(-4_000)
-  throw new Error(`服务未在 ${timeoutMs}ms 内就绪：${url}${tail ? `\n--- server log ---\n${tail}` : ""}`)
+  throw new Error(
+    `服务未在 ${timeoutMs}ms 内就绪：${url}（最后状态：${lastStatus}）` +
+    (tail ? `\n--- server log ---\n${tail}` : ""),
+  )
 }
 
 let serverProcess = null
