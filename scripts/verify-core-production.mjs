@@ -130,7 +130,7 @@ if (!baseUrl) {
   const port = Number(process.env.PORT) || await freePort()
   tempDir = await mkdtemp(path.join(os.tmpdir(), "veya-core-e2e-"))
   const nextBin = path.join(repoRoot, "node_modules", "next", "dist", "bin", "next")
-  serverProcess = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
+  serverProcess = spawn(process.execPath, [nextBin, "start", "-H", "127.0.0.1", "-p", String(port)], {
     cwd: repoRoot,
     env: {
       ...process.env,
