@@ -120,3 +120,58 @@ export async function retryVideoTask(
     action: "retry",
   })
 }
+
+export async function importShotVideo(input: {
+  projectId: string
+  targetId: string
+  file: File
+}): Promise<{ asset: GeneratedAsset; shot: { id: string; episode: number; shot: number } }> {
+  const form = new FormData()
+  form.set("shotId", input.targetId)
+  form.set("file", input.file)
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(input.projectId)}/shot-video-import`,
+    { method: "POST", body: form },
+  )
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "外部视频导入失败")
+  }
+  return payload.data as {
+    asset: GeneratedAsset
+    shot: { id: string; episode: number; shot: number }
+  }
+}
+
+export async function batchImportShotVideos(input: {
+  projectId: string
+  files: File[]
+  mapping: Array<{ fileIndex: number; shotId: string }>
+}): Promise<{
+  assets: Array<{
+    asset: GeneratedAsset
+    shot: { id: string; episode: number; shot: number }
+  }>
+  failures: Array<{ fileIndex: number; fileName: string; error: string }>
+  importedCount: number
+}> {
+  const form = new FormData()
+  for (const file of input.files) form.append("files", file)
+  form.set("mapping", JSON.stringify(input.mapping))
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(input.projectId)}/shot-video-import`,
+    { method: "POST", body: form },
+  )
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.error || "批量外部视频导入失败")
+  }
+  return payload.data as {
+    assets: Array<{
+      asset: GeneratedAsset
+      shot: { id: string; episode: number; shot: number }
+    }>
+    failures: Array<{ fileIndex: number; fileName: string; error: string }>
+    importedCount: number
+  }
+}

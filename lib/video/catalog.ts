@@ -13,6 +13,17 @@ export interface VideoSelection {
   resolution: string
 }
 
+export type VideoQualityGoal = "draft" | "standard" | "final"
+
+export interface VideoRecommendation {
+  model: string
+  resolution: string
+  estimatedCostMicros: number
+  goal: VideoQualityGoal
+  reason: string
+  overBudget: boolean
+}
+
 export function findVideoModel(
   capabilities: PublicVideoCapabilities,
   model: string,
@@ -77,4 +88,95 @@ export function supportsVideoDuration(
   if (!capability || !Number.isFinite(duration)) return false
   const seconds = Math.floor(duration)
   return seconds >= capability.minDuration && seconds <= capability.maxDuration
+}
+
+function resolutionRank(resolution: string): number {
+  if (resolution === "2K") return 3
+  if (resolution === "768P") return 2
+  if (resolution === "480P") return 1
+  return 0
+}
+
+function compareRecommendation(
+  left: VideoRecommendation,
+  right: VideoRecommendation,
+): number {
+  if (left.goal === "draft") {
+    return left.estimatedCostMicros - right.estimatedCostMicros
+      || resolutionRank(left.resolution) - resolutionRank(right.resolution)
+  }
+  if (left.goal === "standard") {
+    return Math.abs(resolutionRank(left.resolution) - 2)
+      - Math.abs(resolutionRank(right.resolution) - 2)
+      || left.estimatedCostMicros - right.estimatedCostMicros
+  }
+  return resolutionRank(right.resolution) - resolutionRank(left.resolution)
+    || left.estimatedCostMicros - right.estimatedCostMicros
+}
+
+/**
+ * 推荐只基于服务端公开能力做确定性排序，不猜测画面质量。
+ * 有预算时先排除超预算组合；全部超预算时明确回落最低成本，不能静默超支。
+ */
+export function recommendVideoSelection(input: {
+  capabilities: PublicVideoCapabilities
+  duration: number
+  goal: VideoQualityGoal
+  budgetLimitMicros?: number
+}): VideoRecommendation {
+  const candidates: VideoRecommendation[] = []
+  for (const model of input.capabilities.models) {
+    if (!supportsVideoDuration(input.capabilities, model.id, input.duration)) continue
+    for (const resolution of model.resolutions) {
+      const estimatedCostMicros = estimateVideoSelectionCost(
+        input.capabilities,
+        model.id,
+        resolution,
+        input.duration,
+      )
+      if (estimatedCostMicros === null) continue
+      candidates.push({
+        model: model.id,
+        resolution,
+        estimatedCostMicros,
+        goal: input.goal,
+        reason: "",
+        overBudget: false,
+      })
+    }
+  }
+  if (candidates.length === 0) {
+    throw new Error(`当前没有模型支持 ${input.duration} 秒镜头`)
+  }
+
+  const budget = Number.isFinite(input.budgetLimitMicros)
+    ? Math.max(0, Math.floor(input.budgetLimitMicros!))
+    : null
+  const affordable = budget === null
+    ? candidates
+    : candidates.filter((candidate) => candidate.estimatedCostMicros <= budget)
+  const pool = affordable.length > 0 ? affordable : candidates
+  const selected = [...pool].sort((left, right) =>
+    budget !== null && affordable.length === 0
+      ? left.estimatedCostMicros - right.estimatedCostMicros
+        || resolutionRank(left.resolution) - resolutionRank(right.resolution)
+      : compareRecommendation(left, right)
+  )[0]!
+  const overBudget = budget !== null && selected.estimatedCostMicros > budget
+  const cost = `预计 ¥${(selected.estimatedCostMicros / 1_000_000).toFixed(2)}`
+  const baseReason = input.goal === "draft"
+    ? `试片优先成本，选择当前最低价组合，${cost}。`
+    : input.goal === "standard"
+      ? `标准档优先 768P，并在兼容组合中选择成本更低方案，${cost}。`
+      : `成片档优先最高可用分辨率，${cost}。`
+  return {
+    ...selected,
+    goal: input.goal,
+    reason: overBudget
+      ? `${baseReason} 当前预算不足以覆盖任何可用组合，最低仍需 ¥${(selected.estimatedCostMicros / 1_000_000).toFixed(2)}。`
+      : budget !== null
+        ? `${baseReason} 已限制在 ¥${(budget / 1_000_000).toFixed(2)} 预算内。`
+        : baseReason,
+    overBudget,
+  }
 }

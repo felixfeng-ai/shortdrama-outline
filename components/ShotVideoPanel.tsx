@@ -306,6 +306,7 @@ export default function ShotVideoPanel({
         disabled={Boolean(pendingTask) || submitting || retrying}
         onModelChange={videoSettings.setModel}
         onResolutionChange={videoSettings.setResolution}
+        onApplySelection={videoSettings.setSelection}
       />
 
       {pendingTask && (

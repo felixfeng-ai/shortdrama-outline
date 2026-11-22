@@ -8,7 +8,7 @@ test("品牌元数据以 VeyaTV 为最新名称并引用新图标", () => {
   const report = fs.readFileSync("app/report/page.tsx", "utf8")
   const icon = fs.readFileSync("public/veyatv-icon.svg", "utf8")
 
-  assert.match(layout, /title:\s*'VeyaTV · AI 短剧与漫剧生产平台'/)
+  assert.match(layout, /title:\s*'VeyaTV · AI 短剧生产平台'/)
   assert.match(layout, /siteName:\s*'VeyaTV'/)
   assert.match(layout, /title:\s*'VeyaTV'/)
   assert.match(layout, /icon:\s*'\/veyatv-icon\.svg'/)

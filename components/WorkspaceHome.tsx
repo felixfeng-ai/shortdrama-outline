@@ -9,6 +9,7 @@ import type { Scene, Shot, VisualCharacter } from '@/lib/assets/types'
 import type { GeneratedAsset } from '@/lib/generation/types'
 import { placeGenerationTargetId } from '@/lib/assets/anchors'
 import { selectedShotMedia } from '@/lib/production/selected-media'
+import { buildStoryboardPreviewPlan } from '@/lib/production/storyboard-preview'
 import type {
   ProductionMode,
   ProductionStageKey,
@@ -166,6 +167,10 @@ export default function WorkspaceHome({
   const selectedMedia = useMemo(
     () => selectedShotMedia(shots, assets),
     [assets, shots],
+  )
+  const storyboardPreview = useMemo(
+    () => buildStoryboardPreviewPlan({ projectId, shots, assets }),
+    [assets, projectId, shots],
   )
   const selectedImageAssets = useMemo(
     () => assets
@@ -404,6 +409,17 @@ export default function WorkspaceHome({
                 <button type="button" onClick={() => onOpenStep('shots')}>
                   打开分镜工作区
                 </button>
+                {storyboardPreview.status === 'ready' && (
+                  <a
+                    href={`/storyboard/${projectId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`播放动态分镜，${storyboardPreview.totalDurationSeconds} 秒，${storyboardPreview.segmentCount} 镜`}
+                  >
+                    播放动态分镜
+                    <small>{storyboardPreview.totalDurationSeconds} 秒 · {storyboardPreview.segmentCount} 镜</small>
+                  </a>
+                )}
                 <button type="button" onClick={() => onOpenStep('visuals')}>
                   检查角色定妆
                 </button>

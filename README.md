@@ -2,11 +2,11 @@
 
 # VeyaTV
 
-**AI 短剧与漫剧生产平台：从一句想法或已有原文，到分镜、镜头视频与时间线成片**
+**AI 短剧生产平台：从一句想法或已有原文，到分镜、镜头视频与时间线成片**
 
-**VeyaTV — AI short drama and comic drama production platform.**
+**VeyaTV — AI short drama production platform.**
 
-面向独立短剧与漫剧创作者的 AI 创作、镜头资产与成片生产平台。**打开网页就用，不装任何东西。**
+面向独立短剧创作者的 AI 创作、镜头资产与成片生产平台。**打开网页就用，不装任何东西。**
 
 [![线上体验](https://img.shields.io/badge/🌐_线上体验-veyatv.com-2ea44f?style=for-the-badge)](https://veyatv.com)
 [![使用教程](https://img.shields.io/badge/📘_使用教程-veyatv.com%2Fdocs-C4D98A?style=for-the-badge)](https://veyatv.com/docs)
@@ -24,7 +24,7 @@
 
 ### 一句话定位
 
-VeyaTV 是面向独立短剧、漫剧创作者的 **AI 短剧与漫剧生产平台**，不是单纯的“AI 生图/生视频工具”：
+VeyaTV 是面向独立短剧创作者的 **AI 短剧生产平台**，不是单纯的“AI 生图/生视频工具”：
 
 > 把一个想法、小说或已有剧本，拆成可以修改、可以追踪、可以继续生产、最后可以交付的短剧资产与成片。
 

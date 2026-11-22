@@ -79,6 +79,7 @@ import {
   generateVisuals,
   generateScenes,
   registerRefs,
+  relinkRefLocations,
   importProjectPackage,
   listSnapshots,
   listRefs,
@@ -91,8 +92,15 @@ import type { ProjectCanonDto } from '@/lib/assets/api'
 import type { ProjectSkillBinding } from '@/lib/skills/personal'
 import type { EntityComment } from '@/lib/entity-comments'
 import type { ReusableAsset } from '@/lib/assets/library'
-import type { Shot, VisualCharacter, VisualPlace, Scene as AssetScene } from '@/lib/assets/types'
+import type {
+  RefImageMeta,
+  Shot,
+  VisualCharacter,
+  VisualPlace,
+  Scene as AssetScene,
+} from '@/lib/assets/types'
 import { groupAttachments } from '@/lib/assets/attachments'
+import { applyKeyRelinks, planRefRelinks } from '@/lib/assets/relink'
 import { backfillVisualCharacterEntityIds } from '@/lib/assets/normalize'
 import type { ProjectDto } from '@/lib/assets/api'
 import type { ProjectMaterial } from '@/lib/assets/materials'
@@ -104,7 +112,9 @@ import {
   detectVaultMode,
   loadDirectoryHandle,
   pickDirectory,
-  listImages,
+  scanDirectoryFiles,
+  classifyDirectoryAccessError,
+  vaultFileExists,
   listVaultFiles,
   listIgnoredKeys,
   addFilesToVault,
@@ -121,6 +131,9 @@ import {
   type AttachSummary,
   type VaultFile,
   type VaultMode,
+  type VaultDirectoryAccess,
+  type VaultDirectoryScan,
+  NOT_CONNECTED_DIRECTORY_ACCESS,
 } from '@/lib/assets/vault'
 import { readStoreZip } from '@/lib/archive/zip'
 import { readProjectPackage } from '@/lib/export/import'
@@ -635,6 +648,16 @@ export default function Home() {
   // 影响范围：改一处之后实际受影响的下游数量（由 /api/impact 从血缘反查得出）
   const [impact, setImpact] = useState<({ affected: number } & ShotAudit) | null>(null)
   const [vaultMode, setVaultMode] = useState<VaultMode>('indexeddb')
+  /**
+   * 目录授权事实和图片列表分开存。权限失效只更新这里，
+   * 不能拿扫描失败去覆盖 allVaultFiles，否则用户会误以为素材被清空。
+   */
+  const [directoryAccess, setDirectoryAccess] = useState<VaultDirectoryAccess>(
+    NOT_CONNECTED_DIRECTORY_ACCESS,
+  )
+  const [vaultAccessBusy, setVaultAccessBusy] = useState(false)
+  /** 每次成功扫描递增，即使授权状态仍是 connected，也要重新审计已挂引用。 */
+  const [vaultScanRevision, setVaultScanRevision] = useState(0)
   /** 扫到的全部图片；vaultFiles 是「按已移除名单过滤后」的可见列表 */
   const [allVaultFiles, setAllVaultFiles] = useState<VaultFile[]>([])
   /** 被用户从工作台移除的 key：目录直连模式下只影响列表，不动硬盘文件 */
@@ -1334,6 +1357,30 @@ export default function Home() {
   const [attached, setAttached] = useState<Record<string, string[]>>({})
   /** 地点名 -> 该地点的场景图 key。和角色图分开存：它们的归属类型不同，混在一起迟早串 */
   const [placeAttached, setPlaceAttached] = useState<Record<string, string[]>>({})
+  /** 服务端引用台账的本地快照，包含文件 hash，是自动重关联的唯一指纹来源 */
+  const [refMetadata, setRefMetadata] = useState<RefImageMeta[]>([])
+  const [unreadableReferenceCount, setUnreadableReferenceCount] = useState(0)
+  const [autoRelinkedReferenceCount, setAutoRelinkedReferenceCount] = useState(0)
+  const relinkBusyRef = useRef(false)
+  const attachedVaultKeys = useMemo(
+    () => Array.from(new Set([
+      ...Object.values(attached).flat(),
+      ...Object.values(placeAttached).flat(),
+    ])).sort(),
+    [attached, placeAttached],
+  )
+  const attachedVaultKeySignature = attachedVaultKeys.join('\u0001')
+  const referenceKeys = useMemo(
+    () => Array.from(new Set([
+      ...attachedVaultKeys,
+      ...refMetadata.map((ref) => ref.vaultKey),
+    ])).sort(),
+    [attachedVaultKeys, refMetadata],
+  )
+  const referenceKeySignature = referenceKeys.join('\u0001')
+  const refMetadataSignature = refMetadata
+    .map((ref) => `${ref.id}:${ref.vaultKey}:${ref.fileHash}`)
+    .join('\u0001')
   // 记录「这份结果基于哪一版上游」，用于过期判定（服务端血缘 + 前端快速判断）
   const [visualsBuiltFrom, setVisualsBuiltFrom] = useState<string | null>(null)
   const [shotsBuiltFrom, setShotsBuiltFrom] = useState<string | null>(null)
@@ -1644,6 +1691,7 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search)
     params.delete('view')
     params.delete('step')
+    params.delete('new')
     const search = params.toString()
     const href = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`
     const previous = window.history.state && typeof window.history.state === 'object'
@@ -3155,7 +3203,7 @@ export default function Home() {
 
     if (!projectId) return
     try {
-      await registerRefs(projectId, [{
+      const saved = await registerRefs(projectId, [{
         vaultKey: file.key,
         label: file.name.replace(/\.[^.]+$/, "").slice(0, 20),
         fileHash: file.hash,
@@ -3164,6 +3212,7 @@ export default function Home() {
         ownerType: "character",
         ownerId: characterName,
       }])
+      setRefMetadata(saved.refs)
     } catch {
       // 台账登记失败不影响本地已挂的图
     }
@@ -3220,7 +3269,7 @@ export default function Home() {
 
     if (!projectId) return
     try {
-      await registerRefs(projectId, [{
+      const saved = await registerRefs(projectId, [{
         vaultKey: file.key,
         label: file.name.replace(/\.[^.]+$/, "").slice(0, 20),
         fileHash: file.hash,
@@ -3229,6 +3278,7 @@ export default function Home() {
         ownerType: "place",
         ownerId: placeName,
       }])
+      setRefMetadata(saved.refs)
     } catch {
       // 台账登记失败不影响本地已挂的图
     }
@@ -3270,15 +3320,31 @@ export default function Home() {
     setAttachSummary(summarizeAttach(files, names, detailed))
 
     if (Object.keys(detailed).length === 0) return
-    setAttached((prev) => {
-      const next: Record<string, string[]> = { ...prev }
-      for (const [name, hits] of Object.entries(detailed)) {
-        const bucket = [...(next[name] ?? [])]
-        for (const hit of hits) if (!bucket.includes(hit.key)) bucket.push(hit.key)
-        next[name] = bucket
+    const fileByKey = new Map(files.map((file) => [file.key, file]))
+    const serverKeys = new Set(refMetadata.map((ref) => ref.vaultKey))
+    const registrations: Array<{ ownerId: string; file: VaultFile }> = []
+    const next: Record<string, string[]> = { ...attached }
+    for (const [name, hits] of Object.entries(detailed)) {
+      const bucket = [...(next[name] ?? [])]
+      for (const hit of hits) {
+        const file = fileByKey.get(hit.key)
+        if (!file) continue
+        const sameOwnerHash = refMetadata.some((ref) =>
+          ref.ownerType === 'character'
+          && ref.ownerId === name
+          && ref.fileHash === file.hash,
+        )
+        if (!serverKeys.has(hit.key) && !sameOwnerHash) {
+          registrations.push({ ownerId: name, file })
+        }
+        if (!bucket.includes(hit.key)) bucket.push(hit.key)
       }
-      return next
-    })
+      next[name] = bucket
+    }
+    setAttached(next)
+    for (const registration of registrations) {
+      void attachImage(registration.ownerId, registration.file)
+    }
   }
 
   /**
@@ -3328,21 +3394,74 @@ export default function Home() {
     if (file) void attachImage(sug.character, file)
     setAiSuggestions((prev) => prev.filter((s) => s.key !== sug.key))
   }
-  /** 选择素材目录（Chrome/Edge）并扫描 */
-  async function handlePickDirectory() {
-    const handle = await pickDirectory().catch(() => null)
-    if (!handle) return
-    const files = await listImages(handle).catch(() => [])
-    setAllVaultFiles(files)
-    autoAttachByFolder(files)
+
+  /**
+   * 扫描结果只有一个合法落点：状态总是更新；只有 files !== null 时才替换图片列表。
+   * 目录权限失效、目录丢失和读取异常都必须保留内存中的旧素材与挂接。
+   */
+  function applyDirectoryScan(scan: VaultDirectoryScan, announceFailure = false) {
+    setDirectoryAccess(scan.access)
+    if (scan.files) {
+      setAutoRelinkedReferenceCount(0)
+      setAllVaultFiles(scan.files)
+      autoAttachByFolder(scan.files)
+      setVaultScanRevision((value) => value + 1)
+    } else if (announceFailure) {
+      setNotice(scan.access.message)
+    }
   }
 
+  /** 选择素材目录（Chrome/Edge）并扫描 */
+  async function handlePickDirectory() {
+    setVaultAccessBusy(true)
+    try {
+      const handle = await pickDirectory()
+      if (!handle) {
+        setDirectoryAccess(NOT_CONNECTED_DIRECTORY_ACCESS)
+        setNotice('当前浏览器没有可用的素材目录选择器，请改用最新版 Chrome 或 Edge。')
+        return
+      }
+      applyDirectoryScan(
+        await scanDirectoryFiles(handle, { requestPermission: true }),
+        true,
+      )
+    } catch (error) {
+      const access = classifyDirectoryAccessError(error)
+      if (access.reason === 'cancelled') {
+        setNotice(access.message)
+      } else {
+        setDirectoryAccess(access)
+        setNotice(access.message)
+      }
+    } finally {
+      setVaultAccessBusy(false)
+    }
+  }
+
+  /**
+   * 重新授权 / 重试读取 / 重新扫描都走这里。
+   * 只有用户主动点击才会 requestPermission，页面启动恢复不会弹浏览器授权框。
+   */
   async function handleReloadVault() {
-    const handle = await loadDirectoryHandle()
-    if (!handle) return
-    const files = await listImages(handle).catch(() => [])
-    setAllVaultFiles(files)
-    autoAttachByFolder(files)
+    setVaultAccessBusy(true)
+    try {
+      const handle = await loadDirectoryHandle()
+      if (!handle) {
+        setDirectoryAccess(NOT_CONNECTED_DIRECTORY_ACCESS)
+        setNotice('没有找到已保存的素材文件夹，请先重新选择文件夹。')
+        return
+      }
+      applyDirectoryScan(
+        await scanDirectoryFiles(handle, { requestPermission: true }),
+        true,
+      )
+    } catch (error) {
+      const access = classifyDirectoryAccessError(error)
+      setDirectoryAccess(access)
+      setNotice(access.message)
+    } finally {
+      setVaultAccessBusy(false)
+    }
   }
 
   /**
@@ -3373,6 +3492,11 @@ export default function Home() {
     }
     setAllVaultFiles([])
     setIgnoredKeys([])
+    setRefMetadata([])
+    setAutoRelinkedReferenceCount(0)
+    setDirectoryAccess(NOT_CONNECTED_DIRECTORY_ACCESS)
+    setUnreadableReferenceCount(0)
+    setVaultScanRevision((value) => value + 1)
   }
 
   /**
@@ -3388,17 +3512,121 @@ export default function Home() {
     autoAttachByFolder(vaultFiles)
     // autoAttachByFolder 是稳定纯函数逻辑，这里只需在「角色名单或图片列表变了」时重跑
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [namesKey, vaultFiles])
+  }, [namesKey, vaultFiles, projectId, refMetadataSignature])
 
   // 图库能力探测：只在客户端执行
   useEffect(() => {
-    setVaultMode(detectVaultMode())
-    listVaultFiles().then(setAllVaultFiles).catch(() => {})
+    const mode = detectVaultMode()
+    setVaultMode(mode)
+    if (mode === 'indexeddb') {
+      listVaultFiles().then(setAllVaultFiles).catch(() => {})
+    }
     listIgnoredKeys().then(setIgnoredKeys).catch(() => {})
-    loadDirectoryHandle()
-      .then(async (h) => { if (h) setAllVaultFiles(await listImages(h).catch(() => [])) })
-      .catch(() => {})
+    if (mode !== 'fs-access') return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const handle = await loadDirectoryHandle()
+        if (cancelled) return
+        if (!handle) {
+          setDirectoryAccess(NOT_CONNECTED_DIRECTORY_ACCESS)
+          return
+        }
+        const scan = await scanDirectoryFiles(handle)
+        if (cancelled) return
+        setDirectoryAccess(scan.access)
+        if (scan.files) {
+          setAutoRelinkedReferenceCount(0)
+          setAllVaultFiles(scan.files)
+          autoAttachByFolder(scan.files)
+          setVaultScanRevision((value) => value + 1)
+        }
+      } catch (error) {
+        if (!cancelled) setDirectoryAccess(classifyDirectoryAccessError(error))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  /**
+   * 审计所有引用，并在证据唯一时按文件 hash 自动恢复路径。
+   *
+   * 顺序不能反：先确认旧 key 确实读不到，再从当前可见素材中找唯一 hash；
+   * PATCH 成功后才同时更新服务端台账、角色挂接和地点挂接。任何一步失败都保留旧状态，
+   * 避免“界面看起来恢复了，但刷新后引用又丢了”。
+   */
+  useEffect(() => {
+    if (referenceKeys.length === 0) {
+      setUnreadableReferenceCount(0)
+      return
+    }
+    const canAudit = vaultMode === 'indexeddb' || directoryAccess.status === 'connected'
+    if (!canAudit) return
+
+    let cancelled = false
+    void (async () => {
+      const results = await Promise.all(
+        referenceKeys.map(async (key) => ({
+          key,
+          readable: await vaultFileExists(key).catch(() => false),
+        })),
+      )
+      if (cancelled) return
+
+      const unreadableKeys = results.filter((item) => !item.readable).map((item) => item.key)
+      if (unreadableKeys.length === 0) {
+        setUnreadableReferenceCount(0)
+        return
+      }
+      if (!projectId || relinkBusyRef.current) {
+        setUnreadableReferenceCount(unreadableKeys.length)
+        return
+      }
+
+      const plan = planRefRelinks(refMetadata, vaultFiles, unreadableKeys)
+      if (plan.updates.length === 0) {
+        setUnreadableReferenceCount(plan.unresolvedKeys.length)
+        return
+      }
+
+      relinkBusyRef.current = true
+      try {
+        const result = await relinkRefLocations(projectId, plan.updates)
+        if (cancelled) return
+
+        const recovered = Object.keys(plan.oldToNew).length
+        setRefMetadata(result.refs)
+        setAttached((prev) => applyKeyRelinks(prev, plan.oldToNew))
+        setPlaceAttached((prev) => applyKeyRelinks(prev, plan.oldToNew))
+        setAutoRelinkedReferenceCount(recovered)
+        setUnreadableReferenceCount(plan.unresolvedKeys.length)
+        setNotice(`已按文件指纹恢复 ${recovered} 张参考图引用。`)
+      } catch (error) {
+        if (!cancelled) {
+          setUnreadableReferenceCount(unreadableKeys.length)
+          setNotice(error instanceof Error ? error.message : '参考图引用自动恢复失败')
+        }
+      } finally {
+        relinkBusyRef.current = false
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // referenceKeySignature 与 refMetadataSignature 是稳定指纹，避免数组引用变化触发重复审计
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    referenceKeySignature,
+    refMetadataSignature,
+    directoryAccess.status,
+    vaultMode,
+    vaultScanRevision,
+    projectId,
+    vaultFiles,
+  ])
 
   // 额度快照：场记要用它回答「还能用几次」，每次生成后跟着刷新
   useEffect(() => {
@@ -3483,6 +3711,7 @@ export default function Home() {
     const byKind = Object.fromEntries(pairs) as Record<ArtifactKind, SnapshotDto<unknown>[]>
     setArtifactSnapshots(byKind)
     setArtifactError(null)
+    setRefMetadata(refs)
     const attachmentGroups = groupAttachments(refs)
     const latestOf = <T,>(kind: ArtifactKind): T | null => (byKind[kind]?.[0]?.payload as T | undefined) ?? null
 
@@ -4341,6 +4570,9 @@ export default function Home() {
     setPlaces([])
     setAttached({})
     setPlaceAttached({})
+    setRefMetadata([])
+    setAutoRelinkedReferenceCount(0)
+    setUnreadableReferenceCount(0)
     setShots([])
     setActiveShotId(null)
     setEpisodeCountConfirmed(false)
@@ -4449,6 +4681,7 @@ export default function Home() {
       const restored = await loadProject(project.id).catch(() => false)
       if (!restored) throw new Error('示例没有载入成功，请重试')
       writeProjectToUrl(project.id, 'push')
+      goWorkspaceHome()
       setNotice(
         reused
           ? `已打开现有示例项目「${project.title}」，没有重复创建副本。`
@@ -5766,6 +5999,10 @@ export default function Home() {
               <VaultPanel
                 mode={vaultMode}
                 files={vaultFiles}
+                directoryAccess={directoryAccess}
+                unreadableReferenceCount={unreadableReferenceCount}
+                autoRelinkedReferenceCount={autoRelinkedReferenceCount}
+                accessBusy={vaultAccessBusy}
                 onPickDirectory={handlePickDirectory}
                 onReload={handleReloadVault}
                 onAdd={(added) => setAllVaultFiles((prev) => [...prev, ...added])}
@@ -5781,6 +6018,10 @@ export default function Home() {
                 compact
                 mode={vaultMode}
                 files={vaultFiles}
+                directoryAccess={directoryAccess}
+                unreadableReferenceCount={unreadableReferenceCount}
+                autoRelinkedReferenceCount={autoRelinkedReferenceCount}
+                accessBusy={vaultAccessBusy}
                 onPickDirectory={handlePickDirectory}
                 onReload={handleReloadVault}
                 onAdd={(added) => setAllVaultFiles((prev) => [...prev, ...added])}
@@ -6080,7 +6321,11 @@ export default function Home() {
             </div>
           )}
 
-          <div className="h-deck-body" id="deck-body">
+          <div
+            className="h-deck-body"
+            id="deck-body"
+            data-open={deckOpen ? 'true' : 'false'}
+          >
             {hasDeckOutput && (
               <div
                 className="h-deck-pane"

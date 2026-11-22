@@ -52,14 +52,16 @@ function timestamp(ms: number): string {
 
 export function buildStoryboardSrt(segments: StoryboardSegment[]): string {
   let cursorMs = 0
+  let subtitleIndex = 0
   const blocks: string[] = []
-  segments.forEach((segment, index) => {
+  segments.forEach((segment) => {
     const startMs = cursorMs
     const endMs = startMs + Math.max(0, segment.durationSeconds * 1_000 - 300)
     const text = segment.dialogue.trim()
     if (text) {
+      subtitleIndex += 1
       blocks.push([
-        String(index + 1),
+        String(subtitleIndex),
         `${timestamp(startMs)} --> ${timestamp(endMs)}`,
         segment.speaker ? `${segment.speaker}：${text}` : text,
       ].join("\r\n"))

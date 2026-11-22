@@ -475,7 +475,32 @@ export interface RefInput {
 }
 
 export const registerRefs = (projectId: string, refs: RefInput[]) =>
-  postJson<{ refs: unknown[] }>("/api/refs", { projectId, refs })
+  postJson<{ refs: RefImageMeta[] }>("/api/refs", { projectId, refs })
+
+export interface RefRelinkLocationInput {
+  id: string
+  vaultKey: string
+  fileHash: string
+  mime?: string
+  bytes?: number
+}
+
+export const relinkRefLocations = (
+  projectId: string,
+  updates: RefRelinkLocationInput[],
+) =>
+  fetch("/api/refs", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId, updates }),
+  })
+    .then(async (response) => {
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "图片引用恢复失败")
+      }
+      return payload.data as { refs: RefImageMeta[]; updated: number }
+    })
 
 export const listRefs = (projectId: string) =>
   fetch(`/api/refs?projectId=${projectId}`)

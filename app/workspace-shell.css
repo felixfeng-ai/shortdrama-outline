@@ -378,7 +378,7 @@
   margin-top: 14px;
 }
 
-.wfx-dossier-secondary-actions button,
+.wfx-dossier-secondary-actions :is(button, a),
 .wfx-dossier-inline-link,
 .wfx-recent-dossier > header > button {
   display: inline-flex;
@@ -391,12 +391,23 @@
   color: var(--wfx-faint);
   font-size: 11.5px;
   cursor: pointer;
+  text-decoration: none;
 }
 
-.wfx-dossier-secondary-actions button:hover,
+.wfx-dossier-secondary-actions :is(button, a):hover,
 .wfx-dossier-inline-link:hover,
 .wfx-recent-dossier > header > button:hover {
   color: var(--wfx-ink);
+}
+
+.wfx-dossier-secondary-actions a {
+  color: var(--wfx-ink);
+}
+
+.wfx-dossier-secondary-actions a small {
+  color: var(--wfx-muted);
+  font-size: var(--wfx-type-meta);
+  font-weight: 400;
 }
 
 .wfx-dossier-rail {
@@ -2981,6 +2992,57 @@
   color: var(--wfx-faint);
   font-size: 11px;
   line-height: 1.6;
+}
+
+.wfx-onboarding-sample-link {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--wfx-line);
+  background: transparent;
+  color: var(--wfx-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.wfx-onboarding-sample-link > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  fill: none;
+  stroke: var(--wfx-accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wfx-onboarding-sample-link > span {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.wfx-onboarding-sample-link b {
+  color: var(--wfx-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wfx-onboarding-sample-link small {
+  color: var(--wfx-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.wfx-onboarding-sample-link:disabled {
+  opacity: .45;
+  cursor: not-allowed;
 }
 
 .wfx-onboarding-path {
@@ -8228,7 +8290,7 @@
 .wfx-dossier-methods span,
 .wfx-recent-dossier-grid b,
 .wfx-recent-dossier-empty b,
-.wfx-dossier-secondary-actions button,
+.wfx-dossier-secondary-actions :is(button, a),
 .wfx-dossier-inline-link,
 .wfx-recent-dossier > header > button {
   font-weight: 500;
@@ -8268,7 +8330,7 @@
 .wfx-mode-strip .workspace-mode-tabs :is(button, a),
 .wfx-button,
 .wfx-dossier-blocker .wfx-button,
-.wfx-dossier-secondary-actions button,
+.wfx-dossier-secondary-actions :is(button, a),
 .wfx-dossier-inline-link,
 .wfx-recent-dossier > header > button {
   font-family: var(--wfx-font-ui);

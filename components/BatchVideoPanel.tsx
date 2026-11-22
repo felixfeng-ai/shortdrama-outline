@@ -1,16 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import SmoothCollapse from './SmoothCollapse'
 import type { Shot } from '@/lib/assets/types'
 import type { GeneratedAsset, GenerationBatch, GenerationTask } from '@/lib/generation/types'
 import {
+  batchImportShotVideos,
   fetchProjectVideoState,
   generateShotVideoBatch,
+  importShotVideo,
   retryVideoTask,
   selectVideo,
 } from '@/lib/video/client'
+import { planExternalVideoImport } from '@/lib/video/external-import'
 import { supportsVideoDuration } from '@/lib/video/catalog'
 import { useVideoCapabilities } from '@/lib/video/use-video-capabilities'
 import { quotaUnitsForCostMicros } from '@/lib/model-pricing'
@@ -74,8 +77,14 @@ export default function BatchVideoPanel({
   const [starting, setStarting] = useState(false)
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [selectingId, setSelectingId] = useState<string | null>(null)
+  const [importingTarget, setImportingTarget] = useState<string | null>(null)
+  const [batchFiles, setBatchFiles] = useState<File[]>([])
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false)
+  const [batchImporting, setBatchImporting] = useState(false)
+  const [manualTargets, setManualTargets] = useState<Record<number, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const batchInputRef = useRef<HTMLInputElement>(null)
   const videoSettings = useVideoCapabilities()
 
   // 能力未就绪时所有镜头都视为未就绪，避免用户提交后才收到统一 4xx。
@@ -181,6 +190,16 @@ export default function BatchVideoPanel({
     const episode = [...episodes][0] ?? 0
     return episode > 0 ? `第 ${episode} 集` : '未标注镜头'
   }, [shots])
+  const batchPlan = useMemo(() => planExternalVideoImport({
+    shots,
+    files: batchFiles.map((file, index) => ({
+      index,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    })),
+    manualTargets,
+  }), [batchFiles, manualTargets, shots])
 
   const refresh = useCallback(async () => {
     if (!projectId) {
@@ -328,6 +347,79 @@ export default function BatchVideoPanel({
     }
   }
 
+  async function importExternalVideo(targetId: string, shotNumber: number, file: File) {
+    if (importingTarget) return
+    setImportingTarget(targetId)
+    setError(null)
+    setNotice(null)
+    try {
+      const pid = projectId ?? await onEnsureProject()
+      if (!pid) throw new Error('项目还没有保存成功，请重试')
+      const result = await importShotVideo({
+        projectId: pid,
+        targetId,
+        file,
+      })
+      setVideoAssets((current) => [
+        result.asset,
+        ...current.map((asset) => (
+          asset.targetId === result.asset.targetId && asset.mediaKind === 'video'
+            ? { ...asset, selectedAt: null }
+            : asset
+        )),
+      ])
+      setNotice(`已导入第 ${shotNumber} 镜外部视频并采用。`)
+      window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '外部视频导入失败')
+    } finally {
+      setImportingTarget(null)
+    }
+  }
+
+  async function confirmBatchImport() {
+    if (batchImporting || batchPlan.mapped.length === 0) return
+    setBatchImporting(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const pid = projectId ?? await onEnsureProject()
+      if (!pid) throw new Error('项目还没有保存成功，请重试')
+      const result = await batchImportShotVideos({
+        projectId: pid,
+        files: batchFiles,
+        mapping: batchPlan.mapped.map((item) => ({
+          fileIndex: item.fileIndex,
+          shotId: item.targetId,
+        })),
+      })
+      setVideoAssets((current) => {
+        let next = current
+        for (const imported of result.assets) {
+          next = next.map((asset) => (
+            asset.targetId === imported.asset.targetId && asset.mediaKind === 'video'
+              ? { ...asset, selectedAt: null }
+              : asset
+          ))
+          next = [imported.asset, ...next]
+        }
+        return next
+      })
+      setNotice(`已批量导入并采用 ${result.importedCount} 条外部视频。`)
+      if (result.failures.length > 0) {
+        setError(result.failures.map((item) => `${item.fileName}：${item.error}`).join("；"))
+      }
+      setBatchFiles([])
+      setBatchDialogOpen(false)
+      setManualTargets({})
+      window.dispatchEvent(new CustomEvent('chengju:generation-updated'))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '批量外部视频导入失败')
+    } finally {
+      setBatchImporting(false)
+    }
+  }
+
   if (shots.length === 0) return null
 
   return (
@@ -357,14 +449,38 @@ export default function BatchVideoPanel({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-          className="batch-generation-toggle"
-        >
-          {open ? '收起选择' : candidateCount > 0 ? '生成更多视频' : '选择视频镜头'}
-        </button>
+        <div className="batch-generation-head-actions">
+          <input
+            ref={batchInputRef}
+            type="file"
+            accept="video/mp4"
+            multiple
+            hidden
+            onChange={(event) => {
+              const files = [...(event.currentTarget.files ?? [])]
+              event.currentTarget.value = ''
+              if (files.length === 0) return
+              setBatchFiles(files)
+              setManualTargets({})
+              setBatchDialogOpen(true)
+            }}
+          />
+          <button
+            type="button"
+            className="batch-generation-batch-import"
+            onClick={() => batchInputRef.current?.click()}
+          >
+            批量导入外部视频
+          </button>
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+            className="batch-generation-toggle"
+          >
+            {open ? '收起选择' : candidateCount > 0 ? '生成更多视频' : '选择视频镜头'}
+          </button>
+        </div>
       </div>
 
       <div className="batch-generation-policy" aria-label="批量视频生成规则">
@@ -460,7 +576,13 @@ export default function BatchVideoPanel({
                           <div className="batch-video-candidate-meta">
                             <div>
                               <b>版本 {assets.length - index}</b>
-                              <span>{asset.model || 'MiniMax'} · {durationSeconds.toFixed(1)}s</span>
+                              <span>
+                                {asset.providerId === 'external-upload'
+                                  ? '外部导入'
+                                  : asset.model || 'MiniMax'}
+                                {' · '}
+                                {durationSeconds.toFixed(1)}s
+                              </span>
                             </div>
                             <button
                               type="button"
@@ -492,11 +614,15 @@ export default function BatchVideoPanel({
               capabilities={videoSettings.capabilities}
               model={videoSettings.model}
               resolution={videoSettings.resolution}
+              duration={targets.length > 0
+                ? Math.max(...targets.map((target) => target.duration))
+                : undefined}
               loading={videoSettings.loading}
               error={videoSettings.error}
               disabled={starting}
               onModelChange={videoSettings.setModel}
               onResolutionChange={videoSettings.setResolution}
+              onApplySelection={videoSettings.setSelection}
             />
           </section>
 
@@ -516,6 +642,7 @@ export default function BatchVideoPanel({
           <div className="batch-generation-list">
             {targets.map((target) => {
               const task = latestByTarget.get(target.targetId)
+              const shot = shots.find((item) => item.id === target.key)
               const checked = selected.has(target.key) && !target.reason
               return (
                 <div
@@ -535,6 +662,32 @@ export default function BatchVideoPanel({
                     </span>
                   </label>
                   <div className="batch-generation-state">
+                    <span className="batch-generation-import">
+                      <button
+                        type="button"
+                        disabled={Boolean(importingTarget) || isPending(task)}
+                        aria-label={`为第 ${shot?.shot ?? '-'} 镜导入外部视频`}
+                        onClick={() => {
+                          document.getElementById(`shot-video-import-${target.key}`)
+                            ?.click()
+                        }}
+                      >
+                        {importingTarget === target.targetId ? '导入中…' : '导入外部视频'}
+                      </button>
+                      <input
+                        id={`shot-video-import-${target.key}`}
+                        type="file"
+                        accept="video/mp4"
+                        disabled={Boolean(importingTarget) || isPending(task)}
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0]
+                          event.currentTarget.value = ''
+                          if (file && shot) {
+                            void importExternalVideo(target.targetId, shot.shot, file)
+                          }
+                        }}
+                      />
+                    </span>
                     {target.reason ? (
                       <span className="is-blocked">{target.reason}</span>
                     ) : task ? (
@@ -591,6 +744,85 @@ export default function BatchVideoPanel({
         </div>
         </div>
       </SmoothCollapse>
+      {batchDialogOpen && (
+        <div className="external-video-batch-scrim">
+          <section
+            className="external-video-batch-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="external-video-batch-title"
+          >
+            <header>
+              <span>导入预览</span>
+              <h3 id="external-video-batch-title">批量导入外部视频</h3>
+              <p>优先按文件名匹配；无法识别时可手动选择镜头。</p>
+            </header>
+            <div className="external-video-batch-summary">
+              <b>{batchPlan.mapped.length} 个可导入</b>
+              <span>{batchPlan.issues.length} 个需处理</span>
+            </div>
+            <div className="external-video-batch-list">
+              {batchFiles.map((file, fileIndex) => {
+                const mapped = batchPlan.mapped.find((item) => item.fileIndex === fileIndex)
+                const issue = batchPlan.issues.find((item) => item.fileIndex === fileIndex)
+                const invalidMedia = issue?.reason.match(/MP4|80MB|为空/)
+                return (
+                  <div
+                    key={`${file.name}:${fileIndex}`}
+                    className={mapped ? "is-ready" : "is-issue"}
+                  >
+                    <span>{file.name}</span>
+                    <div className="external-video-batch-select">
+                      <select
+                        value={mapped?.targetId ?? manualTargets[fileIndex] ?? ""}
+                        disabled={batchImporting || Boolean(invalidMedia)}
+                        aria-label={`为 ${file.name} 选择镜头`}
+                        onChange={(event) => {
+                          const targetId = event.target.value
+                          setManualTargets((current) => {
+                            const next = { ...current }
+                            if (targetId) next[fileIndex] = targetId
+                            else delete next[fileIndex]
+                            return next
+                          })
+                        }}
+                      >
+                        <option value="">选择镜头</option>
+                        {shots.map((shot) => (
+                          <option key={shot.id} value={shot.entityId ?? shot.id}>
+                            第 {shot.episode} 集 · 镜 {String(shot.shot).padStart(2, "0")}
+                          </option>
+                        ))}
+                      </select>
+                      <b>{mapped?.label ?? issue?.reason ?? "选择镜头"}</b>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <footer>
+              <button
+                type="button"
+                disabled={batchImporting}
+                onClick={() => {
+                  setBatchFiles([])
+                  setManualTargets({})
+                  setBatchDialogOpen(false)
+                }}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={batchImporting || batchPlan.mapped.length === 0}
+                onClick={() => void confirmBatchImport()}
+              >
+                {batchImporting ? '正在导入…' : `确认导入 ${batchPlan.mapped.length} 个`}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
     </section>
   )
 }

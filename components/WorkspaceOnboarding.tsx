@@ -323,6 +323,19 @@ export default function WorkspaceOnboarding({
           <p className="wfx-onboarding-note">
             本次只授权所选范围，超出不扣费。
           </p>
+          <button
+            className="wfx-onboarding-sample-link"
+            type="button"
+            disabled={busy !== null}
+            onClick={onLoadSample}
+          >
+            <SampleIcon />
+            <span>
+              <b>查看完整示例项目</b>
+              <small>含人物、分镜、可播放成片和交付入口，不调用模型。</small>
+            </span>
+            <ArrowIcon />
+          </button>
         </div>
 
         <aside className="wfx-onboarding-outcome" aria-labelledby="onboarding-outcome-title">
@@ -353,7 +366,7 @@ export default function WorkspaceOnboarding({
         <details>
           <summary>
             <span>更多起点</span>
-            <b>小说、剧本或示例</b>
+            <b>导入小说或剧本</b>
           </summary>
           <div className="wfx-onboarding-source-grid">
             <button className="wfx-onboarding-entry" type="button" onClick={onOpenSource}>
@@ -361,14 +374,6 @@ export default function WorkspaceOnboarding({
               <span className="wfx-onboarding-entry-copy">
                 <b>导入小说或剧本</b>
                 <small>保留原文，再整理人物关系、改编计划和短剧结构。</small>
-              </span>
-              <ArrowIcon />
-            </button>
-            <button className="wfx-onboarding-entry" type="button" onClick={onLoadSample}>
-              <span className="wfx-onboarding-entry-icon"><SampleIcon /></span>
-              <span className="wfx-onboarding-entry-copy">
-                <b>查看示例项目</b>
-                <small>用一部 3 集示例直接查看人物、分镜、视频与成片。</small>
               </span>
               <ArrowIcon />
             </button>

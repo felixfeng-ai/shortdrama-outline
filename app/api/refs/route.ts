@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server"
 import { InputError, errorResponse, ok } from "@/lib/api"
 import { getDbForRequest } from "@/lib/assets/store"
-import { listRefs } from "@/lib/assets/refs"
+import { listRefs, relinkRefs, type RefRelinkUpdate } from "@/lib/assets/refs"
 import { randomUUID } from "node:crypto"
 import { assertProjectAccess } from "@/lib/assets/access"
 import { resolveProjectOwner } from "@/lib/auth/request"
@@ -85,6 +85,42 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(ok({ refs: listRefs(db, projectId), saved }))
+  } catch (error) {
+    const { body, status } = errorResponse(error)
+    return NextResponse.json(body, { status })
+  }
+}
+
+/**
+ * 文件移动/改名后恢复引用位置。
+ * 只改位置和文件元数据，校验仍依赖项目内原有的 fileHash。
+ */
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json().catch(() => null)
+    const projectId = typeof body?.projectId === "string" ? body.projectId : ""
+    if (!projectId) throw new InputError("缺少 projectId")
+
+    const incoming: Record<string, unknown>[] = Array.isArray(body?.updates) ? body.updates : []
+    if (incoming.length === 0) throw new InputError("没有要恢复的图片引用")
+    if (incoming.length > 500) throw new InputError("一次最多恢复 500 个图片引用")
+
+    const db = getDbForRequest()
+    assertProjectAccess(db, projectId, resolveProjectOwner(db, req))
+
+    const updates: RefRelinkUpdate[] = incoming.map((item) => {
+      rejectIfBinary(item)
+      return {
+        id: typeof item.id === "string" ? item.id.trim() : "",
+        vaultKey: typeof item.vaultKey === "string" ? item.vaultKey.trim() : "",
+        fileHash: typeof item.fileHash === "string" ? item.fileHash.trim() : "",
+        mime: typeof item.mime === "string" ? item.mime : undefined,
+        bytes: Number.isFinite(Number(item.bytes)) ? Number(item.bytes) : undefined,
+      }
+    })
+
+    const result = relinkRefs(db, projectId, updates)
+    return NextResponse.json(ok(result))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

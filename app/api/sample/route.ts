@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server'
 import { errorResponse, ok } from '@/lib/api'
 import { getDbForRequest } from '@/lib/assets/store'
-import { createProject, findProjectByTitle } from '@/lib/assets/repo'
+import { createProject, findProjectByTitle, latestSnapshot } from '@/lib/assets/repo'
 import { persistIfProject } from '@/lib/assets/persist'
 import { saveProjectContext } from '@/lib/assets/project-context'
 import {
@@ -23,10 +23,23 @@ import {
   SAMPLE_GENRE,
   SAMPLE_VISUALS,
 } from '@/lib/sample'
+import { ensureSampleProduction } from '@/lib/sample-production'
+import { ensureSampleStoryboardMedia } from '@/lib/sample-storyboard'
 import { resolveProjectOwner } from '@/lib/auth/request'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+function refreshBundledSampleShots(db: ReturnType<typeof getDbForRequest>, projectId: string) {
+  const snapshot = latestSnapshot(db, projectId, 'shots')
+  const current = Array.isArray(snapshot?.payload) ? snapshot.payload as typeof SAMPLE_SHOTS : []
+  if (current.length >= SAMPLE_SHOTS.length) return
+  const bundledIds = new Set(SAMPLE_SHOTS.map((shot) => shot.id))
+  if (current.length > 0 && !current.every((shot) => bundledIds.has(shot.id))) return
+  persistIfProject(db, projectId, 'shots', SAMPLE_SHOTS, {
+    kinds: ['scenes', 'visualCharacters', 'visualPlaces'],
+  })
+}
 
 export async function POST(req: Request) {
   try {
@@ -34,7 +47,16 @@ export async function POST(req: Request) {
     const ownerId = resolveProjectOwner(db, req)
     const existing = findProjectByTitle(db, SAMPLE_TITLE, ownerId)
     if (existing) {
-      return NextResponse.json(ok({ project: existing, reused: true }))
+      // 旧示例只补新增镜头；用户改过的示例不覆盖，避免更新演示数据时抹掉真实编辑。
+      refreshBundledSampleShots(db, existing.id)
+      const sampleProduction = ensureSampleProduction(db, existing.id)
+      const sampleStoryboard = ensureSampleStoryboardMedia(db, existing.id)
+      return NextResponse.json(ok({
+        project: existing,
+        reused: true,
+        sampleProduction,
+        sampleStoryboard,
+      }))
     }
     const project = createProject(db, SAMPLE_TITLE, ownerId)
     saveProjectContext(db, project.id, ownerId, {
@@ -52,8 +74,15 @@ export async function POST(req: Request) {
     persistIfProject(db, project.id, 'visualPlaces', SAMPLE_PLACES, { kinds: ['scenes'] })
     persistIfProject(db, project.id, 'scenes', SAMPLE_SCENES, { kinds: ['episodes'] })
     persistIfProject(db, project.id, 'shots', SAMPLE_SHOTS, { kinds: ['scenes', 'visualCharacters', 'visualPlaces'] })
+    const sampleProduction = ensureSampleProduction(db, project.id)
+    const sampleStoryboard = ensureSampleStoryboardMedia(db, project.id)
 
-    return NextResponse.json(ok({ project, reused: false }))
+    return NextResponse.json(ok({
+      project,
+      reused: false,
+      sampleProduction,
+      sampleStoryboard,
+    }))
   } catch (error) {
     const { body, status } = errorResponse(error)
     return NextResponse.json(body, { status })

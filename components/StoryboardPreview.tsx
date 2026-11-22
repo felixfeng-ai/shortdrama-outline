@@ -161,6 +161,8 @@ export default function StoryboardPreview({ projectId }: Props) {
     if (exportBusy) return
     setExportBusy(true)
     setExportError(null)
+    // 渲染可能持续数十秒；确认后先退出弹层，让播放与切镜继续可用。
+    setExportOpen(false)
     try {
       const response = await fetch(`/api/projects/${projectId}/storyboard-exports`, {
         method: "POST",
@@ -174,10 +176,10 @@ export default function StoryboardPreview({ projectId }: Props) {
       if (!response.ok || !payload.success) {
         throw new Error(payload.error || "分享视频导出失败")
       }
-      setExportOpen(false)
       await loadExports()
     } catch (cause) {
       setExportError(cause instanceof Error ? cause.message : "分享视频导出失败")
+      setExportOpen(true)
     } finally {
       setExportBusy(false)
     }
@@ -454,6 +456,11 @@ export default function StoryboardPreview({ projectId }: Props) {
                   ? ` · 配音约 ¥${(voiceover.estimatedCostMicros / 1_000_000).toFixed(2)}`
                   : ""}
               </span>
+              {exportBusy && (
+                <span className="storyboard-export-status" role="status">
+                  正在渲染分享视频
+                </span>
+              )}
             </div>
             <div className="storyboard-export-actions">
               {latestExport && (

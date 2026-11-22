@@ -218,7 +218,7 @@ export default function LoginPanel() {
 
       <section className="auth-story" aria-labelledby="auth-story-title">
         <div className="auth-story-copy">
-          <p className="auth-kicker">AI 短剧与漫剧生产平台</p>
+          <p className="auth-kicker">AI 短剧生产平台</p>
           <h1 id="auth-story-title">
             回来接着写，<br />
             把下一场做成<span className="auth-title-accent">镜头</span>。

@@ -5,12 +5,16 @@
 // 界面里必须让用户看得见「图在你自己机器上」——这不是营销话术，
 // 是产品设计：图库有两个模式，界面上明确显示当前模式与文件数。
 import { useRef, useState } from 'react'
-import type { VaultFile, VaultMode } from '@/lib/assets/vault'
+import type { VaultDirectoryAccess, VaultFile, VaultMode } from '@/lib/assets/vault'
 import { addFilesToVault } from '@/lib/assets/vault'
 
 interface Props {
   mode: VaultMode
   files: VaultFile[]
+  directoryAccess: VaultDirectoryAccess
+  unreadableReferenceCount: number
+  autoRelinkedReferenceCount: number
+  accessBusy: boolean
   onPickDirectory: () => void
   onReload: () => void
   onAdd: (added: VaultFile[]) => void
@@ -30,6 +34,10 @@ interface Props {
 export default function VaultPanel({
   mode,
   files,
+  directoryAccess,
+  unreadableReferenceCount,
+  autoRelinkedReferenceCount,
+  accessBusy,
   onPickDirectory,
   onReload,
   onAdd,
@@ -45,6 +53,53 @@ export default function VaultPanel({
   const [busy, setBusy] = useState(false)
   /** 危险动作要二次确认：断开/清空点错了，用户得重新扫一遍 */
   const [confirming, setConfirming] = useState(false)
+  const directoryNeedsAttention = mode === 'fs-access'
+    && directoryAccess.status !== 'connected'
+    && directoryAccess.status !== 'not-connected'
+  const accessTone = directoryAccess.status === 'connected'
+    ? 'is-ready'
+    : directoryAccess.status === 'not-connected'
+      ? 'is-idle'
+      : directoryAccess.status === 'error'
+        ? 'is-error'
+        : 'is-warning'
+  const accessLabel = directoryAccess.status === 'connected'
+    ? '素材目录已连接'
+    : directoryAccess.status === 'missing'
+      ? '找不到素材目录'
+      : directoryAccess.status === 'needs-permission'
+        ? directoryAccess.reason === 'denied'
+          ? '读取权限被拒绝'
+          : directoryAccess.reason === 'cancelled'
+            ? '已取消授权'
+            : '等待重新授权'
+        : directoryAccess.status === 'error'
+          ? '素材目录读取失败'
+          : '未连接素材目录'
+  const primaryDirectoryAction = directoryAccess.status === 'connected'
+    ? {
+        label: files.length > 0 ? '重新扫描' : '扫描素材文件夹',
+        run: onReload,
+      }
+    : directoryAccess.status === 'missing'
+      ? {
+          label: '重新选择素材文件夹',
+          run: onPickDirectory,
+        }
+      : directoryAccess.status === 'needs-permission'
+        ? {
+            label: '重新授权素材文件夹',
+            run: onReload,
+          }
+        : directoryAccess.status === 'error'
+          ? {
+              label: '重试读取',
+              run: onReload,
+            }
+          : {
+              label: '选择素材文件夹',
+              run: onPickDirectory,
+            }
 
   const handleFiles = async (list: FileList | null) => {
     if (!list || list.length === 0) return
@@ -58,18 +113,32 @@ export default function VaultPanel({
   }
 
   if (compact) {
-    const primaryLabel = mode === 'fs-access'
-      ? files.length > 0 ? '重新扫描' : '选择素材文件夹'
-      : '添加图片'
+    const primaryLabel = mode === 'fs-access' ? primaryDirectoryAction.label : '添加图片'
     return (
       <div className="vault-panel vault-panel-compact surface flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
         <span className="shrink-0 text-[11px] font-semibold text-ink-700">本地图库</span>
         <span className="rounded-chip bg-done-100 px-1.5 py-0.5 text-[9.5px] font-semibold text-done-700">
           图不上传
         </span>
-        <p className="min-w-[10rem] flex-1 text-[11px] text-ink-500">
-          {files.length} 张图片 · {mode === 'fs-access' ? '目录直连' : '浏览器本地存储'}
-        </p>
+        <div
+          className={`vault-access-state ${accessTone} min-w-[11rem] flex-1`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="vault-access-dot" aria-hidden="true" />
+          <p className="text-[11px] leading-relaxed text-ink-500">
+            {mode === 'fs-access'
+              ? directoryAccess.canRead
+                ? `${files.length} 张图片 · ${accessLabel}`
+                : files.length > 0
+                  ? `${accessLabel} · 已保留 ${files.length} 张`
+                  : accessLabel
+              : `${files.length} 张图片 · 浏览器本地存储`}
+            {autoRelinkedReferenceCount > 0
+              ? ` · 已按指纹恢复 ${autoRelinkedReferenceCount} 张引用`
+              : ''}
+          </p>
+        </div>
         {onManage && (
           <button
             type="button"
@@ -92,23 +161,26 @@ export default function VaultPanel({
         )}
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || accessBusy}
           onClick={() => {
             if (mode === 'indexeddb') inputRef.current?.click()
-            else if (files.length > 0) onReload()
-            else onPickDirectory()
+            else primaryDirectoryAction.run()
           }}
           className="min-h-10 shrink-0 rounded-pill bg-accent-700 px-2.5 py-1 text-[11px] font-medium text-white
             transition-colors hover:bg-accent-800 disabled:opacity-50"
         >
-          {busy ? '处理中…' : primaryLabel}
+          {busy || accessBusy ? '检查权限…' : primaryLabel}
         </button>
       </div>
     )
   }
 
   return (
-    <div className={`vault-panel vault-panel-full rounded-card border border-surface-line bg-surface-card p-4 shadow-surface ${className}`}>
+    <div
+      className={`vault-panel vault-panel-full rounded-card border border-surface-line bg-surface-card p-4 shadow-surface ${className}`}
+      data-directory-status={directoryAccess.status}
+      data-unreadable-reference-count={unreadableReferenceCount}
+    >
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-ink-900">本地图库</h3>
         <span className="rounded-chip bg-done-100 px-1.5 py-0.5 text-[10px] font-semibold text-done-700">
@@ -122,25 +194,79 @@ export default function VaultPanel({
           : '当前浏览器不支持目录直连，图片会存在浏览器本地存储里（同样不上传）。'}
       </p>
 
+      {mode === 'fs-access' && (
+        <div
+          className={`vault-directory-status ${accessTone} mb-3`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="min-w-0">
+            <p className="vault-directory-title">
+              <span className="vault-access-dot" aria-hidden="true" />
+              {accessLabel}
+              {directoryAccess.status === 'connected' && (
+                <span className="vault-directory-count">{files.length} 张可读</span>
+              )}
+            </p>
+            <p className="vault-directory-note">{directoryAccess.message}</p>
+          </div>
+          {directoryNeedsAttention && (
+            <span className="vault-directory-badge">需要处理</span>
+          )}
+        </div>
+      )}
+
+      {unreadableReferenceCount > 0 && (
+        <div className="vault-reference-warning mb-3" role="status">
+          <p>
+            {unreadableReferenceCount} 张已挂引用暂时读不到
+          </p>
+          <p>先重新授权或重新扫描素材目录；项目里的引用会保留，不要删除重挂。</p>
+        </div>
+      )}
+
+      {autoRelinkedReferenceCount > 0 && (
+        <div className="vault-reference-recovered mb-3" role="status">
+          <p>已按文件指纹恢复 {autoRelinkedReferenceCount} 张引用</p>
+          <p>新路径已同步到项目和挂接记录；原文件内容没有被修改。</p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         {mode === 'fs-access' ? (
           <>
             <button
               type="button"
-              onClick={onPickDirectory}
+              onClick={primaryDirectoryAction.run}
+              disabled={accessBusy}
               className="w-full rounded-chip bg-ink-900 px-3 py-2 text-sm font-medium text-surface-card
-                transition-colors hover:bg-ink-700"
+                transition-colors hover:bg-ink-700 disabled:opacity-50"
             >
-              选择素材文件夹
+              {accessBusy ? '正在检查素材目录…' : primaryDirectoryAction.label}
             </button>
-            <button
-              type="button"
-              onClick={onReload}
-              className="w-full rounded-chip border border-surface-line px-3 py-2 text-xs font-medium text-ink-600
-                transition-colors hover:border-ink-300 hover:bg-surface"
-            >
-              重新扫描
-            </button>
+            {(directoryAccess.status !== 'not-connected'
+              && primaryDirectoryAction.run !== onPickDirectory) && (
+              <button
+                type="button"
+                onClick={onPickDirectory}
+                disabled={accessBusy}
+                className="w-full rounded-chip border border-surface-line px-3 py-2 text-xs font-medium text-ink-600
+                  transition-colors hover:border-ink-300 hover:bg-surface disabled:opacity-50"
+              >
+                重新选择素材文件夹
+              </button>
+            )}
+            {(directoryAccess.status === 'connected' && files.length > 0) && (
+              <button
+                type="button"
+                onClick={onPickDirectory}
+                disabled={accessBusy}
+                className="w-full rounded-chip border border-surface-line px-3 py-2 text-xs font-medium text-ink-600
+                  transition-colors hover:border-ink-300 hover:bg-surface disabled:opacity-50"
+              >
+                更换素材文件夹
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -165,10 +291,14 @@ export default function VaultPanel({
         )}
       </div>
 
-      <p className="mt-3 border-t border-surface-line pt-2 text-xs text-ink-500">
-        图库中共 {files.length} 张图片
-        {ignoredCount > 0 && `（另有 ${ignoredCount} 张已移除，未计入）`}
-      </p>
+      {(mode === 'indexeddb' || directoryAccess.canRead || files.length > 0) && (
+        <p className="mt-3 border-t border-surface-line pt-2 text-xs text-ink-500">
+          {directoryAccess.canRead || mode === 'indexeddb'
+            ? `图库中共 ${files.length} 张图片`
+            : `已保留 ${files.length} 张已扫描素材，等待重新授权`}
+          {ignoredCount > 0 && `（另有 ${ignoredCount} 张已移除，未计入）`}
+        </p>
+      )}
 
       {files.length > 0 && (
         <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">

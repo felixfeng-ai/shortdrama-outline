@@ -77,7 +77,7 @@ test("CTA1 服务端读取最新项目快照并返回可定位的连续性报告
   assert.equal(report.quotaCharged, 0)
   assert.equal(report.summary.totalShots, SAMPLE_SHOTS.length)
   assert.ok(report.summary.issueShots > 0)
-  assert.ok(report.repairQueue.some((item: { episode: number; shot: number }) => item.episode === 3 && item.shot === 3))
+  assert.ok(report.repairQueue.some((item: { episode: number; shot: number }) => item.episode === 3 && item.shot === 1))
   assert.match(
     JSON.stringify(report.repairQueue),
     /苏婉|参考图/,

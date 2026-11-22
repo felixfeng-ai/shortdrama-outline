@@ -30,6 +30,8 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
       - run: npm test
       - run: npm run build
+      - run: npx playwright@1.64.0 install --with-deps chromium
+      - run: npm run test:e2e:core
 
   deploy:
     name: 部署到生产服务器

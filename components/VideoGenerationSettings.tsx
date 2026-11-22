@@ -1,9 +1,13 @@
 "use client"
 
+import { useEffect, useMemo, useRef, useState } from "react"
+
 import {
   estimateVideoSelectionCost,
   findVideoModel,
+  recommendVideoSelection,
   videoPricePerSecond,
+  type VideoQualityGoal,
 } from "@/lib/video/catalog"
 import type { PublicVideoCapabilities } from "@/lib/video/model"
 
@@ -21,7 +25,14 @@ interface Props {
   disabled?: boolean
   onModelChange: (value: string) => void
   onResolutionChange: (value: string) => void
+  onApplySelection?: (model: string, resolution: string) => void
 }
+
+const GOALS: Array<{ id: VideoQualityGoal; label: string }> = [
+  { id: "draft", label: "试片" },
+  { id: "standard", label: "标准" },
+  { id: "final", label: "成片" },
+]
 
 export default function VideoGenerationSettings({
   capabilities,
@@ -33,7 +44,10 @@ export default function VideoGenerationSettings({
   disabled = false,
   onModelChange,
   onResolutionChange,
+  onApplySelection,
 }: Props) {
+  const [goal, setGoal] = useState<VideoQualityGoal>("standard")
+  const lastApplied = useRef("")
   const selected = capabilities ? findVideoModel(capabilities, model) : null
   const price = capabilities
     ? videoPricePerSecond(capabilities, model, resolution)
@@ -44,9 +58,61 @@ export default function VideoGenerationSettings({
       : estimateVideoSelectionCost(capabilities, model, resolution, duration)
     : null
   const unavailable = Boolean(error) || (!loading && !capabilities?.enabled)
+  const recommendation = useMemo(() => {
+    if (!capabilities?.enabled || duration === undefined) return null
+    try {
+      return recommendVideoSelection({ capabilities, duration, goal })
+    } catch {
+      return null
+    }
+  }, [capabilities, duration, goal])
+
+  // 每个时长与质量目标只自动应用一次；用户手动覆盖后不能在下一次渲染被抢回。
+  useEffect(() => {
+    if (!recommendation || disabled || duration === undefined) return
+    const key = [
+      duration,
+      goal,
+      recommendation.model,
+      recommendation.resolution,
+    ].join(":")
+    if (lastApplied.current === key) return
+    lastApplied.current = key
+    if (model !== recommendation.model || resolution !== recommendation.resolution) {
+      onApplySelection?.(recommendation.model, recommendation.resolution)
+    }
+  }, [
+    disabled,
+    duration,
+    goal,
+    model,
+    onApplySelection,
+    recommendation,
+    resolution,
+  ])
+
+  function applyRecommendation() {
+    if (!recommendation) return
+    onApplySelection?.(recommendation.model, recommendation.resolution)
+  }
 
   return (
     <div className="video-generation-settings">
+      {duration !== undefined && (
+        <div className="video-generation-goal" role="group" aria-label="视频质量目标">
+          {GOALS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={goal === item.id}
+              disabled={disabled || loading || !capabilities?.enabled}
+              onClick={() => setGoal(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
       <label>
         <span>视频模型</span>
         <select
@@ -91,6 +157,22 @@ export default function VideoGenerationSettings({
                     : `¥${price.toFixed(2)}/秒`
                   : `¥${price?.toFixed(2)}/秒 · 预计 ¥${(estimated / 1_000_000).toFixed(2)}`}
       </p>
+      {recommendation && (
+        <div className="video-generation-routing" role="status">
+          <div>
+            <span>智能推荐 · {GOALS.find((item) => item.id === goal)?.label}</span>
+            <b>{recommendation.model} · {recommendation.resolution}</b>
+            <small>{recommendation.reason}</small>
+          </div>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={applyRecommendation}
+          >
+            使用推荐
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -279,6 +279,10 @@
   white-space: nowrap;
 }
 
+.storyboard-export-status {
+  color: var(--factory-accent) !important;
+}
+
 .storyboard-export-actions {
   display: flex;
   flex: 0 0 auto;

@@ -17,6 +17,47 @@ export interface VaultFile {
   mime: string
 }
 
+export type VaultDirectoryStatus =
+  | "not-connected"
+  | "connected"
+  | "needs-permission"
+  | "missing"
+  | "error"
+
+export type VaultDirectoryReason =
+  | "none"
+  | "granted"
+  | "prompt"
+  | "denied"
+  | "cancelled"
+  | "not-found"
+  | "unsupported"
+  | "failure"
+
+/**
+ * 素材目录的授权事实。
+ *
+ * 句柄能存在 IndexedDB 里，不代表浏览器仍允许读取。界面必须依赖这里的状态，
+ * 不能把读取异常当成「0 张图片」；否则一次浏览器权限回收就会让用户误以为素材没了。
+ */
+export interface VaultDirectoryAccess {
+  status: VaultDirectoryStatus
+  canRead: boolean
+  reason: VaultDirectoryReason
+  message: string
+}
+
+export interface VaultDirectoryScan {
+  access: VaultDirectoryAccess
+  /** null 表示扫描失败，调用方必须保留原列表；空数组才表示目录确实没有图片。 */
+  files: VaultFile[] | null
+}
+
+interface PermissionCapableDirectoryHandle extends FileSystemDirectoryHandle {
+  queryPermission?: (descriptor?: { mode: "read" }) => Promise<PermissionState>
+  requestPermission?: (descriptor?: { mode: "read" }) => Promise<PermissionState>
+}
+
 const DB_NAME = "chengju-vault"
 const STORE = "blobs"
 const HANDLE_STORE = "handles"
@@ -30,6 +71,151 @@ const HANDLE_STORE = "handles"
 const IGNORE_STORE = "ignored"
 /** 建表版本：加 store 必须升版本号，否则老用户升级时不会跑 onupgradeneeded */
 const DB_VERSION = 2
+
+const READ_PERMISSION = { mode: "read" as const }
+
+export const NOT_CONNECTED_DIRECTORY_ACCESS: VaultDirectoryAccess = {
+  status: "not-connected",
+  canRead: false,
+  reason: "none",
+  message: "还没有连接素材文件夹。",
+}
+
+/**
+ * 把浏览器权限值翻译成产品状态。
+ *
+ * `prompt` 只表示「可以再次申请」，不是拒绝；页面启动时停在 needs-permission，
+ * 等用户主动点击后再 requestPermission，避免一打开工作台就弹授权框。
+ */
+function accessFromPermission(permission: PermissionState): VaultDirectoryAccess {
+  if (permission === "granted") {
+    return {
+      status: "connected",
+      canRead: true,
+      reason: "granted",
+      message: "素材文件夹已连接，可以读取本地参考图。",
+    }
+  }
+  if (permission === "denied") {
+    return {
+      status: "needs-permission",
+      canRead: false,
+      reason: "denied",
+      message: "素材文件夹读取权限被拒绝。请在浏览器网站设置中允许读取，或重新选择文件夹。",
+    }
+  }
+  return {
+    status: "needs-permission",
+    canRead: false,
+    reason: "prompt",
+    message: "浏览器暂停了素材文件夹权限。点「重新授权素材文件夹」继续读取，现有素材不会被清空。",
+  }
+}
+
+/**
+ * 把 File System Access 的异常归一到稳定的 UI 状态。
+ *
+ * AbortError 与 NotAllowedError 都不可读，但处理方式不同：前者是用户取消，
+ * 后者是权限被拒；保留原因后，面板才能给出准确提示而不是笼统报错。
+ */
+export function classifyDirectoryAccessError(error: unknown): VaultDirectoryAccess {
+  const name = typeof error === "object" && error !== null && "name" in error
+    ? String((error as { name?: unknown }).name ?? "")
+    : ""
+
+  if (name === "AbortError") {
+    return {
+      status: "needs-permission",
+      canRead: false,
+      reason: "cancelled",
+      message: "已取消素材文件夹授权。需要读取本地参考图时，可以再次点击重新授权。",
+    }
+  }
+  if (name === "NotAllowedError" || name === "SecurityError") {
+    return {
+      status: "needs-permission",
+      canRead: false,
+      reason: "denied",
+      message: "素材文件夹读取权限被拒绝。请在浏览器网站设置中允许读取，或重新选择文件夹。",
+    }
+  }
+  if (name === "NotFoundError") {
+    return {
+      status: "missing",
+      canRead: false,
+      reason: "not-found",
+      message: "Filesystem 目录被移动或删除，工作台找不到上次连接的素材文件夹。请重新选择文件夹，现有引用不会被清空。",
+    }
+  }
+  return {
+    status: "error",
+    canRead: false,
+    reason: "failure",
+    message: "素材文件夹读取失败。现有素材和引用已保留，请重试或重新选择文件夹。",
+  }
+}
+
+/**
+ * 检查已保存目录是否仍可读。
+ *
+ * 默认只查询权限；只有用户点击重新授权时才传入 requestPermission=true。
+ * 这样启动恢复不会打断创作，也不会因为一次拒绝就丢掉内存中的素材列表。
+ */
+export async function getDirectoryAccess(
+  handle: FileSystemDirectoryHandle | null,
+  options: { requestPermission?: boolean } = {},
+): Promise<VaultDirectoryAccess> {
+  if (!handle) return NOT_CONNECTED_DIRECTORY_ACCESS
+
+  const permissionHandle = handle as PermissionCapableDirectoryHandle
+  if (typeof permissionHandle.queryPermission !== "function") {
+    return {
+      status: "error",
+      canRead: false,
+      reason: "unsupported",
+      message: "当前浏览器没有提供素材目录权限查询能力，请改用最新版 Chrome 或 Edge。",
+    }
+  }
+
+  try {
+    let permission = await permissionHandle.queryPermission(READ_PERMISSION)
+    if (permission === "prompt" && options.requestPermission) {
+      if (typeof permissionHandle.requestPermission !== "function") {
+        return {
+          status: "needs-permission",
+          canRead: false,
+          reason: "unsupported",
+          message: "当前浏览器无法重新申请素材目录权限，请重新选择素材文件夹。",
+        }
+      }
+      permission = await permissionHandle.requestPermission(READ_PERMISSION)
+    }
+    return accessFromPermission(permission)
+  } catch (error) {
+    return classifyDirectoryAccessError(error)
+  }
+}
+
+/**
+ * 授权并扫描目录。失败时 files 固定为 null，调用方只能更新授权状态，
+ * 不能拿空数组覆盖内存里的旧素材——这是目录恢复流程不能破坏的约束。
+ */
+export async function scanDirectoryFiles(
+  handle: FileSystemDirectoryHandle,
+  options: { requestPermission?: boolean } = {},
+): Promise<VaultDirectoryScan> {
+  const access = await getDirectoryAccess(handle, options)
+  if (!access.canRead) return { access, files: null }
+
+  try {
+    return { access, files: await listImages(handle) }
+  } catch (error) {
+    return {
+      access: classifyDirectoryAccessError(error),
+      files: null,
+    }
+  }
+}
 
 /** 能力探测：决定用哪条路径 */
 export function detectVaultMode(): VaultMode {

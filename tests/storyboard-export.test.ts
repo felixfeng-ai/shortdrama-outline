@@ -9,6 +9,7 @@ import {
 import { createProject, createSnapshot } from "../lib/assets/repo.ts"
 import { __resetDbForTests, getDbForRequest } from "../lib/assets/store.ts"
 import type { Shot } from "../lib/assets/types.ts"
+import type { StoryboardSegment } from "../lib/production/storyboard-preview.ts"
 import {
   createGenerationTask,
   saveGeneratedAsset,
@@ -26,24 +27,34 @@ import {
 } from "../lib/production/storyboard-export-repo.ts"
 import { renderStoryboardExport } from "../lib/production/storyboard-export-service.ts"
 
-const segments = [
+const segments: StoryboardSegment[] = [
   {
     id: "s1",
+    shotId: "shot-1",
     episode: 1,
     shot: 1,
+    mediaKind: "image",
+    mediaUrl: "/api/generated-assets/s1",
     durationSeconds: 6,
     speaker: "林晚",
     dialogue: "我不是回来认亲的。",
+    action: "林晚推门进入。",
+    characters: ["林晚"],
   },
   {
     id: "s2",
+    shotId: "shot-2",
     episode: 1,
     shot: 2,
+    mediaKind: "image",
+    mediaUrl: "/api/generated-assets/s2",
     durationSeconds: 8,
     speaker: "周沉",
     dialogue: "那封死亡证明，是谁签的字？",
+    action: "周沉放下死亡证明。",
+    characters: ["周沉"],
   },
-] as never[]
+]
 
 test("EXP1 SRT 按真实镜头时长累计，并保留说话人与字幕", () => {
   const srt = buildStoryboardSrt(segments)
@@ -52,6 +63,19 @@ test("EXP1 SRT 按真实镜头时长累计，并保留说话人与字幕", () =>
   assert.match(srt, /林晚：我不是回来认亲的。/)
   assert.match(srt, /2\r\n00:00:06,000 --> 00:00:13,700/)
   assert.match(srt, /周沉：那封死亡证明，是谁签的字？/)
+})
+
+test("EXP1b 无台词镜头不占用 SRT 字幕编号", () => {
+  const srt = buildStoryboardSrt([
+    { ...segments[0], id: "silent-1", durationSeconds: 6, speaker: "", dialogue: "" },
+    { ...segments[0], id: "spoken-1", durationSeconds: 6 },
+    { ...segments[1], id: "silent-2", durationSeconds: 6, speaker: "", dialogue: "" },
+    { ...segments[1], id: "spoken-2", durationSeconds: 6 },
+  ])
+
+  assert.match(srt, /^1\r\n00:00:06,000 --> 00:00:11,700/)
+  assert.match(srt, /\r\n\r\n2\r\n00:00:18,000 --> 00:00:23,700/)
+  assert.doesNotMatch(srt, /\r\n\r\n4\r\n/)
 })
 
 test("EXP2 TTS 可用时返回字符数与预算，不可用时明确降级", () => {

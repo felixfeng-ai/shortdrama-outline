@@ -13,11 +13,11 @@
 
 ## 品类定位
 
-**AI 短剧与漫剧生产平台**
+**AI 短剧生产平台**
 
 英文辅助描述：
 
-> VeyaTV — AI short drama and comic drama production platform.
+> VeyaTV — AI short drama production platform.
 
 平台不是单点生图或生视频工具，而是覆盖人物、分集、视觉定妆、场次、分镜、镜头视频、声音、时间线与成片的生产平台。
 
@@ -40,7 +40,7 @@
 ## 界面使用
 
 - 桌面侧栏、登录页、教程页和页脚只显示 `VeyaTV`，不再把 `成剧` 放进主品牌组合。
-- 页面标题统一为：`VeyaTV · AI 短剧与漫剧生产平台`。
+- 页面标题统一为：`VeyaTV · AI 短剧生产平台`。
 - PWA 完整名称与短名称统一为 `VeyaTV`。
 - 许可、音乐署名和版权统一写 `VeyaTV`，不再保留旧英文品牌。
 

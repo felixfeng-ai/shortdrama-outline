@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto"
 
 import {
-  MINIMAX_VIDEO_BASE_URL,
   buildMiniMaxVideoRequest,
   getMiniMaxVideoConfig,
   parseMiniMaxVideoSubmission,
@@ -87,7 +86,7 @@ export async function submitMiniMaxVideo(input: {
   signal?: AbortSignal
 }, fetchImpl: FetchLike = fetch, env: Record<string, string | undefined> = process.env) {
   const config = getMiniMaxVideoConfig(env)
-  const request = buildMiniMaxVideoRequest(input)
+  const request = buildMiniMaxVideoRequest(input, config.baseUrl)
   let response: Response
   try {
     response = await fetchImpl(request.url, {
@@ -123,7 +122,7 @@ export async function queryMiniMaxVideo(
   let response: Response
   try {
     response = await fetchImpl(
-      `${MINIMAX_VIDEO_BASE_URL}/v2/query/video_generation/${encodeURIComponent(providerTaskId)}`,
+      `${config.baseUrl}/v2/query/video_generation/${encodeURIComponent(providerTaskId)}`,
       {
         method: "GET",
         headers: { Authorization: `Bearer ${config.apiKey}` },
@@ -176,7 +175,7 @@ export async function cancelMiniMaxVideo(
 ): Promise<boolean> {
   const config = getMiniMaxVideoConfig(env)
   const response = await fetchImpl(
-    `${MINIMAX_VIDEO_BASE_URL}/v2/video_generation/${encodeURIComponent(providerTaskId)}`,
+    `${config.baseUrl}/v2/video_generation/${encodeURIComponent(providerTaskId)}`,
     {
       method: "DELETE",
       headers: { Authorization: `Bearer ${config.apiKey}` },

@@ -23,7 +23,7 @@
 - 品牌架构固定为：母品牌 `Veya`，平台主品牌 `VeyaTV`，中文辅助名 `成剧` 仅用于中文 SEO、法律说明和必要解释；AI 制片为 `Veya Agent`，画布为 `Veya Canvas`。
 - 主界面只显示 `VeyaTV`，不得把成剧、AI 标签或 `.ai` 域名加入 Logo 锁定组。
 - 正式 Logo 使用“实心负形 V”：白色实心方块内切出 V；主字标为 `VeyaTV`，不再叠加六边形、内嵌 V 或外置容器。
-- 对外品类固定为 `AI 短剧与漫剧生产平台`。不得再用“创作工作台”“AI 工具”等弱化生产能力的表述作为主定位。
+- 对外品类固定为 `AI 短剧生产平台`。漫剧只保留在内部路线图，不进入当前对外承诺。
 - `VeyaFrame`、`VEYAFRAME` 和“成剧 VeyaFrame”退出所有用户可见内容；favicon、PWA 图标和离线页继续使用近黑底反相白 V 标。
 - 当前官网为 `veyatv.com`。`chenju.work` 与 `www.chenju.work` 只用于旧链接和跨域会话交接，不再作为 canonical。
 

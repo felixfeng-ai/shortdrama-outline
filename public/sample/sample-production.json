@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "sample-production",
+  "title": "示例 · 快递员的最后一单",
+  "episode": 1,
+  "durationMs": 6000,
+  "width": 1080,
+  "height": 1920,
+  "profile": "delivery",
+  "disclosure": "示例视频包含 AI 辅助制作画面，仅用于展示 VeyaTV 生产链路。"
+}

@@ -43,6 +43,7 @@ const MODEL_CONFIGS: Record<MiniMaxVideoModel, VideoModelConfig> = {
 
 export interface MiniMaxVideoConfig {
   apiKey: string
+  baseUrl: string
   model: MiniMaxVideoModel
   defaultResolution: MiniMaxVideoResolution
 }
@@ -102,6 +103,19 @@ function resolutionFrom(value: string | undefined): MiniMaxVideoResolution {
   return resolution
 }
 
+function baseUrlFrom(value: string | undefined): string {
+  const candidate = (value?.trim() || MINIMAX_VIDEO_BASE_URL).replace(/\/+$/, "")
+  try {
+    const parsed = new URL(candidate)
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      throw new Error("unsupported protocol")
+    }
+    return candidate
+  } catch {
+    throw new InputError("视频服务地址配置无效")
+  }
+}
+
 export function getPublicVideoCapabilities(
   env: Record<string, string | undefined> = process.env,
 ): PublicVideoCapabilities {
@@ -138,6 +152,7 @@ export function getMiniMaxVideoConfig(
   if (!apiKey) throw new InputError("平台视频服务未配置，请联系管理员")
   return {
     apiKey,
+    baseUrl: baseUrlFrom(env.MINIMAX_VIDEO_BASE_URL),
     model: modelFrom(env.MINIMAX_VIDEO_MODEL),
     defaultResolution: resolutionFrom(env.MINIMAX_VIDEO_RESOLUTION),
   }
@@ -188,7 +203,7 @@ export function buildMiniMaxVideoRequest(input: {
   duration: number
   ratio: string
   firstFrame?: VideoInputImage
-}): MiniMaxVideoRequest {
+}, baseUrl = MINIMAX_VIDEO_BASE_URL): MiniMaxVideoRequest {
   const prompt = input.prompt.trim()
   if (!prompt) throw new InputError("缺少视频提示词")
   if (prompt.length > 7000) throw new InputError("视频提示词不能超过 7000 字符")
@@ -215,7 +230,7 @@ export function buildMiniMaxVideoRequest(input: {
       : "9:16"
 
   return {
-    url: `${MINIMAX_VIDEO_BASE_URL}/v2/video_generation`,
+    url: `${baseUrl.replace(/\/+$/, "")}/v2/video_generation`,
     body: {
       model: input.model,
       content,

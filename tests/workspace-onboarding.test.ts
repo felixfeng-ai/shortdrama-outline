@@ -23,7 +23,7 @@ test("ONB2 空项目首屏只提供三个真实起点", () => {
   assert.match(source, /一句成戏，先看一场/)
   assert.match(source, /人物、分镜与首帧自动完成/)
   assert.match(source, /导入小说或剧本/)
-  assert.match(source, /查看示例项目/)
+  assert.match(source, /查看完整示例项目/)
   assert.match(source, /ONBOARDING_STEPS/)
   assert.doesNotMatch(source, /第一次使用/)
   assert.doesNotMatch(source, /当前工作/)

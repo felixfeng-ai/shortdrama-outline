@@ -69,6 +69,13 @@ export function useVideoCapabilities() {
     setResolutionValue(nextResolution)
   }, [capabilities, selectedModel])
 
+  const setSelection = useCallback((nextModel: string, nextResolution: string) => {
+    if (!capabilities) return
+    const selected = resolveVideoSelection(capabilities, nextModel, nextResolution)
+    setModelValue(selected.model)
+    setResolutionValue(selected.resolution)
+  }, [capabilities])
+
   return {
     capabilities,
     model,
@@ -79,5 +86,6 @@ export function useVideoCapabilities() {
     error,
     setModel,
     setResolution,
+    setSelection,
   }
 }
