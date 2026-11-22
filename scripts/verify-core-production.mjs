@@ -169,7 +169,10 @@ if (!baseUrl) {
   try {
     await waitForUrl(`${baseUrl}/api/health`, 60_000)
   } catch (error) {
-    fs.writeFileSync(path.join(evidenceDir, "server.log"), serverLogs)
+    fs.writeFileSync(
+      path.join(evidenceDir, "server.log"),
+      `${serverLogs}\n--- probe failure ---\n${error instanceof Error ? error.stack || error.message : String(error)}\n`,
+    )
     if (serverProcess) serverProcess.kill("SIGTERM")
     if (mockServer) await new Promise((resolve) => mockServer.close(resolve))
     throw error
