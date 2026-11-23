@@ -152,6 +152,8 @@ if (!baseUrl) {
       AUTH_ALLOW_DEV_CODE: "0",
       TTS_ENABLED: "0",
       VIDEO_GENERATION_ENABLED: "1",
+      DEEPSEEK_API_KEY: "mock-model-key",
+      ALIYUN_DASHSCOPE_API_KEY: "mock-image-key",
       MINIMAX_API_KEY: "mock-key",
       MINIMAX_VIDEO_BASE_URL: mockBaseUrl,
       MINIMAX_VIDEO_MODEL: "MiniMax-H3-Lite",
@@ -215,11 +217,21 @@ await context.addCookies([{
 
 const page = await context.newPage()
 const consoleErrors = []
+const failedResponses = []
 function watchPage(target) {
   target.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text())
   })
   target.on("pageerror", (error) => consoleErrors.push(error.message))
+  target.on("response", async (response) => {
+    if (response.status() < 400) return
+    failedResponses.push({
+      method: response.request().method(),
+      status: response.status(),
+      url: response.url(),
+      body: (await response.text().catch(() => "")).slice(0, 1_000),
+    })
+  })
 }
 watchPage(page)
 
@@ -389,7 +401,16 @@ try {
     animations: "disabled",
   })
   await page.setViewportSize({ width: 1440, height: 1000 })
+  const batchImportResponse = page.waitForResponse((response) =>
+    response.request().method() === "POST"
+    && response.url().includes("/shot-video-import"),
+  )
   await batchDialog.getByRole("button", { name: "确认导入 2 个" }).click()
+  const response = await batchImportResponse
+  const responseText = await response.text()
+  if (!response.ok()) {
+    throw new Error(`批量外部视频导入失败：${response.status()} ${responseText.slice(0, 2_000)}`)
+  }
   await page.getByText("已批量导入并采用 2 条外部视频。").waitFor({ timeout: 30_000 })
   await page.goto(`${baseUrl}/?project=${projectId}`, {
     waitUntil: "domcontentloaded",
@@ -662,6 +683,14 @@ try {
   if (serverLogs) {
     fs.writeFileSync(path.join(evidenceDir, "server.log"), serverLogs)
   }
+  fs.writeFileSync(
+    path.join(evidenceDir, "browser.log"),
+    JSON.stringify({
+      error: error instanceof Error ? error.stack || error.message : String(error),
+      consoleErrors,
+      failedResponses,
+    }, null, 2),
+  )
   throw error
 } finally {
   await browser.close()
